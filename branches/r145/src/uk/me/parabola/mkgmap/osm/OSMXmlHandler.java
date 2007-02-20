@@ -190,6 +190,9 @@ class OSMXmlHandler extends DefaultHandler {
 		Coord start = nodeMap.get(from);
 		Coord end = nodeMap.get(to);
 
+		if (start == null || end == null)
+			return;
+
 		// TODO: we can do this another way now.
 		mapper.addToBounds(start);
 		mapper.addToBounds(end);
