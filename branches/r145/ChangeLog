@@ -1,3 +1,16 @@
+2007-02-20  steve
+
+	* src/uk/me/parabola/log/Logger.java: Fix so that it can be run
+	  with gjc
+	* src/uk/me/parabola/mkgmap/main/MakeMap.java: Make the top
+	  invisible layer at a low zoom, so that it can cover a whole
+	  country.
+	* src/uk/me/parabola/mkgmap/osm/Way.java: Use the 'ref' tag if
+	  available.
+	* src/uk/me/parabola/mkgmap/osm/OSMXmlHandler.java: Check for null
+	  endpoints on segments. Could be caused by segments using nodes
+	  that have been deleted.
+
 2007-02-06  steve
 
 	* src/uk/me/parabola/imgfmt/sys/ImgFS.java: Fix annoying problem
