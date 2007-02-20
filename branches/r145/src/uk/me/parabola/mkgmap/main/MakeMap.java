@@ -98,7 +98,7 @@ public class MakeMap {
 		MapArea[] areas = splitter.split();
 
 		// There must be an empty zoom level at the least detailed level.
-		Zoom z1 = map.createZoom(1, 24);
+		Zoom z1 = map.createZoom(1, 16);
 		Subdivision topdiv = map.topLevelSubdivision(src.getBounds(), z1);
 
 		Zoom z0 = map.createZoom(0, 24);
