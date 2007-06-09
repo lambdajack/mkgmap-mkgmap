@@ -93,8 +93,12 @@ public class Subdivision {
 
 		this.latitude = (area.getMinLat() + area.getMaxLat())/2;
 		this.longitude = (area.getMinLong() + area.getMaxLong())/2;
-		
-		this.width = area.getWidth()/2 >> shift;
+
+		int w = area.getWidth() / 2 >> shift;
+		if ((w & 0x8000) != 0)
+			w = 0x7fff;
+
+		this.width = w;
 		this.height = area.getHeight()/2 >> shift;
 	}
 
@@ -158,6 +162,8 @@ public class Subdivision {
 		file.put3(longitude);
 		file.put3(latitude);
 		log.debug("last is " + last);
+
+		assert((width & 0x8000) == 0);
 		file.putChar((char) (width | ((last) ? 0x8000 : 0)));
 		file.putChar((char) height);
 

@@ -1,6 +1,6 @@
 
 #OSMDATA = area.osm
-OSMDATA = vbig.osm
+OSMDATA = /opt/data/uk-070530.osm
 #OSMDATA = clondon.osm
 
 # Source code of OSMGarminMap
@@ -9,15 +9,16 @@ OSM_GARMIN_MAP = /home/steve/src/osm/utils/osmgarminmap
 makemap:
 	rm -f gmapsupp/* mkgmap.log out.log
 	rm -f 63240001.img
-	java -Dlog.filename=mkgmap.log -ea -cp build/classes uk.me.parabola.mkgmap.main.MakeMap $(OSMDATA)
+	#java -Dlog.filename=mkgmap.log -ea -cp build/classes uk.me.parabola.mkgmap.main.MakeMap $(OSMDATA)
+	time java -ea -cp build/classes uk.me.parabola.mkgmap.main.MakeMap $(OSMDATA)
 	cp 63240001.img gmapsupp.img
 	imgdecode gmapsupp.img
 
 load:
 	sleep 2
-	-surun mount /media/gps
-	surun cp gmapsupp.img /media/gps/Garmin/gmapsupp.img
-	surun umount /media/gps
+	-surun mount /media/disk
+	surun cp gmapsupp.img /media/disk/Garmin/gmapsupp.img
+	surun umount /media/disk
 
 
 map_features:
@@ -55,9 +56,9 @@ test_lang10:
 	imgdecode 32860003.img
 
 tl:
-	-mount /media/gps
-	cp 32860003.img /media/gps/Garmin/gmapsupp.img
-	umount /media/gps
+	-mount /media/disk
+	cp 32860003.img /media/disk/Garmin/gmapsupp.img
+	umount /media/disk
 
 munge:
 	cp pp.bak pp
