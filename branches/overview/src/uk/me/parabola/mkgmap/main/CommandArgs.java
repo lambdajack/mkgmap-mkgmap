@@ -19,11 +19,14 @@ package uk.me.parabola.mkgmap.main;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
 
-import java.util.Properties;
-import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Properties;
 
 /**
  * Command line arguments for MakeMap.
@@ -45,7 +48,7 @@ class CommandArgs {
 
 	private Properties argvalues = new Properties(defaults);
 
-	private String fileName;
+	private List<String> fileNames = new ArrayList<String>();
 
 	/**
 	 * Read and interpret the command line arguments.  Most have a double hyphen
@@ -80,7 +83,7 @@ class CommandArgs {
 				log.warn("unrecognised option");
 			} else {
 				// A file name
-				fileName = a;
+				fileNames.add(a);
 			}
 		}
 	}
@@ -131,10 +134,10 @@ class CommandArgs {
 		return getValue("block-size", 512);
 	}
 
-	public String getFileName() {
-		return fileName;
+	public Iterator fileNameIterator() {
+		return fileNames.iterator();
 	}
-
+	
 	public String getMapname() {
 		return argvalues.getProperty("mapname");
 	}

@@ -79,7 +79,7 @@ public interface LoadableMapDataSource extends MapDataSource {
 	 *
 	 * @return A string with the name of the copyright holder.
 	 */
-	public String copyrightMessage();
+	public String[] copyrightMessages();
 
 	/**
 	 * Get a list of every feature that is used in the map.  As features are
