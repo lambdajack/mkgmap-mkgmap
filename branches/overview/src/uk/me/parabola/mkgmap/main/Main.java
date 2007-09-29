@@ -36,6 +36,9 @@ public class Main implements ArgumentProcessor {
 
 	public Main() {
 		overview = new OverviewMapMaker();
+
+		// The default is to make a map
+		action = new MakeMap();
 	}
 
 	public static void main(String[] args) {
@@ -57,11 +60,17 @@ public class Main implements ArgumentProcessor {
 	}
 
 	public void processOption(String opt, String val) {
-		log.debug("proc option");
+		log.debug("proc option", opt, val);
 	}
 
+	/**
+	 * Switch out to the appropriate class to process the filename.
+	 *
+	 * @param args The command arguments.
+	 * @param filename The filename to process.
+	 */
 	public void processFilename(CommandArgs args, String filename) {
-		makeMap(args, filename);
+		action.processFilename(args, filename);
 	}
 
 	private void makeMap(CommandArgs args, String filename) {

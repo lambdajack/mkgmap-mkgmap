@@ -24,6 +24,15 @@ package uk.me.parabola.mkgmap.main;
 public interface ArgumentProcessor extends FilenameProcessor {
 
 	/**
+	 * This is called first to indicate the number of option arguments and the
+	 * number of filenames that have been supplied.
+	 * 
+	 * @param argcount
+	 * @param filecount
+	 */
+	public void argCounts(int argcount, int filecount);
+
+	/**
 	 * Process an option.  This is intended for options that change state or
 	 * that say how the next filename is to be operated upon.
 	 *
