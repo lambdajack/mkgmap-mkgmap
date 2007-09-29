@@ -26,7 +26,7 @@ import java.io.InputStream;
 import java.util.Properties;
 
 /**
- * Command line arguments for MakeMap.
+ * Command line arguments for Main.
  * Since it is likely that the number of options will become quite large, you
  * can place options in a file and have options given on the command line over-
  * ride them.
