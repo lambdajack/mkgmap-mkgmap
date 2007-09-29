@@ -33,6 +33,7 @@ import java.util.Iterator;
 
 /**
  * Command line arguments for Main.
+ * 
  * Since it is likely that the number of options will become quite large, you
  * can place options in a file and have options given on the command line over-
  * ride them.
@@ -42,7 +43,7 @@ import java.util.Iterator;
 class CommandArgs {
 	private static final Logger log = Logger.getLogger(CommandArgs.class);
 
-	private ArgList arglist = new ArgList();
+	private final ArgList arglist = new ArgList();
 	{
 		// Set some default values.  It is as if these were on the command
 		// line before any user supplied options.
@@ -51,7 +52,7 @@ class CommandArgs {
 		arglist.add(new Option("overview-name", "63240000"));
 	}
 
-	private ArgumentProcessor proc;
+	private final ArgumentProcessor proc;
 
 	CommandArgs(ArgumentProcessor proc) {
 		this.proc = proc;
@@ -186,6 +187,12 @@ class CommandArgs {
 		}
 	}
 
+	/**
+	 * Read a config file that contains more options.  When the number of
+	 * options becomes large it is more convenient to place them in a file.
+	 *
+	 * @param filename The filename to obtain options from.
+	 */
 	private void readConfigFile(String filename) {
 		log.info("reading config file", filename);
 		try {
@@ -209,6 +216,51 @@ class CommandArgs {
 	}
 
 	/**
+	 * The arguments are held in this list.
+	 */
+	private class ArgList implements Iterable<ArgType> {
+		private final List<ArgType> arglist = new ArrayList<ArgType>();
+		private final Map<String, String> props = new HashMap<String, String>();
+
+		private int filenameCount;
+
+		public void add(Option option) {
+			props.put(option.getOpt(), option.getValue());
+			arglist.add(option);
+		}
+
+		public void add(Filename name) {
+			filenameCount++;
+			arglist.add(name);
+		}
+
+		public Iterator<ArgType> iterator() {
+			return arglist.iterator();
+		}
+
+		public int getFilenameCount() {
+			return filenameCount;
+		}
+
+		public String getProperty(String name) {
+			return props.get(name);
+		}
+
+		public String getProperty(String name, String def) {
+			String val = props.get(name);
+			if (val == null)
+				val = def;
+			return val;
+		}
+
+		public Properties getProperties() {
+			Properties props = new Properties();
+			props.putAll(props);
+			return props;
+		}
+	}
+
+	/**
 	 * Interface that represents an argument type.  It provides a method for
 	 * the argument to be processed in order.  Options can be intersperced with
 	 * filenames.  The options take effect where they appear.
@@ -221,7 +273,7 @@ class CommandArgs {
 	 * A filename.
 	 */
 	private class Filename implements ArgType {
-		private String name;
+		private final String name;
 
 		private Filename(String name) {
 			this.name = name;
@@ -266,47 +318,7 @@ class CommandArgs {
 		public String getValue() {
 			return value;
 		}
+
 	}
 
-	private class ArgList implements Iterable<ArgType> {
-		private List<ArgType> arglist = new ArrayList<ArgType>();
-		private Map<String, String> props = new HashMap<String, String>();
-
-		private int filenameCount;
-
-		public void add(Option option) {
-			props.put(option.getOpt(), option.getValue());
-			arglist.add(option);
-		}
-
-		public void add(Filename name) {
-			filenameCount++;
-			arglist.add(name);
-		}
-
-		public Iterator<ArgType> iterator() {
-			return arglist.iterator();
-		}
-
-		public int getFilenameCount() {
-			return filenameCount;
-		}
-
-		public String getProperty(String name) {
-			return props.get(name);
-		}
-
-		public String getProperty(String name, String def) {
-			String val = props.get(name);
-			if (val == null)
-				val = def;
-			return val;
-		}
-
-		public Properties getProperties() {
-			Properties props = new Properties();
-			props.putAll(props);
-			return props;
-		}
-	}
 }

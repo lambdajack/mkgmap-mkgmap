@@ -16,32 +16,32 @@
  */
 package uk.me.parabola.mkgmap.main;
 
-import uk.me.parabola.imgfmt.app.Map;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
-import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
-import uk.me.parabola.mkgmap.reader.overview.OvermapMapDataSource;
-import uk.me.parabola.mkgmap.reader.overview.OverviewMap;
-import uk.me.parabola.tdbfmt.TdbFile;
 
 /**
- * The new main program.  There can be many filenames to process and 
+ * The new main program.  There can be many filenames to process and there can
+ * be differing outputs determined by options.  So the actual work is mostly
+ * done in other classes.  This one just works out what is wanted.
+ *
  * @author Steve Ratcliffe
  */
 public class Main implements ArgumentProcessor {
 	private static final Logger log = Logger.getLogger(Main.class);
 
-	private OverviewMapMaker overview;
+	//private OverviewMapMaker overview;
 	private FilenameProcessor action;
 
 	public Main() {
-		overview = new OverviewMapMaker();
+		//overview = new OverviewMapMaker();
 
 		// The default is to make a map
 		action = new MakeMap();
 	}
 
 	public static void main(String[] args) {
+
+		// We need at least one argument.
 		if (args.length < 1) {
 			System.err.println("Usage: mkgmap <file.osm>");
 			System.exit(1);
@@ -60,7 +60,22 @@ public class Main implements ArgumentProcessor {
 	}
 
 	public void processOption(String opt, String val) {
-		log.debug("proc option", opt, val);
+		log.debug("option:", opt, val);
+		
+		if (opt.equals("number-of-files")) {
+
+			// If this option appears, it will be before any other processing.
+			// If there are several files, then turn on overview map generation
+			// default - it can be turned off by an option.
+			int n = Integer.valueOf(val);
+			if (n > 1) {
+				// We want to switch on overview map processing by default.
+				if (action instanceof MakeMap) {
+					MakeMap makeMap = (MakeMap) action;
+
+				}
+			}
+		}
 	}
 
 	/**
@@ -71,58 +86,5 @@ public class Main implements ArgumentProcessor {
 	 */
 	public void processFilename(CommandArgs args, String filename) {
 		action.processFilename(args, filename);
-	}
-
-	private void makeMap(CommandArgs args, String filename) {
-		CreateImgFile imgFile = new CreateImgFile();
-		imgFile.makeMap(args, filename);
-	}
-
-	private void startMap(CommandArgs args) {
-		OverviewMapMaker overviewMapMaker = new OverviewMapMaker();
-
-		//tdb = events.createTdbFile(this);
-		overview = new OverviewMapMaker();
-
-
-	}
-
-	/**
-	 * @author Steve Ratcliffe
-	 */
-	public static class OverviewMapMaker implements MapEvents {
-		private OverviewMap overviewSource = new OvermapMapDataSource();
-
-		//private Main overview;
-		private TdbFile tdb;
-
-		public void onSourceLoad(LoadableMapDataSource src) {
-			overviewSource.addMapDataSource(src);
-
-			//tdb.
-			//overview.
-		}
-
-		public void onMapComplete(Map map) {
-			//map.get
-
-		}
-
-		private TdbFile createTdbFile(Main main) {
-
-			tdb.setProductInfo(12, 1, "OSM map", "OSM map");
-
-			return tdb;
-		}
-
-		public void makeOverviewMap(String name) {
-			//CommandArgs args = new CommandArgs();
-			String[] args1 = {"hello", "world"};
-			//args.readArgs(args1, fnproc);
-		}
-
-		public void saveTdbFile(String name) {
-
-		}
 	}
 }
