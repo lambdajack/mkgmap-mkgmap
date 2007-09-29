@@ -79,6 +79,7 @@ public class OvermapMapDataSource extends MapperBasedMapDataSource
 		// Save all the copyright messages, discarding duplicates.
 		copyrights.addAll(Arrays.asList(src.copyrightMessages()));
 
+		// Add to the bounds.
 		Area a = src.getBounds();
 		if (a.getMinLat() < minLat)
 			minLat = a.getMinLat();
@@ -89,6 +90,7 @@ public class OvermapMapDataSource extends MapperBasedMapDataSource
 		if (a.getMaxLong() > maxLong)
 			maxLong = a.getMaxLong();
 
+		// Save whatever points, lines and polygons that we want.
 		processPoints(src.getPoints());
 		processLines(src.getLines());
 		processShapes(src.getShapes());

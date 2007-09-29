@@ -46,6 +46,7 @@ public class TdbFile {
 	private OverviewMapBlock overviewMapBlock;
 	private final List<DetailMapBlock> detailBlocks = new ArrayList<DetailMapBlock>();
 
+
 	/**
 	 * Read in a TDB file from the disk.
 	 *
@@ -154,4 +155,18 @@ public class TdbFile {
 		return block;
 	}
 
+	public void setProductInfo(int productId, int productVersion,
+			String seriesName, String familyName)
+	{
+		this.headerBlock.setProductId((short) productId);
+		this.headerBlock.setProductVersion((short) productVersion);
+		this.headerBlock.setSeriesName(seriesName);
+		this.headerBlock.setFamilyName(familyName);
+	}
+
+	public void addCopyright(String msg) {
+		CopyrightSegment seg = null;
+		seg = new CopyrightSegment(0, 3, msg);
+		copyrightBlock.addSegment(seg);
+	}
 }

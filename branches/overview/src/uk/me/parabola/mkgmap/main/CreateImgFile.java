@@ -60,7 +60,7 @@ public class CreateImgFile {
 
 	private static final int CLEAR_TOP_BITS = (32-15);
 
-	private LoadableMapDataSource overviewMap;
+	private MapEvents events = new NullMapEvents();
 
 	/**
 	 * Make the map using the supplied arguments.
@@ -83,10 +83,11 @@ public class CreateImgFile {
 	 * @param src The data source to load.
 	 */
 	void makeMap(CommandArgs args, LoadableMapDataSource src) {
+		events.onSourceLoad(src);
+
 		FileSystemParam params = new FileSystemParam();
 		params.setBlockSize(args.getBlockSize());
 		params.setMapDescription(args.getDescription());
-
 
 		Map map = null;
 		try {
@@ -100,6 +101,9 @@ public class CreateImgFile {
 
 			makeMapAreas(map, src);
 
+			// Collect information on map complete.
+			events.onMapComplete(map);
+
 		} catch (FileExistsException e) {
 			throw new ExitException("File exists already", e);
 		} catch (FileNotWritableException e) {
@@ -109,14 +113,6 @@ public class CreateImgFile {
 			if (map != null)
 				map.close();
 		}
-	}
-
-	LoadableMapDataSource getOverviewMap() {
-		return overviewMap;
-	}
-
-	void setOverviewMap(LoadableMapDataSource overviewMap) {
-		this.overviewMap = overviewMap;
 	}
 
 	private void makeMapAreas(Map map, LoadableMapDataSource src) {
@@ -422,6 +418,14 @@ public class CreateImgFile {
 			throw new ExitException("Could not open file: " + name, e);
 		} catch (FormatException e) {
 			throw new ExitException("Bad input file format", e);
+		}
+	}
+
+	private static class NullMapEvents implements MapEvents {
+		public void onSourceLoad(LoadableMapDataSource src) {
+		}
+
+		public void onMapComplete(Map map) {
 		}
 	}
 }

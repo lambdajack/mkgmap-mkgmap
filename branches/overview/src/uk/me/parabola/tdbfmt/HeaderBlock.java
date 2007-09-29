@@ -78,4 +78,20 @@ class HeaderBlock {
 				+ productVersion
 				;
 	}
+
+	public void setProductId(short productId) {
+		this.productId = productId;
+	}
+
+	public void setSeriesName(String seriesName) {
+		this.seriesName = seriesName;
+	}
+
+	public void setFamilyName(String familyName) {
+		this.familyName = familyName;
+	}
+
+	public void setProductVersion(short productVersion) {
+		this.productVersion = productVersion;
+	}
 }

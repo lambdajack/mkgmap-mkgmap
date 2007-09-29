@@ -16,33 +16,104 @@
  */
 package uk.me.parabola.mkgmap.main;
 
+import uk.me.parabola.imgfmt.app.Map;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
-
-import java.util.Iterator;
+import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
+import uk.me.parabola.mkgmap.reader.overview.OvermapMapDataSource;
+import uk.me.parabola.mkgmap.reader.overview.OverviewMap;
+import uk.me.parabola.tdbfmt.TdbFile;
 
 /**
+ * The new main program.  There can be many filenames to process and 
  * @author Steve Ratcliffe
  */
-public class MakeMap {
+public class MakeMap implements ArgumentProcessor {
+	private static final Logger log = Logger.getLogger(MakeMap.class);
+
+	private OverviewMapMaker overview;
+	private FilenameProcessor action;
+
+	public MakeMap() {
+		overview = new OverviewMapMaker();
+	}
+
 	public static void main(String[] args) {
 		if (args.length < 1) {
 			System.err.println("Usage: mkgmap <file.osm>");
 			System.exit(1);
 		}
 
+		MakeMap mm = new MakeMap();
+
 		try {
-			CommandArgs a = new CommandArgs();
-			a.readArgs(args);
-
-			Iterator it = a.fileNameIterator();
-			while (it.hasNext()) {
-				String filename = (String) it.next();
-
-				CreateImgFile imgFile = new CreateImgFile();
-				imgFile.makeMap(a, filename);
-			}
+			// Read the command line arguments and process each filename found.
+			CommandArgs commandArgs = new CommandArgs(mm);
+			commandArgs.readArgs(args);
 		} catch (ExitException e) {
 			System.err.println(e.getMessage());
+			System.exit(1);
+		}
+	}
+
+	public void processOption(String opt, String val) {
+		log.debug("proc option");
+	}
+
+	public void processFilename(CommandArgs args, String filename) {
+		makeMap(args, filename);
+	}
+
+	private void makeMap(CommandArgs args, String filename) {
+		CreateImgFile imgFile = new CreateImgFile();
+		imgFile.makeMap(args, filename);
+	}
+
+	private void startMap(CommandArgs args) {
+		OverviewMapMaker overviewMapMaker = new OverviewMapMaker();
+
+		//tdb = events.createTdbFile(this);
+		overview = new OverviewMapMaker();
+
+
+	}
+
+	/**
+	 * @author Steve Ratcliffe
+	 */
+	public static class OverviewMapMaker implements MapEvents {
+		private OverviewMap overviewSource = new OvermapMapDataSource();
+
+		//private MakeMap overview;
+		private TdbFile tdb;
+
+		public void onSourceLoad(LoadableMapDataSource src) {
+			overviewSource.addMapDataSource(src);
+
+			//tdb.
+			//overview.
+		}
+
+		public void onMapComplete(Map map) {
+			//map.get
+
+		}
+
+		private TdbFile createTdbFile(MakeMap makeMap) {
+
+			tdb.setProductInfo(12, 1, "OSM map", "OSM map");
+
+			return tdb;
+		}
+
+		public void makeOverviewMap(String name) {
+			//CommandArgs args = new CommandArgs();
+			String[] args1 = {"hello", "world"};
+			//args.readArgs(args1, fnproc);
+		}
+
+		public void saveTdbFile(String name) {
+
 		}
 	}
 }

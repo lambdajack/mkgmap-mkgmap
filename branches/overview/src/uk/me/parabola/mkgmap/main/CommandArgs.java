@@ -23,9 +23,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Properties;
 
 /**
@@ -42,13 +39,18 @@ class CommandArgs {
 	private static final Properties defaults;
 	static {
 		defaults = new Properties();
+		defaults.setProperty("overview-name", "63240000");
 		defaults.setProperty("mapname", "63240001");
 		defaults.setProperty("description", "OSM street map");
 	}
 
-	private Properties argvalues = new Properties(defaults);
+	private ArgProperties argvalues = new ArgProperties(defaults);
 
-	private List<String> fileNames = new ArrayList<String>();
+	private ArgumentProcessor proc;
+
+	CommandArgs(ArgumentProcessor proc) {
+		this.proc = proc;
+	}
 
 	/**
 	 * Read and interpret the command line arguments.  Most have a double hyphen
@@ -68,64 +70,34 @@ class CommandArgs {
 	public void readArgs(String[] args) {
 		int i = 0;
 		while (i < args.length) {
-			String a = args[i++];
-			if (a.startsWith("--")) {
+			String arg = args[i++];
+			if (arg.startsWith("--")) {
 				// This is a long style 'property' format option.
-				setProperty(a.substring(2));
-			} else if (a.equals("-c")) {
+				setPropertyFromArg(arg.substring(2));
+
+			} else if (arg.equals("-c")) {
 				// Config file
 				readConfigFile(args[i++]);
-			} else if (a.equals("-n")) {
+
+			} else if (arg.equals("-n")) {
 				// Map name (should be an 8 digit number).
-				argvalues.setProperty("mapname", args[++i]);
-			} else if (a.startsWith("-")) {
+				argvalues.setProperty("mapname", args[i++]);
+
+			} else if (arg.startsWith("-")) {
 				// this is an unrecognised option.
 				log.warn("unrecognised option");
+
 			} else {
 				// A file name
-				fileNames.add(a);
+				proc.processFilename(this, arg);
 			}
 		}
 	}
 
-	/**
-	 * Set a long property.  These have the form --name=value.  The '--' has
-	 * already been stripped off when passed to this function.
-	 *
-	 * If there is no value part then the option will be set to the string "1".
-	 *
-	 * @param opt The option with leading '--' removed.  eg name=value.
-	 */
-	private void setProperty(String opt) {
-		int eq = opt.indexOf('=');
-		if (eq > 0) {
-			String key = opt.substring(0, eq);
-			String val = opt.substring(eq + 1);
-			argvalues.setProperty(key, val);
-		} else {
-			argvalues.setProperty(opt, "1");
-		}
-	}
-
-	private void readConfigFile(String filename) {
-		log.info("reading config file", filename);
-		Properties fileprops = new Properties(argvalues);
-		try {
-			InputStream is = new FileInputStream(filename);
-			fileprops.load(is);
-			argvalues = fileprops;
-		} catch (FileNotFoundException e) {
-			throw new ExitException("Cannot find configuration file " + filename, e);
-		} catch (IOException e) {
-			throw new ExitException("Error reading configuration file", e);
-		}
-
-	}
-
-	Properties getProperties() {
+	public Properties getProperties() {
 		return argvalues;
 	}
-	
+
 	public String getDescription() {
 		return argvalues.getProperty("description");
 	}
@@ -134,10 +106,6 @@ class CommandArgs {
 		return getValue("block-size", 512);
 	}
 
-	public Iterator fileNameIterator() {
-		return fileNames.iterator();
-	}
-	
 	public String getMapname() {
 		return argvalues.getProperty("mapname");
 	}
@@ -160,10 +128,17 @@ class CommandArgs {
 		} catch (NumberFormatException e) {
 			cp = 850;
 		}
-		
+
 		return cp;
 	}
 
+	/**
+	 * Get an integer value.  A default is used if the property does not exist.
+	 * @param name The name of the property.
+	 * @param defval The default value to supply.
+	 * @return An integer that is the value of the property.  If the property
+	 * does not exist or if it is not numeric then the default value is returned.
+	 */
 	private int getValue(String name, int defval) {
 		String s = argvalues.getProperty(name);
 		if (s == null)
@@ -173,6 +148,66 @@ class CommandArgs {
 			return Integer.parseInt(s);
 		} catch (NumberFormatException e) {
 			return defval;
+		}
+	}
+
+	/**
+	 * Set a long property.  These have the form --name=value.  The '--' has
+	 * already been stripped off when passed to this function.
+	 *
+	 * If there is no value part then the option will be set to the string "1".
+	 *
+	 * @param opt The option with leading '--' removed.  eg name=value.
+	 */
+	private void setPropertyFromArg(String opt) {
+		int eq = opt.indexOf('=');
+		if (eq > 0) {
+			String key = opt.substring(0, eq);
+			String val = opt.substring(eq + 1);
+			argvalues.setProperty(key, val);
+		} else {
+			argvalues.setProperty(opt, "1");
+		}
+	}
+
+	private void readConfigFile(String filename) {
+		log.info("reading config file", filename);
+		ArgProperties fileprops = new ArgProperties(argvalues);
+		try {
+			InputStream is = new FileInputStream(filename);
+			fileprops.load(is);
+			argvalues = fileprops;
+		} catch (FileNotFoundException e) {
+			throw new ExitException("Cannot find configuration file " + filename, e);
+		} catch (IOException e) {
+			throw new ExitException("Error reading configuration file", e);
+		}
+	}
+
+	/**
+	 * Properties implementation that also triggers the callbacks.  This will
+	 * work with load() as long as it ultimately calls put() or setProperty(),
+	 * the sun jdk does.
+	 */
+	private class ArgProperties extends Properties {
+
+		private ArgProperties(Properties defaults) {
+			super(defaults);
+			log.debug("created props");
+		}
+
+		public synchronized Object setProperty(String key, String value) {
+			return put(key, value);
+		}
+
+		public Object put(Object key, Object value) {
+			log.debug("setting prop", key, value);
+			proc.processOption((String) key, (String) value);
+			return super.put(key, value);
+		}
+
+		public Object clone() {
+			return super.clone();
 		}
 	}
 }

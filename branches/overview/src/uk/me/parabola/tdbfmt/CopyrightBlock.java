@@ -52,4 +52,8 @@ class CopyrightBlock {
 			seg.write(block);
 		}
 	}
+
+	public void addSegment(CopyrightSegment seg) {
+		segments.add(seg);
+	}
 }
