@@ -18,6 +18,7 @@ package uk.me.parabola.mkgmap.main;
 
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
+import uk.me.parabola.mkgmap.reader.overview.OverviewMapDataSource;
 
 /**
  * The new main program.  There can be many filenames to process and there can
@@ -30,7 +31,7 @@ public class Main implements ArgumentProcessor {
 	private static final Logger log = Logger.getLogger(Main.class);
 
 	//private OverviewMapMaker overview;
-	private FilenameProcessor action;
+	private MapProcessor action;
 
 	public Main() {
 		//overview = new OverviewMapMaker();
@@ -64,16 +65,12 @@ public class Main implements ArgumentProcessor {
 		
 		if (opt.equals("number-of-files")) {
 
-			// If this option appears, it will be before any other processing.
-			// If there are several files, then turn on overview map generation
-			// default - it can be turned off by an option.
+			// This option always appears first.  We use it to turn off
+			// generation of the overview files if there is only one file
+			// to process.
 			int n = Integer.valueOf(val);
-			if (n > 1) {
-				// We want to switch on overview map processing by default.
-				if (action instanceof MakeMap) {
-					MakeMap makeMap = (MakeMap) action;
-
-				}
+			if (n == 1) {
+				action.optionOff(MapOption.OVERVIEW_MAP);
 			}
 		}
 	}

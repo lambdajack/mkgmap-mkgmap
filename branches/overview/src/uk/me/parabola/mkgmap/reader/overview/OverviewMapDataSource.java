@@ -38,7 +38,7 @@ import java.util.Set;
  * 
  * @author Steve Ratcliffe
  */
-public class OvermapMapDataSource extends MapperBasedMapDataSource
+public class OverviewMapDataSource extends MapperBasedMapDataSource
 		implements LoadableMapDataSource, OverviewMap
 {
 	// We keep all non-duplicated copyright messages from the component maps.

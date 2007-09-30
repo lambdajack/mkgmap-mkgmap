@@ -17,6 +17,8 @@
 package uk.me.parabola.mkgmap.main;
 
 /**
+ * Used when looping through filenames that are being processed into maps.
+ * 
  * @author Steve Ratcliffe
  */
 public interface FilenameProcessor {
