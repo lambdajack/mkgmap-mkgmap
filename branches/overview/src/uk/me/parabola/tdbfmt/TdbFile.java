@@ -17,6 +17,7 @@
 package uk.me.parabola.tdbfmt;
 
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.imgfmt.app.Area;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -42,7 +43,7 @@ public class TdbFile {
 
 	// The blocks that go to make up the file.
 	private HeaderBlock headerBlock;
-	private CopyrightBlock copyrightBlock;
+	private CopyrightBlock copyrightBlock = new CopyrightBlock();
 	private OverviewMapBlock overviewMapBlock;
 	private final List<DetailMapBlock> detailBlocks = new ArrayList<DetailMapBlock>();
 
@@ -61,7 +62,7 @@ public class TdbFile {
 
 		try {
 			StructuredInputStream ds = new StructuredInputStream(is);
-			tdb.load(ds, name);
+			tdb.load(ds);
 		} finally {
 			is.close();
 		}
@@ -69,8 +70,50 @@ public class TdbFile {
 		return tdb;
 	}
 
+	public void setProductInfo(int productId, int productVersion,
+			String seriesName, String familyName)
+	{
+		headerBlock = new HeaderBlock();
+		headerBlock.setProductId((short) productId);
+		headerBlock.setProductVersion((short) productVersion);
+		headerBlock.setSeriesName(seriesName);
+		headerBlock.setFamilyName(familyName);
+	}
+
+	/**
+	 * Add a copyright segment to the file.
+	 * @param msg The message to add.
+	 */
+	public void addCopyright(String msg) {
+		CopyrightSegment seg  ;
+		seg = new CopyrightSegment(0, 3, msg);
+		copyrightBlock.addSegment(seg);
+	}
+
+	/**
+	 * Set the overview information.  Basically the overall size of the map
+	 * set.
+	 * @param name The overview map name.
+	 * @param bounds The bounds for the map.
+	 */
+	public void setOverview(String name, Area bounds) {
+		overviewMapBlock = new OverviewMapBlock();
+		overviewMapBlock.setArea(bounds);
+		overviewMapBlock.setMapName(name);
+	}
+
+	/**
+	 * Add a single map to the map set.
+	 */
+	public void addMap() {
+		
+	}
+
 	public void write(String name) throws IOException {
 		OutputStream stream = new BufferedOutputStream(new FileOutputStream(name));
+
+		if (headerBlock == null || overviewMapBlock == null)
+			throw new IOException("Attempting to write file without being fully set up");
 
 		try {
 			Block block = new Block(BLOCK_HEADER);
@@ -98,11 +141,10 @@ public class TdbFile {
 	/**
 	 * Load from the given file name.
 	 *
-	 * @param name The file name to load from.
 	 * @param ds The stream to read from.
 	 * @throws IOException For problems reading the file.
 	 */
-	private void load(StructuredInputStream ds, String name) throws IOException {
+	private void load(StructuredInputStream ds) throws IOException {
 
 		while (!ds.testEof()) {
 			Block block = readBlock(ds);
@@ -153,20 +195,5 @@ public class TdbFile {
 
 		Block block = new Block(blockType, body);
 		return block;
-	}
-
-	public void setProductInfo(int productId, int productVersion,
-			String seriesName, String familyName)
-	{
-		this.headerBlock.setProductId((short) productId);
-		this.headerBlock.setProductVersion((short) productVersion);
-		this.headerBlock.setSeriesName(seriesName);
-		this.headerBlock.setFamilyName(familyName);
-	}
-
-	public void addCopyright(String msg) {
-		CopyrightSegment seg  ;
-		seg = new CopyrightSegment(0, 3, msg);
-		copyrightBlock.addSegment(seg);
 	}
 }

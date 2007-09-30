@@ -32,7 +32,10 @@ class CopyrightBlock {
 	
 	private List<CopyrightSegment> segments = new ArrayList<CopyrightSegment>();
 
-	public CopyrightBlock(Block block) throws IOException {
+	CopyrightBlock() {
+	}
+
+	CopyrightBlock(Block block) throws IOException {
 		StructuredInputStream ds = block.getInputStream();
 
 		while (!ds.testEof()) {

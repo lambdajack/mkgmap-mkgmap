@@ -29,4 +29,9 @@ public interface FilenameProcessor {
 	 * @param filename The name of a file that was given to the program, eg
 	 */
 	void processFilename(CommandArgs args, String filename);
+
+	/**
+	 * Called when all the command line options have been processed.
+	 */
+	void endOfOptions();
 }

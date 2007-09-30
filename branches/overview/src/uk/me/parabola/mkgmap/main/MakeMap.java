@@ -88,15 +88,14 @@ public class MakeMap  implements MapProcessor {
 
 			// Collect information on map complete.
 			overview.onMapEnd(map);
+			log.info("finished making map, closing");
+			if (map != null)
+				map.close();
 
 		} catch (FileExistsException e) {
 			throw new ExitException("File exists already", e);
 		} catch (FileNotWritableException e) {
 			throw new ExitException("Could not create or write to file", e);
-		} finally {
-			log.info("finished making map, closing");
-			if (map != null)
-				map.close();
 		}
 	}
 

@@ -17,9 +17,13 @@
 package uk.me.parabola.mkgmap.main;
 
 import uk.me.parabola.imgfmt.app.Map;
+import uk.me.parabola.imgfmt.FileSystemParam;
+import uk.me.parabola.imgfmt.FileExistsException;
+import uk.me.parabola.imgfmt.FileNotWritableException;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
+import uk.me.parabola.mkgmap.general.MapBuilder;
 import uk.me.parabola.mkgmap.reader.overview.OverviewMapDataSource;
 import uk.me.parabola.tdbfmt.TdbFile;
 
@@ -37,15 +41,26 @@ public class OverviewMapBuilder implements MapEvents {
 	private OverviewMapDataSource overviewSource = new OverviewMapDataSource();
 	private TdbFile tdb = new TdbFile();
 
+	public OverviewMapBuilder() {
+		init();
+	}
+
 	private void init() {
 		tdb.setProductInfo(42, 1, "OSM map", "OSM map");
 	}
 
 	public void onSourceLoad(LoadableMapDataSource src) {
+		log.info("loading", src.getBounds());
 		overviewSource.addMapDataSource(src);
+
+		for (String c : src.copyrightMessages()) {
+			tdb.addCopyright(c);
+		}
 	}
 
 	public void onMapEnd(Map map) {
+		log.info("end of map", map);
+		
 		long lblsize = map.getLblFile().position();
 		long tresize = map.getTreFile().position();
 		long rgnsize = map.getRgnFile().position();
@@ -54,14 +69,33 @@ public class OverviewMapBuilder implements MapEvents {
 	}
 
 	public void onFinish() {
+		log.debug("finishing overview");
+
+		String overviewMapname = "63240000";
+
+		tdb.setOverview(overviewMapname, overviewSource.getBounds());
+
 		try {
-			tdb.write("view");
+			tdb.write(overviewMapname + ".tdb");
 		} catch (IOException e) {
+			log.error("tdb write", e);
 			throw new ExitException("Could not write the TDB file");
 		}
 
-		MakeMap mm = new MakeMap();
-		//CommandArgs args = new CommandArgs(mm);
-		//mm.makeMap(args, overviewSource);
+		MapBuilder mb = new MapBuilder();
+		FileSystemParam params = new FileSystemParam();
+		params.setBlockSize(512);
+		params.setMapDescription("Overview map");
+
+		Map map;
+		try {
+			map = Map.createMap(overviewMapname, params);
+			mb.makeMap(map, overviewSource);
+			map.close();
+		} catch (FileExistsException e) {
+			throw new ExitException("Could not create overview map");
+		} catch (FileNotWritableException e) {
+			throw new ExitException("Could not write to overview map");
+		}
 	}
 }

@@ -84,4 +84,8 @@ public class Main implements ArgumentProcessor {
 	public void processFilename(CommandArgs args, String filename) {
 		action.processFilename(args, filename);
 	}
+
+	public void endOfOptions() {
+		action.endOfOptions();
+	}
 }

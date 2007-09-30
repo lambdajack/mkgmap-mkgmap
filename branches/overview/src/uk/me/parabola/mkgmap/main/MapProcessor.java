@@ -38,8 +38,5 @@ public interface MapProcessor extends FilenameProcessor {
 	 */
 	public void optionOff(MapOption opt);
 
-	/**
-	 * Called when all the command line options have been processed.
-	 */
-	public void endOfOptions();
+
 }

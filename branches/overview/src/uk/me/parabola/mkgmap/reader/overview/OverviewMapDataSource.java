@@ -18,6 +18,7 @@ package uk.me.parabola.mkgmap.reader.overview;
 
 import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.imgfmt.app.Area;
+import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.mkgmap.general.LevelInfo;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 import uk.me.parabola.mkgmap.general.MapLine;
@@ -30,6 +31,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.ArrayList;
 
 /**
  * Class for creating an overview map.  Nothing is actually read in from a file,
@@ -121,6 +123,27 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 		if (a.getMaxLong() > maxLong)
 			maxLong = a.getMaxLong();
 
+		// Add a background polygon for this map.
+		Coord start, co;
+		List<Coord> points = new ArrayList<Coord>();
+		start = new Coord(a.getMinLat(), a.getMinLong());
+		points.add(start);
+		co = new Coord(a.getMinLat(), a.getMaxLong());
+		points.add(co);
+		co = new Coord(a.getMaxLat(), a.getMaxLong());
+		points.add(co);
+		co = new Coord(a.getMaxLat(), a.getMinLong());
+		points.add(co);
+		points.add(start);
+
+		MapShape bg = new MapShape();
+		bg.setType(0x4a);
+		bg.setPoints(points);
+		bg.setMinResolution(10);
+		bg.setName("hello");
+
+		mapper.addShape(bg);
+
 		// Save whatever points, lines and polygons that we want.
 		processPoints(src.getPoints());
 		processLines(src.getLines());
@@ -128,9 +151,15 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 	}
 
 	private void processPoints(List<MapPoint> points) {
+		// ignore all for present.
 	}
 
 	private void processLines(List<MapLine> lines) {
+		for (MapLine l : lines) {
+			int type = l.getType();
+			if (type <= 2)
+				mapper.addLine(l);
+		}
 	}
 
 	private void processShapes(List<MapShape> shapes) {

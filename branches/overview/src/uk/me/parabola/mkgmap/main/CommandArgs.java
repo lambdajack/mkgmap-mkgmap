@@ -25,11 +25,12 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.Formatter;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Iterator;
 
 /**
  * Command line arguments for Main.
@@ -108,6 +109,8 @@ class CommandArgs {
 		for (ArgType a : arglist) {
 			a.processArg();
 		}
+
+		proc.endOfOptions();
 	}
 
 	public Properties getProperties() {
@@ -258,6 +261,10 @@ class CommandArgs {
 			props.putAll(props);
 			return props;
 		}
+
+		public void setProperty(String name, String value) {
+			props.put(name, value);
+		}
 	}
 
 	/**
@@ -281,6 +288,15 @@ class CommandArgs {
 
 		public void processArg() {
 			proc.processFilename(CommandArgs.this, name);
+			String mapname = arglist.getProperty("mapname");
+			try {
+				int n = Integer.parseInt(mapname);
+				Formatter fmt = new Formatter();
+				fmt.format("%08d", n);
+				arglist.setProperty("mapname", fmt.toString());
+			} catch (NumberFormatException e) {
+				// If the name is not a number then we just leave it alone...
+			}
 		}
 	}
 
