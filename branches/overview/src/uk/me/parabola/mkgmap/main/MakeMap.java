@@ -61,6 +61,10 @@ public class MakeMap  implements MapProcessor {
 		}
 	}
 
+	public void endOfOptions() {
+		overview.onFinish();
+	}
+
 	/**
 	 * Make a map from the given map data source.
 	 *
@@ -83,7 +87,7 @@ public class MakeMap  implements MapProcessor {
 			builder.makeMap(map, src);
 
 			// Collect information on map complete.
-			overview.onMapComplete(map);
+			overview.onMapEnd(map);
 
 		} catch (FileExistsException e) {
 			throw new ExitException("File exists already", e);
@@ -145,7 +149,10 @@ public class MakeMap  implements MapProcessor {
 		public void onSourceLoad(LoadableMapDataSource src) {
 		}
 
-		public void onMapComplete(Map map) {
+		public void onMapEnd(Map map) {
+		}
+
+		public void onFinish() {
 		}
 	}
 }

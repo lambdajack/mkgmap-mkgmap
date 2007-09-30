@@ -49,6 +49,19 @@ public class MapBuilder {
 	private static final int CLEAR_TOP_BITS = (32 - 15);
 
 	/**
+	 * Main method to create the map, just calls out to several routines
+	 * that do the work.
+	 *
+	 * @param map The map.
+	 * @param src The map data.
+	 */
+	public void makeMap(Map map, LoadableMapDataSource src) {
+		processOverviews(map, src);
+		processInfo(map, src);
+		makeMapAreas(map, src);
+	}
+
+	/**
 	 * Drive the map generation by steping through the levels, generating the
 	 * subdivisions for the level and filling in the map elements that should
 	 * go into the area.
@@ -57,9 +70,9 @@ public class MapBuilder {
 	 * their size and the number of elements that will be contained.
 	 *
 	 * @param map The map.
-	 * @param src The map data.
+	 * @param src The data for the map.
 	 */
-	public void makeMap(Map map, LoadableMapDataSource src) {
+	private void makeMapAreas(Map map, LoadableMapDataSource src) {
 		// The top level has to cover the whole map without subdividing, so
 		// do a special check to make sure.
 		LevelInfo[] levels = src.mapLevels();

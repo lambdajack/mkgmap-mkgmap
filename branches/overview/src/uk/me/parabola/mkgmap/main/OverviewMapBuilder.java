@@ -17,10 +17,13 @@
 package uk.me.parabola.mkgmap.main;
 
 import uk.me.parabola.imgfmt.app.Map;
+import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.ExitException;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 import uk.me.parabola.mkgmap.reader.overview.OverviewMapDataSource;
 import uk.me.parabola.tdbfmt.TdbFile;
-import uk.me.parabola.log.Logger;
+
+import java.io.IOException;
 
 /**
  * Builds an overview map and the corresponding TDB file for use with
@@ -42,11 +45,23 @@ public class OverviewMapBuilder implements MapEvents {
 		overviewSource.addMapDataSource(src);
 	}
 
-	public void onMapComplete(Map map) {
+	public void onMapEnd(Map map) {
 		long lblsize = map.getLblFile().position();
 		long tresize = map.getTreFile().position();
 		long rgnsize = map.getRgnFile().position();
 
 		log.debug("sizes", lblsize, tresize, rgnsize);
+	}
+
+	public void onFinish() {
+		try {
+			tdb.write("view");
+		} catch (IOException e) {
+			throw new ExitException("Could not write the TDB file");
+		}
+
+		MakeMap mm = new MakeMap();
+		//CommandArgs args = new CommandArgs(mm);
+		//mm.makeMap(args, overviewSource);
 	}
 }

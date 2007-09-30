@@ -50,10 +50,20 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 	private int maxLat = Integer.MIN_VALUE;
 	private int maxLong = Integer.MIN_VALUE;
 
+	/**
+	 * This is a fake source of data and is not read from a file, so always
+	 * return false here.
+	 *
+	 * @param name The filename, ignored.
+	 * @return Always false.
+	 */
 	public boolean isFileSupported(String name) {
 		return false;
 	}
 
+	/*
+	 * This is never called as isFileSupported always returns false.
+	 */
 	public void load(String name) throws FileNotFoundException, FormatException {
 		throw new FileNotFoundException("This is not supposed to be called");
 	}
@@ -61,20 +71,41 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 	public LevelInfo[] mapLevels() {
 		// We use higher zoom levels for the overview map.
 		// Lets hope the rest of the code will cope!
+		// TODO: calculate this based on what we see in the maps passed in.
 		return new LevelInfo[]{
-				new LevelInfo(8, 10),
 				new LevelInfo(7, 14),
 		};
 	}
 
+	/**
+	 * All the copyright messages that were found in the input files are
+	 * returned here.
+	 *
+	 * @return An array of copyright messages.
+	 */
 	public String[] copyrightMessages() {
 		return copyrights.toArray(new String[copyrights.size()]);
 	}
 
+	/**
+	 * Get the area covered by this overview map.  It will be the bounding box
+	 * of all the maps in the map set.
+	 *
+	 * @return The bounding box of the overview map.
+	 */
 	public Area getBounds() {
 		return new Area(minLat, minLong, maxLat, maxLong);
 	}
 
+	/**
+	 * Each map in the map set will have its data passed in here.  We extract
+	 * things like bounding box and some key features to include on this map.
+	 *
+	 * We also add a polygon to the map that covers the area of this map
+	 * and named after it.
+	 *
+	 * @param src One of the individual maps in the set.
+	 */
 	public void addMapDataSource(LoadableMapDataSource src) {
 		// Save all the copyright messages, discarding duplicates.
 		copyrights.addAll(Arrays.asList(src.copyrightMessages()));
@@ -103,6 +134,5 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 	}
 
 	private void processShapes(List<MapShape> shapes) {
-
 	}
 }

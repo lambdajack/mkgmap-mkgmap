@@ -35,5 +35,11 @@ public interface MapEvents {
 	 *
 	 * @param map The complete map.
 	 */
-	public void onMapComplete(Map map);
+	public void onMapEnd(Map map);
+
+	/**
+	 * The complete map set has been processed.  Finish off anything that needs
+	 * doing.
+	 */
+	public void onFinish();
 }
