@@ -16,7 +16,10 @@
  */
 package uk.me.parabola.mkgmap.reader.overview;
 
+import uk.me.parabola.imgfmt.app.Map;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
+
+import java.util.Properties;
 
 /**
  * This is the interface that is used to create the overview map.  We will then
@@ -37,6 +40,8 @@ public interface OverviewMap {
 	 * Of course we will be saving the bounds too for the overview map bounds.
 	 *
 	 * @param src One of the component maps that will form part of the overview.
+	 * @param props Current options.
+	 * @param map The map.
 	 */
-	public void addMapDataSource(LoadableMapDataSource src);
+	public void addMapDataSource(LoadableMapDataSource src, Properties props, Map map);
 }

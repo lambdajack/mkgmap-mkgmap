@@ -16,7 +16,6 @@
  */
 package uk.me.parabola.tdbfmt;
 
-import uk.me.parabola.log.Logger;
 import uk.me.parabola.imgfmt.app.Area;
 
 import java.io.IOException;
@@ -96,7 +95,15 @@ public class OverviewMapBlock {
 		maxLong = bounds.getMaxLong();
 	}
 
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
 	public void setMapName(String mapNumber) {
 		this.mapNumber = Integer.parseInt(mapNumber);
+	}
+
+	public void setParentMapNumber(int parentMapNumber) {
+		this.parentMapNumber = parentMapNumber;
 	}
 }

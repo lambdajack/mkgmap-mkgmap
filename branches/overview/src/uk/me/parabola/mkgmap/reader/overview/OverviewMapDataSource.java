@@ -19,6 +19,7 @@ package uk.me.parabola.mkgmap.reader.overview;
 import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
+import uk.me.parabola.imgfmt.app.Map;
 import uk.me.parabola.mkgmap.general.LevelInfo;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 import uk.me.parabola.mkgmap.general.MapLine;
@@ -27,11 +28,12 @@ import uk.me.parabola.mkgmap.general.MapShape;
 import uk.me.parabola.mkgmap.reader.plugin.MapperBasedMapDataSource;
 
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
-import java.util.ArrayList;
 
 /**
  * Class for creating an overview map.  Nothing is actually read in from a file,
@@ -51,6 +53,8 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 	private int minLong = Integer.MAX_VALUE;
 	private int maxLat = Integer.MIN_VALUE;
 	private int maxLong = Integer.MIN_VALUE;
+
+	private Properties props;
 
 	/**
 	 * This is a fake source of data and is not read from a file, so always
@@ -75,7 +79,7 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 		// Lets hope the rest of the code will cope!
 		// TODO: calculate this based on what we see in the maps passed in.
 		return new LevelInfo[]{
-				new LevelInfo(7, 14),
+				new LevelInfo(6, 14),
 		};
 	}
 
@@ -107,8 +111,10 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 	 * and named after it.
 	 *
 	 * @param src One of the individual maps in the set.
+	 * @param props Current options that are in force.
+	 * @param map The map we have built.
 	 */
-	public void addMapDataSource(LoadableMapDataSource src) {
+	public void addMapDataSource(LoadableMapDataSource src, Properties props, Map map) {
 		// Save all the copyright messages, discarding duplicates.
 		copyrights.addAll(Arrays.asList(src.copyrightMessages()));
 
@@ -140,7 +146,7 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 		bg.setType(0x4a);
 		bg.setPoints(points);
 		bg.setMinResolution(10);
-		bg.setName("hello");
+		bg.setName(props.getProperty("mapname"));
 
 		mapper.addShape(bg);
 

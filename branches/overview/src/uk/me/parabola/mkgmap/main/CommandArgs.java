@@ -26,10 +26,8 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Formatter;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -54,6 +52,7 @@ class CommandArgs {
 	}
 
 	private final ArgumentProcessor proc;
+	private Properties currentOptions = new Properties();
 
 	CommandArgs(ArgumentProcessor proc) {
 		this.proc = proc;
@@ -223,12 +222,10 @@ class CommandArgs {
 	 */
 	private class ArgList implements Iterable<ArgType> {
 		private final List<ArgType> arglist = new ArrayList<ArgType>();
-		private final Map<String, String> props = new HashMap<String, String>();
 
 		private int filenameCount;
 
 		public void add(Option option) {
-			props.put(option.getOpt(), option.getValue());
 			arglist.add(option);
 		}
 
@@ -246,24 +243,22 @@ class CommandArgs {
 		}
 
 		public String getProperty(String name) {
-			return props.get(name);
+			return currentOptions.getProperty(name);
 		}
 
 		public String getProperty(String name, String def) {
-			String val = props.get(name);
+			String val = currentOptions.getProperty(name);
 			if (val == null)
 				val = def;
 			return val;
 		}
 
 		public Properties getProperties() {
-			Properties props = new Properties();
-			props.putAll(props);
-			return props;
+			return currentOptions;
 		}
 
 		public void setProperty(String name, String value) {
-			props.put(name, value);
+			currentOptions.put(name, value);
 		}
 	}
 
@@ -289,10 +284,13 @@ class CommandArgs {
 		public void processArg() {
 			proc.processFilename(CommandArgs.this, name);
 			String mapname = arglist.getProperty("mapname");
+
 			try {
+				// Increase the name number.  If the next arg sets it then that
+				// will override this new name.
 				int n = Integer.parseInt(mapname);
 				Formatter fmt = new Formatter();
-				fmt.format("%08d", n);
+				fmt.format("%08d", ++n);
 				arglist.setProperty("mapname", fmt.toString());
 			} catch (NumberFormatException e) {
 				// If the name is not a number then we just leave it alone...
@@ -324,6 +322,7 @@ class CommandArgs {
 		}
 
 		public void processArg() {
+			currentOptions.setProperty(opt, value);
 			proc.processOption(opt, value);
 		}
 

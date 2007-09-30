@@ -23,19 +23,15 @@ import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
  * @author Steve Ratcliffe
  */
 public interface MapEvents {
-	/**
-	 * This is called when a data source has been loaded.
-	 *
-	 * @param src The data source that was loaded.
-	 */
-	public void onSourceLoad(LoadableMapDataSource src);
 
 	/**
 	 * This is called when the map is complete.
 	 *
-	 * @param map The complete map.
+	 * @param args The current options.
+	 * @param src The map data.
+	 * @param map The map.
 	 */
-	public void onMapEnd(Map map);
+	public void onMapEnd(CommandArgs args, LoadableMapDataSource src, Map map);
 
 	/**
 	 * The complete map set has been processed.  Finish off anything that needs

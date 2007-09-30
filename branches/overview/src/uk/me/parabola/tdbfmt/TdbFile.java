@@ -103,6 +103,15 @@ public class TdbFile {
 	}
 
 	/**
+	 * Add a detail block.  This describes and names one of the maps in the
+	 * map set.
+	 * @param detail The detail to add.
+	 */
+	public void addDetail(DetailMapBlock detail) {
+		detailBlocks.add(detail);
+	}
+
+	/**
 	 * Add a single map to the map set.
 	 */
 	public void addMap() {

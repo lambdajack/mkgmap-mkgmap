@@ -16,18 +16,20 @@
  */
 package uk.me.parabola.mkgmap.main;
 
-import uk.me.parabola.imgfmt.app.Map;
-import uk.me.parabola.imgfmt.FileSystemParam;
 import uk.me.parabola.imgfmt.FileExistsException;
 import uk.me.parabola.imgfmt.FileNotWritableException;
+import uk.me.parabola.imgfmt.FileSystemParam;
+import uk.me.parabola.imgfmt.app.Map;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 import uk.me.parabola.mkgmap.general.MapBuilder;
 import uk.me.parabola.mkgmap.reader.overview.OverviewMapDataSource;
+import uk.me.parabola.tdbfmt.DetailMapBlock;
 import uk.me.parabola.tdbfmt.TdbFile;
 
 import java.io.IOException;
+import java.util.Properties;
 
 /**
  * Builds an overview map and the corresponding TDB file for use with
@@ -49,21 +51,35 @@ public class OverviewMapBuilder implements MapEvents {
 		tdb.setProductInfo(42, 1, "OSM map", "OSM map");
 	}
 
-	public void onSourceLoad(LoadableMapDataSource src) {
-		log.info("loading", src.getBounds());
-		overviewSource.addMapDataSource(src);
+	public void onMapEnd(CommandArgs args, LoadableMapDataSource src, Map map) {
+		log.info("end of map", args);
+		Properties currentOptions = args.getProperties();
+		overviewSource.addMapDataSource(src, currentOptions, map);
 
 		for (String c : src.copyrightMessages()) {
 			tdb.addCopyright(c);
 		}
-	}
 
-	public void onMapEnd(Map map) {
-		log.info("end of map", map);
-		
 		long lblsize = map.getLblFile().position();
 		long tresize = map.getTreFile().position();
 		long rgnsize = map.getRgnFile().position();
+
+		DetailMapBlock detail = new DetailMapBlock();
+		detail.setArea(src.getBounds());
+		String mapname = args.getMapname();
+		detail.setMapName(mapname);
+
+		String desc = mapname + '(' + mapname + ')';
+		detail.setDescription(desc);
+		detail.setLblDataSize((int) lblsize);
+		detail.setTreDataSize((int) tresize);
+		detail.setRgnDataSize((int) rgnsize);
+
+		int parent = Integer.parseInt(currentOptions.getProperty("overview-name"));
+		log.info("overview-name", parent);
+		detail.setParentMapNumber(parent);
+
+		tdb.addDetail(detail);
 
 		log.debug("sizes", lblsize, tresize, rgnsize);
 	}

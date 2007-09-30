@@ -72,13 +72,12 @@ public class MakeMap  implements MapProcessor {
 	 * @param src The data source to load.
 	 */
 	public void makeMap(CommandArgs args, LoadableMapDataSource src) {
-		overview.onSourceLoad(src);
 
 		FileSystemParam params = new FileSystemParam();
 		params.setBlockSize(args.getBlockSize());
 		params.setMapDescription(args.getDescription());
 
-		Map map = null;
+		Map map;
 		try {
 			map = Map.createMap(args.getMapname(), params);
 			setOptions(map, args);
@@ -87,7 +86,7 @@ public class MakeMap  implements MapProcessor {
 			builder.makeMap(map, src);
 
 			// Collect information on map complete.
-			overview.onMapEnd(map);
+			overview.onMapEnd(args, src, map);
 			log.info("finished making map, closing");
 			if (map != null)
 				map.close();
@@ -145,10 +144,8 @@ public class MakeMap  implements MapProcessor {
 	}
 
 	private static class NullMapEvents implements MapEvents {
-		public void onSourceLoad(LoadableMapDataSource src) {
-		}
 
-		public void onMapEnd(Map map) {
+		public void onMapEnd(CommandArgs args, LoadableMapDataSource src, Map map) {
 		}
 
 		public void onFinish() {
