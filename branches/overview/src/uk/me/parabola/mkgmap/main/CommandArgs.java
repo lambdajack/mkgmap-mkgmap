@@ -52,7 +52,7 @@ class CommandArgs {
 	}
 
 	private final ArgumentProcessor proc;
-	private Properties currentOptions = new Properties();
+	private final Properties currentOptions = new Properties();
 
 	CommandArgs(ArgumentProcessor proc) {
 		this.proc = proc;

@@ -18,7 +18,6 @@ package uk.me.parabola.mkgmap.main;
 
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
-import uk.me.parabola.mkgmap.reader.overview.OverviewMapDataSource;
 
 /**
  * The new main program.  There can be many filenames to process and there can
@@ -31,7 +30,7 @@ public class Main implements ArgumentProcessor {
 	private static final Logger log = Logger.getLogger(Main.class);
 
 	//private OverviewMapMaker overview;
-	private MapProcessor action;
+	private final MapProcessor action;
 
 	public Main() {
 		//overview = new OverviewMapMaker();

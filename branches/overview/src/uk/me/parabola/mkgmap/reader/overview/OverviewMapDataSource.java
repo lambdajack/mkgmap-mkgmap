@@ -19,7 +19,6 @@ package uk.me.parabola.mkgmap.reader.overview;
 import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
-import uk.me.parabola.imgfmt.app.Map;
 import uk.me.parabola.mkgmap.general.LevelInfo;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 import uk.me.parabola.mkgmap.general.MapLine;
@@ -46,7 +45,7 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 		implements LoadableMapDataSource, OverviewMap
 {
 	// We keep all non-duplicated copyright messages from the component maps.
-	private Set<String> copyrights = new HashSet<String>();
+	private final Set<String> copyrights = new HashSet<String>();
 
 	// We need the exact bounds that the map covers, so keep our own copy
 	private int minLat = Integer.MAX_VALUE;
@@ -112,9 +111,8 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 	 *
 	 * @param src One of the individual maps in the set.
 	 * @param props Current options that are in force.
-	 * @param map The map we have built.
 	 */
-	public void addMapDataSource(LoadableMapDataSource src, Properties props, Map map) {
+	public void addMapDataSource(LoadableMapDataSource src, Properties props) {
 		// Save all the copyright messages, discarding duplicates.
 		copyrights.addAll(Arrays.asList(src.copyrightMessages()));
 

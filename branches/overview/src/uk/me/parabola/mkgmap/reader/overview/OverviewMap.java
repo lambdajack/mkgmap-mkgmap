@@ -16,7 +16,6 @@
  */
 package uk.me.parabola.mkgmap.reader.overview;
 
-import uk.me.parabola.imgfmt.app.Map;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 
 import java.util.Properties;
@@ -41,7 +40,6 @@ public interface OverviewMap {
 	 *
 	 * @param src One of the component maps that will form part of the overview.
 	 * @param props Current options.
-	 * @param map The map.
 	 */
-	public void addMapDataSource(LoadableMapDataSource src, Properties props, Map map);
+	public void addMapDataSource(LoadableMapDataSource src, Properties props);
 }

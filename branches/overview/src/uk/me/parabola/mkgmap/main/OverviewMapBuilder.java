@@ -40,8 +40,8 @@ import java.util.Properties;
 public class OverviewMapBuilder implements MapEvents {
 	private static final Logger log = Logger.getLogger(OverviewMapBuilder.class);
 	
-	private OverviewMapDataSource overviewSource = new OverviewMapDataSource();
-	private TdbFile tdb = new TdbFile();
+	private final OverviewMapDataSource overviewSource = new OverviewMapDataSource();
+	private final TdbFile tdb = new TdbFile();
 
 	public OverviewMapBuilder() {
 		init();
@@ -54,7 +54,7 @@ public class OverviewMapBuilder implements MapEvents {
 	public void onMapEnd(CommandArgs args, LoadableMapDataSource src, Map map) {
 		log.info("end of map", args);
 		Properties currentOptions = args.getProperties();
-		overviewSource.addMapDataSource(src, currentOptions, map);
+		overviewSource.addMapDataSource(src, currentOptions);
 
 		for (String c : src.copyrightMessages()) {
 			tdb.addCopyright(c);

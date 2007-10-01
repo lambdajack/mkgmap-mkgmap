@@ -111,13 +111,6 @@ public class TdbFile {
 		detailBlocks.add(detail);
 	}
 
-	/**
-	 * Add a single map to the map set.
-	 */
-	public void addMap() {
-		
-	}
-
 	public void write(String name) throws IOException {
 		OutputStream stream = new BufferedOutputStream(new FileOutputStream(name));
 

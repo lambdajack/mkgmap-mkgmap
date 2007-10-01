@@ -71,7 +71,7 @@ public class MakeMap  implements MapProcessor {
 	 * @param args User supplied arguments.
 	 * @param src The data source to load.
 	 */
-	public void makeMap(CommandArgs args, LoadableMapDataSource src) {
+	void makeMap(CommandArgs args, LoadableMapDataSource src) {
 
 		FileSystemParam params = new FileSystemParam();
 		params.setBlockSize(args.getBlockSize());

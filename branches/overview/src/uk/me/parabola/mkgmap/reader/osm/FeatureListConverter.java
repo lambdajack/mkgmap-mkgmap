@@ -96,7 +96,7 @@ class FeatureListConverter implements OsmConverter {
 				return is;
 			} catch (FileNotFoundException e) {
 				System.err.println("Could not open " + file);
-				System.err.println("Using the defaults");
+				System.err.println("Using the default map features file");
 			}
 		}
 

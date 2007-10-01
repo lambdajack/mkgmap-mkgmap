@@ -17,7 +17,6 @@
 package uk.me.parabola.log;
 
 import java.io.PrintWriter;
-import java.io.Writer;
 import java.io.StringWriter;
 import java.util.Calendar;
 import java.util.logging.Formatter;

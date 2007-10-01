@@ -17,10 +17,8 @@
 package uk.me.parabola.mkgmap.general;
 
 import uk.me.parabola.imgfmt.FormatException;
-import uk.me.parabola.imgfmt.app.Overview;
 
 import java.io.FileNotFoundException;
-import java.util.List;
 
 /**
  * A source of map information in a standard format.  The OSM reader presents

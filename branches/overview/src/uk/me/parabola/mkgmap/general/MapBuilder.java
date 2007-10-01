@@ -373,8 +373,8 @@ public class MapBuilder {
 	}
 
 	private static class SourceSubdiv {
-		private MapDataSource source;
-		private Subdivision subdiv;
+		private final MapDataSource source;
+		private final Subdivision subdiv;
 
 		SourceSubdiv(MapDataSource ds, Subdivision subdiv) {
 			this.source = ds;

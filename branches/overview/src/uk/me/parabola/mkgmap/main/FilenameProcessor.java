@@ -25,7 +25,7 @@ public interface FilenameProcessor {
 	/**
 	 * Process the given filename.
 	 *
-	 * @param args
+	 * @param args The user supplied arguments.
 	 * @param filename The name of a file that was given to the program, eg
 	 */
 	void processFilename(CommandArgs args, String filename);

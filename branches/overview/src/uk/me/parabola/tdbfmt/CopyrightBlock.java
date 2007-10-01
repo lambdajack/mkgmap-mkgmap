@@ -30,7 +30,7 @@ import java.util.List;
 class CopyrightBlock {
 	private static final Logger log = Logger.getLogger(CopyrightBlock.class);
 	
-	private List<CopyrightSegment> segments = new ArrayList<CopyrightSegment>();
+	private final List<CopyrightSegment> segments = new ArrayList<CopyrightSegment>();
 
 	CopyrightBlock() {
 	}
