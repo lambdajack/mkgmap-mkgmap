@@ -28,7 +28,6 @@ import uk.me.parabola.imgfmt.app.PolylineOverview;
 import uk.me.parabola.imgfmt.app.Subdivision;
 import uk.me.parabola.imgfmt.app.Zoom;
 import uk.me.parabola.log.Logger;
-import uk.me.parabola.mkgmap.main.MakeMap;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,7 +44,7 @@ import java.util.List;
  * @author Steve Ratcliffe
  */
 public class MapBuilder {
-	protected static final Logger log = Logger.getLogger(MakeMap.class);
+	protected static final Logger log = Logger.getLogger(MapBuilder.class);
 	private static final int CLEAR_TOP_BITS = (32 - 15);
 
 	/**

@@ -68,14 +68,16 @@ public interface LoadableMapDataSource extends MapDataSource {
 	 * the map.
 	 *
 	 * @return Array of structures that map the level to the resolution.  Never
-	 * returns null. Some kind of default should always be returned.
+	 * returns null. Some kind of default should always be returned and this
+	 * must include at least one level.
 	 */
 	public LevelInfo[] mapLevels();
 
 	/**
-	 * Get a suitable copyright message for this map source.
+	 * Get a suitable copyright message for this map source.  You can get
 	 *
-	 * @return A string with the name of the copyright holder.
+	 * @return An array of strings with copyright information.  If there are
+	 * none then return a zero length array.
 	 */
 	public String[] copyrightMessages();
 
