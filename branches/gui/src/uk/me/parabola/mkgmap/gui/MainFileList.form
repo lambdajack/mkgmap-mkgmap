@@ -18,11 +18,16 @@
         </properties>
         <border type="none"/>
         <children>
-          <component id="beb8c" class="javax.swing.JTable" binding="inputsTable">
+          <component id="beb8c" class="javax.swing.JTable" binding="inputFiles">
             <constraints/>
             <properties>
-              <intercellSpacing width="5" height="5"/>
+              <fillsViewportHeight value="true"/>
+              <intercellSpacing width="1" height="4"/>
+              <showVerticalLines value="false"/>
             </properties>
+            <clientProperties>
+              <Table.isFileList class="java.lang.Boolean" value="false"/>
+            </clientProperties>
           </component>
         </children>
       </scrollpane>
@@ -36,12 +41,6 @@
           <text resource-bundle="uk/me/parabola/mkgmap/gui/MainFileList" key="label.create.map"/>
         </properties>
       </component>
-      <vspacer id="c18d6">
-        <constraints>
-          <grid row="4" column="0" row-span="1" col-span="1" vsize-policy="6" hsize-policy="1" anchor="0" fill="2" indent="0" use-parent-layout="false"/>
-          <gridbag weightx="0.0" weighty="0.0"/>
-        </constraints>
-      </vspacer>
       <component id="1b871" class="javax.swing.JButton" binding="addButton" default-binding="true">
         <constraints>
           <grid row="2" column="8" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>

@@ -19,22 +19,39 @@ package uk.me.parabola.mkgmap.gui;
 import java.io.File;
 
 /**
+ * This represents one input file and its options that have been set for it.
+ *
  * @author Steve Ratcliffe
  */
 class InputFile {
 	private final File inputFile;
-	private final String outputName;
+	private final String outputBaseName;
 
-	public InputFile(File inputFile, String outputName) {
+	private String description;
+	private boolean enabled;
+
+	InputFile(File inputFile, String outputBaseName) {
 		this.inputFile = inputFile;
-		this.outputName = outputName;
+		this.outputBaseName = outputBaseName;
 	}
 
-	public Object getInputFile() {
+	public File getInputFile() {
 		return inputFile;
 	}
 
-	public String getOutputName() {
-		return outputName;
+	public String getInputFileName() {
+		return inputFile.getName();
+	}
+
+	public String getOutputBaseName() {
+		return outputBaseName;
+	}
+
+	public void setEnabled(Boolean enabled) {
+		this.enabled = enabled;
+	}
+
+	public boolean isEnabled() {
+		return enabled;
 	}
 }

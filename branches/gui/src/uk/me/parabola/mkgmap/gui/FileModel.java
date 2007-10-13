@@ -48,27 +48,89 @@ class FileModel extends AbstractTableModel {
 		return headers.length;
 	}
 
+	/**
+	 * Get the actual value to display in each cell.
+	 *
+	 * @param rowIndex The row, used to look up the InputFile.
+	 * @param columnIndex The column, which maps to some property of the InputFile.
+	 * @return The value to display.
+	 */
 	public Object getValueAt(int rowIndex, int columnIndex) {
 		if (rowIndex >= files.size())
 			return "";
 
-		InputFile f = files.get(rowIndex);
+		InputFile inf = files.get(rowIndex);
 		switch (columnIndex) {
 		case 0:
-			return Boolean.FALSE;
+			return inf.isEnabled();
 		case 1:
-			return f.getInputFile();
+			return inf.getInputFile();
 		case 2:
-			return f.getOutputName();
+			return inf.getOutputBaseName();
 		default:
 			return "";
 		}
 	}
 
-	public void addFile(File input) {
-		InputFile file = new InputFile(input, String.valueOf(nextOutput++));
+	/**
+	 * Set the class types for each column.
+	 * @param columnIndex The column number.
+	 * @return The class for that column.
+	 */
+	public Class<?> getColumnClass(int columnIndex) {
+		switch (columnIndex) {
+		case 0:
+			return Boolean.class;
+		case 1:
+			return File.class;
+		default:
+			return super.getColumnClass(columnIndex);
+		}
+	}
+
+	public String getColumnName(int column) {
+		return headers[column];
+	}
+
+	public boolean isCellEditable(int rowIndex, int columnIndex) {
+		if (columnIndex <= 1)
+			return true;
+
+		return false;
+	}
+
+	/**
+	 * Set the value of a cell in the table.
+	 * @param aValue The actual value to be set.
+	 * @param rowIndex The row, ie the file.
+	 * @param columnIndex The column.
+	 */
+	public void setValueAt(Object aValue, int rowIndex, int columnIndex) {
+		if (rowIndex >= files.size())
+			return;
+
+		InputFile inf = files.get(rowIndex);
+		if (columnIndex == 0) {
+			inf.setEnabled((Boolean) aValue);
+		}
+	}
+
+	/**
+	 * Add a file to the model.
+	 *
+	 * @param input The input file.
+	 * @return The created InputFile object.
+	 */
+	public InputFile addFile(File input) {
+		InputFile inputFile = new InputFile(input, String.valueOf(nextOutput++));
 		int size = files.size();
-		files.add(file);
+		files.add(inputFile);
 		fireTableRowsInserted(size, size+1);
+
+		return inputFile;
+	}
+
+	public List<InputFile> getInputFiles() {
+		return files;
 	}
 }

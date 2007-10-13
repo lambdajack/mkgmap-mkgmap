@@ -20,6 +20,8 @@ import uk.me.parabola.log.Logger;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
 import java.util.ResourceBundle;
 
 /**
@@ -29,25 +31,23 @@ import java.util.ResourceBundle;
  */
 public class Main extends JFrame {
 	private static final Logger log = Logger.getLogger(Main.class);
-	
-	private JMenu fileMenu;
+
 	private final JMenuBar jMenuBar1 = new JMenuBar();
-	private JMenuItem menuSave;
 	private final ResourceBundle resourceBundle =
-			ResourceBundle.getBundle("uk/me/parabola/mkgmap/gui/MainFileList");
+			ResourceBundle.getBundle("uk/me/parabola/mkgmap/gui/Main");
+
 	public Main() {
 		initComponents();
 	}
 
 	/**
-	 * @param args the command line arguments
+	 * @param args the command line arguments.
 	 */
 	public static void main(String[] args) {
 		//try {
 		//	// Set System L&F
 		//	UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		//} catch (Exception e) {
-		//
 		//	log.debug("could not set system look and feel"); //debug
 		//}
 
@@ -60,16 +60,32 @@ public class Main extends JFrame {
 
 	private void initComponents() {
 
-		fileMenu = new JMenu();
-		menuSave = new JMenuItem();
-
 		setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
+		// The file menu
+		JMenu fileMenu = new JMenu();
 		fileMenu.setText(resourceBundle.getString("menu.file"));
 
+		// The save action
+		JMenuItem menuSave = new JMenuItem();
 		menuSave.setText(resourceBundle.getString("menu.save"));
-		menuSave.setToolTipText(resourceBundle.getString("label.save.the.current.project"));
+		menuSave.setToolTipText(resourceBundle.getString("tooltip.save.the.current.project"));
+		menuSave.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				saveState();
+			}
+		});
 		fileMenu.add(menuSave);
+
+		JMenuItem menuExit = new JMenuItem();
+		menuExit.setText(resourceBundle.getString("memu.exit"));
+		menuExit.setToolTipText(resourceBundle.getString("tooltip.exit"));
+		menuExit.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				System.exit(0);
+			}
+		});
+		fileMenu.add(menuExit);
 
 		jMenuBar1.add(fileMenu);
 
@@ -81,9 +97,12 @@ public class Main extends JFrame {
 
 		MainFileList f = new MainFileList();
 		JPanel content = f.getRoot();
-		System.out.println(resourceBundle.getString("label.content.is") + content);
 		getContentPane().add(content);
 
 		pack();
+	}
+
+	private void saveState() {
+		System.out.println("saving the state");
 	}
 }
