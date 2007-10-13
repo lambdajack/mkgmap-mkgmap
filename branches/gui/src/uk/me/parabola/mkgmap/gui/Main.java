@@ -92,11 +92,10 @@ public class Main extends JFrame {
 		setJMenuBar(jMenuBar1);
 
 		GridBagLayout layout = new GridBagLayout();
-		//GroupLayout layout = new GroupLayout(getContentPane());
 		getContentPane().setLayout(layout);
 
-		MainFileList f = new MainFileList();
-		JPanel content = f.getRoot();
+		AppLayout app = new AppLayout();
+		JPanel content = app.getRoot();
 		getContentPane().add(content);
 
 		pack();

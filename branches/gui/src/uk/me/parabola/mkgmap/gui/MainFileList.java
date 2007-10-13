@@ -39,6 +39,7 @@ public class MainFileList {
 	private JPanel panel1;
 	private JTable inputFiles;
 	private JButton addButton;
+	private JButton removeButton;
 
 	private final FileModel files = new FileModel();
 
@@ -104,22 +105,23 @@ public class MainFileList {
 	private void $$$setupUI$$$() {
 		panel1 = new JPanel();
 		panel1.setLayout(new GridBagLayout());
-		panel1.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(), null));
+		panel1.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(), "Files to convert to Garmin format"));
 		final JScrollPane scrollPane1 = new JScrollPane();
-		scrollPane1.setOpaque(true);
 		scrollPane1.setVerticalScrollBarPolicy(22);
 		GridBagConstraints gbc;
 		gbc = new GridBagConstraints();
 		gbc.gridx = 0;
-		gbc.gridy = 1;
+		gbc.gridy = 0;
 		gbc.gridwidth = 7;
-		gbc.gridheight = 3;
+		gbc.gridheight = 4;
 		gbc.weightx = 0.5;
-		gbc.fill = GridBagConstraints.BOTH;
+		gbc.anchor = GridBagConstraints.NORTH;
+		gbc.fill = GridBagConstraints.HORIZONTAL;
 		panel1.add(scrollPane1, gbc);
 		inputFiles = new JTable();
 		inputFiles.setFillsViewportHeight(true);
 		inputFiles.setIntercellSpacing(new Dimension(1, 4));
+		inputFiles.setPreferredScrollableViewportSize(new Dimension(450, 200));
 		inputFiles.setShowVerticalLines(false);
 		inputFiles.putClientProperty("Table.isFileList", Boolean.FALSE);
 		scrollPane1.setViewportView(inputFiles);
@@ -132,25 +134,34 @@ public class MainFileList {
 		gbc.anchor = GridBagConstraints.WEST;
 		gbc.insets = new Insets(0, 0, 10, 0);
 		panel1.add(label1, gbc);
+		final JPanel spacer1 = new JPanel();
+		gbc = new GridBagConstraints();
+		gbc.gridx = 7;
+		gbc.gridy = 4;
+		gbc.fill = GridBagConstraints.HORIZONTAL;
+		panel1.add(spacer1, gbc);
 		addButton = new JButton();
 		this.$$$loadButtonText$$$(addButton, ResourceBundle.getBundle("uk/me/parabola/mkgmap/gui/MainFileList").getString("button.add.file"));
 		gbc = new GridBagConstraints();
 		gbc.gridx = 8;
-		gbc.gridy = 2;
-		gbc.anchor = GridBagConstraints.WEST;
+		gbc.gridy = 0;
+		gbc.anchor = GridBagConstraints.NORTH;
+		gbc.fill = GridBagConstraints.HORIZONTAL;
 		panel1.add(addButton, gbc);
-		final JPanel spacer1 = new JPanel();
+		final JPanel spacer2 = new JPanel();
 		gbc = new GridBagConstraints();
 		gbc.gridx = 8;
 		gbc.gridy = 3;
 		gbc.fill = GridBagConstraints.VERTICAL;
-		panel1.add(spacer1, gbc);
-		final JPanel spacer2 = new JPanel();
-		gbc = new GridBagConstraints();
-		gbc.gridx = 7;
-		gbc.gridy = 3;
-		gbc.fill = GridBagConstraints.HORIZONTAL;
 		panel1.add(spacer2, gbc);
+		removeButton = new JButton();
+		removeButton.setText("Remove");
+		gbc = new GridBagConstraints();
+		gbc.gridx = 8;
+		gbc.gridy = 1;
+		gbc.fill = GridBagConstraints.HORIZONTAL;
+		gbc.insets = new Insets(10, 0, 0, 0);
+		panel1.add(removeButton, gbc);
 		label1.setLabelFor(scrollPane1);
 	}
 
