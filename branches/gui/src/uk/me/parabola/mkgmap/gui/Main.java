@@ -20,8 +20,8 @@ import uk.me.parabola.log.Logger;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.ResourceBundle;
 
 /**
@@ -91,11 +91,12 @@ public class Main extends JFrame {
 
 		setJMenuBar(jMenuBar1);
 
-		GridBagLayout layout = new GridBagLayout();
+		LayoutManager layout = new BorderLayout();
 		getContentPane().setLayout(layout);
 
 		AppLayout app = new AppLayout();
-		JPanel content = app.getRoot();
+		Component content = app.getRoot();
+
 		getContentPane().add(content);
 
 		pack();

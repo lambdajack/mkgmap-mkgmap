@@ -115,13 +115,13 @@ public class MainFileList {
 		gbc.gridwidth = 7;
 		gbc.gridheight = 4;
 		gbc.weightx = 0.5;
-		gbc.anchor = GridBagConstraints.NORTH;
-		gbc.fill = GridBagConstraints.HORIZONTAL;
+		gbc.weighty = 0.1;
+		gbc.fill = GridBagConstraints.BOTH;
 		panel1.add(scrollPane1, gbc);
 		inputFiles = new JTable();
 		inputFiles.setFillsViewportHeight(true);
 		inputFiles.setIntercellSpacing(new Dimension(1, 4));
-		inputFiles.setPreferredScrollableViewportSize(new Dimension(450, 200));
+		inputFiles.setPreferredScrollableViewportSize(new Dimension(400, 200));
 		inputFiles.setShowVerticalLines(false);
 		inputFiles.putClientProperty("Table.isFileList", Boolean.FALSE);
 		scrollPane1.setViewportView(inputFiles);

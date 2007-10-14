@@ -45,22 +45,14 @@ public class AppLayout {
 	 */
 	private void $$$setupUI$$$() {
 		panel1 = new JPanel();
-		panel1.setLayout(new GridBagLayout());
+		panel1.setLayout(new BorderLayout(0, 0));
+		panel1.setAlignmentX(0.0f);
+		panel1.setAlignmentY(0.0f);
+		panel1.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(Color.black), null));
 		final MainFileList nestedForm1 = new MainFileList();
-		GridBagConstraints gbc;
-		gbc = new GridBagConstraints();
-		gbc.gridx = 0;
-		gbc.gridy = 0;
-		gbc.weightx = 1.0;
-		gbc.anchor = GridBagConstraints.WEST;
-		panel1.add(nestedForm1.$$$getRootComponent$$$(), gbc);
+		panel1.add(nestedForm1.$$$getRootComponent$$$(), BorderLayout.NORTH);
 		final FileOptions nestedForm2 = new FileOptions();
-		gbc = new GridBagConstraints();
-		gbc.gridx = 0;
-		gbc.gridy = 1;
-		gbc.weightx = 1.0;
-		gbc.fill = GridBagConstraints.HORIZONTAL;
-		panel1.add(nestedForm2.$$$getRootComponent$$$(), gbc);
+		panel1.add(nestedForm2.$$$getRootComponent$$$(), BorderLayout.CENTER);
 	}
 
 	/**
