@@ -56,6 +56,36 @@ public class ImgFS implements FileSystem {
 	// The filesystem is responsible for allocating blocks
 	private BlockManager blockManager;
 
+
+	/**
+	 * Create an IMG file from its external filesystem name and optionally some
+	 * parameters.
+	 *
+	 * @param filename The filename eg 'gmapsupp.img'
+	 * @param params File system parameters.  Can be null.
+	 * @throws FileNotWritableException If the file can not be written to.
+	 */
+	public static ImgFS createImgFS(String filename, FileSystemParam params)
+			throws FileNotWritableException
+	{
+		ImgFS fs = new ImgFS();
+		fs.create(filename, params);
+		return fs;
+	}
+
+	/**
+	 * Open an existing img file for reading.
+	 * @param filename The filename.
+	 */
+	public static ImgFS openImgFS(String filename) throws FileNotFoundException {
+		ImgFS fs = new ImgFS();
+		fs.init(filename);
+		return fs;
+	}
+
+	private ImgFS() {
+	}
+
 	/**
 	 * Create an IMG file from its external filesystem name and optionally some
 	 * parameters.
@@ -65,8 +95,7 @@ public class ImgFS implements FileSystem {
 	 * @throws FileNotWritableException If the file can not
 	 * be written to.
 	 */
-	public ImgFS(String filename, FileSystemParam params)
-			throws FileNotWritableException
+	private void create(String filename, FileSystemParam params) throws FileNotWritableException
 	{
 		log.info("Creating file system");
 		RandomAccessFile rafile  ;
@@ -86,7 +115,7 @@ public class ImgFS implements FileSystem {
 
 		file = rafile.getChannel();
 
-		header = new ImgHeader(file);
+		header = ImgHeader.createImgHeader(file);
 		header.setDirectoryStartBlock(2); // could be from params
 
 		// Set the times.
@@ -107,6 +136,25 @@ public class ImgFS implements FileSystem {
 		directory.init();
 	}
 
+	/**
+	 * Open an existing img file for reading.
+	 * @param filename The filename.
+	 */
+	private void init(String filename) throws FileNotFoundException {
+		log.info("opening file system");
+		RandomAccessFile rafile  ;
+		rafile = new RandomAccessFile(filename, "rw");
+
+		file = rafile.getChannel();
+
+		header = ImgHeader.createImgHeader(file);
+
+		// The block manager allocates blocks for files.
+		blockManager = new BlockManager(blockSize,
+				header.getDirectoryStartBlock());
+
+		directory = new Directory(file, blockManager);
+	}
 
 	/**
 	 * Set various parameters of the file system.  Anything that
@@ -129,7 +177,7 @@ public class ImgFS implements FileSystem {
 	}
 
 	/**
-	 * Create a new file it must not allready exist.
+	 * Create a new file, it must not allready exist.
 	 *
 	 * @param name The file name.
 	 * @return A directory entry for the new file.
@@ -157,8 +205,22 @@ public class ImgFS implements FileSystem {
 
 		// Its wrong to do this as this routine should not throw an exception
 		// when the file exists.  Needs lookup().
-//		if (mode.indexOf('w') >= 0)
-//			return create(name);
+		if (mode.indexOf('w') >= 0) {
+			try {
+				DirectoryEntry entry = lookup(name);
+			} catch (IOException e) {
+				try {
+					ImgChannel channel = create(name);
+					return channel;
+				} catch (FileExistsException e1) {
+					// This shouldn't happen as we have already checked.
+					FileNotFoundException exception = new FileNotFoundException("Trying to recreate exising file");
+					exception.initCause(e1);
+					throw exception;
+				}
+			}
+			//return entry;
+		}
 
 		throw new FileNotFoundException("File not found because it isn't implemented yet");
 	}

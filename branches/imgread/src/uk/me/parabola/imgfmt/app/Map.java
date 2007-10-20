@@ -67,7 +67,7 @@ public class Map implements InternalFiles {
 	{
 		Map m = new Map();
 		String outFilename = mapname + ".img";
-		m.fileSystem = new ImgFS(outFilename, params);
+		m.fileSystem = ImgFS.createImgFS(outFilename, params);
 		m.rgnFile = new RGNFile(m.fileSystem.create(mapname + ".RGN"));
 		m.treFile = new TREFile(m.fileSystem.create(mapname + ".TRE"));
 		m.lblFile = new LBLFile(m.fileSystem.create(mapname + ".LBL"));

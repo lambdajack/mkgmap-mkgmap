@@ -19,7 +19,6 @@ package uk.me.parabola.imgfmt.sys;
 import java.util.Date;
 import java.util.Calendar;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.io.IOException;
 
@@ -92,7 +91,7 @@ class ImgHeader {
 	// Block size defaults to 512.
 	private int blockSize = 512;
 
-	private final ByteBuffer header = ByteBuffer.allocateDirect(512);
+	private final ByteBuffer header = ByteBuffer.allocate(512);
 	private static final byte[] FILE_ID = new byte[]{
 			'G', 'A', 'R', 'M', 'I', 'N', '\0'};
 	private static final byte[] SIGNATURE = new byte[]{
@@ -100,21 +99,26 @@ class ImgHeader {
 	private FileChannel file;
 	private Date creationTime;
 
-
-	private ImgHeader() {
-		header.order(ByteOrder.LITTLE_ENDIAN);
-		createFS();
+	static ImgHeader createImgHeader(FileChannel chan) {
+		ImgHeader imgHeader = new ImgHeader(chan);
+		imgHeader.createHeader();
+		return imgHeader;
 	}
 
-	ImgHeader(FileChannel fileChannel) {
-		this();
-		this.file = fileChannel;
+	static ImgHeader initImgHeader(FileChannel chan) throws IOException {
+		ImgHeader imgHeader = new ImgHeader(chan);
+		imgHeader.readHeader();
+		return imgHeader;
+	}
+
+	private ImgHeader(FileChannel chan) {
+		this.file = chan;
 	}
 
 	/**
-	 * Create a file system from scratch.
+	 * Create a header from scratch.
 	 */
-	private void createFS() {
+	private void createHeader() {
 		header.put(OFF_XOR, (byte) 0);
 
 		// Set the block size.  2^(E1+E2) where E1 is always 9.
@@ -167,6 +171,13 @@ class ImgHeader {
 		// Checksum is not checked.
 		int check = 0;
 		header.put(OFF_CHECKSUM, (byte) check);
+	}
+
+	private void readHeader() throws IOException {
+		file.position(0);
+		file.read(header);
+
+		directoryStartBlock = header.get(OFF_DIRECTORY_START_BLOCK);
 	}
 
 	/**
