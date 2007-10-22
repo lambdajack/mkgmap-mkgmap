@@ -16,21 +16,21 @@
  */
 package uk.me.parabola.imgfmt.sys;
 
-import uk.me.parabola.log.Logger;
-
-import java.io.RandomAccessFile;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.Date;
-import java.util.List;
-import java.nio.channels.FileChannel;
-
-import uk.me.parabola.imgfmt.fs.FileSystem;
-import uk.me.parabola.imgfmt.fs.DirectoryEntry;
-import uk.me.parabola.imgfmt.fs.ImgChannel;
-import uk.me.parabola.imgfmt.FileSystemParam;
 import uk.me.parabola.imgfmt.FileExistsException;
 import uk.me.parabola.imgfmt.FileNotWritableException;
+import uk.me.parabola.imgfmt.FileSystemParam;
+import uk.me.parabola.imgfmt.fs.DirectoryEntry;
+import uk.me.parabola.imgfmt.fs.FileSystem;
+import uk.me.parabola.imgfmt.fs.ImgChannel;
+import uk.me.parabola.log.Logger;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.util.Date;
+import java.util.List;
 
 /**
  * The img file is really a filesystem containing several files.
@@ -41,139 +41,187 @@ import uk.me.parabola.imgfmt.FileNotWritableException;
  */
 public class ImgFS implements FileSystem {
 	private static final Logger log = Logger.getLogger(ImgFS.class);
+	private static final int DIRECTORY_START_BLOCK = 2;
 
-	private int blockSize = 512;
+	// The directory is just like any other file, but with a name of 8+3 spaces
+	private static final String DIRECTORY_FILE_NAME = "        .   ";
 
-	private FileChannel file;
+	// This is the read or write channel to the real file system.
+	private final FileChannel file;
 
-	// A file system consists of a header, a directory and a data area.
-	private ImgHeader header;
+	// The header contains general information.
+	private final ImgHeader header;
 
 	// There is only one directory that holds all filename and block allocation
 	// information.
-	private Directory directory;
+	private final Directory directory;
 
 	// The filesystem is responsible for allocating blocks
-	private BlockManager blockManager;
+	private final BlockManager blockManager;
 
+	private FileSystemParam fsParams;
+
+	/**
+	 * Private constructor, use the static {@link #createFs} and {@link #openFs}
+	 * routines to make a filesystem.
+	 *
+	 * @param chan The open file.
+	 */
+	private ImgFS(FileChannel chan) {
+		file = chan;
+		header = new ImgHeader(chan);
+		directory = new Directory(chan);
+		blockManager = new BlockManager();
+	}
 
 	/**
 	 * Create an IMG file from its external filesystem name and optionally some
 	 * parameters.
 	 *
-	 * @param filename The filename eg 'gmapsupp.img'
-	 * @param params File system parameters.  Can be null.
+	 * @param chan The file channel to write to.
+	 * @param params File system parameters.  Can not be null.
 	 * @throws FileNotWritableException If the file can not be written to.
 	 */
-	public static ImgFS createImgFS(String filename, FileSystemParam params)
+	public static FileSystem createFs(FileChannel chan, FileSystemParam params)
 			throws FileNotWritableException
 	{
-		ImgFS fs = new ImgFS();
-		fs.create(filename, params);
-		return fs;
-	}
+		assert params != null;
+		ImgFS fs = new ImgFS(chan);
 
-	/**
-	 * Open an existing img file for reading.
-	 * @param filename The filename.
-	 */
-	public static ImgFS openImgFS(String filename) throws FileNotFoundException {
-		ImgFS fs = new ImgFS();
-		fs.init(filename);
-		return fs;
-	}
-
-	private ImgFS() {
-	}
-
-	/**
-	 * Create an IMG file from its external filesystem name and optionally some
-	 * parameters.
-	 *
-	 * @param filename The filename eg 'gmapsupp.img'
-	 * @param params File system parameters.  Can be null.
-	 * @throws FileNotWritableException If the file can not
-	 * be written to.
-	 */
-	private void create(String filename, FileSystemParam params) throws FileNotWritableException
-	{
-		log.info("Creating file system");
-		RandomAccessFile rafile  ;
+		// Truncate the file, because extra bytes beyond the end make for a
+		// map that doesn't work on the GPS (although its likely to work in
+		// other software viewers).
 		try {
-			rafile = new RandomAccessFile(filename, "rw");
-		} catch (FileNotFoundException e) {
-			throw new FileNotWritableException("Could not create file", e);
-		}
-		try {
-			// Set length to zero because if you don't you can get a
-			// map that doesn't work.  Not clear why.
-			rafile.setLength(0);
+			chan.truncate(0);
 		} catch (IOException e) {
-			// It doesn't matter that much.
-			log.warn("Could not set file length to zero");
+			throw new FileNotWritableException("Failed to truncate file", e);
 		}
 
-		file = rafile.getChannel();
-
-		header = ImgHeader.createImgHeader(file);
-		header.setDirectoryStartBlock(2); // could be from params
+		ImgHeader h = fs.header;
+		h.createHeader(params);
+		h.setDirectoryStartBlock(DIRECTORY_START_BLOCK); // could be from params
 
 		// Set the times.
 		Date date = new Date();
-		header.setCreationTime(date);
-		header.setUpdateTime(date);
+		h.setCreationTime(date);
+		h.setUpdateTime(date);
+		h.setDescription(params.getMapDescription());
 
 		// The block manager allocates blocks for files.
-		blockManager = new BlockManager(blockSize,
-				header.getDirectoryStartBlock());
-
-		directory = new Directory(file, blockManager);
-
-		if (params != null)
-			setParams(params);
+		BlockManager bm = fs.blockManager;
+		bm.setBlockSize(params.getBlockSize());
+		bm.setCurrentBlock(params.getDirectoryStartBlock());
 
 		// Initialise the directory.
-		directory.init();
-	}
-
-	/**
-	 * Open an existing img file for reading.
-	 * @param filename The filename.
-	 */
-	private void init(String filename) throws FileNotFoundException {
-		log.info("opening file system");
-		RandomAccessFile rafile  ;
-		rafile = new RandomAccessFile(filename, "rw");
-
-		file = rafile.getChannel();
-
-		header = ImgHeader.createImgHeader(file);
-
-		// The block manager allocates blocks for files.
-		blockManager = new BlockManager(blockSize,
-				header.getDirectoryStartBlock());
-
-		directory = new Directory(file, blockManager);
-	}
-
-	/**
-	 * Set various parameters of the file system.  Anything that
-	 * has not been set in <tt>params</tt> (ie is zero or null)
-	 * will not have any effect.
-	 *
-	 * @param params A set of parameters.
-	 */
-	private void setParams(FileSystemParam params) {
-		int bs = params.getBlockSize();
-		if (bs > 0) {
-			blockSize = bs;
-			header.setBlockSize(bs);
-			directory.setBlockSize(bs);
+		ImgChannel f;
+		Directory dir = fs.directory;
+		dir.setStartBlock(params.getDirectoryStartBlock());
+		try {
+			f = fs.create(DIRECTORY_FILE_NAME);
+		} catch (FileExistsException e) {
+			// Well it shouldn't exist but if it does, all well and good then..
+			try {
+				f = fs.open(DIRECTORY_FILE_NAME, "w");
+				f.position(0);
+			} catch (FileNotFoundException e1) {
+				// OK give up then...
+				throw new FileNotWritableException("Could not create directory", e1);
+			}
 		}
 
-		String mapdesc = params.getMapDescription();
-		if (mapdesc != null)
-			header.setDescription(mapdesc);
+		ByteBuffer buf = ByteBuffer.allocate(h.getBlockSize());
+		for (int i = 0; i < params.getReservedDirectoryBlocks(); i++) {
+			try {
+				f.write(buf);
+			} catch (IOException e) {
+				throw new FileNotWritableException("Could not write directory blocks", e);
+			}
+		}
+		f.position(0);
+		dir.setFile(f);
+
+		return fs;
+	}
+
+	public static FileSystem createFs(String filename, FileSystemParam params) throws FileNotWritableException {
+		RandomAccessFile rafile  ;
+		try {
+			rafile = new RandomAccessFile(filename, "rw");
+			return createFs(rafile.getChannel(), params);
+		} catch (FileNotFoundException e) {
+			throw new FileNotWritableException("Could not create file", e);
+		}
+	}
+
+	//public ImgFS(FileChannel chan, FileSystemParam params) {
+	//	this(chan);
+	//	blockManager = new BlockManager(params.getBlockSize(), DIRECTORY_START_BLOCK);
+	//}
+
+
+	//private void createFS(String filename, FileSystemParam params) throws FileNotWritableException
+	//{
+	//	log.info("Creating file system");
+	//	RandomAccessFile rafile  ;
+	//	try {
+	//		rafile = new RandomAccessFile(filename, "rw");
+	//	} catch (FileNotFoundException e) {
+	//		throw new FileNotWritableException("Could not create file", e);
+	//	}
+	//
+	//	try {
+	//		// Truncate the file to zero lenght.  If the new map is shorter than
+	//		// the existing data, then the map will not work.
+	//		rafile.setLength(0);
+	//	} catch (IOException e) {
+	//		// It doesn't matter that much.
+	//		log.warn("Could not set file length to zero");
+	//	}
+	//
+	//	createFs(rafile.getChannel(), params);
+	//}
+
+	//private void createFs(FileChannel chan, FileSystemParam params) {
+	//	header = new ImgHeader(file);
+	//	header.createHeader();
+	//	header.setDirectoryStartBlock(DIRECTORY_START_BLOCK); // could be from params
+	//
+	//	// Set the times.
+	//	Date date = new Date();
+	//	header.setCreationTime(date);
+	//	header.setUpdateTime(date);
+	//
+	//	// The block manager allocates blocks for files.
+	//	blockManager = new BlockManager(blockSize,
+	//			header.getDirectoryStartBlock());
+	//
+	//	directory = new Directory(file, blockManager);
+	//
+	//	if (params != null)
+	//		setParams(params);
+	//
+	//	// Initialise the directory.
+	//	directory.init();
+	//}
+
+	///**
+	// * Open an existing img file for reading.
+	// * @param filename The filename.
+	// */
+	//private void read(String filename) throws IOException {
+	//	log.info("opening file system");
+	//	RandomAccessFile rafile  ;
+	//
+	//	rafile = new RandomAccessFile(filename, "rw");
+	//	file = rafile.getChannel();
+	//
+	//	header = new ImgHeader(file);
+	//
+	//	directory = new Directory(file, blockManager);
+	//}
+
+	public static FileSystem openFs() {
+		return null;
 	}
 
 	/**

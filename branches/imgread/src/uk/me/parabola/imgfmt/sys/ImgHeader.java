@@ -16,13 +16,14 @@
  */
 package uk.me.parabola.imgfmt.sys;
 
-import java.util.Date;
-import java.util.Calendar;
+import uk.me.parabola.imgfmt.FileSystemParam;
+import uk.me.parabola.imgfmt.Utils;
+
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.io.IOException;
-
-import uk.me.parabola.imgfmt.Utils;
+import java.util.Calendar;
+import java.util.Date;
 
 /**
  * The header at the very begining of the .img filesystem.  It has the
@@ -83,48 +84,46 @@ class ImgHeader {
 
 	private static final int OFF_PARTITION_SIG = 0x1fe;
 
-//	private static final int HEADER_SIZE = 0x600;
-
-	// Variables for this file system.
-	private int directoryStartBlock = 2;
-
-	// Block size defaults to 512.
-	private int blockSize = 512;
+	private FileSystemParam fsParams;
 
 	private final ByteBuffer header = ByteBuffer.allocate(512);
-	private static final byte[] FILE_ID = new byte[]{
-			'G', 'A', 'R', 'M', 'I', 'N', '\0'};
-	private static final byte[] SIGNATURE = new byte[]{
-			'D', 'S', 'K', 'I', 'M', 'G', '\0'};
+
 	private FileChannel file;
 	private Date creationTime;
 
-	static ImgHeader createImgHeader(FileChannel chan) {
-		ImgHeader imgHeader = new ImgHeader(chan);
-		imgHeader.createHeader();
-		return imgHeader;
-	}
+	// Signatures.
+	private static final byte[] FILE_ID = new byte[]{
+			'G', 'A', 'R', 'M', 'I', 'N', '\0'};
 
-	static ImgHeader initImgHeader(FileChannel chan) throws IOException {
-		ImgHeader imgHeader = new ImgHeader(chan);
-		imgHeader.readHeader();
-		return imgHeader;
-	}
+	private static final byte[] SIGNATURE = new byte[]{
+			'D', 'S', 'K', 'I', 'M', 'G', '\0'};
 
-	private ImgHeader(FileChannel chan) {
+	ImgHeader(FileChannel chan) {
 		this.file = chan;
 	}
 
 	/**
 	 * Create a header from scratch.
+	 * @param params File system parameters.
 	 */
-	private void createHeader() {
+	void createHeader(FileSystemParam params) {
+		this.fsParams = params;
+
 		header.put(OFF_XOR, (byte) 0);
 
 		// Set the block size.  2^(E1+E2) where E1 is always 9.
-		int exp = getBlockExponent();
+		int exp = 9;
+
+		int bs = params.getBlockSize();
+		for (int i = 0; i < 32; i++) {
+			bs >>>= 1;
+			if (bs == 0)
+				exp = i;
+		}
+
 		if (exp < 9)
 			throw new IllegalArgumentException("block size too small");
+
 		header.put(OFF_BLOCK_SIZE_EXPONENT1, (byte) 0x9);
 		header.put(OFF_BLOCK_SIZE_EXPONENT2, (byte) (exp - 9));
 
@@ -135,7 +134,10 @@ class ImgHeader {
 		header.put(FILE_ID);
 
 		header.put(OFF_UNK_1, (byte) 0x2);
-		header.put(OFF_DIRECTORY_START_BLOCK, (byte) directoryStartBlock);
+
+		// Acutally this may not be the directory start block, I am guessing -
+		// always assume it is 2 anyway.
+		header.put(OFF_DIRECTORY_START_BLOCK, (byte) fsParams.getDirectoryStartBlock());
 
 		// This secotors, heads, cylinders stuff is probably just 'unknown'
 		int sectors = 4;
@@ -150,8 +152,7 @@ class ImgHeader {
 		header.position(OFF_CREATION_YEAR);
 		Utils.setCreationTime(header, creationTime);
 
-		char blocks = (char) (heads * sectors
-				* cylinders / (1 << exp - 9));
+		char blocks = (char) (heads * sectors * cylinders / (1 << exp - 9));
 		header.putChar(OFF_BLOCK_SIZE, blocks);
 
 		header.put(OFF_PARTITION_SIG, (byte) 0x55);
@@ -165,19 +166,11 @@ class ImgHeader {
 		header.put(OFF_END_SECTOR, (byte) sectors);
 		header.put(OFF_END_CYLINDER, (byte) (cylinders - 1));
 		header.putInt(OFF_REL_SECTORS, 0);
-		header.putInt(OFF_NUMBER_OF_SECTORS,
-				(blocks * (1 << (exp - 9))));
+		header.putInt(OFF_NUMBER_OF_SECTORS, (blocks * (1 << (exp - 9))));
 
 		// Checksum is not checked.
 		int check = 0;
 		header.put(OFF_CHECKSUM, (byte) check);
-	}
-
-	private void readHeader() throws IOException {
-		file.position(0);
-		file.read(header);
-
-		directoryStartBlock = header.get(OFF_DIRECTORY_START_BLOCK);
 	}
 
 	/**
@@ -238,22 +231,6 @@ class ImgHeader {
 	}
 
 	/**
-	 * Get the exponent for the block size.
-	 * @return The power of two that the block size is.
-	 */
-	private int getBlockExponent() {
-		int bs = blockSize;
-		for (int i = 0; i < 32; i++) {
-			bs >>>= 1;
-			if (bs == 0)
-				return i;
-		}
-
-		// This cant really happen, as there are 32 bits in an int
-		throw new IllegalArgumentException("block size too large");
-	}
-
-	/**
 	 * Convert a string to a byte array.
 	 * @param s The string
 	 * @return A byte array.
@@ -277,7 +254,7 @@ class ImgHeader {
 
 
 	public int getBlockSize() {
-		return blockSize;
+		return fsParams.getBlockSize();
 	}
 
 	/**
@@ -286,18 +263,22 @@ class ImgHeader {
 	 * @param blockSize The new block size to use.
 	 */
 	public void setBlockSize(int blockSize) {
-		this.blockSize = blockSize;
+		header.put(OFF_BLOCK_SIZE, (byte) blockSize);
+		fsParams.setBlockSize(blockSize);
 	}
 
 	public int getDirectoryStartBlock() {
-		return directoryStartBlock;
+		return fsParams.getDirectoryStartBlock();
 	}
 
 	public void setDirectoryStartBlock(int directoryStartBlock) {
-		this.directoryStartBlock = directoryStartBlock;
+		header.put(OFF_DIRECTORY_START_BLOCK, (byte) directoryStartBlock);
+		fsParams.setDirectoryStartBlock(directoryStartBlock);
 	}
 
 	public void setCreationTime(Date date) {
 		this.creationTime = date;
 	}
+
+
 }

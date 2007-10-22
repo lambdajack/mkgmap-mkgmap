@@ -19,9 +19,9 @@ package uk.me.parabola.imgfmt.sys;
 import uk.me.parabola.log.Logger;
 
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Holds block numbers for a file.  It is part of the directory.  For a file

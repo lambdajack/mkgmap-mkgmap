@@ -46,7 +46,7 @@ public class FileNode implements ImgChannel {
 	private final Dirent dirent;
 
 	// The position in this file
-	private int position;
+	private long position;
 
 	/**
 	 * Creates a new file in the file system.  You can treat this just like
@@ -117,50 +117,19 @@ public class FileNode implements ImgChannel {
 
 	/**
 	 * Reads a sequence of bytes from this channel into the given buffer.
-	 * <p/>
-	 * <p> An attempt is made to read up to <i>r</i> bytes from the channel,
-	 * where <i>r</i> is the number of bytes remaining in the buffer, that is,
-	 * <tt>dst.remaining()</tt>, at the moment this method is invoked.
-	 * <p/>
-	 * <p> Suppose that a byte sequence of length <i>n</i> is read, where
-	 * <tt>0</tt>&nbsp;<tt>&lt;=</tt>&nbsp;<i>n</i>&nbsp;<tt>&lt;=</tt>&nbsp;<i>r</i>.
-	 * This byte sequence will be transferred into the buffer so that the first
-	 * byte in the sequence is at index <i>p</i> and the last byte is at index
-	 * <i>p</i>&nbsp;<tt>+</tt>&nbsp;<i>n</i>&nbsp;<tt>-</tt>&nbsp;<tt>1</tt>,
-	 * where <i>p</i> is the buffer's position at the moment this method is
-	 * invoked.  Upon return the buffer's position will be equal to
-	 * <i>p</i>&nbsp;<tt>+</tt>&nbsp;<i>n</i>; its limit will not have changed.
-	 * <p/>
-	 * <p> A read operation might not fill the buffer, and in fact it might not
-	 * read any bytes at all.  Whether or not it does so depends upon the
-	 * nature and state of the channel.  A socket channel in non-blocking mode,
-	 * for example, cannot read any more bytes than are immediately available
-	 * from the socket's input buffer; similarly, a file channel cannot read
-	 * any more bytes than remain in the file.  It is guaranteed, however, that
-	 * if a channel is in blocking mode and there is at least one byte
-	 * remaining in the buffer then this method will block until at least one
-	 * byte is read.
-	 * <p/>
-	 * <p> This method may be invoked at any time.  If another thread has
-	 * already initiated a read operation upon this channel, however, then an
-	 * invocation of this method will block until the first operation is
-	 * complete. </p>
 	 *
 	 * @param dst The buffer into which bytes are to be transferred
+	 *
 	 * @return The number of bytes read, possibly zero, or <tt>-1</tt> if the
-	 *         channel has reached end-of-stream
-	 * @throws NonReadableChannelException
-	 *                             If this channel was not opened for reading
-	 * @throws ClosedChannelException
-	 *                             If this channel is closed
-	 * @throws AsynchronousCloseException
-	 *                             If another thread closes this channel
-	 *                             while the read operation is in progress
-	 * @throws ClosedByInterruptException
-	 *                             If another thread interrupts the current thread
-	 *                             while the read operation is in progress, thereby
-	 *                             closing the channel and setting the current thread's
-	 *                             interrupt status
+	 * channel has reached end-of-stream
+	 *
+	 * @throws NonReadableChannelException If this channel was not opened for reading
+	 * @throws ClosedChannelException If this channel is closed
+	 * @throws AsynchronousCloseException If another thread closes this channel
+	 * while the read operation is in progress
+	 * @throws ClosedByInterruptException If another thread interrupts the
+	 * current thread while the read operation is in progress, thereby closing
+	 * the channel and setting the current thread's interrupt status
 	 * @throws IOException If some other I/O error occurs
 	 */
 	public int read(ByteBuffer dst) throws IOException {
@@ -206,7 +175,7 @@ public class FileNode implements ImgChannel {
 		int totalWritten = 0;
 		while (size > 0) {
 			// Get the logical block, ie the block as we see it in our file.
-			int lblock = position/blockSize;
+			int lblock = (int) (position/blockSize);
 
 			// First need to allocate enough blocks for this write. First check
 			// if the block exists already
@@ -219,8 +188,8 @@ public class FileNode implements ImgChannel {
 			}
 
 			// Position the underlying file, so that it is in the correct place.
-			int off = position - lblock*blockManager.getBlockSize();
-			file.position(pblock * blockSize + off);
+			int off = (int) (position - lblock*blockManager.getBlockSize());
+			file.position((long) pblock * blockSize + off);
 
 			int n = size;
 			if (n > blockSize)
@@ -243,19 +212,19 @@ public class FileNode implements ImgChannel {
 
 			// Update file size.
 			if (position > dirent.getSize())
-				dirent.setSize(position);
+				dirent.setSize((int) position);
 		}
 
 		return totalWritten;
 	}
 
-	public int position() {
+	public long position() {
 		return position;
 	}
 
-//	public void position(int pos) {
-//		this.position = pos;
-//	}
+	public void position(long pos) {
+		this.position = pos;
+	}
 
 	/**
 	 * Write out any unsaved data to disk.
@@ -276,5 +245,4 @@ public class FileNode implements ImgChannel {
 		buf.flip();
 		file.write(buf);
 	}
-
 }

@@ -23,12 +23,15 @@ package uk.me.parabola.imgfmt.sys;
  * @author Steve Ratcliffe
  */
 class BlockManager {
-	private int nextBlock;
-	private final int blockSize;
+	private int currentBlock;
+	private int blockSize;
 
 	BlockManager(int blockSize, int initialBlock) {
 		this.blockSize = blockSize;
-		this.nextBlock = initialBlock;
+		this.currentBlock = initialBlock;
+	}
+
+	BlockManager() {
 	}
 
 	/**
@@ -38,7 +41,7 @@ class BlockManager {
 	 * @return A block number that is free to be used.
 	 */
 	public int allocate() {
-		return nextBlock++;
+		return currentBlock++;
 	}
 
 	/**
@@ -48,7 +51,7 @@ class BlockManager {
 	 * @param n Number of blocks to reserve.
 	 */
 	public void reserveBlocks(int n) {
-		nextBlock += n;
+		currentBlock += n;
 	}
 
 	/**
@@ -57,11 +60,18 @@ class BlockManager {
 	 * @return The next block that would be allocated.
 	 */
 	public int getCurrentBlock() {
-		return nextBlock;	
+		return currentBlock;
+	}
+
+	public void setCurrentBlock(int startBlock) {
+		this.currentBlock = startBlock;
 	}
 
 	public int getBlockSize() {
 		return blockSize;
 	}
 
+	public void setBlockSize(int blockSize) {
+		this.blockSize = blockSize;
+	}
 }

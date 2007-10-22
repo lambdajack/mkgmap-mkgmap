@@ -16,8 +16,8 @@
  */
 package uk.me.parabola.imgfmt.sys;
 
-import uk.me.parabola.imgfmt.fs.DirectoryEntry;
 import uk.me.parabola.imgfmt.Utils;
+import uk.me.parabola.imgfmt.fs.DirectoryEntry;
 import uk.me.parabola.log.Logger;
 
 import java.io.IOException;
