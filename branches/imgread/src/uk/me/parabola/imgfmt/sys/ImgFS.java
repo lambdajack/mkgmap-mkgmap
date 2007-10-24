@@ -116,6 +116,8 @@ public class ImgFS implements FileSystem {
 		ImgChannel f;
 		Directory dir = fs.directory;
 		dir.setStartBlock(params.getDirectoryStartBlock());
+		dir.setBlockSize(h.getBlockSize());
+
 		try {
 			f = fs.create(DIRECTORY_FILE_NAME);
 		} catch (FileExistsException e) {
@@ -153,75 +155,70 @@ public class ImgFS implements FileSystem {
 		}
 	}
 
-	//public ImgFS(FileChannel chan, FileSystemParam params) {
-	//	this(chan);
-	//	blockManager = new BlockManager(params.getBlockSize(), DIRECTORY_START_BLOCK);
-	//}
+	public static FileSystem openFs(String name) throws FileNotFoundException {
+		RandomAccessFile rafile  ;
+		try {
+			System.out.println("open file " + name);
+			rafile = new RandomAccessFile(name, "r");
+			System.out.println("rafile " + rafile);
+			return openFs(rafile.getChannel());
+		} catch (FileNotFoundException e) {
+			throw new FileNotFoundException("Could not open file " + e.getMessage());
+		}
+	}
 
+	private static FileSystem openFs(FileChannel chan) throws FileNotFoundException {
+		ImgFS fs = new ImgFS(chan);
 
-	//private void createFS(String filename, FileSystemParam params) throws FileNotWritableException
-	//{
-	//	log.info("Creating file system");
-	//	RandomAccessFile rafile  ;
-	//	try {
-	//		rafile = new RandomAccessFile(filename, "rw");
-	//	} catch (FileNotFoundException e) {
-	//		throw new FileNotWritableException("Could not create file", e);
-	//	}
-	//
-	//	try {
-	//		// Truncate the file to zero lenght.  If the new map is shorter than
-	//		// the existing data, then the map will not work.
-	//		rafile.setLength(0);
-	//	} catch (IOException e) {
-	//		// It doesn't matter that much.
-	//		log.warn("Could not set file length to zero");
-	//	}
-	//
-	//	createFs(rafile.getChannel(), params);
-	//}
+		ImgHeader h = fs.header;
+		try {
+			h.readHeader();
+		} catch (IOException e) {
+			throw new FileNotFoundException("Could not read header " + e.getMessage());
+		}
 
-	//private void createFs(FileChannel chan, FileSystemParam params) {
-	//	header = new ImgHeader(file);
-	//	header.createHeader();
-	//	header.setDirectoryStartBlock(DIRECTORY_START_BLOCK); // could be from params
-	//
-	//	// Set the times.
-	//	Date date = new Date();
-	//	header.setCreationTime(date);
-	//	header.setUpdateTime(date);
-	//
-	//	// The block manager allocates blocks for files.
-	//	blockManager = new BlockManager(blockSize,
-	//			header.getDirectoryStartBlock());
-	//
-	//	directory = new Directory(file, blockManager);
-	//
-	//	if (params != null)
-	//		setParams(params);
-	//
-	//	// Initialise the directory.
-	//	directory.init();
-	//}
+		/*	// Set the times.
+		  Date date = new Date();
+		  h.setCreationTime(date);
+		  h.setUpdateTime(date);
+		  h.setDescription(params.getMapDescription());
 
-	///**
-	// * Open an existing img file for reading.
-	// * @param filename The filename.
-	// */
-	//private void read(String filename) throws IOException {
-	//	log.info("opening file system");
-	//	RandomAccessFile rafile  ;
-	//
-	//	rafile = new RandomAccessFile(filename, "rw");
-	//	file = rafile.getChannel();
-	//
-	//	header = new ImgHeader(file);
-	//
-	//	directory = new Directory(file, blockManager);
-	//}
+		  // The block manager allocates blocks for files.
+		  BlockManager bm = fs.blockManager;
+		  bm.setBlockSize(params.getBlockSize());
+		  bm.setCurrentBlock(params.getDirectoryStartBlock());
 
-	public static FileSystem openFs() {
-		return null;
+		  // Initialise the directory.
+		  ImgChannel f;
+		  Directory dir = fs.directory;
+		  dir.setStartBlock(params.getDirectoryStartBlock());
+		  dir.setBlockSize(h.getBlockSize());
+
+		  try {
+			  f = fs.create(DIRECTORY_FILE_NAME);
+		  } catch (FileExistsException e) {
+			  // Well it shouldn't exist but if it does, all well and good then..
+			  try {
+				  f = fs.open(DIRECTORY_FILE_NAME, "w");
+				  f.position(0);
+			  } catch (FileNotFoundException e1) {
+				  // OK give up then...
+				  throw new FileNotWritableException("Could not create directory", e1);
+			  }
+		  }
+
+		  ByteBuffer buf = ByteBuffer.allocate(h.getBlockSize());
+		  for (int i = 0; i < params.getReservedDirectoryBlocks(); i++) {
+			  try {
+				  f.write(buf);
+			  } catch (IOException e) {
+				  throw new FileNotWritableException("Could not write directory blocks", e);
+			  }
+		  }
+		  f.position(0);
+		  dir.setFile(f);
+  */
+		return fs;
 	}
 
 	/**
@@ -294,7 +291,7 @@ public class ImgFS implements FileSystem {
 	 * @throws IOException If an error occurs reading the directory.
 	 */
 	public List<DirectoryEntry> list() throws IOException {
-		throw new IOException("not implemented yet");
+		return directory.getEntries();
 	}
 
 	/**

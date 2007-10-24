@@ -157,6 +157,10 @@ class Dirent implements DirectoryEntry {
 		this.ext = ext;
 	}
 
+	public String getFullName() {
+		return name + '.' + ext;
+	}
+
 	/**
 	 * Get the file size.
 	 *

@@ -115,12 +115,16 @@ class ImgHeader {
 		int exp = 9;
 
 		int bs = params.getBlockSize();
+		System.out.println("bs = " + bs);
 		for (int i = 0; i < 32; i++) {
 			bs >>>= 1;
-			if (bs == 0)
+			if (bs == 0) {
 				exp = i;
+				break;
+			}
 		}
 
+		System.out.println("exp " + exp);
 		if (exp < 9)
 			throw new IllegalArgumentException("block size too small");
 
@@ -171,6 +175,18 @@ class ImgHeader {
 		// Checksum is not checked.
 		int check = 0;
 		header.put(OFF_CHECKSUM, (byte) check);
+	}
+
+	public void readHeader() throws IOException {
+		file.position(0);
+		header.clear();
+		int n = file.read(header);
+
+		byte b = header.get(OFF_BLOCK_SIZE_EXPONENT2);
+
+		fsParams = new FileSystemParam();
+		fsParams.setBlockSize(2 << b);
+		System.out.println("Block size is " + fsParams.getBlockSize());
 	}
 
 	/**
@@ -279,6 +295,4 @@ class ImgHeader {
 	public void setCreationTime(Date date) {
 		this.creationTime = date;
 	}
-
-
 }

@@ -24,7 +24,9 @@ import uk.me.parabola.log.Logger;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The directory.  There is only one directory and it contains the
@@ -48,7 +50,8 @@ class Directory {
 	private ImgChannel dir;
 
 	// The list of files themselves.
-	private final List<DirectoryEntry> entries = new ArrayList<DirectoryEntry>();
+	//private final List<DirectoryEntry> entries = new ArrayList<DirectoryEntry>();
+	private final Map<String, DirectoryEntry> entries = new LinkedHashMap<String, DirectoryEntry>();
 
 
 	Directory(FileChannel file) {
@@ -64,7 +67,7 @@ class Directory {
 	 * exists.
 	 */
 	Dirent create(String name) throws FileExistsException {
-		for (DirectoryEntry e : entries) {
+		for (DirectoryEntry e : entries.values()) {
 			String name2 = e.getName() + '.' + e.getExt();
 			if (name.equals(name2)) {
 				throw new FileExistsException("File " + name + " exists");
@@ -99,10 +102,14 @@ class Directory {
 		//	}
 		//}
 
-		for (DirectoryEntry ent : entries) {
+		for (DirectoryEntry ent : entries.values()) {
 			log.debug("wrting ent at " + file.position());
 			((Dirent) ent).sync(file);
 		}
+	}
+
+	public List<DirectoryEntry> getEntries() {
+		return new ArrayList<DirectoryEntry>(entries.values());
 	}
 
 	/**
@@ -154,6 +161,6 @@ class Directory {
 	private void addEntry(DirectoryEntry ent) {
 		nEntries++;
 
-		entries.add(ent);
+		entries.put(ent.getFullName(), ent);
 	}
 }
