@@ -39,7 +39,6 @@ import java.util.List;
  */
 public class ImgFS implements FileSystem {
 	private static final Logger log = Logger.getLogger(ImgFS.class);
-	private static final int DIRECTORY_START_BLOCK = 2;
 
 	// The directory is just like any other file, but with a name of 8+3 spaces
 	private static final String DIRECTORY_FILE_NAME = "        .   ";
@@ -57,8 +56,6 @@ public class ImgFS implements FileSystem {
 	// The filesystem is responsible for allocating blocks
 	private BlockManager fileBlockManager;
 
-	private FileSystemParam fsParams;
-
 	/**
 	 * Private constructor, use the static {@link #createFs} and {@link #openFs}
 	 * routines to make a filesystem.
@@ -73,10 +70,20 @@ public class ImgFS implements FileSystem {
 	 * Create an IMG file from its external filesystem name and optionally some
 	 * parameters.
 	 *
-	 * @param chan The file channel to write to.
+	 * @param filename The name of the file to be created.
 	 * @param params File system parameters.  Can not be null.
 	 * @throws FileNotWritableException If the file can not be written to.
 	 */
+	public static FileSystem createFs(String filename, FileSystemParam params) throws FileNotWritableException {
+		RandomAccessFile rafile  ;
+		try {
+			rafile = new RandomAccessFile(filename, "rw");
+			return createFs(rafile.getChannel(), params);
+		} catch (FileNotFoundException e) {
+			throw new FileNotWritableException("Could not create file", e);
+		}
+	}
+
 	public static FileSystem createFs(FileChannel chan, FileSystemParam params)
 			throws FileNotWritableException
 	{
@@ -95,16 +102,6 @@ public class ImgFS implements FileSystem {
 		fs.initFs(chan, params);
 
 		return fs;
-	}
-
-	public static FileSystem createFs(String filename, FileSystemParam params) throws FileNotWritableException {
-		RandomAccessFile rafile  ;
-		try {
-			rafile = new RandomAccessFile(filename, "rw");
-			return createFs(rafile.getChannel(), params);
-		} catch (FileNotFoundException e) {
-			throw new FileNotWritableException("Could not create file", e);
-		}
 	}
 
 	public static FileSystem openFs(String name) throws FileNotFoundException {
@@ -214,7 +211,7 @@ public class ImgFS implements FileSystem {
 	public void sync() throws IOException {
 		header.sync();
 
-		file.position((long) header.getDirectoryStartBlock() * header.getBlockSize());
+		log.debug("file position before directory is", file.position());
 		directory.sync();
 	}
 
@@ -232,20 +229,20 @@ public class ImgFS implements FileSystem {
 
 	private void initFs(FileChannel chan, FileSystemParam params) throws FileNotWritableException {
 		// The block manager allocates blocks for files.
-		BlockManager bm = new BlockManager(params.getBlockSize(), params.getDirectoryStartBlock());
+		BlockManager headerBlockManager = new BlockManager(params.getBlockSize(), 0);
 
 		// This bit is tricky.  We want to use a regular ImgChannel to write
 		// to the header and directory, but to create one normally would involve
 		// it already existing, so it is created by hand.
-
-		Dirent dir;
-		Directory direct = new Directory();
 		try {
-			dir = direct.create(DIRECTORY_FILE_NAME, bm);
+			directory = new Directory(headerBlockManager);
+			directory.setStartBlock(params.getDirectoryStartBlock());
 
+			Dirent dir = directory.create(DIRECTORY_FILE_NAME, headerBlockManager);
+			dir.setSpecial(true);
 			FileNode f = new FileNode(chan, dir, "w");
-			direct.setFile(f);
-			directory = direct;
+
+			directory.setFile(f);
 			header = new ImgHeader(f);
 			header.createHeader(params);
 		} catch (FileExistsException e) {

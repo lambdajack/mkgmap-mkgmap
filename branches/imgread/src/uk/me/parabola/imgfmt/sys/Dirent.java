@@ -93,7 +93,7 @@ class Dirent implements DirectoryEntry {
 
 			// Size is only present in the first part
 			if (part == 0) {
-				log.debug("dirent " + name + '.' + ext + " size is going to " + size);
+				log.debug("dirent", name, '.', ext, "size is going to", size);
 				buf.putInt(size);
 			} else {
 				buf.putInt(0);
@@ -109,6 +109,10 @@ class Dirent implements DirectoryEntry {
 
 		buf.flip();
 		file.write(buf);
+	}
+
+	int numberHeaderBlocks() {
+		return blockTable.getNBlockTables();
 	}
 
 	/**

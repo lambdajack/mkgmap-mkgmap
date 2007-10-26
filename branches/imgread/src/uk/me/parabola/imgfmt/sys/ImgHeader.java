@@ -200,6 +200,7 @@ class ImgHeader {
 		header.rewind();
 		file.position(0);
 		file.write(header);
+		file.position(fsParams.getDirectoryStartBlock() * fsParams.getBlockSize());
 	}
 
 	/**

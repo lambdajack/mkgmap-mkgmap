@@ -17,13 +17,11 @@
 package uk.me.parabola.imgfmt.sys;
 
 import uk.me.parabola.imgfmt.FileExistsException;
-import uk.me.parabola.imgfmt.FileSystemParam;
 import uk.me.parabola.imgfmt.fs.DirectoryEntry;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.log.Logger;
 
 import java.io.IOException;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,14 +38,19 @@ class Directory {
 	private static final Logger log = Logger.getLogger(Directory.class);
 
 	private int startBlock; // The starting block for the directory.
-	private int nEntries;
 
 	//private final FileChannel file;
-	private ImgChannel dir;
+	private ImgChannel chan;
+
+	private BlockManager headerBlockManager;
 
 	// The list of files themselves.
 	private final Map<String, DirectoryEntry> entries = new LinkedHashMap<String, DirectoryEntry>();
-	
+
+	Directory(BlockManager headerBlockManager) {
+		this.headerBlockManager = headerBlockManager;
+	}
+
 	/**
 	 * Create a new file in the directory.
 	 * 
@@ -58,12 +61,10 @@ class Directory {
 	 * exists.
 	 */
 	Dirent create(String name, BlockManager blockManager) throws FileExistsException {
-		for (DirectoryEntry e : entries.values()) {
-			String name2 = e.getName() + '.' + e.getExt();
-			if (name.equals(name2)) {
-				throw new FileExistsException("File " + name + " exists");
-			}
-		}
+
+		// Check to see if it is already there.
+		if (entries.get(name) != null)
+			throw new FileExistsException("File " + name + " already exists");
 
 		Dirent ent = new Dirent(name, blockManager);
 		addEntry(ent);
@@ -80,9 +81,26 @@ class Directory {
 	 */
 	public void sync() throws IOException {
 
+		// The first entry can't really be written until the rest of the directory is
+		// so we have to step through once to calculate the size and then again
+		// to write it out.
+		int blocks = 0;
+		for (DirectoryEntry dir : entries.values()) {
+			Dirent ent = (Dirent) dir;
+			log.debug("ent size", ent.getSize());
+			int n = ent.numberHeaderBlocks();
+			blocks += n;
+		}
+
+		int blockSize = headerBlockManager.getBlockSize();
+		int n = blockSize - 0x20;
+
+		int headerBlocksNeeded = (blocks + (n - 1)) / n;
+		log.debug("header blocks needed", headerBlocksNeeded);
+
 		for (DirectoryEntry ent : entries.values()) {
-			log.debug("wrting ent at " + dir.position());
-			((Dirent) ent).sync(dir);
+			log.debug("wrting ", ent.getFullName(), " at ", chan.position());
+			((Dirent) ent).sync(chan);
 		}
 	}
 
@@ -91,18 +109,19 @@ class Directory {
 	}
 
 	public void setFile(ImgChannel chan) {
-		this.dir = chan;
+		this.chan = chan;
+	}
+
+	public void setStartBlock(int startBlock) {
+		this.startBlock = startBlock;
 	}
 
 	/**
-	 * Add an entry to the directory. This updates the header block allocation
-	 * too.
+	 * Add an entry to the directory.
 	 *
 	 * @param ent The entry to add.
 	 */
 	private void addEntry(DirectoryEntry ent) {
-		nEntries++;
-
 		entries.put(ent.getFullName(), ent);
 	}
 }

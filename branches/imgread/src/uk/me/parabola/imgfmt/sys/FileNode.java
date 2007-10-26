@@ -222,6 +222,21 @@ public class FileNode implements ImgChannel {
 	}
 
 	public void position(long pos) {
+		int blockSize = blockManager.getBlockSize();
+
+		while (pos > position) {
+			long lblock = position / blockSize;
+			int pblock = dirent.getPhysicalBlock((int) lblock);
+
+			if (pblock == 0xffff) {
+				log.debug("setting position allocating new block", lblock);
+				pblock = blockManager.allocate();
+				dirent.addBlock(pblock);
+
+				position = (lblock+1) * blockSize;
+			}
+		}
+
 		this.position = pos;
 	}
 
