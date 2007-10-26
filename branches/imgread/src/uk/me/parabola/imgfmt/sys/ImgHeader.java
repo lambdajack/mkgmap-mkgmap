@@ -18,6 +18,7 @@ package uk.me.parabola.imgfmt.sys;
 
 import uk.me.parabola.imgfmt.FileSystemParam;
 import uk.me.parabola.imgfmt.Utils;
+import uk.me.parabola.imgfmt.fs.ImgChannel;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -88,7 +89,7 @@ class ImgHeader {
 
 	private final ByteBuffer header = ByteBuffer.allocate(512);
 
-	private FileChannel file;
+	private ImgChannel file;
 	private Date creationTime;
 
 	// Signatures.
@@ -98,7 +99,7 @@ class ImgHeader {
 	private static final byte[] SIGNATURE = new byte[]{
 			'D', 'S', 'K', 'I', 'M', 'G', '\0'};
 
-	ImgHeader(FileChannel chan) {
+	ImgHeader(ImgChannel chan) {
 		this.file = chan;
 	}
 
@@ -294,5 +295,16 @@ class ImgHeader {
 
 	public void setCreationTime(Date date) {
 		this.creationTime = date;
+	}
+
+	void initHeader(FileSystemParam params) {
+		createHeader(params);
+		setDirectoryStartBlock(params.getDirectoryStartBlock());
+
+		// Set the times.
+		Date date = new Date();
+		setCreationTime(date);
+		setUpdateTime(date);
+		setDescription(params.getMapDescription());
 	}
 }

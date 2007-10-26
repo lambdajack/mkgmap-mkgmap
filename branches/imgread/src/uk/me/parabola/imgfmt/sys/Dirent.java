@@ -18,12 +18,12 @@ package uk.me.parabola.imgfmt.sys;
 
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.fs.DirectoryEntry;
+import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.log.Logger;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.channels.FileChannel;
 
 /**
  * An entry within a directory.  This holds its name and a list
@@ -50,18 +50,17 @@ class Dirent implements DirectoryEntry {
 	// The file size.
 	private int size;
 
-	private int blockSize;
+	private BlockManager blockManager;
 
 	// The block table holds all the blocks that belong to this file.  The
 	// documentation suggests that block numbers are always contiguous.
-	//private int nBlockTables;
-	//private int nblocks;
-	//private char[] blockTable;
 	private BlockTable blockTable;
 
 	private boolean special;
 
-	Dirent(String name, int blockSize) {
+	Dirent(String name, BlockManager blockManager) {
+		this.blockManager = blockManager;
+
 		int dot;
 		dot = name.indexOf('.');
 		if (dot >= 0) {
@@ -70,11 +69,7 @@ class Dirent implements DirectoryEntry {
 		} else
 			throw new IllegalArgumentException("Filename did not have dot");
 
-		this.blockSize = blockSize;
-
-		//blockTable = new char[(blockSize - BLOCKS_TABLE_START)/2];
-		//Arrays.fill(blockTable, (char) 0xffff);
-		blockTable = new BlockTable(blockSize);
+		blockTable = new BlockTable(blockManager.getBlockSize());
 	}
 
 	/**
@@ -83,9 +78,9 @@ class Dirent implements DirectoryEntry {
 	 * @param file The file to write to.
 	 * @throws IOException If writing fails for any reason.
 	 */
-	void sync(FileChannel file) throws IOException {
+	void sync(ImgChannel file) throws IOException {
 		int ntables = blockTable.getNBlockTables();
-		ByteBuffer buf = ByteBuffer.allocate(blockSize * ntables);
+		ByteBuffer buf = ByteBuffer.allocate(blockManager.getBlockSize() * ntables);
 		buf.order(ByteOrder.LITTLE_ENDIAN);
 
 		for (int part = 0; part < ntables; part++) {
@@ -108,7 +103,7 @@ class Dirent implements DirectoryEntry {
 			buf.putChar((char) part);
 
 			// Write out the allocation of blocks for this entry.
-			buf.position(blockSize * part + 0x20);
+			buf.position(blockManager.getBlockSize() * part + 0x20);
 			blockTable.writeTable(buf, part);
 		}
 
@@ -189,17 +184,7 @@ class Dirent implements DirectoryEntry {
 
 		//blockTable[nblocks++] = (char) n;
 		blockTable.addBlock(n);
-		size += blockSize;
-	}
-
-	/**
-	 * Set for the first directory entry that covers the header and directory
-	 * itself.
-	 *
-	 * @param special Set to true to mark as the special first entry.
-	 */
-	public void setSpecial(boolean special) {
-		this.special = special;
+		size += blockManager.getBlockSize();
 	}
 
 	/**
@@ -211,6 +196,16 @@ class Dirent implements DirectoryEntry {
 		//log.debug("adding block " + n + ", at " + nblocks);
 		blockTable.addBlock(n);
 		//blockTable[nblocks++] = (char) n;
+	}
+
+	/**
+	 * Set for the first directory entry that covers the header and directory
+	 * itself.
+	 *
+	 * @param special Set to true to mark as the special first entry.
+	 */
+	public void setSpecial(boolean special) {
+		this.special = special;
 	}
 
 	/**
@@ -229,4 +224,7 @@ class Dirent implements DirectoryEntry {
 		return blockTable.physFromLogical(lblock);
 	}
 
+	public BlockManager getBlockManager() {
+		return blockManager;
+	}
 }

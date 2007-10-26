@@ -17,6 +17,7 @@
 package uk.me.parabola.imgfmt.sys;
 
 import uk.me.parabola.imgfmt.FileExistsException;
+import uk.me.parabola.imgfmt.FileSystemParam;
 import uk.me.parabola.imgfmt.fs.DirectoryEntry;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.log.Logger;
@@ -38,35 +39,25 @@ import java.util.Map;
 class Directory {
 	private static final Logger log = Logger.getLogger(Directory.class);
 
-	// We reserve space for the directory to allow us to write the files first.
-	// TODO Fix properly so that we don't need to reserve up front.
-	private static final int DIRECTORY_BLOCKS = 200;
-
 	private int startBlock; // The starting block for the directory.
-	private int blockSize;
 	private int nEntries;
 
-	private final FileChannel file;
+	//private final FileChannel file;
 	private ImgChannel dir;
 
 	// The list of files themselves.
-	//private final List<DirectoryEntry> entries = new ArrayList<DirectoryEntry>();
 	private final Map<String, DirectoryEntry> entries = new LinkedHashMap<String, DirectoryEntry>();
-
-
-	Directory(FileChannel file) {
-		this.file = file;
-	}
 	
 	/**
 	 * Create a new file in the directory.
 	 * 
 	 * @param name The file name.  Must be 8+3 characters.
+	 * @param blockManager To allocate blocks for the created file entry.
 	 * @return The new directory entity.
 	 * @throws FileExistsException If the entry already
 	 * exists.
 	 */
-	Dirent create(String name) throws FileExistsException {
+	Dirent create(String name, BlockManager blockManager) throws FileExistsException {
 		for (DirectoryEntry e : entries.values()) {
 			String name2 = e.getName() + '.' + e.getExt();
 			if (name.equals(name2)) {
@@ -74,7 +65,7 @@ class Directory {
 			}
 		}
 
-		Dirent ent = new Dirent(name, blockSize);
+		Dirent ent = new Dirent(name, blockManager);
 		addEntry(ent);
 
 		return ent;
@@ -88,23 +79,10 @@ class Directory {
 	 * of the directory entries.
 	 */
 	public void sync() throws IOException {
-		//file.position((long) startBlock * blockSize);
-
-		// We have to allocate blocks for the directory entries, we have to do
-		// this first, as one of the directory entries contains this
-		// information.
-		//int bn = startBlock;
-		//for (DirectoryEntry ent : entries) {
-		//	SysDirEntry sysent = (SysDirEntry) ent;
-		//	int n = sysent.getNBlockTables();
-		//	for (int i = 0; i < n; i++) {
-		//		specialEntry.addFullBlock(bn++);
-		//	}
-		//}
 
 		for (DirectoryEntry ent : entries.values()) {
-			log.debug("wrting ent at " + file.position());
-			((Dirent) ent).sync(file);
+			log.debug("wrting ent at " + dir.position());
+			((Dirent) ent).sync(dir);
 		}
 	}
 
@@ -112,45 +90,9 @@ class Directory {
 		return new ArrayList<DirectoryEntry>(entries.values());
 	}
 
-	/**
-	 * Set the block size.
-	 * @param size The size which must be a power of two.
-	 */
-	public void setBlockSize(int size) {
-		blockSize = size;
-	}
-
-	public void setStartBlock(int startBlock) {
-		this.startBlock = startBlock;
-	}
-
 	public void setFile(ImgChannel chan) {
 		this.dir = chan;
 	}
-
-	///**
-	// * Initialise the directory.
-	// */
-	//public void init() {
-	//
-	//	// There is a special entry in the directory that covers the whole
-	//	// of the header and the directory itself.  We have to allocate it
-	//	// and make it cover the right part of the file.
-	//	Dirent ent = new Dirent("        .   ", blockSize);
-	//
-	//	// Add blocks for the header before the directory.
-	//	for (int i = 0; i < startBlock; i++)
-	//		ent.addFullBlock(i);
-	//
-	//	// We also reserve a number of blocks for the directory entries.
-	//	for (int i = 0; i < DIRECTORY_BLOCKS; i++)
-	//		ent.addFullBlock(startBlock + i);
-	//
-	//	ent.setSpecial(true);
-	//
-	//	// Add it to this directory.
-	//	addEntry(ent);
-	//}
 
 	/**
 	 * Add an entry to the directory. This updates the header block allocation

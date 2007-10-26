@@ -55,16 +55,13 @@ public class FileNode implements ImgChannel {
 	 * it may be possible to implement this.
 	 *
 	 * @param file The handle to the underlying file.
-	 * @param blockManager Class to handle allocation of blocks.
 	 * @param dir The directory entry associated with this file.
 	 * @param mode The mode "rw" for read and write etc.
 	 */
-	public FileNode(FileChannel file, BlockManager blockManager,
-			Dirent dir, String mode)
+	public FileNode(FileChannel file, Dirent dir, String mode)
 	{
 		this.file = file;
 		this.dirent = dir;
-		this.blockManager = blockManager;
 
 		if (mode.indexOf('r') >= 0)
 			readable = true;
@@ -72,6 +69,8 @@ public class FileNode implements ImgChannel {
 			writeable = true;
 		if (!(readable || writeable))
 			throw new IllegalArgumentException("File must be readable or writeable");
+
+		blockManager = dir.getBlockManager();
 		if (blockManager == null)
 			throw new IllegalArgumentException("no file system supplied");
 

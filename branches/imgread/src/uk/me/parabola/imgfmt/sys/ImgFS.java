@@ -27,9 +27,7 @@ import uk.me.parabola.log.Logger;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -50,14 +48,14 @@ public class ImgFS implements FileSystem {
 	private final FileChannel file;
 
 	// The header contains general information.
-	private final ImgHeader header;
+	private ImgHeader header;
 
 	// There is only one directory that holds all filename and block allocation
 	// information.
-	private final Directory directory;
+	private Directory directory;
 
 	// The filesystem is responsible for allocating blocks
-	private final BlockManager blockManager;
+	private BlockManager fileBlockManager;
 
 	private FileSystemParam fsParams;
 
@@ -69,9 +67,6 @@ public class ImgFS implements FileSystem {
 	 */
 	private ImgFS(FileChannel chan) {
 		file = chan;
-		header = new ImgHeader(chan);
-		directory = new Directory(chan);
-		blockManager = new BlockManager();
 	}
 
 	/**
@@ -86,7 +81,6 @@ public class ImgFS implements FileSystem {
 			throws FileNotWritableException
 	{
 		assert params != null;
-		ImgFS fs = new ImgFS(chan);
 
 		// Truncate the file, because extra bytes beyond the end make for a
 		// map that doesn't work on the GPS (although its likely to work in
@@ -97,50 +91,8 @@ public class ImgFS implements FileSystem {
 			throw new FileNotWritableException("Failed to truncate file", e);
 		}
 
-		ImgHeader h = fs.header;
-		h.createHeader(params);
-		h.setDirectoryStartBlock(DIRECTORY_START_BLOCK); // could be from params
-
-		// Set the times.
-		Date date = new Date();
-		h.setCreationTime(date);
-		h.setUpdateTime(date);
-		h.setDescription(params.getMapDescription());
-
-		// The block manager allocates blocks for files.
-		BlockManager bm = fs.blockManager;
-		bm.setBlockSize(params.getBlockSize());
-		bm.setCurrentBlock(params.getDirectoryStartBlock());
-
-		// Initialise the directory.
-		ImgChannel f;
-		Directory dir = fs.directory;
-		dir.setStartBlock(params.getDirectoryStartBlock());
-		dir.setBlockSize(h.getBlockSize());
-
-		try {
-			f = fs.create(DIRECTORY_FILE_NAME);
-		} catch (FileExistsException e) {
-			// Well it shouldn't exist but if it does, all well and good then..
-			try {
-				f = fs.open(DIRECTORY_FILE_NAME, "w");
-				f.position(0);
-			} catch (FileNotFoundException e1) {
-				// OK give up then...
-				throw new FileNotWritableException("Could not create directory", e1);
-			}
-		}
-
-		ByteBuffer buf = ByteBuffer.allocate(h.getBlockSize());
-		for (int i = 0; i < params.getReservedDirectoryBlocks(); i++) {
-			try {
-				f.write(buf);
-			} catch (IOException e) {
-				throw new FileNotWritableException("Could not write directory blocks", e);
-			}
-		}
-		f.position(0);
-		dir.setFile(f);
+		ImgFS fs = new ImgFS(chan);
+		fs.initFs(chan, params);
 
 		return fs;
 	}
@@ -177,47 +129,6 @@ public class ImgFS implements FileSystem {
 			throw new FileNotFoundException("Could not read header " + e.getMessage());
 		}
 
-		/*	// Set the times.
-		  Date date = new Date();
-		  h.setCreationTime(date);
-		  h.setUpdateTime(date);
-		  h.setDescription(params.getMapDescription());
-
-		  // The block manager allocates blocks for files.
-		  BlockManager bm = fs.blockManager;
-		  bm.setBlockSize(params.getBlockSize());
-		  bm.setCurrentBlock(params.getDirectoryStartBlock());
-
-		  // Initialise the directory.
-		  ImgChannel f;
-		  Directory dir = fs.directory;
-		  dir.setStartBlock(params.getDirectoryStartBlock());
-		  dir.setBlockSize(h.getBlockSize());
-
-		  try {
-			  f = fs.create(DIRECTORY_FILE_NAME);
-		  } catch (FileExistsException e) {
-			  // Well it shouldn't exist but if it does, all well and good then..
-			  try {
-				  f = fs.open(DIRECTORY_FILE_NAME, "w");
-				  f.position(0);
-			  } catch (FileNotFoundException e1) {
-				  // OK give up then...
-				  throw new FileNotWritableException("Could not create directory", e1);
-			  }
-		  }
-
-		  ByteBuffer buf = ByteBuffer.allocate(h.getBlockSize());
-		  for (int i = 0; i < params.getReservedDirectoryBlocks(); i++) {
-			  try {
-				  f.write(buf);
-			  } catch (IOException e) {
-				  throw new FileNotWritableException("Could not write directory blocks", e);
-			  }
-		  }
-		  f.position(0);
-		  dir.setFile(f);
-  */
 		return fs;
 	}
 
@@ -228,9 +139,9 @@ public class ImgFS implements FileSystem {
 	 * @return A directory entry for the new file.
 	 */
 	public ImgChannel create(String name) throws FileExistsException {
-		Dirent dir = directory.create(name);
+		Dirent dir = directory.create(name, fileBlockManager);
 
-		FileNode f = new FileNode(file, blockManager, dir, "w");
+		FileNode f = new FileNode(file, dir, "w");
 		return f;
 	}
 
@@ -317,5 +228,32 @@ public class ImgFS implements FileSystem {
 		} catch (IOException e) {
 			log.debug("could not sync filesystem");
 		}
+	}
+
+	private void initFs(FileChannel chan, FileSystemParam params) throws FileNotWritableException {
+		// The block manager allocates blocks for files.
+		BlockManager bm = new BlockManager(params.getBlockSize(), params.getDirectoryStartBlock());
+
+		// This bit is tricky.  We want to use a regular ImgChannel to write
+		// to the header and directory, but to create one normally would involve
+		// it already existing, so it is created by hand.
+
+		Dirent dir;
+		Directory direct = new Directory();
+		try {
+			dir = direct.create(DIRECTORY_FILE_NAME, bm);
+
+			FileNode f = new FileNode(chan, dir, "w");
+			direct.setFile(f);
+			directory = direct;
+			header = new ImgHeader(f);
+			header.createHeader(params);
+		} catch (FileExistsException e) {
+			throw new FileNotWritableException("Could not create img file directory", e);
+		}
+
+		fileBlockManager = new BlockManager(params.getBlockSize(), params.getReservedDirectoryBlocks());
+
+		assert directory != null && header != null;
 	}
 }
