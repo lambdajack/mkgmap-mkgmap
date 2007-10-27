@@ -230,6 +230,7 @@ public class ImgFS implements FileSystem {
 	private void initFs(FileChannel chan, FileSystemParam params) throws FileNotWritableException {
 		// The block manager allocates blocks for files.
 		BlockManager headerBlockManager = new BlockManager(params.getBlockSize(), 0);
+		headerBlockManager.setMaxBlock(params.getReservedDirectoryBlocks());
 
 		// This bit is tricky.  We want to use a regular ImgChannel to write
 		// to the header and directory, but to create one normally would involve

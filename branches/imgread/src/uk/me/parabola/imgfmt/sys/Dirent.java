@@ -182,11 +182,6 @@ class Dirent implements DirectoryEntry {
 	 * @param n The block number.
 	 */
 	void addFullBlock(int n) {
-		// We do not currently deal with more than one directory inode block.
-		//if (nblocks >= 240)
-		//	throw new FormatException("reached limit of file size");
-
-		//blockTable[nblocks++] = (char) n;
 		blockTable.addBlock(n);
 		size += blockManager.getBlockSize();
 	}
@@ -197,9 +192,7 @@ class Dirent implements DirectoryEntry {
 	 * @param n The block number.
 	 */
 	void addBlock(int n) {
-		//log.debug("adding block " + n + ", at " + nblocks);
 		blockTable.addBlock(n);
-		//blockTable[nblocks++] = (char) n;
 	}
 
 	/**
@@ -212,6 +205,10 @@ class Dirent implements DirectoryEntry {
 		this.special = special;
 	}
 
+	public boolean isSpecial() {
+		return special;
+	}
+
 	/**
 	 * Converts from a logical block to a physical block.  If the block does
 	 * not exist then 0xffff will be returned.
@@ -220,11 +217,6 @@ class Dirent implements DirectoryEntry {
 	 * @return The corresponding physical block in the filesystem.
 	 */
 	public int getPhysicalBlock(int lblock) {
-		//if (lblock >= blockTable.length)
-		//	throw new IllegalArgumentException("can't deal with long files yet");
-		//
-		//int pblock = blockTable[lblock];
-
 		return blockTable.physFromLogical(lblock);
 	}
 

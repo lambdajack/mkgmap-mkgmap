@@ -22,6 +22,7 @@ import uk.me.parabola.imgfmt.fs.ImgChannel;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.Calendar;
 import java.util.Date;
@@ -101,6 +102,7 @@ class ImgHeader {
 
 	ImgHeader(ImgChannel chan) {
 		this.file = chan;
+		header.order(ByteOrder.LITTLE_ENDIAN);
 	}
 
 	/**
@@ -172,6 +174,14 @@ class ImgHeader {
 		header.put(OFF_END_CYLINDER, (byte) (cylinders - 1));
 		header.putInt(OFF_REL_SECTORS, 0);
 		header.putInt(OFF_NUMBER_OF_SECTORS, (blocks * (1 << (exp - 9))));
+
+		setDirectoryStartBlock(params.getDirectoryStartBlock());
+
+		// Set the times.
+		Date date = new Date();
+		setCreationTime(date);
+		setUpdateTime(date);
+		setDescription(params.getMapDescription());
 
 		// Checksum is not checked.
 		int check = 0;
@@ -298,7 +308,7 @@ class ImgHeader {
 		this.creationTime = date;
 	}
 
-	void initHeader(FileSystemParam params) {
+	private void initHeader(FileSystemParam params) {
 		createHeader(params);
 		setDirectoryStartBlock(params.getDirectoryStartBlock());
 

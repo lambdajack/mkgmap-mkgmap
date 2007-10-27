@@ -66,6 +66,10 @@ class BlockManager {
 		this.blockSize = blockSize;
 	}
 
+	public int getMaxBlock() {
+		return maxBlock;
+	}
+
 	public void setMaxBlock(int maxBlock) {
 		this.maxBlock = maxBlock;
 	}

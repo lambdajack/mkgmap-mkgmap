@@ -22,6 +22,7 @@ import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.log.Logger;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -92,16 +93,43 @@ class Directory {
 			blocks += n;
 		}
 
+		// Save the current position
+		long dirPosition = chan.position();
+
 		int blockSize = headerBlockManager.getBlockSize();
 		int n = blockSize - 0x20;
 
-		int headerBlocksNeeded = (blocks + (n - 1)) / n;
-		log.debug("header blocks needed", headerBlocksNeeded);
+		int forHeader = (blocks + (n - 1)) / n;
+		log.debug("header blocks needed", forHeader);
 
-		for (DirectoryEntry ent : entries.values()) {
-			log.debug("wrting ", ent.getFullName(), " at ", chan.position());
-			((Dirent) ent).sync(chan);
+		// Write the blocks that will will contain the header blocks.
+
+		// Now fill in to the end of the reserved blocks
+		long end = (long) blockSize * headerBlockManager.getMaxBlock() - 1;
+		chan.position(end);
+		ByteBuffer buf = ByteBuffer.allocate(1);
+		buf.put((byte) 0);
+		buf.flip();
+		chan.write(buf);
+
+		chan.position(dirPosition + forHeader * (long)blockSize);
+
+		for (DirectoryEntry dir : entries.values()) {
+			Dirent ent = (Dirent) dir;
+
+			if (!ent.isSpecial()) {
+				log.debug("wrting ", dir.getFullName(), " at ", chan.position());
+				log.debug("ent size", ent.getSize());
+				ent.sync(chan);
+			}
 		}
+
+		// Now go back and write in the directory entry for the header.
+		chan.position(dirPosition);
+		Dirent ent = (Dirent) entries.values().iterator().next();
+		log.debug("ent header size", ent.getSize());
+		ent.sync(chan);
+
 	}
 
 	public List<DirectoryEntry> getEntries() {

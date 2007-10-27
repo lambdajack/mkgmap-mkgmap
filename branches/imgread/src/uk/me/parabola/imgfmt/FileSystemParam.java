@@ -26,7 +26,7 @@ public class FileSystemParam {
 	private String mapDescription = "Open Street Map";
 	private int blockSize = 512;
 	private int directoryStartBlock = 2;
-	private int reservedDirectoryBlocks = 180;
+	private int reservedDirectoryBlocks = 202;
 
 	public String getMapDescription() {
 		return mapDescription;
