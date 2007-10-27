@@ -16,7 +16,6 @@
  */
 package test;
 
-import uk.me.parabola.imgfmt.FileSystemParam;
 import uk.me.parabola.imgfmt.fs.DirectoryEntry;
 import uk.me.parabola.imgfmt.fs.FileSystem;
 import uk.me.parabola.imgfmt.sys.ImgFS;
@@ -30,10 +29,18 @@ import java.util.List;
 public class ListFile {
 	public static void main(String[] args) throws IOException {
 		//FileSystemParam params = new FileSystemParam();
-		FileSystem fs = ImgFS.openFs("63240001.img");
+		String file = "63240001.img";
+		if (args.length > 0)
+			file = args[0];
+		
+		FileSystem fs = ImgFS.openFs(file);
 		List<DirectoryEntry> entries = fs.list();
 		for (DirectoryEntry ent : entries) {
-			System.out.format("%-15s %d\n", ent.getFullName(), ent.getSize());
+			String fullname = ent.getFullName();
+			System.out.format("%-15s %d\n", fullname, ent.getSize());
+
+			DirectoryEntry ent2 = fs.lookup(fullname);
+			System.out.format("%-15s %d\n", fullname, ent.getSize());
 		}
 	}
 }

@@ -32,13 +32,15 @@ import java.nio.ByteOrder;
  *
  * A directory entry may take more than block in the file system.
  *
- * All documentation seems to point to the block numbers having to be
+ * <p>All documentation seems to point to the block numbers having to be
  * contiguous, but seems strange so I shall experiment.
+ *
+ * <p>Entries are in blocks of 512 bytes, regardless of the block size.
  *
  * @author Steve Ratcliffe
  */
 class Dirent implements DirectoryEntry {
-	private static final Logger log = Logger.getLogger(Dirent.class);
+	protected static final Logger log = Logger.getLogger(Dirent.class);
 
 	// Constants.
 	static final int MAX_FILE_LEN = 8;
@@ -51,7 +53,7 @@ class Dirent implements DirectoryEntry {
 	static final int OFF_FILE_PART = 0x10;
 	private static final int OFF_SIZE = 0x0c;
 
-	static final int ENTRY_SIZE = 512;
+	private static final int ENTRY_SIZE = 512;
 
 	// Filenames are a base+extension
 	private String name;
@@ -123,10 +125,6 @@ class Dirent implements DirectoryEntry {
 		file.write(buf);
 	}
 
-	int numberHeaderBlocks() {
-		return blockTable.getNBlockTables();
-	}
-
 	/**
 	 * Get the file name.
 	 *
@@ -143,6 +141,43 @@ class Dirent implements DirectoryEntry {
 	 */
 	public String getExt() {
 		return ext;
+	}
+
+	/**
+	 * The full name is of the form 8+3 with a dot in between the name and
+	 * extension.  The full name is used as the index in the directory.
+	 *
+	 * @return The full name.
+	 */
+	public String getFullName() {
+		return name + '.' + ext;
+	}
+
+	/**
+	 * Read in the block numbers from the given buffer.  If this is the first
+	 * directory block for this file, then the size is set too.
+	 *
+	 * @param buf The data as read from the file.
+	 */
+	void initBlocks(ByteBuffer buf) {
+
+		byte used = buf.get(OFF_USED_FLAG);
+		if (used != 1)
+			return;
+
+		int part = buf.getChar(OFF_FILE_PART);
+		if (part == 0 || (isSpecial() && part == 3))
+			size = buf.getInt(OFF_SIZE);
+
+		blockTable.readTable(buf);
+	}
+	/**
+	 * Get the file size.
+	 *
+	 * @return The size of the file in bytes.
+	 */
+	public int getSize() {
+		return size;
 	}
 
 	/**
@@ -168,19 +203,15 @@ class Dirent implements DirectoryEntry {
 		this.ext = ext;
 	}
 
-	public String getFullName() {
-		return name + '.' + ext;
-	}
-
 	/**
-	 * Get the file size.
+	 * The number of blocks that the header covers.  The header includes
+	 * the directory for the purposes of this routine.
 	 *
-	 * @return The size of the file in bytes.
+	 * @return The total number of header basic blocks (blocks of 512 bytes).
 	 */
-	public int getSize() {
-		return size;
+	int numberHeaderBlocks() {
+		return blockTable.getNBlockTables();
 	}
-
 
 	void setSize(int size) {
 		log.debug("setting size " + getName() + getExt() + " to " + size);
@@ -225,40 +256,5 @@ class Dirent implements DirectoryEntry {
 		return blockManager;
 	}
 
-	Boolean initBlocks(ByteBuffer buf) {
 
-		byte used = buf.get(OFF_USED_FLAG);
-		if (used != 1)
-			return false;
-
-		// Get the filename.
-		byte[] bname = new byte[MAX_FILE_LEN] ;
-		buf.position(OFF_NAME);
-		buf.get(bname, 0, bname.length);
-		try {
-			String s = new String(bname, "ascii");
-			if (!s.equals(name))
-				return false;
-		} catch (UnsupportedEncodingException e) {
-			// ignore as ascii has to be supported.
-		}
-
-		// Get the extension
-		byte[] bext = new byte[MAX_EXT_LEN] ;
-		buf.get(bext, 0, bext.length);
-		try {
-			String s = new String(bext, "ascii");
-			if (!s.equals(ext))
-				return false;
-		} catch (UnsupportedEncodingException e) {
-			// ignore as ascii has to be supported.
-		}
-
-		int part = buf.getChar(OFF_FILE_PART);
-		if (part == 0)
-			size = buf.getInt(OFF_SIZE);
-
-		blockTable.readTable(buf);
-		return true;
-	}
 }

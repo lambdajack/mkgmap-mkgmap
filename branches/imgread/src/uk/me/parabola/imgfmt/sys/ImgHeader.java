@@ -51,11 +51,11 @@ class ImgHeader {
 	private static final int OFF_CYLINDERS = 0x1c;
 
 	private static final int OFF_CREATION_YEAR = 0x39;
-//	private static final int OFF_CREATION_MONTH = 0x3b;
-//	private static final int OFF_CREATION_DAY = 0x3c;
-//	private static final int OFF_CREATION_HOUR = 0x3d;
-//	private static final int OFF_CREATION_MINUTE = 0x3e;
-//	private static final int OFF_CREATION_SECOND = 0x3f;
+	//	private static final int OFF_CREATION_MONTH = 0x3b;
+	//	private static final int OFF_CREATION_DAY = 0x3c;
+	//	private static final int OFF_CREATION_HOUR = 0x3d;
+	//	private static final int OFF_CREATION_MINUTE = 0x3e;
+	//	private static final int OFF_CREATION_SECOND = 0x3f;
 
 	// The block number where the directory starts.
 	private static final int OFF_DIRECTORY_START_BLOCK = 0x40;
@@ -70,7 +70,7 @@ class ImgHeader {
 	private static final int OFF_BLOCK_SIZE_EXPONENT2 = 0x62;
 	private static final int OFF_BLOCK_SIZE = 0x63;
 
-//	private static final int OFF_UKN_3 = 0x63;
+	//	private static final int OFF_UKN_3 = 0x63;
 
 	private static final int OFF_MAP_NAME_CONT = 0x65;
 
@@ -199,6 +199,7 @@ class ImgHeader {
 
 		fsParams = new FileSystemParam();
 		fsParams.setBlockSize(1 << (exp1 + exp2));
+		fsParams.setDirectoryStartBlock(header.get(OFF_DIRECTORY_START_BLOCK));
 
 		// ... more to do
 	}
@@ -291,7 +292,6 @@ class ImgHeader {
 		return (byte) (y - 1900);
 	}
 
-
 	public int getBlockSize() {
 		return fsParams.getBlockSize();
 	}
@@ -318,5 +318,4 @@ class ImgHeader {
 	protected void setCreationTime(Date date) {
 		this.creationTime = date;
 	}
-
 }

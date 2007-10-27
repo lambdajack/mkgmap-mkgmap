@@ -22,6 +22,8 @@ import uk.me.parabola.mkgmap.main.Main;
 import uk.me.parabola.mkgmap.main.MakeTestLang10Map;
 import uk.me.parabola.mkgmap.main.MakeTestLangMap;
 
+import java.io.IOException;
+
 /**
  * @author Steve Ratcliffe
  */
@@ -62,6 +64,14 @@ public class TestAll {
 	};
 
 	private static void positive() {
+		try {
+			ListFile.main(new String[] {
+					"63240001.img"
+			});
+		} catch (IOException e) {
+			System.out.println("could not read img file");
+		}
+
 		Main.main(new String[] {
 				"--mapname=12008899",
 				"vbig.osm"

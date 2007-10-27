@@ -43,7 +43,7 @@ public class ImgFS implements FileSystem {
 	private static final Logger log = Logger.getLogger(ImgFS.class);
 
 	// The directory is just like any other file, but with a name of 8+3 spaces
-	private static final String DIRECTORY_FILE_NAME = "        .   ";
+	static final String DIRECTORY_FILE_NAME = "        .   ";
 
 	// This is the read or write channel to the real file system.
 	private final FileChannel file;
@@ -57,6 +57,7 @@ public class ImgFS implements FileSystem {
 
 	// The filesystem is responsible for allocating blocks
 	private BlockManager fileBlockManager;
+	private static final long BASIC_BLOCK_SIZE = (long) 512;
 
 	/**
 	 * Private constructor, use the static {@link #createFs} and {@link #openFs}
@@ -106,15 +107,17 @@ public class ImgFS implements FileSystem {
 		return fs;
 	}
 
+	/**
+	 * Open an existing IMG file system.
+	 * @param name The file name to open.
+	 * @return A File system that can be used lookup the internal files.
+	 * @throws FileNotFoundException When the file doesn't exist or can't be
+	 * read.
+	 */
 	public static FileSystem openFs(String name) throws FileNotFoundException {
 		RandomAccessFile rafile  ;
-		try {
-			System.out.println("open file " + name);
-			rafile = new RandomAccessFile(name, "r");
-			return openFs(rafile.getChannel());
-		} catch (FileNotFoundException e) {
-			throw new FileNotFoundException("Could not open file " + e.getMessage());
-		}
+		rafile = new RandomAccessFile(name, "r");
+		return openFs(rafile.getChannel());
 	}
 
 	private static FileSystem openFs(FileChannel chan) throws FileNotFoundException {
@@ -189,7 +192,7 @@ public class ImgFS implements FileSystem {
 		if (name == null)
 			throw new IllegalArgumentException("null name argument");
 
-		throw new IOException("not implemented");
+		return directory.lookup(name);
 	}
 
 	/**
@@ -198,7 +201,7 @@ public class ImgFS implements FileSystem {
 	 * @return A List of directory entries.
 	 * @throws IOException If an error occurs reading the directory.
 	 */
-	public List<DirectoryEntry> list() throws IOException {
+	public List<DirectoryEntry> list()  {
 		return directory.getEntries();
 	}
 
@@ -263,6 +266,13 @@ public class ImgFS implements FileSystem {
 		assert directory != null && header != null;
 	}
 
+	/**
+	 * Initialise a filesystem that is going to be read from.  We need to read
+	 * in the header including directory.
+	 *
+	 * @param chan The file channel to read from.
+	 * @throws IOException If the file cannot be read.
+	 */
 	private void readInitFS(FileChannel chan) throws IOException {
 		ByteBuffer headerBuf = ByteBuffer.allocate(512);
 		chan.read(headerBuf);
@@ -275,25 +285,11 @@ public class ImgFS implements FileSystem {
 		headerBlockManager.setMaxBlock(params.getReservedDirectoryBlocks());
 
 		directory = new Directory(headerBlockManager);
+		directory.setStartPos(params.getDirectoryStartBlock() * BASIC_BLOCK_SIZE);
 
-		chan.position(1024);
-		ByteBuffer buf = ByteBuffer.allocate(Dirent.ENTRY_SIZE);
-		buf.order(ByteOrder.LITTLE_ENDIAN);
 		Dirent ent = directory.create(DIRECTORY_FILE_NAME, headerBlockManager);
-		int n;
-		boolean more = true;
-		while (more) {
-			buf.clear();
-			n = chan.read(buf);
-			if (n == Dirent.ENTRY_SIZE) {
-				buf.flip();
-				more = ent.initBlocks(buf);
-			} else {
-				more = false;
-			}
-		}
-
 		FileNode f = new FileNode(chan, ent, "r");
+
 		header.setFile(f);
 		directory.setFile(f);
 		directory.readInit();

@@ -66,7 +66,7 @@ public interface FileSystem {
 	 * @return A List of directory entries.
 	 * @throws IOException If an error occurs reading the directory.
 	 */
-	public List<DirectoryEntry> list() throws IOException;
+	public List<DirectoryEntry> list() ;
 
 	/**
 	 * Sync with the underlying file.  All unwritten data is written out to

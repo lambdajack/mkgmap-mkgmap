@@ -54,6 +54,12 @@ class BlockTable {
 		blocks = new ArrayList<char[]>(200);
 	}
 
+	/**
+	 * Write out the specified table to the given buffer.
+	 *
+	 * @param buf The buffer to write to.
+	 * @param n The number of the block table to write out.
+	 */
 	public void writeTable(ByteBuffer buf, int n) {
 		char[] cbuf = blocks.get(n);
 		log.debug("block with length", cbuf.length);
@@ -62,6 +68,11 @@ class BlockTable {
 		}
 	}
 
+	/**
+	 * Read a block table from the given buffer.  The table is added to the
+	 * list.
+	 * @param buf The buffer to read from.
+	 */
 	public void readTable(ByteBuffer buf) {
 		buf.position(BLOCKS_TABLE_START);
 		buf.limit(ENTRY_SIZE);
@@ -97,6 +108,7 @@ class BlockTable {
 		int offset = lblock - blockNum * TABLE_SIZE;
 		if (blockNum >= blocks.size())
 			return 0xffff;
+		
 		char[] cbuf = blocks.get(blockNum);
 		return cbuf[offset];
 	}
@@ -117,13 +129,13 @@ class BlockTable {
 	 * @return Array for more numbers.
 	 */
 	private char[] newTable() {
-		char[] b = new char[TABLE_SIZE];
-		Arrays.fill(b, (char) 0xffff);
+		char[] table = new char[TABLE_SIZE];
+		Arrays.fill(table, (char) 0xffff);
 
 		curroff = 0;
-		blocks.add(b);
-		currTable = b;
+		blocks.add(table);
+		currTable = table;
 
-		return b;
+		return table;
 	}
 }

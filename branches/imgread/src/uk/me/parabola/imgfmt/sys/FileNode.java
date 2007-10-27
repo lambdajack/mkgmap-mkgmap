@@ -164,7 +164,7 @@ public class FileNode implements ImgChannel {
 				n = blockSize;
 
 			if (off != 0)
-				n = blockSize - off;
+				n = Math.min(n, blockSize - off);
 
 			dst.limit(dst.position() + n);
 
@@ -237,7 +237,7 @@ public class FileNode implements ImgChannel {
 				n = blockSize;
 
 			if (off != 0)
-				n = blockSize - off;
+				n = Math.min(n, blockSize - off);
 
 			src.limit(src.position() + n);
 

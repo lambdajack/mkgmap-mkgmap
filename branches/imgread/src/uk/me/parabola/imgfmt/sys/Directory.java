@@ -44,6 +44,7 @@ class Directory {
 	private ImgChannel chan;
 
 	private final BlockManager headerBlockManager;
+	private long startPos;
 
 	// The list of files themselves.
 	private final Map<String, DirectoryEntry> entries = new LinkedHashMap<String, DirectoryEntry>();
@@ -67,12 +68,23 @@ class Directory {
 		if (entries.get(name) != null)
 			throw new FileExistsException("File " + name + " already exists");
 
-		Dirent ent = new Dirent(name, blockManager);
+		Dirent ent;
+		if (name.equals(ImgFS.DIRECTORY_FILE_NAME)) {
+			ent = new HeaderDirent(name, blockManager);
+		} else {
+			ent = new Dirent(name, blockManager);
+		}
 		addEntry(ent);
 
 		return ent;
 	}
 
+	/**
+	 * Initialise the directory for reading the file.  The whole directory
+	 * is read in.
+	 *
+	 * @throws IOException If it cannot be read.
+	 */
 	void readInit() throws IOException {
 		assert chan != null;
 
@@ -80,7 +92,7 @@ class Directory {
 		buf.order(ByteOrder.LITTLE_ENDIAN);
 
 		Dirent current = null;
-		chan.position(3 * (long) 512); // XXX
+		chan.position(startPos);
 		while ((chan.read(buf)) > 0) {
 			buf.flip();
 
@@ -97,6 +109,9 @@ class Directory {
 
 			if (part == 0) {
 				current = create(name + '.' + ext, headerBlockManager);
+				current.initBlocks(buf);
+			} else if (part == 3 && current == null) {
+				current = (Dirent) entries.get(ImgFS.DIRECTORY_FILE_NAME);
 				current.initBlocks(buf);
 			} else {
 				assert current != null;
@@ -166,12 +181,14 @@ class Directory {
 
 	}
 
+	/**
+	 * Get the entries. Used for listing the directory.
+	 *
+	 * @return A list of the directory entries.  They will be in the same
+	 * order as in the file.
+	 */
 	public List<DirectoryEntry> getEntries() {
 		return new ArrayList<DirectoryEntry>(entries.values());
-	}
-
-	public void setFile(ImgChannel chan) {
-		this.chan = chan;
 	}
 
 	/**
@@ -181,5 +198,17 @@ class Directory {
 	 */
 	private void addEntry(DirectoryEntry ent) {
 		entries.put(ent.getFullName(), ent);
+	}
+
+	public void setFile(ImgChannel chan) {
+		this.chan = chan;
+	}
+
+	public void setStartPos(long startPos) {
+		this.startPos = startPos;
+	}
+
+	public DirectoryEntry lookup(String name) {
+		return entries.get(name);
 	}
 }
