@@ -90,7 +90,7 @@ class ImgHeader {
 
 	private FileSystemParam fsParams;
 
-	private ByteBuffer header = ByteBuffer.allocate(512);
+	private final ByteBuffer header = ByteBuffer.allocate(512);
 
 	private ImgChannel file;
 	private Date creationTime;

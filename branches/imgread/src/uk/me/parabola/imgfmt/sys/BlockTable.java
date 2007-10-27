@@ -50,7 +50,7 @@ class BlockTable {
 	private final List<char[]> blocks;
 	private char[] currTable;
 
-	BlockTable(int blockSize) {
+	BlockTable() {
 		blocks = new ArrayList<char[]>(200);
 	}
 

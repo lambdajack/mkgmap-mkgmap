@@ -281,7 +281,8 @@ public class ImgFS implements FileSystem {
 		buf.order(ByteOrder.LITTLE_ENDIAN);
 		Dirent ent = directory.create(DIRECTORY_FILE_NAME, headerBlockManager);
 		int n;
-		for (boolean more = true; more; ) {
+		boolean more = true;
+		while (more) {
 			buf.clear();
 			n = chan.read(buf);
 			if (n == Dirent.ENTRY_SIZE) {

@@ -23,7 +23,7 @@ package uk.me.parabola.imgfmt.sys;
  */
 class BlockManager {
 	private int currentBlock;
-	private int blockSize;
+	private final int blockSize;
 	private int maxBlock;
 
 	BlockManager(int blockSize, int initialBlock) {

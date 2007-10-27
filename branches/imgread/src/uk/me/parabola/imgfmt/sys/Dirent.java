@@ -49,7 +49,7 @@ class Dirent implements DirectoryEntry {
 	static final int OFF_NAME = 0x01;
 	static final int OFF_EXT = 0x09;
 	static final int OFF_FILE_PART = 0x10;
-	static final int OFF_SIZE = 0x0c;
+	private static final int OFF_SIZE = 0x0c;
 
 	static final int ENTRY_SIZE = 512;
 
@@ -80,7 +80,7 @@ class Dirent implements DirectoryEntry {
 		} else
 			throw new IllegalArgumentException("Filename did not have dot");
 
-		blockTable = new BlockTable(blockManager.getBlockSize());
+		blockTable = new BlockTable();
 	}
 
 	/**
@@ -226,7 +226,6 @@ class Dirent implements DirectoryEntry {
 	}
 
 	Boolean initBlocks(ByteBuffer buf) {
-		boolean ok = true;
 
 		byte used = buf.get(OFF_USED_FLAG);
 		if (used != 1)
