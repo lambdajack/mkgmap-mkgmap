@@ -84,7 +84,7 @@ public class ImgFS implements FileSystem {
 		}
 	}
 
-	public static FileSystem createFs(FileChannel chan, FileSystemParam params)
+	private static FileSystem createFs(FileChannel chan, FileSystemParam params)
 			throws FileNotWritableException
 	{
 		assert params != null;
@@ -237,7 +237,6 @@ public class ImgFS implements FileSystem {
 		// it already existing, so it is created by hand.
 		try {
 			directory = new Directory(headerBlockManager);
-			directory.setStartBlock(params.getDirectoryStartBlock());
 
 			Dirent dir = directory.create(DIRECTORY_FILE_NAME, headerBlockManager);
 			dir.setSpecial(true);

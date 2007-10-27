@@ -23,7 +23,6 @@ import uk.me.parabola.imgfmt.fs.ImgChannel;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.channels.FileChannel;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -90,7 +89,7 @@ class ImgHeader {
 
 	private final ByteBuffer header = ByteBuffer.allocate(512);
 
-	private ImgChannel file;
+	private final ImgChannel file;
 	private Date creationTime;
 
 	// Signatures.
@@ -210,14 +209,14 @@ class ImgHeader {
 		header.rewind();
 		file.position(0);
 		file.write(header);
-		file.position(fsParams.getDirectoryStartBlock() * fsParams.getBlockSize());
+		file.position(fsParams.getDirectoryStartBlock() * (long) fsParams.getBlockSize());
 	}
 
 	/**
 	 * Set the update time.
 	 * @param date The date to use.
 	 */
-	public void setUpdateTime(Date date) {
+	protected void setUpdateTime(Date date) {
 		Calendar cal = Calendar.getInstance();
 		cal.setTime(date);
 
@@ -229,7 +228,7 @@ class ImgHeader {
 	 * Set the description.  It is spread across two areas in the header.
 	 * @param desc The description.
 	 */
-	public void setDescription(String desc) {
+	protected void setDescription(String desc) {
 		header.position(OFF_MAP_DESCRIPTION);
 		int len = desc.length();
 		if (len > 50)
@@ -299,23 +298,13 @@ class ImgHeader {
 		return fsParams.getDirectoryStartBlock();
 	}
 
-	public void setDirectoryStartBlock(int directoryStartBlock) {
+	protected void setDirectoryStartBlock(int directoryStartBlock) {
 		header.put(OFF_DIRECTORY_START_BLOCK, (byte) directoryStartBlock);
 		fsParams.setDirectoryStartBlock(directoryStartBlock);
 	}
 
-	public void setCreationTime(Date date) {
+	protected void setCreationTime(Date date) {
 		this.creationTime = date;
 	}
 
-	private void initHeader(FileSystemParam params) {
-		createHeader(params);
-		setDirectoryStartBlock(params.getDirectoryStartBlock());
-
-		// Set the times.
-		Date date = new Date();
-		setCreationTime(date);
-		setUpdateTime(date);
-		setDescription(params.getMapDescription());
-	}
 }

@@ -50,7 +50,7 @@ class Dirent implements DirectoryEntry {
 	// The file size.
 	private int size;
 
-	private BlockManager blockManager;
+	private final BlockManager blockManager;
 
 	// The block table holds all the blocks that belong to this file.  The
 	// documentation suggests that block numbers are always contiguous.
@@ -173,17 +173,6 @@ class Dirent implements DirectoryEntry {
 	void setSize(int size) {
 		log.debug("setting size " + getName() + getExt() + " to " + size);
 		this.size = size;
-	}
-
-	/**
-	 * Add a complete block and count the full size of it towards the
-	 * file size.
-	 *
-	 * @param n The block number.
-	 */
-	void addFullBlock(int n) {
-		blockTable.addBlock(n);
-		size += blockManager.getBlockSize();
 	}
 
 	/**

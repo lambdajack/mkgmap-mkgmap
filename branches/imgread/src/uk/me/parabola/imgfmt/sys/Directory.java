@@ -38,12 +38,10 @@ import java.util.Map;
 class Directory {
 	private static final Logger log = Logger.getLogger(Directory.class);
 
-	private int startBlock; // The starting block for the directory.
-
 	//private final FileChannel file;
 	private ImgChannel chan;
 
-	private BlockManager headerBlockManager;
+	private final BlockManager headerBlockManager;
 
 	// The list of files themselves.
 	private final Map<String, DirectoryEntry> entries = new LinkedHashMap<String, DirectoryEntry>();
@@ -138,10 +136,6 @@ class Directory {
 
 	public void setFile(ImgChannel chan) {
 		this.chan = chan;
-	}
-
-	public void setStartBlock(int startBlock) {
-		this.startBlock = startBlock;
 	}
 
 	/**

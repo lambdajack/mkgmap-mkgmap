@@ -44,26 +44,8 @@ class BlockManager {
 		return n;
 	}
 
-	/**
-	 * Returns the next block that would be allocated if you were to call
-	 * {@link #allocate}.
-	 *
-	 * @return The next block that would be allocated.
-	 */
-	public int getCurrentBlock() {
-		return currentBlock;
-	}
-
-	public void setCurrentBlock(int startBlock) {
-		this.currentBlock = startBlock;
-	}
-
 	public int getBlockSize() {
 		return blockSize;
-	}
-
-	public void setBlockSize(int blockSize) {
-		this.blockSize = blockSize;
 	}
 
 	public int getMaxBlock() {
