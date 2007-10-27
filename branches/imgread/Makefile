@@ -33,8 +33,8 @@ OSM_GARMIN_MAP = /home/steve/src/osm/applications/utils/export/osmgarminmap
 makemap:
 	rm -f gmapsupp/* mkgmap.log out.log
 	rm -f 63240001.img
-	@# $(TIME) java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main --npoints=100 $(OPTS) $(OSMDATA)
-	 java -Dlog.config=l -ea -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
+	@#$(TIME) java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
+	java -Dlog.config=l -ea -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
 	cp 63240001.img gmapsupp.img
 	imgdecode gmapsupp.img
 

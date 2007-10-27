@@ -120,7 +120,6 @@ class ImgHeader {
 		int exp = 9;
 
 		int bs = params.getBlockSize();
-		System.out.println("bs = " + bs);
 		for (int i = 0; i < 32; i++) {
 			bs >>>= 1;
 			if (bs == 0) {
@@ -129,7 +128,6 @@ class ImgHeader {
 			}
 		}
 
-		System.out.println("exp " + exp);
 		if (exp < 9)
 			throw new IllegalArgumentException("block size too small");
 
@@ -201,7 +199,6 @@ class ImgHeader {
 
 		fsParams = new FileSystemParam();
 		fsParams.setBlockSize(1 << (exp1 + exp2));
-		System.out.println("Block size is " + fsParams.getBlockSize());
 
 		// ... more to do
 	}
