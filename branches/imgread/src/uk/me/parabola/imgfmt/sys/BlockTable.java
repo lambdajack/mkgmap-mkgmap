@@ -52,7 +52,6 @@ class BlockTable {
 
 	BlockTable(int blockSize) {
 		blocks = new ArrayList<char[]>(200);
-		newTable();
 	}
 
 	public void writeTable(ByteBuffer buf, int n) {
@@ -63,6 +62,17 @@ class BlockTable {
 		}
 	}
 
+	public void readTable(ByteBuffer buf) {
+		buf.position(BLOCKS_TABLE_START);
+		buf.limit(ENTRY_SIZE);
+
+		char[] cbuf = newTable();
+		for (int i = 0; i < cbuf.length; i++) {
+			char c = buf.getChar();
+			cbuf[i] = c;
+		}
+	}
+	
 	/**
 	 * Add the given block number to this directory.
 	 *
@@ -70,7 +80,7 @@ class BlockTable {
 	 */
 	public void addBlock(int n) {
 		char[] thisTable = currTable;
-		if (curroff >= TABLE_SIZE)
+		if (curroff >= TABLE_SIZE  || currTable == null)
 			thisTable = newTable();
 
 		thisTable[curroff++] = (char) n;

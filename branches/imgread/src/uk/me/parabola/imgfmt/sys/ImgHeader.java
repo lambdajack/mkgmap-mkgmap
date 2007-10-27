@@ -92,7 +92,7 @@ class ImgHeader {
 
 	private ByteBuffer header = ByteBuffer.allocate(512);
 
-	private final ImgChannel file;
+	private ImgChannel file;
 	private Date creationTime;
 
 	// Signatures.
@@ -206,6 +206,10 @@ class ImgHeader {
 		// ... more to do
 	}
 
+	void setFile(ImgChannel file) {
+		this.file = file;
+	}
+	
 	FileSystemParam getParams() {
 		return fsParams;
 	}

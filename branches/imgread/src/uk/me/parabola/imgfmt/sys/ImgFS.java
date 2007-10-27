@@ -28,6 +28,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.List;
 
@@ -100,7 +101,7 @@ public class ImgFS implements FileSystem {
 		}
 
 		ImgFS fs = new ImgFS(chan);
-		fs.initFs(chan, params);
+		fs.createInitFS(chan, params);
 
 		return fs;
 	}
@@ -119,37 +120,11 @@ public class ImgFS implements FileSystem {
 	private static FileSystem openFs(FileChannel chan) throws FileNotFoundException {
 		ImgFS fs = new ImgFS(chan);
 
-		ByteBuffer buf = ByteBuffer.allocate(512);
 		try {
-			chan.read(buf);
+			fs.readInitFS(chan);
 		} catch (IOException e) {
 			throw new FileNotFoundException("Failed to read header");
 		}
-
-		ImgHeader h = new ImgHeader(null);
-		h.setHeader(buf);
-		FileSystemParam params = h.getParams();
-
-		BlockManager headerBlockManager = new BlockManager(params.getBlockSize(), 0);
-		headerBlockManager.setMaxBlock(params.getReservedDirectoryBlocks());
-
-		fs.directory = new Directory(headerBlockManager);
-
-		/*
-		ImgHeader h = new ImgHeader(null);
-		BlockManager headerBlockManager = new BlockManager(params.getBlockSize(), 0);
-		headerBlockManager.setMaxBlock(params.getReservedDirectoryBlocks());
-
-		// This bit is tricky.  We want to use a regular ImgChannel to write
-		// to the header and directory, but to create one normally would involve
-		// it already existing, so it is created by hand.
-			fs.directory = new Directory(headerBlockManager);
-
-		try {
-			h.readHeader();
-		} catch (IOException e) {
-			throw new FileNotFoundException("Could not read header " + e.getMessage());
-		}*/
 
 		return fs;
 	}
@@ -260,7 +235,7 @@ public class ImgFS implements FileSystem {
 	 * @throws FileNotWritableException If the file cannot be written for any
 	 * reason.
 	 */
-	private void initFs(FileChannel chan, FileSystemParam params) throws FileNotWritableException {
+	private void createInitFS(FileChannel chan, FileSystemParam params) throws FileNotWritableException {
 		// The block manager allocates blocks for files.
 		BlockManager headerBlockManager = new BlockManager(params.getBlockSize(), 0);
 		headerBlockManager.setMaxBlock(params.getReservedDirectoryBlocks());
@@ -271,9 +246,10 @@ public class ImgFS implements FileSystem {
 		try {
 			directory = new Directory(headerBlockManager);
 
-			Dirent dir = directory.create(DIRECTORY_FILE_NAME, headerBlockManager);
-			dir.setSpecial(true);
-			FileNode f = new FileNode(chan, dir, "w");
+			Dirent ent = directory.create(DIRECTORY_FILE_NAME, headerBlockManager);
+			ent.setSpecial(true);
+
+			FileNode f = new FileNode(chan, ent, "w");
 
 			directory.setFile(f);
 			header = new ImgHeader(f);
@@ -285,5 +261,40 @@ public class ImgFS implements FileSystem {
 		fileBlockManager = new BlockManager(params.getBlockSize(), params.getReservedDirectoryBlocks());
 
 		assert directory != null && header != null;
+	}
+
+	private void readInitFS(FileChannel chan) throws IOException {
+		ByteBuffer headerBuf = ByteBuffer.allocate(512);
+		chan.read(headerBuf);
+
+		header = new ImgHeader(null);
+		header.setHeader(headerBuf);
+		FileSystemParam params = header.getParams();
+
+		BlockManager headerBlockManager = new BlockManager(params.getBlockSize(), 0);
+		headerBlockManager.setMaxBlock(params.getReservedDirectoryBlocks());
+
+		directory = new Directory(headerBlockManager);
+
+		chan.position(1024);
+		ByteBuffer buf = ByteBuffer.allocate(Dirent.ENTRY_SIZE);
+		buf.order(ByteOrder.LITTLE_ENDIAN);
+		Dirent ent = directory.create(DIRECTORY_FILE_NAME, headerBlockManager);
+		int n;
+		for (boolean more = true; more; ) {
+			buf.clear();
+			n = chan.read(buf);
+			if (n == Dirent.ENTRY_SIZE) {
+				buf.flip();
+				more = ent.initBlocks(buf);
+			} else {
+				more = false;
+			}
+		}
+
+		FileNode f = new FileNode(chan, ent, "r");
+		header.setFile(f);
+		directory.setFile(f);
+		directory.readInit();
 	}
 }

@@ -132,12 +132,56 @@ public class FileNode implements ImgChannel {
 	 * @throws IOException If some other I/O error occurs
 	 */
 	public int read(ByteBuffer dst) throws IOException {
-		log.error("read is not supported yet");
 		if (!open)
 			throw new ClosedChannelException();
 		if (!readable)
 			throw new NonReadableChannelException();
-		return 0;
+
+		int blockSize = blockManager.getBlockSize();
+
+		int size = dst.remaining();
+		int totalRead = 0;
+
+		while (size > 0) {
+			// Tet the logical block number, as we see it in our file.
+			int lblock = (int) (position / blockSize);
+
+			// Get the physical block number, the actual block number in
+			// the underlying file.
+			int pblock = dirent.getPhysicalBlock(lblock);
+			if (pblock == 0xffff) {
+				// We are at the end of the file.
+				log.debug("at eof");
+				break;
+			}
+
+			// Position the underlying file
+			int off = (int) (position - lblock*blockSize);
+			file.position((long) pblock * blockSize + off);
+
+			int n = size;
+			if (n > blockSize)
+				n = blockSize;
+
+			if (off != 0)
+				n = blockSize - off;
+
+			dst.limit(dst.position() + n);
+
+			int nr = file.read(dst);
+			if (nr == -1)
+				return -1;
+			if (nr == 0)
+				throw new IOException("Read nothing");
+
+			// Update the file positions
+			size -= nr;
+			position += nr;
+			totalRead += nr;
+		}
+
+		log.debug("read ret", totalRead);
+		return totalRead;
 	}
 
 	/**
@@ -165,8 +209,6 @@ public class FileNode implements ImgChannel {
 
 		// Get the size of this write
 		int size = src.remaining();
-		int limit = src.limit();
-		log.debug("size to write " + size + ", " + limit);
 
 		// Loop over each block, this is to support the case (which we may
 		// not implement) of non-contiguous blocks.
@@ -187,7 +229,7 @@ public class FileNode implements ImgChannel {
 			}
 
 			// Position the underlying file, so that it is in the correct place.
-			int off = (int) (position - lblock*blockManager.getBlockSize());
+			int off = (int) (position - lblock*blockSize);
 			file.position((long) pblock * blockSize + off);
 
 			int n = size;

@@ -22,6 +22,7 @@ import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.log.Logger;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -40,10 +41,17 @@ class Dirent implements DirectoryEntry {
 	private static final Logger log = Logger.getLogger(Dirent.class);
 
 	// Constants.
-	private static final int MAX_FILE_LEN = 8;
-	private static final int MAX_EXT_LEN = 3;
+	static final int MAX_FILE_LEN = 8;
+	static final int MAX_EXT_LEN = 3;
 
-	private static final int ENTRY_SIZE = 512;
+	// Offsets
+	static final int OFF_FILE_USED = 0x00;
+	static final int OFF_NAME = 0x01;
+	static final int OFF_EXT = 0x09;
+	static final int OFF_FILE_PART = 0x10;
+	static final int OFF_SIZE = 0x0c;
+
+	static final int ENTRY_SIZE = 512;
 
 	// Filenames are a base+extension
 	private String name;
@@ -59,6 +67,7 @@ class Dirent implements DirectoryEntry {
 	private BlockTable blockTable;
 
 	private boolean special;
+	private static final int OFF_USED_FLAG = 0;
 
 	Dirent(String name, BlockManager blockManager) {
 		this.blockManager = blockManager;
@@ -214,5 +223,43 @@ class Dirent implements DirectoryEntry {
 
 	public BlockManager getBlockManager() {
 		return blockManager;
+	}
+
+	Boolean initBlocks(ByteBuffer buf) {
+		boolean ok = true;
+
+		byte used = buf.get(OFF_USED_FLAG);
+		if (used != 1)
+			return false;
+
+		// Get the filename.
+		byte[] bname = new byte[MAX_FILE_LEN] ;
+		buf.position(OFF_NAME);
+		buf.get(bname, 0, bname.length);
+		try {
+			String s = new String(bname, "ascii");
+			if (!s.equals(name))
+				return false;
+		} catch (UnsupportedEncodingException e) {
+			// ignore as ascii has to be supported.
+		}
+
+		// Get the extension
+		byte[] bext = new byte[MAX_EXT_LEN] ;
+		buf.get(bext, 0, bext.length);
+		try {
+			String s = new String(bext, "ascii");
+			if (!s.equals(ext))
+				return false;
+		} catch (UnsupportedEncodingException e) {
+			// ignore as ascii has to be supported.
+		}
+
+		int part = buf.getChar(OFF_FILE_PART);
+		if (part == 0)
+			size = buf.getInt(OFF_SIZE);
+
+		blockTable.readTable(buf);
+		return true;
 	}
 }

@@ -33,7 +33,7 @@ public class ListFile {
 		FileSystem fs = ImgFS.openFs("63240001.img");
 		List<DirectoryEntry> entries = fs.list();
 		for (DirectoryEntry ent : entries) {
-			System.out.println(ent.getFullName());
+			System.out.format("%-15s %d\n", ent.getFullName(), ent.getSize());
 		}
 	}
 }

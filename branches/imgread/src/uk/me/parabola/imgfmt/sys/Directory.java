@@ -17,12 +17,14 @@
 package uk.me.parabola.imgfmt.sys;
 
 import uk.me.parabola.imgfmt.FileExistsException;
+import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.fs.DirectoryEntry;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.log.Logger;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -70,6 +72,40 @@ class Directory {
 
 		return ent;
 	}
+
+	void readInit() throws IOException {
+		assert chan != null;
+
+		ByteBuffer buf = ByteBuffer.allocate(512);
+		buf.order(ByteOrder.LITTLE_ENDIAN);
+
+		Dirent current = null;
+		chan.position(3 * (long) 512); // XXX
+		while ((chan.read(buf)) > 0) {
+			buf.flip();
+
+			int used = buf.get(Dirent.OFF_FILE_USED);
+			if (used != 1)
+				continue;
+
+			String name = Utils.bytesToString(buf, Dirent.OFF_NAME, Dirent.MAX_FILE_LEN);
+			String ext = Utils.bytesToString(buf, Dirent.OFF_EXT, Dirent.MAX_EXT_LEN);
+
+			log.debug("readinit name", name, ext);
+
+			int part = buf.getChar(Dirent.OFF_FILE_PART);
+
+			if (part == 0) {
+				current = create(name + '.' + ext, headerBlockManager);
+				current.initBlocks(buf);
+			} else {
+				assert current != null;
+				current.initBlocks(buf);
+			}
+			buf.clear();
+		}
+	}
+
 
 	/**
 	 * Write out the directory to the file.  The file should be correctly
