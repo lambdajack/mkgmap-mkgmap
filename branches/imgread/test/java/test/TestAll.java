@@ -14,10 +14,13 @@
  * Author: Steve Ratcliffe
  * Create date: 13-Jan-2007
  */
-package uk.me.parabola.mkgmap.main;
+package test;
 
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
+import uk.me.parabola.mkgmap.main.Main;
+import uk.me.parabola.mkgmap.main.MakeTestLang10Map;
+import uk.me.parabola.mkgmap.main.MakeTestLangMap;
 
 /**
  * @author Steve Ratcliffe
