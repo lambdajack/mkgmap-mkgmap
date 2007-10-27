@@ -43,6 +43,8 @@ class Dirent implements DirectoryEntry {
 	private static final int MAX_FILE_LEN = 8;
 	private static final int MAX_EXT_LEN = 3;
 
+	private static final int ENTRY_SIZE = 512;
+
 	// Filenames are a base+extension
 	private String name;
 	private String ext;
@@ -73,14 +75,15 @@ class Dirent implements DirectoryEntry {
 	}
 
 	/**
-	 * Write this entry out to disk.
+	 * Write this entry out to disk.  Note that these are 512 bytes, regardless
+	 * of the blocksize.
 	 *
 	 * @param file The file to write to.
 	 * @throws IOException If writing fails for any reason.
 	 */
 	void sync(ImgChannel file) throws IOException {
 		int ntables = blockTable.getNBlockTables();
-		ByteBuffer buf = ByteBuffer.allocate(blockManager.getBlockSize() * ntables);
+		ByteBuffer buf = ByteBuffer.allocate(ENTRY_SIZE * ntables);
 		buf.order(ByteOrder.LITTLE_ENDIAN);
 
 		for (int part = 0; part < ntables; part++) {
@@ -103,7 +106,7 @@ class Dirent implements DirectoryEntry {
 			buf.putChar((char) part);
 
 			// Write out the allocation of blocks for this entry.
-			buf.position(blockManager.getBlockSize() * part + 0x20);
+			buf.position(ENTRY_SIZE * part + 0x20);
 			blockTable.writeTable(buf, part);
 		}
 

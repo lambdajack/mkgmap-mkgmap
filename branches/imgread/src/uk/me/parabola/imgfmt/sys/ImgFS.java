@@ -27,6 +27,7 @@ import uk.me.parabola.log.Logger;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.List;
 
@@ -109,7 +110,6 @@ public class ImgFS implements FileSystem {
 		try {
 			System.out.println("open file " + name);
 			rafile = new RandomAccessFile(name, "r");
-			System.out.println("rafile " + rafile);
 			return openFs(rafile.getChannel());
 		} catch (FileNotFoundException e) {
 			throw new FileNotFoundException("Could not open file " + e.getMessage());
@@ -119,12 +119,37 @@ public class ImgFS implements FileSystem {
 	private static FileSystem openFs(FileChannel chan) throws FileNotFoundException {
 		ImgFS fs = new ImgFS(chan);
 
-		ImgHeader h = fs.header;
+		ByteBuffer buf = ByteBuffer.allocate(512);
+		try {
+			chan.read(buf);
+		} catch (IOException e) {
+			throw new FileNotFoundException("Failed to read header");
+		}
+
+		ImgHeader h = new ImgHeader(null);
+		h.setHeader(buf);
+		FileSystemParam params = h.getParams();
+
+		BlockManager headerBlockManager = new BlockManager(params.getBlockSize(), 0);
+		headerBlockManager.setMaxBlock(params.getReservedDirectoryBlocks());
+
+		fs.directory = new Directory(headerBlockManager);
+
+		/*
+		ImgHeader h = new ImgHeader(null);
+		BlockManager headerBlockManager = new BlockManager(params.getBlockSize(), 0);
+		headerBlockManager.setMaxBlock(params.getReservedDirectoryBlocks());
+
+		// This bit is tricky.  We want to use a regular ImgChannel to write
+		// to the header and directory, but to create one normally would involve
+		// it already existing, so it is created by hand.
+			fs.directory = new Directory(headerBlockManager);
+
 		try {
 			h.readHeader();
 		} catch (IOException e) {
 			throw new FileNotFoundException("Could not read header " + e.getMessage());
-		}
+		}*/
 
 		return fs;
 	}
@@ -227,6 +252,14 @@ public class ImgFS implements FileSystem {
 		}
 	}
 
+	/**
+	 * Set up and ImgFS that has just been created.
+	 *
+	 * @param chan The real underlying file to write to.
+	 * @param params The file system parameters.
+	 * @throws FileNotWritableException If the file cannot be written for any
+	 * reason.
+	 */
 	private void initFs(FileChannel chan, FileSystemParam params) throws FileNotWritableException {
 		// The block manager allocates blocks for files.
 		BlockManager headerBlockManager = new BlockManager(params.getBlockSize(), 0);

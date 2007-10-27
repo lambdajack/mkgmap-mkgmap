@@ -19,6 +19,7 @@ package uk.me.parabola.imgfmt.sys;
 import uk.me.parabola.imgfmt.FileSystemParam;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
+import uk.me.parabola.log.Logger;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,6 +35,8 @@ import java.util.Date;
  * @author Steve Ratcliffe
  */
 class ImgHeader {
+	private static final Logger log = Logger.getLogger(ImgHeader.class);
+
 	// Offsets into the header.
 	private static final int OFF_XOR = 0x0;
 	private static final int OFF_UPDATE_MONTH = 0xa;
@@ -87,7 +90,7 @@ class ImgHeader {
 
 	private FileSystemParam fsParams;
 
-	private final ByteBuffer header = ByteBuffer.allocate(512);
+	private ByteBuffer header = ByteBuffer.allocate(512);
 
 	private final ImgChannel file;
 	private Date creationTime;
@@ -187,16 +190,24 @@ class ImgHeader {
 		header.put(OFF_CHECKSUM, (byte) check);
 	}
 
-	public void readHeader() throws IOException {
-		file.position(0);
-		header.clear();
-		int n = file.read(header);
+	void setHeader(ByteBuffer buf)  {
+		buf.order(ByteOrder.LITTLE_ENDIAN);
+		buf.flip();
+		header.put(buf);
 
-		byte b = header.get(OFF_BLOCK_SIZE_EXPONENT2);
+		byte exp1 = header.get(OFF_BLOCK_SIZE_EXPONENT1);
+		byte exp2 = header.get(OFF_BLOCK_SIZE_EXPONENT2);
+		log.debug("header exponent", exp1, exp2);
 
 		fsParams = new FileSystemParam();
-		fsParams.setBlockSize(2 << b);
+		fsParams.setBlockSize(1 << (exp1 + exp2));
 		System.out.println("Block size is " + fsParams.getBlockSize());
+
+		// ... more to do
+	}
+
+	FileSystemParam getParams() {
+		return fsParams;
 	}
 
 	/**
@@ -209,7 +220,7 @@ class ImgHeader {
 		header.rewind();
 		file.position(0);
 		file.write(header);
-		file.position(fsParams.getDirectoryStartBlock() * (long) fsParams.getBlockSize());
+		file.position(1024/*XXX*/);
 	}
 
 	/**

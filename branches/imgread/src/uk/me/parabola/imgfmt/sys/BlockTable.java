@@ -32,6 +32,8 @@ import java.util.List;
  * <p>What is important here is that only part of a full block is used to
  * hold block numbers.
  *
+ * <p>The entries are 512 bytes regardless of the blocksize.
+ *
  * @author Steve Ratcliffe
  */
 class BlockTable {
@@ -39,17 +41,17 @@ class BlockTable {
 
 	// Offset of the block table in the directory entry block.
 	private static final int BLOCKS_TABLE_START = 0x20;
+	private static final int ENTRY_SIZE = 512;
 
-	private final int tableSize;
+	private static final int TABLE_SIZE = (ENTRY_SIZE - BLOCKS_TABLE_START)/2;
+	//private final int tableSize;
 
 	private int curroff;
 	private final List<char[]> blocks;
 	private char[] currTable;
 
 	BlockTable(int blockSize) {
-		this.tableSize = (blockSize - BLOCKS_TABLE_START)/2;
-
-		blocks = new ArrayList<char[]>(20);
+		blocks = new ArrayList<char[]>(200);
 		newTable();
 	}
 
@@ -68,7 +70,7 @@ class BlockTable {
 	 */
 	public void addBlock(int n) {
 		char[] thisTable = currTable;
-		if (curroff >= tableSize)
+		if (curroff >= TABLE_SIZE)
 			thisTable = newTable();
 
 		thisTable[curroff++] = (char) n;
@@ -81,8 +83,8 @@ class BlockTable {
 	 * @return The physical block number in the file system.
 	 */
 	public int physFromLogical(int lblock) {
-		int blockNum = lblock / tableSize;
-		int offset = lblock - blockNum * tableSize;
+		int blockNum = lblock / TABLE_SIZE;
+		int offset = lblock - blockNum * TABLE_SIZE;
 		if (blockNum >= blocks.size())
 			return 0xffff;
 		char[] cbuf = blocks.get(blockNum);
@@ -105,7 +107,7 @@ class BlockTable {
 	 * @return Array for more numbers.
 	 */
 	private char[] newTable() {
-		char[] b = new char[tableSize];
+		char[] b = new char[TABLE_SIZE];
 		Arrays.fill(b, (char) 0xffff);
 
 		curroff = 0;
