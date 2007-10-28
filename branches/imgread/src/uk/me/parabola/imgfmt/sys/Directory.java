@@ -146,9 +146,8 @@ class Directory {
 		long dirPosition = chan.position();
 
 		int blockSize = headerBlockManager.getBlockSize();
-		int n = blockSize - 0x20;
 
-		int forHeader = (blocks + (n - 1)) / n;
+		int forHeader = (blocks + (Dirent.ENTRY_SIZE - 1)) / Dirent.ENTRY_SIZE;
 		log.debug("header blocks needed", forHeader);
 
 		// Write the blocks that will will contain the header blocks.
@@ -161,7 +160,7 @@ class Directory {
 		buf.flip();
 		chan.write(buf);
 
-		chan.position(dirPosition + forHeader * (long)blockSize);
+		chan.position(dirPosition + (long) forHeader * Dirent.ENTRY_SIZE);
 
 		for (DirectoryEntry dir : entries.values()) {
 			Dirent ent = (Dirent) dir;
