@@ -28,7 +28,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.List;
 
@@ -189,7 +188,8 @@ public class ImgFS implements FileSystem {
 	 *
 	 * @param name The filename to look up.
 	 * @return A directory entry.
-	 * @throws IOException If an error occurs reading the directory.
+	 * @throws FileNotFoundException If an error occurs looking for the file,
+	 * including it not existing.
 	 */
 	public DirectoryEntry lookup(String name) throws FileNotFoundException {
 		return internalLookup(name);
@@ -199,7 +199,6 @@ public class ImgFS implements FileSystem {
 	 * List all the files in the directory.
 	 *
 	 * @return A List of directory entries.
-	 * @throws IOException If an error occurs reading the directory.
 	 */
 	public List<DirectoryEntry> list()  {
 		return directory.getEntries();
@@ -310,13 +309,17 @@ public class ImgFS implements FileSystem {
 	 *
 	 * @param name The filename to look up.
 	 * @return A directory entry.
-	 * @throws IOException If an error occurs reading the directory.
+	 * @throws FileNotFoundException If an error occurs reading the directory.
 	 */
 	private Dirent internalLookup(String name) throws FileNotFoundException {
 		if (name == null)
 			throw new IllegalArgumentException("null name argument");
 
-		return (Dirent) directory.lookup(name);
+		Dirent ent = (Dirent) directory.lookup(name);
+		if (ent == null)
+			throw new FileNotFoundException(name + " not found");
+
+		return ent;
 	}
 
 }
