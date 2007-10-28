@@ -38,13 +38,26 @@ class HeaderDirent extends Dirent {
 	 * @return The corresponding physical block in the filesystem.
 	 */
 	public int getPhysicalBlock(int lblock) {
-		if (getSize() == 0) {
-			log.debug("gpb (not setup)");
-			return lblock;
-		} else {
+		if (isInitialized()) {
 			log.debug("gpb (ok)");
 			return super.getPhysicalBlock(lblock);
+		} else {
+			log.debug("gpb (not setup)");
+			return lblock;
 		}
+	}
+
+	/**
+	 * Get the file size.  The file appears large until the first blocks are
+	 * read in and then it will take on its actual size.
+	 *
+	 * @return The size of the file in bytes.
+	 */
+	public int getSize() {
+		if (isInitialized())
+			return super.getSize();
+		else
+			return getBlockManager().getBlockSize() * 32;
 	}
 
 	/**

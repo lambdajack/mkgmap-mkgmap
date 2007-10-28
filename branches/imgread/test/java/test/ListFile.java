@@ -18,6 +18,7 @@ package test;
 
 import uk.me.parabola.imgfmt.fs.DirectoryEntry;
 import uk.me.parabola.imgfmt.fs.FileSystem;
+import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.imgfmt.sys.ImgFS;
 
 import java.io.IOException;
@@ -38,7 +39,6 @@ public class ListFile {
 		for (DirectoryEntry ent : entries) {
 			String fullname = ent.getFullName();
 			System.out.format("%-15s %d\n", fullname, ent.getSize());
-
 		}
 
 		fs.close();

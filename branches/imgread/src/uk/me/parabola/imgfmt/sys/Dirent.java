@@ -70,6 +70,7 @@ class Dirent implements DirectoryEntry {
 
 	private boolean special;
 	private static final int OFF_USED_FLAG = 0;
+	private boolean initialized;
 
 	Dirent(String name, BlockManager blockManager) {
 		this.blockManager = blockManager;
@@ -170,6 +171,7 @@ class Dirent implements DirectoryEntry {
 			size = buf.getInt(OFF_SIZE);
 
 		blockTable.readTable(buf);
+		initialized = true;
 	}
 	/**
 	 * Get the file size.
@@ -256,5 +258,7 @@ class Dirent implements DirectoryEntry {
 		return blockManager;
 	}
 
-
+	protected boolean isInitialized() {
+		return initialized;
+	}
 }

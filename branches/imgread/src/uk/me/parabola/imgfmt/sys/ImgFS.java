@@ -160,26 +160,28 @@ public class ImgFS implements FileSystem {
 		if (name == null || mode == null)
 			throw new IllegalArgumentException("null argument");
 
-		// Its wrong to do this as this routine should not throw an exception
-		// when the file exists.  Needs lookup().
-		if (mode.indexOf('w') >= 0) {
+		if (mode.indexOf('r') >= 0) {
+			Dirent ent = internalLookup(name);
+			FileNode f = new FileNode(file, ent, "r");
+
+			return f;
+		} else if (mode.indexOf('w') >= 0) {
+			Dirent ent;
 			try {
-				DirectoryEntry entry = lookup(name);
-			} catch (IOException e) {
+				ent = internalLookup(name);
+			} catch (FileNotFoundException e) {
 				try {
-					ImgChannel channel = create(name);
-					return channel;
+					ent = directory.create(name, fileBlockManager);
 				} catch (FileExistsException e1) {
-					// This shouldn't happen as we have already checked.
-					FileNotFoundException exception = new FileNotFoundException("Trying to recreate exising file");
-					exception.initCause(e1);
-					throw exception;
+					// This shouldn't happen as we have just checked.
+					throw new FileNotFoundException("Attempt to duplicate a file name");
 				}
 			}
-			//return entry;
+			FileNode f = new FileNode(file, ent, "w");
+			return f;
+		} else {
+			throw new IllegalArgumentException("Invalid mode given");
 		}
-
-		throw new FileNotFoundException("File not found because it isn't implemented yet");
 	}
 
 	/**
@@ -189,11 +191,8 @@ public class ImgFS implements FileSystem {
 	 * @return A directory entry.
 	 * @throws IOException If an error occurs reading the directory.
 	 */
-	public DirectoryEntry lookup(String name) throws IOException {
-		if (name == null)
-			throw new IllegalArgumentException("null name argument");
-
-		return directory.lookup(name);
+	public DirectoryEntry lookup(String name) throws FileNotFoundException {
+		return internalLookup(name);
 	}
 
 	/**
@@ -305,4 +304,19 @@ public class ImgFS implements FileSystem {
 		directory.setFile(f);
 		directory.readInit();
 	}
+
+	/**
+	 * Lookup the file and return a directory entry for it.
+	 *
+	 * @param name The filename to look up.
+	 * @return A directory entry.
+	 * @throws IOException If an error occurs reading the directory.
+	 */
+	private Dirent internalLookup(String name) throws FileNotFoundException {
+		if (name == null)
+			throw new IllegalArgumentException("null name argument");
+
+		return (Dirent) directory.lookup(name);
+	}
+
 }

@@ -139,7 +139,12 @@ public class FileNode implements ImgChannel {
 
 		int blockSize = blockManager.getBlockSize();
 
-		int size = dst.remaining();
+		long size = dst.remaining();
+		long fileSize = dirent.getSize();
+		if (position >= fileSize)
+			return -1;
+		size = Math.min(size, fileSize - position);
+
 		int totalRead = 0;
 
 		while (size > 0) {
@@ -159,14 +164,15 @@ public class FileNode implements ImgChannel {
 			int off = (int) (position - lblock*blockSize);
 			file.position((long) pblock * blockSize + off);
 
-			int n = size;
+			int n = (int) size;
 			if (n > blockSize)
 				n = blockSize;
 
 			if (off != 0)
 				n = Math.min(n, blockSize - off);
 
-			dst.limit(dst.position() + n);
+
+				dst.limit(dst.position() + n);
 
 			int nr = file.read(dst);
 			if (nr == -1)
@@ -287,6 +293,9 @@ public class FileNode implements ImgChannel {
 	 * @throws IOException If there is an error writing to disk.
 	 */
 	private void sync() throws IOException {
+		if (!writeable)
+			return;
+		
 		// Ensure that a complete block is written out.
 		int bs = blockManager.getBlockSize();
 		long rem = bs - (file.position() % bs);

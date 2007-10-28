@@ -63,7 +63,6 @@ public interface FileSystem {
 	/**
 	 * List all the files in the directory.
 	 * @return A List of directory entries.
-	 * @throws IOException If an error occurs reading the directory.
 	 */
 	public List<DirectoryEntry> list() ;
 
