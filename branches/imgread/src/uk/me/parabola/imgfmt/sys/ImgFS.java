@@ -28,6 +28,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.util.List;
 
@@ -285,6 +286,7 @@ public class ImgFS implements FileSystem {
 	 */
 	private void readInitFS(FileChannel chan) throws IOException {
 		ByteBuffer headerBuf = ByteBuffer.allocate(512);
+		headerBuf.order(ByteOrder.LITTLE_ENDIAN);
 		chan.read(headerBuf);
 
 		header = new ImgHeader(null);

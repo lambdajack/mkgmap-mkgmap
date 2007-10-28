@@ -189,7 +189,6 @@ class ImgHeader {
 	}
 
 	void setHeader(ByteBuffer buf)  {
-		buf.order(ByteOrder.LITTLE_ENDIAN);
 		buf.flip();
 		header.put(buf);
 

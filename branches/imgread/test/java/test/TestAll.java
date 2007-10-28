@@ -68,6 +68,9 @@ public class TestAll {
 			ListFile.main(new String[] {
 					"63240001.img"
 			});
+			CopyFile.main(new String[] {
+					"63240001.img"
+			});
 		} catch (IOException e) {
 			System.out.println("could not read img file");
 		}
