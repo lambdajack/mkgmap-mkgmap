@@ -260,6 +260,7 @@ public class ImgFS implements FileSystem {
 
 			Dirent ent = directory.create(DIRECTORY_FILE_NAME, headerBlockManager);
 			ent.setSpecial(true);
+			ent.setInitialized(true);
 
 			FileNode f = new FileNode(chan, ent, "w");
 

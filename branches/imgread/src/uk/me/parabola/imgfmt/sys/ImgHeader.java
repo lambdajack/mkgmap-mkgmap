@@ -222,7 +222,7 @@ class ImgHeader {
 		header.rewind();
 		file.position(0);
 		file.write(header);
-		file.position(1024/*XXX*/);
+		file.position(fsParams.getDirectoryStartBlock() * (long) 512);
 	}
 
 	/**

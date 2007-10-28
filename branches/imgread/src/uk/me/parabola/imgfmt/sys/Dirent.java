@@ -173,6 +173,7 @@ class Dirent implements DirectoryEntry {
 		blockTable.readTable(buf);
 		initialized = true;
 	}
+
 	/**
 	 * Get the file size.
 	 *
@@ -216,7 +217,8 @@ class Dirent implements DirectoryEntry {
 	}
 
 	void setSize(int size) {
-		log.debug("setting size " + getName() + getExt() + " to " + size);
+		if (log.isDebugEnabled())
+			log.debug("setting size", getName(), getExt(), "to", size);
 		this.size = size;
 	}
 
@@ -258,6 +260,10 @@ class Dirent implements DirectoryEntry {
 		return blockManager;
 	}
 
+	protected void setInitialized(boolean initialized) {
+		this.initialized = initialized;
+	}
+	
 	protected boolean isInitialized() {
 		return initialized;
 	}
