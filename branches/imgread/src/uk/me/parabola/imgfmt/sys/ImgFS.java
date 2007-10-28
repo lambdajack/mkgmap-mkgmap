@@ -47,6 +47,7 @@ public class ImgFS implements FileSystem {
 
 	// This is the read or write channel to the real file system.
 	private final FileChannel file;
+	private boolean readOnly = true;
 
 	// The header contains general information.
 	private ImgHeader header;
@@ -212,9 +213,10 @@ public class ImgFS implements FileSystem {
 	 * @throws IOException If an error occurs during the write.
 	 */
 	public void sync() throws IOException {
-		header.sync();
+		if (readOnly)
+			return;
 
-		log.debug("file position before directory is", file.position());
+		header.sync();
 		directory.sync();
 	}
 
@@ -223,10 +225,17 @@ public class ImgFS implements FileSystem {
 	 * to explicitly sync the data out first, to be sure that it has worked.
 	 */
 	public void close() {
+
 		try {
 			sync();
 		} catch (IOException e) {
 			log.debug("could not sync filesystem");
+		} finally {
+			try {
+				file.close();
+			} catch (IOException e) {
+				log.warn("Could not close file");
+			}
 		}
 	}
 
@@ -239,6 +248,8 @@ public class ImgFS implements FileSystem {
 	 * reason.
 	 */
 	private void createInitFS(FileChannel chan, FileSystemParam params) throws FileNotWritableException {
+		readOnly = false;
+
 		// The block manager allocates blocks for files.
 		BlockManager headerBlockManager = new BlockManager(params.getBlockSize(), 0);
 		headerBlockManager.setMaxBlock(params.getReservedDirectoryBlocks());

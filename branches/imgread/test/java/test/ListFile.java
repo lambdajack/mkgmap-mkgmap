@@ -39,8 +39,8 @@ public class ListFile {
 			String fullname = ent.getFullName();
 			System.out.format("%-15s %d\n", fullname, ent.getSize());
 
-			DirectoryEntry ent2 = fs.lookup(fullname);
-			System.out.format("%-15s %d\n", fullname, ent.getSize());
 		}
+
+		fs.close();
 	}
 }

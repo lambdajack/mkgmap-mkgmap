@@ -58,8 +58,7 @@ public interface FileSystem {
 	 * @return A directory entry.
 	 * @throws IOException If an error occurs reading the directory.
 	 */
-	public DirectoryEntry lookup(String name)
-			throws IOException;
+	public DirectoryEntry lookup(String name) throws IOException;
 
 	/**
 	 * List all the files in the directory.
