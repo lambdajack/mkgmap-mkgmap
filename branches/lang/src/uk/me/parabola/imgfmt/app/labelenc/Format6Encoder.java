@@ -18,6 +18,8 @@ package uk.me.parabola.imgfmt.app.labelenc;
 
 import uk.me.parabola.log.Logger;
 
+import java.util.Locale;
+
 /**
  * Format according to the '6 bit' .img format.  The text is first upper
  * cased.  Any letter with a diacritic or accent is replaced with its base
@@ -123,7 +125,7 @@ public class Format6Encoder extends BaseEncoder implements CharacterEncoder {
 		if (text == null || text.length() == 0)
 			return NO_TEXT;
 
-		String s = text.toUpperCase();
+		String s = text.toUpperCase(Locale.ENGLISH);
 
 		byte[] buf = new byte[2 * s.length() + 1];
 		int off = 0;
@@ -144,24 +146,7 @@ public class Format6Encoder extends BaseEncoder implements CharacterEncoder {
 			} else if (c >= '0' && c <= '9') {
 				put6(buf, off++, c - '0' + 0x20);
 			} else {
-				int ind = "@!\"#$%&'()*+,-./".indexOf(c);
-				if (ind >= 0) {
-					log.debug("putting " + ind);
-					put6(buf, off++, SYMBOL_SHIFT);
-					put6(buf, off++, ind);
-				} else {
-					ind = ":;<=>?".indexOf(c);
-					if (ind >= 0) {
-						put6(buf, off++, SYMBOL_SHIFT);
-						put6(buf, off++, 0x1a + ind);
-					} else {
-						ind = "[\\]^_".indexOf(c);
-						if (ind >= 0) {
-							put6(buf, off++, SYMBOL_SHIFT);
-							put6(buf, off++, 0x2b + ind);
-						}
-					}
-				}
+				off = shiftedSymbol(buf, off, c);
 			}
 		}
 
@@ -171,6 +156,29 @@ public class Format6Encoder extends BaseEncoder implements CharacterEncoder {
 		EncodedText etext = new EncodedText(buf, len);
 
 		return etext;
+	}
+
+	private int shiftedSymbol(byte[] buf, int startOffset, char c) {
+		int off = startOffset;
+		int ind = "@!\"#$%&'()*+,-./".indexOf(c);
+		if (ind >= 0) {
+			log.debug("putting " + ind);
+			put6(buf, off++, SYMBOL_SHIFT);
+			put6(buf, off++, ind);
+		} else {
+			ind = ":;<=>?".indexOf(c);
+			if (ind >= 0) {
+				put6(buf, off++, SYMBOL_SHIFT);
+				put6(buf, off++, 0x1a + ind);
+			} else {
+				ind = "[\\]^_".indexOf(c);
+				if (ind >= 0) {
+					put6(buf, off++, SYMBOL_SHIFT);
+					put6(buf, off++, 0x2b + ind);
+				}
+			}
+		}
+		return off;
 	}
 
 	/**

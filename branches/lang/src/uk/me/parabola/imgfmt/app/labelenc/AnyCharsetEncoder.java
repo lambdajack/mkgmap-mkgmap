@@ -16,25 +16,22 @@
  */
 package uk.me.parabola.imgfmt.app.labelenc;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
-import java.util.SortedMap;
+import java.util.Locale;
 
 /**
+ * Convert text to a specified charset.  This is used when you give a
+ * charset name on the command line to convert to.
+ *
  * @author Steve Ratcliffe
  */
 public class AnyCharsetEncoder extends BaseEncoder implements CharacterEncoder {
 
-	//private String charSet;
 	private Charset charSet;
 
 	public AnyCharsetEncoder(String cs) {
 		prepareForCharacterSet(cs);
 		charSet = Charset.forName(cs);
-		//SortedMap<String,Charset> smap = Charset.availableCharsets();
-		//for (String c : smap.keySet()) {
-		//	System.out.println(c);
-		//}
 	}
 
 	public EncodedText encodeText(String text) {
@@ -44,9 +41,13 @@ public class AnyCharsetEncoder extends BaseEncoder implements CharacterEncoder {
 		if (!isCharsetSupported())
 			return simpleEncode(text);
 
-		System.out.println("any charset");
-		// Guess that 8859-1 is used in the Garmin.
-		byte[] bytes = text.toUpperCase().getBytes(charSet);
+		String ucText;
+		if (isUpperCase())
+			ucText = text.toUpperCase(Locale.ENGLISH);
+		else
+			ucText = text;
+
+		byte[] bytes = ucText.getBytes(charSet);
 
 		byte[] res = new byte[bytes.length + 1];
 		System.arraycopy(bytes, 0, res, 0, bytes.length);
