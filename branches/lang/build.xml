@@ -112,6 +112,7 @@
 			<fileset dir="${resources}">
 				<include name="*.csv"/>
 				<include name="*.properties"/>
+				<include name="**/*.trans"/>
 			</fileset>
 		</copy>
   </target>

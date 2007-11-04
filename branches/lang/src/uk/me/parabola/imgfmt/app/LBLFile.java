@@ -105,7 +105,7 @@ public class LBLFile extends ImgFile {
 		if ("ascii".equals(cs)) {
 			encodingLength = ENCODING_6BIT;
 			textEncoder = new Format6Encoder();
-		} if ("latin1".equals(cs)) {
+		} else if ("latin1".equals(cs)) {
 			encodingLength = ENCODING_8BIT;
 			textEncoder = new Latin1Encoder();
 
