@@ -12,18 +12,30 @@
  * 
  * 
  * Author: Steve Ratcliffe
- * Create date: 29-Sep-2007
+ * Create date: 27-Sep-2007
  */
 package uk.me.parabola.mkgmap.main;
 
+import uk.me.parabola.imgfmt.app.Map;
+import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
+
 /**
- * Different options that can be supplied that change the mode and operation
- * of the program.
- * 
  * @author Steve Ratcliffe
  */
-public interface MapProcessor extends FilenameProcessor {
+public interface MapEventListener {
 
-	public void addMapListener(MapEventListener l);
+	/**
+	 * This is called when the map is complete.
+	 *
+	 * @param args The current options.
+	 * @param src The map data.
+	 * @param map The map.
+	 */
+	public void onMapEnd(CommandArgs args, LoadableMapDataSource src, Map map);
 
+	/**
+	 * The complete map set has been processed.  Finish off anything that needs
+	 * doing.
+	 */
+	public void onFinish();
 }

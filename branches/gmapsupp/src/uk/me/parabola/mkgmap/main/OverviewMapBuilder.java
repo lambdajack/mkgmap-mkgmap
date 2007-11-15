@@ -37,7 +37,7 @@ import java.util.Properties;
  *
  * @author Steve Ratcliffe
  */
-public class OverviewMapBuilder implements MapEvents {
+public class OverviewMapBuilder implements MapEventListener {
 	private static final Logger log = Logger.getLogger(OverviewMapBuilder.class);
 	
 	private final OverviewMapDataSource overviewSource = new OverviewMapDataSource();
