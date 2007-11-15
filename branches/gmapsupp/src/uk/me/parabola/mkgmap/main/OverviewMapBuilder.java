@@ -19,6 +19,7 @@ package uk.me.parabola.mkgmap.main;
 import uk.me.parabola.imgfmt.FileExistsException;
 import uk.me.parabola.imgfmt.FileNotWritableException;
 import uk.me.parabola.imgfmt.FileSystemParam;
+import uk.me.parabola.imgfmt.app.InternalFiles;
 import uk.me.parabola.imgfmt.app.Map;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
@@ -51,7 +52,7 @@ public class OverviewMapBuilder implements MapEventListener {
 		tdb.setProductInfo(42, 1, "OSM map", "OSM map");
 	}
 
-	public void onMapEnd(CommandArgs args, LoadableMapDataSource src, Map map) {
+	public void onMapEnd(CommandArgs args, LoadableMapDataSource src, InternalFiles map) {
 		log.info("end of map", args);
 		Properties currentOptions = args.getProperties();
 		overviewSource.addMapDataSource(src, currentOptions);
@@ -90,7 +91,7 @@ public class OverviewMapBuilder implements MapEventListener {
 	public void onFinish() {
 		log.debug("finishing overview");
 
-		String overviewMapname = "6324";
+		String overviewMapname = "63240000";
 
 		tdb.setOverview(overviewMapname, overviewSource.getBounds());
 
@@ -106,9 +107,8 @@ public class OverviewMapBuilder implements MapEventListener {
 		params.setBlockSize(512);
 		params.setMapDescription("Overview map");
 
-		Map map;
 		try {
-			map = Map.createMap(overviewMapname, params);
+			Map map = Map.createMap(overviewMapname, params);
 			mb.makeMap(map, overviewSource);
 			map.close();
 		} catch (FileExistsException e) {
