@@ -16,8 +16,8 @@
  */
 package uk.me.parabola.mkgmap.main;
 
-import uk.me.parabola.imgfmt.FileSystemParam;
 import uk.me.parabola.imgfmt.FileNotWritableException;
+import uk.me.parabola.imgfmt.FileSystemParam;
 import uk.me.parabola.imgfmt.app.InternalFiles;
 import uk.me.parabola.imgfmt.fs.DirectoryEntry;
 import uk.me.parabola.imgfmt.fs.FileSystem;
@@ -27,13 +27,11 @@ import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
 /**
  * Create the gmapsupp file.  There is nothing much special about this file
@@ -57,7 +55,7 @@ public class GmapsuppBuilder implements MapEventListener {
 	 */
 	private static final int ENTRY_SIZE = 240;
 
-	private Map<String, FileInfo> files = new HashMap<String, FileInfo>();
+	private Map<String, FileInfo> files = new LinkedHashMap<String, FileInfo>();
 	private static final String GMAPSUPP = "gmapsupp.img";
 
 	/**
@@ -104,38 +102,48 @@ public class GmapsuppBuilder implements MapEventListener {
 			outfs = createGmapsupp();
 
 			for (String name : files.keySet()) {
+			try {
+				FileSystem infs = ImgFS.openFs(name);
+
 				try {
-					FileSystem infs = ImgFS.openFs(name);
-
-					try {
-						List<DirectoryEntry> entries = infs.list();
-						for (DirectoryEntry ent : entries) {
-							String ext = ent.getExt();
-							if (ext.equals("   "))
-								continue;
-
-							String inname = ent.getFullName();
-							log.debug("inname", inname);
-
-							try {
-								copyFile(inname, infs, outfs);
-							} catch (IOException e) {
-								log.warn("Could not copy " + inname, e);
-							}
-						}
-					} finally {
-						infs.close();
-					}
-				} catch (FileNotFoundException e) {
-					log.warn("Could not open file", name);
+					copyAllFiles(infs, outfs);
+				} finally {
+					infs.close();
 				}
+			} catch (FileNotFoundException e) {
+				log.warn("Could not open file", name);
 			}
+		}
 		} catch (FileNotWritableException e) {
 			log.warn("Could not create gmapsupp file");
 			System.err.println("Could not create gmapsupp file");
 		} finally {
 			if (outfs != null)
 				outfs.close();
+		}
+	}
+
+	/**
+	 * Copy all files from the input filesystem to the output filesystem.
+	 *
+	 * @param infs The input filesystem.
+	 * @param outfs The output filesystem.
+	 */
+	private void copyAllFiles(FileSystem infs, FileSystem outfs) {
+		List<DirectoryEntry> entries = infs.list();
+		for (DirectoryEntry ent : entries) {
+			String ext = ent.getExt();
+			if (ext.equals("   "))
+				continue;
+
+			String inname = ent.getFullName();
+			log.debug("inname", inname);
+
+			try {
+				copyFile(inname, infs, outfs);
+			} catch (IOException e) {
+				log.warn("Could not copy " + inname, e);
+			}
 		}
 	}
 
@@ -157,6 +165,7 @@ public class GmapsuppBuilder implements MapEventListener {
 		params.setMapDescription("output file");
 		params.setDirectoryStartBlock(2);
 		params.setReservedDirectoryBlocks(reserved * 512 / blockSize);
+
 		FileSystem outfs = ImgFS.createFs(GMAPSUPP, params);
 		return outfs;
 	}
@@ -232,6 +241,9 @@ public class GmapsuppBuilder implements MapEventListener {
 		throw new IllegalArgumentException("hmm");
 	}
 
+	/**
+	 * Just a data value object for various bits of block size info.
+	 */
 	private static class BlockInfo {
 		private int blockSize;
 		private int headerSlots;
