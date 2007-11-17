@@ -15,7 +15,8 @@ OSMDATA = localtest/osm5/cricklewood-5.osm
 #OSMDATA = --mapname=90000001 test-map:all-elements
 #OSMDATA = /opt/data/uk-070530.osm
 #OSMDATA = /opt/data/uk-070815.osm
-OSMDATA = /opt/data/uk-070919-1.osm.gz
+#OSMDATA = /opt/data/uk-070919-1.osm.gz
+OSMDATA = /opt/data/uk-071010-1.osm.gz /opt/data/uk-071010-2.osm.gz
 #OSMDATA = /tmp/63253506
 #OSMDATA = ~/in/germany-070823.osm
 #OSMDATA = vbig.osm
@@ -23,9 +24,11 @@ OSMDATA = /opt/data/uk-070919-1.osm.gz
 #OSMDATA = /opt/data/multi/6324*
 #OSMDATA = test/osm5/srtm.osm
 #OSMDATA = --levels=0:24,1:23,2:22,3:21,4:20,5:19,6:18,7:17 /opt/data/planet-070207-gb-london.osm
-#OSMDATA = --latin1 /opt/data/osmworld/*.gz
+#OSMDATA = --gmapsupp --latin1 /opt/data/osmworld/*.gz
 #OSMDATA = /opt/data/osmworld/63260003
-#OSMDATA = --overview-name=6324 ~/tmp/batch/*.osm
+#OSMDATA = --gmapsupp ~/tmp/batch/*.osm
+#OSMDATA = /opt/data/uk-071114.osm.gz
+OSMDATA = /opt/data/uk/63*
 
 
 TIME=/usr/bin/time --format 'Real: %E, %S+%U'
@@ -34,14 +37,15 @@ TIME=/usr/bin/time --format 'Real: %E, %S+%U'
 OSM_GARMIN_MAP = /home/steve/src/osm/applications/utils/export/osmgarminmap
 
 #OPTS= --levels='0=24,1=22,2=20'
+OPTS= --gmapsupp
 
 makemap:
 	rm -f gmapsupp/* mkgmap.log out.log
-	rm -f 63240001.img
+	rm -f gmapsupp.img 6324*.img 6324*.tdb
 	$(TIME) java -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
 	#java -Dlog.config=l -ea -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
-	cp 63240001.img gmapsupp.img
-	imgdecode gmapsupp.img
+	#cp 63240001.img gmapsupp.img
+	#imgdecode gmapsupp.img
 
 load:
 	sleep 2
