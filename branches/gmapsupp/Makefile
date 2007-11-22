@@ -28,7 +28,8 @@ OSMDATA = /opt/data/uk-071010-1.osm.gz /opt/data/uk-071010-2.osm.gz
 #OSMDATA = /opt/data/osmworld/63260003
 #OSMDATA = --gmapsupp ~/tmp/batch/*.osm
 #OSMDATA = /opt/data/uk-071114.osm.gz
-OSMDATA = /opt/data/uk/63*
+#OSMDATA = /opt/data/uk/63*
+OSMDATA = rus2.osm
 
 
 TIME=/usr/bin/time --format 'Real: %E, %S+%U'
@@ -42,8 +43,8 @@ OPTS= --gmapsupp
 makemap:
 	rm -f gmapsupp/* mkgmap.log out.log
 	rm -f gmapsupp.img 6324*.img 6324*.tdb
-	$(TIME) java -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
-	#java -Dlog.config=l -ea -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
+	#$(TIME) java -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
+	java -Dlog.config=l -ea -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
 	#cp 63240001.img gmapsupp.img
 	#imgdecode gmapsupp.img
 
