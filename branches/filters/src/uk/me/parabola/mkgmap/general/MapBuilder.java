@@ -299,7 +299,7 @@ public class MapBuilder {
 			Polyline pl = div.createLine(name);
 			pl.setDirection(line.isDirection());
 
-			int count = 0;
+			// This is in itself a filter and so should be factored out.
 			int lastx = 0, lasty = 0;
 			List<Coord> points = line.getPoints();
 			for (Coord co : points) {
@@ -311,25 +311,10 @@ public class MapBuilder {
 
 				lastx = x;
 				lasty = y;
-
-				// We need to split up long lines into smaller ones as there
-				// appears to be a limit on the garmin devices.
-				if (++count > MAX_POINTS_IN_ELEMENT) {
-					pl.setType(line.getType());
-					map.addMapObject(pl);
-					pl = div.createLine(name);
-					pl.addCoord(co);
-					pl.setDirection(line.isDirection());
-					count = 0;
-					lastx = 0;
-					lasty = 0;
-				}
 			}
 
-			if (count != 0) {
-				pl.setType(line.getType());
-				map.addMapObject(pl);
-			}
+			pl.setType(line.getType());
+			map.addMapObject(pl);
 		}
 	}
 
