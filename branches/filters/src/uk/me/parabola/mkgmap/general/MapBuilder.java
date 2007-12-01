@@ -286,6 +286,11 @@ public class MapBuilder {
 
 		int shift = div.getShift();
 
+		List<MapElement> elements = new ArrayList<MapElement>();
+		MapFilterChainImpl filters = new MapFilterChainImpl(elements);
+		//filters.addFilter(new LineSplitter());
+		//filters.addFilter(new RemoveEmpty());
+		
 		for (MapLine line : filter(lines)) {
 			if (line.getMinResolution() > res)
 				continue;
