@@ -16,7 +16,7 @@ OSMDATA = localtest/osm5/cricklewood-5.osm
 #OSMDATA = /opt/data/uk-070530.osm
 #OSMDATA = /opt/data/uk-070815.osm
 #OSMDATA = /opt/data/uk-070919-1.osm.gz
-OSMDATA = /opt/data/uk-071010-1.osm.gz /opt/data/uk-071010-2.osm.gz
+#OSMDATA = /opt/data/uk-071010-1.osm.gz /opt/data/uk-071010-2.osm.gz
 #OSMDATA = /tmp/63253506
 #OSMDATA = ~/in/germany-070823.osm
 #OSMDATA = vbig.osm
@@ -28,8 +28,8 @@ OSMDATA = /opt/data/uk-071010-1.osm.gz /opt/data/uk-071010-2.osm.gz
 #OSMDATA = /opt/data/osmworld/63260003
 #OSMDATA = --gmapsupp ~/tmp/batch/*.osm
 #OSMDATA = /opt/data/uk-071114.osm.gz
-OSMDATA = /opt/data/uk/63*
-OSMDATA = rus2.osm
+#OSMDATA = /opt/data/uk/63*
+OSMDATA = reg40.osm
 
 
 TIME=/usr/bin/time --format 'Real: %E, %S+%U'

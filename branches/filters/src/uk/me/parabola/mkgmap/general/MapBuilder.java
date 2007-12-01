@@ -46,6 +46,7 @@ import java.util.List;
 public class MapBuilder {
 	private static final Logger log = Logger.getLogger(MapBuilder.class);
 	private static final int CLEAR_TOP_BITS = (32 - 15);
+	private static final int MAX_POINTS_IN_ELEMENT = 250;
 
 	/**
 	 * Main method to create the map, just calls out to several routines
@@ -285,10 +286,12 @@ public class MapBuilder {
 
 		int shift = div.getShift();
 
-		for (MapLine line : lines) {
+		for (MapLine line : filter(lines)) {
 			if (line.getMinResolution() > res)
 				continue;
 
+			assert line.getPoints().size() < 255 : "too many points";
+			//assert line.getBounds().getMaxDimention() < ();
 			String name = line.getName();
 			if (name == null)
 				name = "";
@@ -311,7 +314,7 @@ public class MapBuilder {
 
 				// We need to split up long lines into smaller ones as there
 				// appears to be a limit on the garmin devices.
-				if (++count > 250) {
+				if (++count > MAX_POINTS_IN_ELEMENT) {
 					pl.setType(line.getType());
 					map.addMapObject(pl);
 					pl = div.createLine(name);
@@ -329,7 +332,48 @@ public class MapBuilder {
 			}
 		}
 	}
-	
+
+	private Iterable<MapLine> filter(Iterable<MapLine> lines) {
+		List<MapLine> result = new ArrayList<MapLine>();
+
+		for (MapLine l : lines) {
+			if (l.getPoints().isEmpty())
+				continue;
+			if (l.getPoints().size() > MAX_POINTS_IN_ELEMENT) {
+				List<MapLine> split = splitLine(l);
+				result.addAll(split);
+			} else {
+				result.add(l);
+			}
+		}
+		return result;
+	}
+
+	private List<MapLine> splitLine(MapLine l) {
+		List<MapLine> result = new ArrayList<MapLine>();
+		List<Coord> points = l.getPoints();
+		int totpoints = points.size();
+
+		int np = 0;
+		do {
+			MapLine lc = new MapLine();
+			List<Coord> coords = new ArrayList<Coord>();
+
+			for (int i = 0; i < MAX_POINTS_IN_ELEMENT; i++) {
+				Coord co = points.get(np++);
+				coords.add(co);
+				if (np >= totpoints)
+					break;
+			}
+
+			lc.setPoints(coords);
+
+			result.add(lc);
+		} while (np < totpoints);
+
+		return result;
+	}
+
 	/**
 	 * Step through the polygons, filter, simplify if necessary, and create a map
 	 * shape which is then added to the map.
