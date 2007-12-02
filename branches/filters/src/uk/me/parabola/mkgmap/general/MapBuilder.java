@@ -289,7 +289,7 @@ public class MapBuilder {
 		int res = div.getResolution();
 
 		List<MapElement> elements = new ArrayList<MapElement>();
-		MapFilterChainImpl filters = new MapFilterChainImpl();
+		LayerFilterChain filters = new LayerFilterChain();
 		filters.addFilter(new LineSplitter());
 		filters.addFilter(new RemoveEmpty());
 		filters.addFilter(new MapAddFilter(div, shift, map));
