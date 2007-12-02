@@ -13,8 +13,8 @@ OSMDATA = localtest/osm5/cricklewood-5.osm
 #OSMDATA = london.osm
 #OSMDATA = maps/lon.mp
 #OSMDATA = --mapname=90000001 test-map:all-elements
-#OSMDATA = /opt/data/uk-070530.osm
-#OSMDATA = /opt/data/uk-070815.osm
+#OSMDATA = /opt/data/uk-070530.osm.gz
+OSMDATA = /opt/data/uk-070815.osm.gz
 #OSMDATA = /opt/data/uk-070919-1.osm.gz
 #OSMDATA = /opt/data/uk-071010-1.osm.gz /opt/data/uk-071010-2.osm.gz
 #OSMDATA = /tmp/63253506
@@ -29,7 +29,8 @@ OSMDATA = localtest/osm5/cricklewood-5.osm
 #OSMDATA = --gmapsupp ~/tmp/batch/*.osm
 #OSMDATA = /opt/data/uk-071114.osm.gz
 #OSMDATA = /opt/data/uk/63*
-OSMDATA = reg40.osm
+#OSMDATA = reg40.osm
+#OSMDATA = --levels='0:24' longline.osm
 
 
 TIME=/usr/bin/time --format 'Real: %E, %S+%U'
@@ -43,10 +44,10 @@ OPTS= --gmapsupp
 makemap:
 	rm -f gmapsupp/* mkgmap.log out.log
 	rm -f gmapsupp.img 6324*.img 6324*.tdb
-	#$(TIME) java -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
-	java -Dlog.config=l -ea -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
+	$(TIME) java -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
+	#java -Dlog.config=l -ea -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
 	#cp 63240001.img gmapsupp.img
-	#imgdecode gmapsupp.img
+	imgdecode gmapsupp.img
 
 load:
 	sleep 2

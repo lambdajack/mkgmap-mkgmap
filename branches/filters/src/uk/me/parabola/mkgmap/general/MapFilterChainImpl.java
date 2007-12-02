@@ -18,6 +18,7 @@ package uk.me.parabola.mkgmap.general;
 
 import uk.me.parabola.mkgmap.filters.MapFilter;
 import uk.me.parabola.mkgmap.filters.MapFilterChain;
+import uk.me.parabola.log.Logger;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -29,6 +30,8 @@ import java.util.ArrayList;
  * @author Steve Ratcliffe
  */
 public class MapFilterChainImpl implements MapFilterChain {
+	private static final Logger log = Logger.getLogger(MapFilterChainImpl.class);
+	
 	// The filters that will be applied to the element.
 	private List<MapFilter> filters = new ArrayList<MapFilter>();
 
@@ -36,29 +39,25 @@ public class MapFilterChainImpl implements MapFilterChain {
 	private int position;
 
 	// Elements will be added here.
-	private List<MapElement> result = new ArrayList<MapElement>();
-
-	public MapFilterChainImpl(List<MapElement> result) {
-		this.result = result;
-	}
+	//private List<MapElement> result = new ArrayList<MapElement>();
 
 	public void doFilter(MapElement element) {
 		int nfilters = filters.size();
 
-		if (position == nfilters) {
-			// We must have got to the end of the chain, so save the element.
-			result.add(element);
-		} else {
-			MapFilter f = filters.get(position);
-			f.doFilter(element, this);
-		}
+		log.debug("doing filter pos=", position, "out of=", nfilters);
+		if (position >= nfilters)
+			return;
+		
+		MapFilter f = filters.get(position++);
+		f.doFilter(element, this);
 	}
 
 	public void addElement(MapElement element) {
-		MapFilterChainImpl newChain = new MapFilterChainImpl(result);
-		newChain.position = this.position;
+		MapFilterChainImpl newChain = new MapFilterChainImpl();
+		newChain.position = this.position - 1;
 		newChain.filters = this.filters;
 
+		log.debug("new chain filtering");
 		newChain.doFilter(element);
 	}
 

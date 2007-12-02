@@ -17,7 +17,6 @@
 package uk.me.parabola.mkgmap.filters;
 
 import uk.me.parabola.mkgmap.general.MapElement;
-import uk.me.parabola.mkgmap.filters.MapFilterChain;
 
 /**
  * Used for filtering the elements that are added to the levels.  We make serveral
@@ -31,7 +30,7 @@ public interface MapFilter {
 	/**
 	 * Filter an element.  The filter looks at the element and can simply
 	 * pass it on to the next filter in the chain by calling the
-	 * {@link MapFilterChain#doFilter(uk.me.parabola.mkgmap.general.MapElement)} method.
+	 * {@link MapFilterChain#doFilter(MapElement)} method.
 	 *
 	 * <p>The filter may modify the element or create a new element or even
 	 * more than one element and pass them all to the next part of the chain.
@@ -43,7 +42,6 @@ public interface MapFilter {
 	 *
 	 * @param element A map element.
 	 * @param next This is used to pass the possibly transformed element onward.
-	 * This can be used more than once.
 	 */
 	public void doFilter(MapElement element, MapFilterChain next);
 }

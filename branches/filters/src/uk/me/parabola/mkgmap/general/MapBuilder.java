@@ -28,6 +28,10 @@ import uk.me.parabola.imgfmt.app.PolylineOverview;
 import uk.me.parabola.imgfmt.app.Subdivision;
 import uk.me.parabola.imgfmt.app.Zoom;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.filters.LineSplitter;
+import uk.me.parabola.mkgmap.filters.RemoveEmpty;
+import uk.me.parabola.mkgmap.filters.MapFilter;
+import uk.me.parabola.mkgmap.filters.MapFilterChain;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -277,91 +281,25 @@ public class MapBuilder {
 	 * @param div	The subdivision that the lines belong to.
 	 * @param lines The lines to be added.
 	 */
-	private void processLines(Map map, Subdivision div,
-			List<MapLine> lines)
+	private void processLines(Map map, Subdivision div, List<MapLine> lines)
 	{
 		div.startLines();  // Signal that we are beginning to draw the lines.
-		int res = div.getResolution();
-		log.info("div resolution " + res);
 
 		int shift = div.getShift();
+		int res = div.getResolution();
 
 		List<MapElement> elements = new ArrayList<MapElement>();
-		MapFilterChainImpl filters = new MapFilterChainImpl(elements);
-		//filters.addFilter(new LineSplitter());
-		//filters.addFilter(new RemoveEmpty());
+		MapFilterChainImpl filters = new MapFilterChainImpl();
+		filters.addFilter(new LineSplitter());
+		filters.addFilter(new RemoveEmpty());
+		filters.addFilter(new MapAddFilter(div, shift, map));
 		
-		for (MapLine line : filter(lines)) {
+		for (MapLine line : lines) {
 			if (line.getMinResolution() > res)
 				continue;
 
-			assert line.getPoints().size() < 255 : "too many points";
-			//assert line.getBounds().getMaxDimention() < ();
-			String name = line.getName();
-			if (name == null)
-				name = "";
-
-			Polyline pl = div.createLine(name);
-			pl.setDirection(line.isDirection());
-
-			// This is in itself a filter and so should be factored out.
-			int lastx = 0, lasty = 0;
-			List<Coord> points = line.getPoints();
-			for (Coord co : points) {
-				int x = co.getLongitude() >> shift;
-				int y = co.getLatitude() >> shift;
-
-				if (lastx != x || lasty != y)
-					pl.addCoord(co);
-
-				lastx = x;
-				lasty = y;
-			}
-
-			pl.setType(line.getType());
-			map.addMapObject(pl);
+			filters.startFilter(line);
 		}
-	}
-
-	private Iterable<MapLine> filter(Iterable<MapLine> lines) {
-		List<MapLine> result = new ArrayList<MapLine>();
-
-		for (MapLine l : lines) {
-			if (l.getPoints().isEmpty())
-				continue;
-			if (l.getPoints().size() > MAX_POINTS_IN_ELEMENT) {
-				List<MapLine> split = splitLine(l);
-				result.addAll(split);
-			} else {
-				result.add(l);
-			}
-		}
-		return result;
-	}
-
-	private List<MapLine> splitLine(MapLine l) {
-		List<MapLine> result = new ArrayList<MapLine>();
-		List<Coord> points = l.getPoints();
-		int totpoints = points.size();
-
-		int np = 0;
-		do {
-			MapLine lc = new MapLine();
-			List<Coord> coords = new ArrayList<Coord>();
-
-			for (int i = 0; i < MAX_POINTS_IN_ELEMENT; i++) {
-				Coord co = points.get(np++);
-				coords.add(co);
-				if (np >= totpoints)
-					break;
-			}
-
-			lc.setPoints(coords);
-
-			result.add(lc);
-		} while (np < totpoints);
-
-		return result;
 	}
 
 	/**
@@ -444,4 +382,45 @@ public class MapBuilder {
 		}
 	}
 
+	private static class MapAddFilter implements MapFilter {
+		private final Subdivision div;
+		private final int shift;
+		private final Map map;
+
+		MapAddFilter(Subdivision div, int shift, Map map) {
+			this.div = div;
+			this.shift = shift;
+			this.map = map;
+		}
+
+		public void doFilter(MapElement element, MapFilterChain next) {
+			log.debug("final filter");
+			MapLine line = (MapLine) element;
+			assert line.getPoints().size() < 255 : "too many points";
+			String name = line.getName();
+			if (name == null)
+				name = "";
+
+			log.debug("adding line", name, "npoints", line.getPoints().size());
+			Polyline pl = div.createLine(name);
+			pl.setDirection(line.isDirection());
+
+			// This is in itself a filter and so should be factored out.
+			int lastx = 0, lasty = 0;
+			List<Coord> points = line.getPoints();
+			for (Coord co : points) {
+				int x = co.getLongitude() >> shift;
+				int y = co.getLatitude() >> shift;
+
+				if (lastx != x || lasty != y)
+					pl.addCoord(co);
+
+				lastx = x;
+				lasty = y;
+			}
+
+			pl.setType(line.getType());
+			map.addMapObject(pl);
+		}
+	}
 }
