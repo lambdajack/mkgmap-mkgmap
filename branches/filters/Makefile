@@ -29,7 +29,7 @@ OSMDATA = /opt/data/uk-070919-1.osm.gz
 #OSMDATA = /opt/data/uk-071114.osm.gz
 #OSMDATA = /opt/data/uk/63*
 #OSMDATA = reg40.osm
-OSMDATA = --levels='0:24' longline.osm
+#OSMDATA = --levels='0:24' longline.osm
 
 
 TIME=/usr/bin/time --format 'Real: %E, %S+%U'

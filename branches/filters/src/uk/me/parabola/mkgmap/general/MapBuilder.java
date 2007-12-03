@@ -51,7 +51,6 @@ import java.util.List;
 public class MapBuilder {
 	private static final Logger log = Logger.getLogger(MapBuilder.class);
 	private static final int CLEAR_TOP_BITS = (32 - 15);
-	private static final int MAX_POINTS_IN_ELEMENT = 250;
 
 	/**
 	 * Main method to create the map, just calls out to several routines
@@ -323,7 +322,7 @@ public class MapBuilder {
 		LayerFilterChain filters = new LayerFilterChain();
 		filters.addFilter(new PolygonSplitterFilter());
 		filters.addFilter(new RemoveEmpty());
-		filters.addFilter(new LineAddFilter(div, shift, map));
+		filters.addFilter(new ShapeAddFilter(div, shift, map));
 
 		for (MapShape shape : shapes) {
 			if (shape.getMinResolution() > res)
@@ -382,8 +381,6 @@ public class MapBuilder {
 			MapLine line = (MapLine) element;
 			assert line.getPoints().size() < 255 : "too many points";
 			String name = line.getName();
-			if (name == null)
-				name = "";
 
 			log.debug("adding line", name, "npoints", line.getPoints().size());
 			Polyline pl = div.createLine(name);
@@ -423,8 +420,6 @@ public class MapBuilder {
 			MapShape shape = (MapShape) element;
 			assert shape.getPoints().size() < 255 : "too many points";
 			String name = shape.getName();
-			if (name == null)
-				name = "";
 
 			log.debug("adding shape", name, "npoints", shape.getPoints().size());
 			Polygon pg = div.createPolygon(name);

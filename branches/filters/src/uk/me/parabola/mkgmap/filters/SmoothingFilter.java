@@ -16,13 +16,11 @@
  */
 package uk.me.parabola.mkgmap.filters;
 
-import uk.me.parabola.imgfmt.app.Coord;
-import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.MapElement;
 import uk.me.parabola.mkgmap.general.MapLine;
-import uk.me.parabola.mkgmap.general.MapShape;
+import uk.me.parabola.log.Logger;
+import uk.me.parabola.imgfmt.app.Coord;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -31,9 +29,9 @@ import java.util.List;
  *
  * @author Steve Ratcliffe
  */
-public class LineSplitterFilter implements MapFilter {
+public class SmoothingFilter implements MapFilter {
 	private static final Logger log = Logger.getLogger(LineSplitterFilter.class);
-	
+
 	// Not sure of the value, probably 255.  Say 250 here.
 	private static final int MAX_POINTS_IN_LINE = 250;
 
@@ -46,50 +44,12 @@ public class LineSplitterFilter implements MapFilter {
 	 * @param next This is used to pass the possibly transformed element onward.
 	 */
 	public void doFilter(MapElement element, MapFilterChain next) {
-		// We do not deal with shapes.
-		assert !(element instanceof MapShape) && element instanceof MapLine;
-		
 		MapLine line = (MapLine) element;
 
 		List<Coord> points = line.getPoints();
-		int npoints = points.size();
-		if (npoints < MAX_POINTS_IN_LINE) {
-			next.doFilter(element);
-			return;
-		}
-
-		log.debug("line too long, splitting");
-
-		MapLine l = new MapLine(line);
-
-		List<Coord> coords = new ArrayList<Coord>();
-		int count = 0;
-		boolean first = true;
 
 		for (Coord co : points) {
-			coords.add(co);
-			if (++count >= MAX_POINTS_IN_LINE) {
-				log.debug("saving first part");
-				l.setPoints(coords);
-
-				if (first)
-					next.doFilter(l);
-				else
-					next.addElement(l);
-
-				l = new MapLine(line);
-
-				count = 0;
-				first = false;
-				coords = new ArrayList<Coord>();
-				coords.add(co);
-			}
-		}
-
-		if (count != 0) {
-			log.debug("saving a final part");
-			l.setPoints(coords);
-			next.addElement(l);
+			
 		}
 	}
 }
