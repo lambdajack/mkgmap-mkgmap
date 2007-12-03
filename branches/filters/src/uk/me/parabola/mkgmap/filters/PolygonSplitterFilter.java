@@ -34,11 +34,15 @@ public class PolygonSplitterFilter implements MapFilter {
 	 * @param next	This is used to pass the possibly transformed element onward.
 	 */
 	public void doFilter(MapElement element, MapFilterChain next) {
-		if (element instanceof MapShape) {
-			MapShape shape = (MapShape) element;
+		System.out.println(element.getClass().getName());
+		assert element instanceof MapShape;
+		MapShape shape = (MapShape) element;
 
-			if (shape.getPoints().size() > MAX_POINT_IN_ELEMENT)
-				return;
+		System.out.println("number of points " + shape.getPoints().size());
+		if (shape.getPoints().size() > MAX_POINT_IN_ELEMENT) {
+			// Temporary, just drop 'em.
+			System.out.println("dropping too-big polygon " + shape);
+			return;
 		}
 
 		next.doFilter(element);

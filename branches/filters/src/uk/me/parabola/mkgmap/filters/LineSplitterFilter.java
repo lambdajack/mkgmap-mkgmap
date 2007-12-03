@@ -20,6 +20,7 @@ import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.MapElement;
 import uk.me.parabola.mkgmap.general.MapLine;
+import uk.me.parabola.mkgmap.general.MapShape;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +47,11 @@ public class LineSplitterFilter implements MapFilter {
 	 * @param next This is used to pass the possibly transformed element onward.
 	 */
 	public void doFilter(MapElement element, MapFilterChain next) {
+		// We do not deal with shapes.
+		System.out.println(element.getClass().getName() + " " + element.getName());
+
+		assert !(element instanceof MapShape) && element instanceof MapLine;
+		
 		MapLine line = (MapLine) element;
 
 		List<Coord> points = line.getPoints();

@@ -289,12 +289,10 @@ public class MapBuilder {
 		int shift = div.getShift();
 		int res = div.getResolution();
 
-		List<MapElement> elements = new ArrayList<MapElement>();
 		LayerFilterChain filters = new LayerFilterChain();
 		filters.addFilter(new LineSplitterFilter());
-		filters.addFilter(new PolygonSplitterFilter());
 		filters.addFilter(new RemoveEmpty());
-		filters.addFilter(new MapAddFilter(div, shift, map));
+		filters.addFilter(new LineAddFilter(div, shift, map));
 		
 		for (MapLine line : lines) {
 			if (line.getMinResolution() > res)
@@ -315,39 +313,23 @@ public class MapBuilder {
 	 * @param div	The subdivision that the polygons belong to.
 	 * @param shapes The polygons to be added.
 	 */
-	private void processShapes(Map map, Subdivision div,
-			List<MapShape> shapes)
+	private void processShapes(Map map, Subdivision div, List<MapShape> shapes)
 	{
 		div.startShapes();  // Signal that we are beginning to draw the shapes.
-		int res = div.getResolution();
 
 		int shift = div.getShift();
+		int res = div.getResolution();
+
+		LayerFilterChain filters = new LayerFilterChain();
+		filters.addFilter(new PolygonSplitterFilter());
+		filters.addFilter(new RemoveEmpty());
+		filters.addFilter(new LineAddFilter(div, shift, map));
 
 		for (MapShape shape : shapes) {
 			if (shape.getMinResolution() > res)
 				continue;
 
-			String name = shape.getName();
-			if (name == null)
-				name = "";
-
-			Polygon pg = div.createPolygon(name);
-
-			int lastx = 0, lasty = 0;
-			List<Coord> points = shape.getPoints();
-			for (Coord co : points) {
-				int x = co.getLongitude() >> shift;
-				int y = co.getLatitude() >> shift;
-
-				if (x != lastx || y != lasty)
-					pg.addCoord(co);
-
-				lastx = x;
-				lasty = y;
-			}
-
-			pg.setType(shape.getType());
-			map.addMapObject(pg);
+			filters.startFilter(shape);
 		}
 	}
 
@@ -384,12 +366,12 @@ public class MapBuilder {
 		}
 	}
 
-	private static class MapAddFilter implements MapFilter {
+	private static class LineAddFilter implements MapFilter {
 		private final Subdivision div;
 		private final int shift;
 		private final Map map;
 
-		MapAddFilter(Subdivision div, int shift, Map map) {
+		LineAddFilter(Subdivision div, int shift, Map map) {
 			this.div = div;
 			this.shift = shift;
 			this.map = map;
@@ -423,6 +405,46 @@ public class MapBuilder {
 
 			pl.setType(line.getType());
 			map.addMapObject(pl);
+		}
+	}
+	private static class ShapeAddFilter implements MapFilter {
+		private final Subdivision div;
+		private final int shift;
+		private final Map map;
+
+		ShapeAddFilter(Subdivision div, int shift, Map map) {
+			this.div = div;
+			this.shift = shift;
+			this.map = map;
+		}
+
+		public void doFilter(MapElement element, MapFilterChain next) {
+			log.debug("final filter");
+			MapShape shape = (MapShape) element;
+			assert shape.getPoints().size() < 255 : "too many points";
+			String name = shape.getName();
+			if (name == null)
+				name = "";
+
+			log.debug("adding shape", name, "npoints", shape.getPoints().size());
+			Polygon pg = div.createPolygon(name);
+
+			// This is in itself a filter and so should be factored out.
+			int lastx = 0, lasty = 0;
+			List<Coord> points = shape.getPoints();
+			for (Coord co : points) {
+				int x = co.getLongitude() >> shift;
+				int y = co.getLatitude() >> shift;
+
+				if (lastx != x || lasty != y)
+					pg.addCoord(co);
+
+				lastx = x;
+				lasty = y;
+			}
+
+			pg.setType(shape.getType());
+			map.addMapObject(pg);
 		}
 	}
 }
