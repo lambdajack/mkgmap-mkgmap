@@ -66,8 +66,10 @@ public class SmoothingFilter implements MapFilter {
 		MapLine line = (MapLine) element;
 
 		// First off we don't touch things if at the highest level of detail
-		if (shift == 0)
+		if (shift == 0) {
 			next.doFilter(element);
+			return;
+		}
 
 		// Drop things that are too small.
 		if (line.getBounds().getMaxDimention() < MIN_SIZE)
