@@ -57,7 +57,7 @@ public class LineSplitterFilter implements MapFilter {
 
 		log.debug("line too long, splitting");
 
-		MapLine l = line;
+		MapLine l = new MapLine(line);
 
 		List<Coord> coords = new ArrayList<Coord>();
 		int count = 0;
@@ -65,7 +65,7 @@ public class LineSplitterFilter implements MapFilter {
 
 		for (Coord co : points) {
 			coords.add(co);
-			if (++count > MAX_POINTS_IN_LINE) {
+			if (++count >= MAX_POINTS_IN_LINE) {
 				log.debug("saving first part");
 				l.setPoints(coords);
 
@@ -74,11 +74,7 @@ public class LineSplitterFilter implements MapFilter {
 				else
 					next.addElement(l);
 
-				l = new MapLine();
-				l.setType(line.getType());
-				l.setMinResolution(line.getMinResolution());
-				l.setDirection(line.isDirection());
-				l.setName(line.getName());
+				l = new MapLine(line);
 
 				count = 0;
 				first = false;
