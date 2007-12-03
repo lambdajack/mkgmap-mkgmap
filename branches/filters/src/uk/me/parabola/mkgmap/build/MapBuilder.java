@@ -14,7 +14,7 @@
  * Author: Steve Ratcliffe
  * Create date: 30-Sep-2007
  */
-package uk.me.parabola.mkgmap.general;
+package uk.me.parabola.mkgmap.build;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.Map;
@@ -33,6 +33,14 @@ import uk.me.parabola.mkgmap.filters.MapFilter;
 import uk.me.parabola.mkgmap.filters.MapFilterChain;
 import uk.me.parabola.mkgmap.filters.PolygonSplitterFilter;
 import uk.me.parabola.mkgmap.filters.RemoveEmpty;
+import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
+import uk.me.parabola.mkgmap.general.LevelInfo;
+import uk.me.parabola.mkgmap.general.MapArea;
+import uk.me.parabola.mkgmap.general.MapDataSource;
+import uk.me.parabola.mkgmap.general.MapPoint;
+import uk.me.parabola.mkgmap.general.MapLine;
+import uk.me.parabola.mkgmap.general.MapShape;
+import uk.me.parabola.mkgmap.general.MapElement;
 
 import java.util.ArrayList;
 import java.util.Collections;

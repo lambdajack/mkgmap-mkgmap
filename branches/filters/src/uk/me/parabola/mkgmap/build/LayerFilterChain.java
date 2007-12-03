@@ -14,10 +14,11 @@
  * Author: Steve Ratcliffe
  * Create date: Dec 1, 2007
  */
-package uk.me.parabola.mkgmap.general;
+package uk.me.parabola.mkgmap.build;
 
 import uk.me.parabola.mkgmap.filters.MapFilter;
 import uk.me.parabola.mkgmap.filters.MapFilterChain;
+import uk.me.parabola.mkgmap.general.MapElement;
 import uk.me.parabola.log.Logger;
 
 import java.util.List;
