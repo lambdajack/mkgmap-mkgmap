@@ -37,6 +37,9 @@ public class LineSplitterFilter implements MapFilter {
 	// Not sure of the value, probably 255.  Say 250 here.
 	private static final int MAX_POINTS_IN_LINE = 250;
 
+	public void init(FilterConfig config) {
+	}
+
 	/**
 	 * If the line is short enough then we just pass it on straight away.
 	 * Otherwise we cut it into pieces that are short enough and hand them

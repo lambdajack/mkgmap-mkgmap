@@ -16,13 +16,14 @@
  */
 package uk.me.parabola.mkgmap.build;
 
+import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.filters.FilterConfig;
 import uk.me.parabola.mkgmap.filters.MapFilter;
 import uk.me.parabola.mkgmap.filters.MapFilterChain;
 import uk.me.parabola.mkgmap.general.MapElement;
-import uk.me.parabola.log.Logger;
 
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This calls all the filters that are applied to an element as it is added to
@@ -39,8 +40,11 @@ public class LayerFilterChain implements MapFilterChain {
 	// The position in the filter list.
 	private int position;
 
-	// Elements will be added here.
-	//private List<MapElement> result = new ArrayList<MapElement>();
+	private final FilterConfig config;
+
+	public LayerFilterChain(FilterConfig config) {
+		this.config = config;
+	}
 
 	public void doFilter(MapElement element) {
 		int nfilters = filters.size();
@@ -54,7 +58,7 @@ public class LayerFilterChain implements MapFilterChain {
 	}
 
 	public void addElement(MapElement element) {
-		LayerFilterChain newChain = new LayerFilterChain();
+		LayerFilterChain newChain = new LayerFilterChain(config);
 		newChain.position = this.position - 1;
 		newChain.filters = this.filters;
 
@@ -77,6 +81,9 @@ public class LayerFilterChain implements MapFilterChain {
 	 * @param filter Filter to added at the end of the chain.
 	 */
 	void addFilter(MapFilter filter) {
+		assert config != null;
+
+		filter.init(config);
 		filters.add(filter);
 	}
 }

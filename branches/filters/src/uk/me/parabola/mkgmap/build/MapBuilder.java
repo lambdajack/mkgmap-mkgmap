@@ -28,19 +28,22 @@ import uk.me.parabola.imgfmt.app.PolylineOverview;
 import uk.me.parabola.imgfmt.app.Subdivision;
 import uk.me.parabola.imgfmt.app.Zoom;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.filters.BaseFilter;
+import uk.me.parabola.mkgmap.filters.FilterConfig;
 import uk.me.parabola.mkgmap.filters.LineSplitterFilter;
 import uk.me.parabola.mkgmap.filters.MapFilter;
 import uk.me.parabola.mkgmap.filters.MapFilterChain;
 import uk.me.parabola.mkgmap.filters.PolygonSplitterFilter;
 import uk.me.parabola.mkgmap.filters.RemoveEmpty;
-import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
+import uk.me.parabola.mkgmap.filters.SmoothingFilter;
 import uk.me.parabola.mkgmap.general.LevelInfo;
+import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 import uk.me.parabola.mkgmap.general.MapArea;
 import uk.me.parabola.mkgmap.general.MapDataSource;
-import uk.me.parabola.mkgmap.general.MapPoint;
-import uk.me.parabola.mkgmap.general.MapLine;
-import uk.me.parabola.mkgmap.general.MapShape;
 import uk.me.parabola.mkgmap.general.MapElement;
+import uk.me.parabola.mkgmap.general.MapLine;
+import uk.me.parabola.mkgmap.general.MapPoint;
+import uk.me.parabola.mkgmap.general.MapShape;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -296,7 +299,11 @@ public class MapBuilder {
 		int shift = div.getShift();
 		int res = div.getResolution();
 
-		LayerFilterChain filters = new LayerFilterChain();
+		FilterConfig config = new FilterConfig();
+		config.setShift(shift);
+
+		LayerFilterChain filters = new LayerFilterChain(config);
+		filters.addFilter(new SmoothingFilter());
 		filters.addFilter(new LineSplitterFilter());
 		filters.addFilter(new RemoveEmpty());
 		filters.addFilter(new LineAddFilter(div, shift, map));
@@ -327,7 +334,10 @@ public class MapBuilder {
 		int shift = div.getShift();
 		int res = div.getResolution();
 
-		LayerFilterChain filters = new LayerFilterChain();
+		FilterConfig config = new FilterConfig();
+		config.setShift(shift);
+		LayerFilterChain filters = new LayerFilterChain(config);
+		filters.addFilter(new SmoothingFilter());
 		filters.addFilter(new PolygonSplitterFilter());
 		filters.addFilter(new RemoveEmpty());
 		filters.addFilter(new ShapeAddFilter(div, shift, map));
@@ -373,7 +383,7 @@ public class MapBuilder {
 		}
 	}
 
-	private static class LineAddFilter implements MapFilter {
+	private static class LineAddFilter extends BaseFilter implements MapFilter {
 		private final Subdivision div;
 		private final int shift;
 		private final Map map;
@@ -412,7 +422,7 @@ public class MapBuilder {
 			map.addMapObject(pl);
 		}
 	}
-	private static class ShapeAddFilter implements MapFilter {
+	private static class ShapeAddFilter extends BaseFilter implements MapFilter {
 		private final Subdivision div;
 		private final int shift;
 		private final Map map;

@@ -24,7 +24,7 @@ import uk.me.parabola.mkgmap.general.MapElement;
  *
  * <p>Although this is based on servlet filters, there is a complication in
  * that we want to be able to split up an element, this lead to the
- * {@link #addElement(uk.me.parabola.mkgmap.general.MapElement)} method which in effect creates a new chain
+ * {@link #addElement(MapElement)} method which in effect creates a new chain
  * that is at the same stage as the current one and with the same final
  * destination.
  * 

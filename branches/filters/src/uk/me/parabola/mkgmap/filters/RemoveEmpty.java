@@ -26,6 +26,9 @@ import uk.me.parabola.log.Logger;
 public class RemoveEmpty implements MapFilter {
 	private static final Logger log = Logger.getLogger(RemoveEmpty.class);
 
+	public void init(FilterConfig config) {
+	}
+
 	/**
 	 * If this is a line (or a shape, which extends a line) then we check
 	 * to see if it is empty or only a single point.  If it is then it

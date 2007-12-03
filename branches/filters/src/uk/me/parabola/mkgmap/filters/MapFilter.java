@@ -28,6 +28,15 @@ import uk.me.parabola.mkgmap.general.MapElement;
 public interface MapFilter {
 
 	/**
+	 * Initiailise the filter and pass in parameters that may be needed for
+	 * the run.
+	 *
+	 * @param config Configuration information, giving parameters of the map
+	 * level that is being produced through this filter.
+	 */
+	public void init(FilterConfig config);
+
+	/**
 	 * Filter an element.  The filter looks at the element and can simply
 	 * pass it on to the next filter in the chain by calling the
 	 * {@link MapFilterChain#doFilter(MapElement)} method.

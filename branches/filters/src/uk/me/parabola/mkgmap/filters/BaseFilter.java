@@ -12,40 +12,35 @@
  * 
  * 
  * Author: Steve Ratcliffe
- * Create date: Dec 2, 2007
+ * Create date: Dec 3, 2007
  */
 package uk.me.parabola.mkgmap.filters;
 
 import uk.me.parabola.mkgmap.general.MapElement;
-import uk.me.parabola.mkgmap.general.MapShape;
 
 /**
+ * A base filter to use that has empty implementations of methods that are not
+ * always used.
+ *
  * @author Steve Ratcliffe
  */
-public class PolygonSplitterFilter implements MapFilter {
-	private static final int MAX_POINT_IN_ELEMENT = 250;
-
+public class BaseFilter implements MapFilter {
+	/**
+	 * Empty implementation of the init function.
+	 *
+	 * @param config Configuration information, giving parameters of the map
+	 *               level that is being produced through this filter.
+	 */
 	public void init(FilterConfig config) {
 	}
 
 	/**
-	 * Split up polygons that have more than the max allowed number of points.
-	 * Initially I shall just throw out polygons that have too many points
-	 * to see if this is causing particular problems.
+	 * Empty implementation.
 	 *
-	 * @param element A map element, only polygons will be processed.
+	 * @param element A map element.
 	 * @param next	This is used to pass the possibly transformed element onward.
 	 */
 	public void doFilter(MapElement element, MapFilterChain next) {
-		assert element instanceof MapShape;
-		MapShape shape = (MapShape) element;
-
-		if (shape.getPoints().size() > MAX_POINT_IN_ELEMENT) {
-			// Temporary, just drop 'em.
-			System.out.println("dropping too-big polygon " + shape);
-			return;
-		}
-
-		next.doFilter(element);
+		throw new UnsupportedOperationException();
 	}
 }
