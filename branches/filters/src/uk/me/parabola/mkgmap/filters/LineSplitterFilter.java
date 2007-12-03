@@ -30,8 +30,8 @@ import java.util.List;
  *
  * @author Steve Ratcliffe
  */
-public class LineSplitter implements MapFilter {
-	private static final Logger log = Logger.getLogger(LineSplitter.class);
+public class LineSplitterFilter implements MapFilter {
+	private static final Logger log = Logger.getLogger(LineSplitterFilter.class);
 	
 	// Not sure of the value, probably 255.  Say 250 here.
 	private static final int MAX_POINTS_IN_LINE = 250;

@@ -28,10 +28,11 @@ import uk.me.parabola.imgfmt.app.PolylineOverview;
 import uk.me.parabola.imgfmt.app.Subdivision;
 import uk.me.parabola.imgfmt.app.Zoom;
 import uk.me.parabola.log.Logger;
-import uk.me.parabola.mkgmap.filters.LineSplitterFIlter;
-import uk.me.parabola.mkgmap.filters.RemoveEmpty;
+import uk.me.parabola.mkgmap.filters.LineSplitterFilter;
 import uk.me.parabola.mkgmap.filters.MapFilter;
 import uk.me.parabola.mkgmap.filters.MapFilterChain;
+import uk.me.parabola.mkgmap.filters.PolygonSplitterFilter;
+import uk.me.parabola.mkgmap.filters.RemoveEmpty;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -290,7 +291,8 @@ public class MapBuilder {
 
 		List<MapElement> elements = new ArrayList<MapElement>();
 		LayerFilterChain filters = new LayerFilterChain();
-		filters.addFilter(new LineSplitterFIlter());
+		filters.addFilter(new LineSplitterFilter());
+		filters.addFilter(new PolygonSplitterFilter());
 		filters.addFilter(new RemoveEmpty());
 		filters.addFilter(new MapAddFilter(div, shift, map));
 		
