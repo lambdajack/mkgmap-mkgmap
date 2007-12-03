@@ -19,6 +19,8 @@ package uk.me.parabola.mkgmap.main;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
 
+import java.util.Locale;
+
 /**
  * The new main program.  There can be many filenames to process and there can
  * be differing outputs determined by options.  So the actual work is mostly
@@ -30,7 +32,8 @@ public class Main implements ArgumentProcessor {
 	private static final Logger log = Logger.getLogger(Main.class);
 
 	//private OverviewMapMaker overview;
-	private final MapProcessor action = new MakeMap();
+	private final MapProcessor maker = new MapMaker();
+	private final MapProcessor reader = new MapReader();
 
 
 	public static void main(String[] args) {
@@ -65,12 +68,17 @@ public class Main implements ArgumentProcessor {
 			if (n > 1) {
 				// More than one file so do the overview map
 				MapEventListener overview = new OverviewMapBuilder();
-				action.addMapListener(overview);
+				registerListener(overview);
 			}
 		} else if (opt.equals("gmapsupp")) {
 			MapEventListener gmapsupp = new GmapsuppBuilder();
-			action.addMapListener(gmapsupp);
+			registerListener(gmapsupp);
 		}
+	}
+
+	private void registerListener(MapEventListener listener) {
+		maker.addMapListener(listener);
+		reader.addMapListener(listener);
 	}
 
 	/**
@@ -80,10 +88,13 @@ public class Main implements ArgumentProcessor {
 	 * @param filename The filename to process.
 	 */
 	public void processFilename(CommandArgs args, String filename) {
-		action.processFilename(args, filename);
+		if (filename.toLowerCase(Locale.ENGLISH).endsWith(".img"))
+			reader.processFilename(args, filename);
+		else
+			maker.processFilename(args, filename);
 	}
 
 	public void endOfOptions() {
-		action.endOfOptions();
+		maker.endOfOptions();
 	}
 }

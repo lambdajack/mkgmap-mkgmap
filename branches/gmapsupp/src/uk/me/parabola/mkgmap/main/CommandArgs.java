@@ -201,7 +201,7 @@ class CommandArgs {
 	 * @param name   The name of the property.
 	 * @param defval The default value to supply.
 	 * @return An integer that is the value of the property.  If the property
-	 *         does not exist or if it is not numeric then the default value is returned.
+	 * does not exist or if it is not numeric then the default value is returned.
 	 */
 	private int getValue(String name, int defval) {
 		String s = arglist.getProperty(name);
