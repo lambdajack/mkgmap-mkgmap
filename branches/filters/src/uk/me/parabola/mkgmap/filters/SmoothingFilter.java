@@ -117,8 +117,6 @@ public class SmoothingFilter implements MapFilter {
 		else
 			newelem = new MapLine(line);
 
-		if (n - coords.size() > 1)
-			System.out.println("saved size " + n + " to " + coords.size());
 		newelem.setPoints(coords);
 		next.doFilter(newelem);
 	}

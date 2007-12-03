@@ -434,7 +434,6 @@ public class MapBuilder {
 		}
 
 		public void doFilter(MapElement element, MapFilterChain next) {
-			System.out.println("shape doing " + element);
 			log.debug("final filter");
 			MapShape shape = (MapShape) element;
 			assert shape.getPoints().size() < 255 : "too many points";

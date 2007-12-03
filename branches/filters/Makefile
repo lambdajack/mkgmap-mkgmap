@@ -28,8 +28,8 @@ OSMDATA = /opt/data/uk-070919-1.osm.gz
 #OSMDATA = --gmapsupp ~/tmp/batch/*.osm
 #OSMDATA = /opt/data/uk-071114.osm.gz
 #OSMDATA = /opt/data/uk/63*
-#OSMDATA = reg40.osm
-OSMDATA = longline.osm
+OSMDATA = reg40.osm
+#OSMDATA = longline.osm
 
 
 TIME=/usr/bin/time --format 'Real: %E, %S+%U'
