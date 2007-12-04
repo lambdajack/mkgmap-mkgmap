@@ -37,6 +37,7 @@ import uk.me.parabola.log.Logger;
 public class Map implements InternalFiles {
 	private static final Logger log = Logger.getLogger(Map.class);
 
+	private String filename;
 	private FileSystem fileSystem;
 
 	private TREFile treFile;
@@ -69,6 +70,7 @@ public class Map implements InternalFiles {
 		String outFilename = mapname + ".img";
 
 		FileSystem fs = ImgFS.createFs(outFilename, params);
+		m.filename = outFilename;
 		m.fileSystem = fs;
 
 		m.rgnFile = new RGNFile(m.fileSystem.create(mapname + ".RGN"));
@@ -207,6 +209,10 @@ public class Map implements InternalFiles {
 		lblFile.close();
 
 		fileSystem.close();
+	}
+
+	public String getFilename() {
+		return filename;
 	}
 
 	public RGNFile getRgnFile() {

@@ -79,7 +79,6 @@ public class Main implements ArgumentProcessor {
 		MapProcessor saver = new NameSaver();
 		processMap.put("img", saver);
 		processMap.put("typ", saver);
-
 	}
 
 	/**
@@ -113,23 +112,16 @@ public class Main implements ArgumentProcessor {
 			// generation of the overview files if there is only one file
 			// to process.
 			int n = Integer.valueOf(val);
-			if (n > 1) {
+			if (n > 1)
 				doTdbfile = true;
-				// More than one file so do the overview map
-				//MapEventListener overview = new OverviewMapBuilder();
-				//registerListener(overview);
-			}
 		} else if (opt.equals("tdbfile")) {
 			doTdbfile = true;
 		} else if (opt.equals("gmapsupp")) {
 			doGmapsupp = true;
-			//MapEventListener gmapsupp = new GmapsuppBuilder();
-			//registerListener(gmapsupp);
 		}
 	}
 
 	public void endOfOptions() {
-		//maker.endOfOptions();
 		if (!doGmapsupp && !doTdbfile)
 			return;
 
@@ -139,30 +131,24 @@ public class Main implements ArgumentProcessor {
 	}
 
 	private String extractExtension(String filename) {
-		String[] parts = filename.toLowerCase(Locale.ENGLISH).split(".");
+		String[] parts = filename.toLowerCase(Locale.ENGLISH).split("\\.");
 		List<String> ignore = Arrays.asList("gz", "bz2", "bz");
 
 		// We want the last part that is not gz, bz etc (and isn't the first part ;)
 		for (int i = parts.length - 1; i > 0; i--) {
 			String ext = parts[i];
-			if (!ignore.contains(ext)) {
+			if (!ignore.contains(ext))
 				return ext;
-			}
 		}
 		return "";
 	}
 
+	/**
+	 * A null implementation that just returns the input name as the output.
+	 */
 	private static class NameSaver implements MapProcessor {
-		
-		/**
-	     * Process the given filename.
-		 *
-		 * @param args The user supplied arguments.
-		 * @param filename The name of a file that was given to the program, eg
-		 */
 		public String makeMap(CommandArgs args, String filename) {
 			return filename;
 		}
-
 	}
 }

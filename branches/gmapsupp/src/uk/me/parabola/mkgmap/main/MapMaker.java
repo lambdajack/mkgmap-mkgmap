@@ -41,8 +41,7 @@ public class MapMaker implements MapProcessor {
 	public String makeMap(CommandArgs args, String filename) {
 		try {
 			LoadableMapDataSource src = loadFromFile(args, filename);
-			makeMap(args, src);
-			return "HELLO";
+			return makeMap(args, src);
 		} catch (FormatException e) {
 			System.err.println("Bad file format: " + filename);
 			return null;
@@ -57,8 +56,9 @@ public class MapMaker implements MapProcessor {
 	 *
 	 * @param args User supplied arguments.
 	 * @param src The data source to load.
+	 * @return The output filename for the map.
 	 */
-	void makeMap(CommandArgs args, LoadableMapDataSource src) {
+	String makeMap(CommandArgs args, LoadableMapDataSource src) {
 
 		FileSystemParam params = new FileSystemParam();
 		params.setBlockSize(args.getBlockSize());
@@ -72,10 +72,10 @@ public class MapMaker implements MapProcessor {
 			builder.makeMap(map, src);
 
 			// Collect information on map complete.
-			log.info("finished making map, closing");
-			if (map != null)
-				map.close();
-
+			String outName = map.getFilename();
+			log.info("finished making map", outName, "closing");
+			map.close();
+			return outName;
 		} catch (FileExistsException e) {
 			throw new ExitException("File exists already", e);
 		} catch (FileNotWritableException e) {
