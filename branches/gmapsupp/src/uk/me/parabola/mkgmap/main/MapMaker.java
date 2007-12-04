@@ -29,8 +29,6 @@ import uk.me.parabola.mkgmap.general.MapBuilder;
 import uk.me.parabola.mkgmap.reader.plugin.MapReader;
 
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Main routine for the command line map-making utility.
@@ -40,25 +38,18 @@ import java.util.List;
 public class MapMaker implements MapProcessor {
 	private static final Logger log = Logger.getLogger(MapMaker.class);
 
-	private List<MapEventListener> mapListeners = new ArrayList<MapEventListener>();
-
-	public void processFilename(CommandArgs args, String filename) {
+	public String makeMap(CommandArgs args, String filename) {
 		try {
 			LoadableMapDataSource src = loadFromFile(args, filename);
 			makeMap(args, src);
+			return "HELLO";
 		} catch (FormatException e) {
 			System.err.println("Bad file format: " + filename);
+			return null;
 		} catch (FileNotFoundException e) {
 			System.err.println("Could not open file: " + filename);
+			return null;
 		}
-	}
-
-	public void endOfOptions() {
-		fireFinishEvent();
-	}
-
-	public void addMapListener(MapEventListener l) {
-		mapListeners.add(l);
 	}
 
 	/**
@@ -81,7 +72,6 @@ public class MapMaker implements MapProcessor {
 			builder.makeMap(map, src);
 
 			// Collect information on map complete.
-			fireMapEndEvent(args, src, map);
 			log.info("finished making map, closing");
 			if (map != null)
 				map.close();
@@ -90,27 +80,6 @@ public class MapMaker implements MapProcessor {
 			throw new ExitException("File exists already", e);
 		} catch (FileNotWritableException e) {
 			throw new ExitException("Could not create or write to file", e);
-		}
-	}
-
-	/**
-	 * Fire an event at the end of every map that is produced.
-	 * @param args The command aguments in effect.
-	 * @param src The data source used to produce the map.
-	 * @param map The map that was created.
-	 */
-	private void fireMapEndEvent(CommandArgs args, LoadableMapDataSource src, Map map) {
-		for (MapEventListener l : mapListeners) {
-			l.onMapEnd(args, src, map);
-		}
-	}
-
-	/**
-	 * Fire an event to all the listeners at the end of all files.
-	 */
-	private void fireFinishEvent() {
-		for (MapEventListener l : mapListeners) {
-			l.onFinish();
 		}
 	}
 

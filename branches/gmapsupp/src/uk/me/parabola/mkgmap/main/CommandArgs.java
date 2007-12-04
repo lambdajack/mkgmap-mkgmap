@@ -79,6 +79,8 @@ class CommandArgs {
 	 */
 	public void readArgs(String[] args) {
 
+		proc.startOptions();
+
 		int i = 0;
 		while (i < args.length) {
 			String arg = args[i++];
@@ -107,7 +109,7 @@ class CommandArgs {
 		// If there is more than one filename argument we inform of this fact
 		// via a fake option.
 		proc.processOption("number-of-files", String.valueOf(arglist.getFilenameCount()));
-		
+
 		// Now process the arguments in order.
 		for (ArgType a : arglist) {
 			a.processArg();

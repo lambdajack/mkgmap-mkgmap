@@ -19,7 +19,12 @@ package uk.me.parabola.mkgmap.main;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 /**
  * The new main program.  There can be many filenames to process and there can
@@ -33,9 +38,23 @@ public class Main implements ArgumentProcessor {
 
 	//private OverviewMapMaker overview;
 	private final MapProcessor maker = new MapMaker();
-	private final MapProcessor reader = new MapReader();
+	//private final MapProcessor reader = new MapReader();
 
+	private boolean doGmapsupp;
+	private boolean doTdbfile;
 
+	// The filenames that will be used in pass2.
+	private List<String> filenames = new ArrayList<String>();
+
+	private Map<String, MapProcessor> processMap = new HashMap<String, MapProcessor>();
+
+	/**
+	 * The main program to make or combine maps.  We now use a two pass process,
+	 * first going through the arguments and make any maps and collect names
+	 * to be used for creating summary files like the TDB and gmapsupp.
+	 *
+	 * @param args The command line arguments.
+	 */
 	public static void main(String[] args) {
 
 		// We need at least one argument.
@@ -56,29 +75,11 @@ public class Main implements ArgumentProcessor {
 		}
 	}
 
-	public void processOption(String opt, String val) {
-		log.debug("option:", opt, val);
-		
-		if (opt.equals("number-of-files")) {
+	public void startOptions() {
+		MapProcessor saver = new NameSaver();
+		processMap.put("img", saver);
+		processMap.put("typ", saver);
 
-			// This option always appears first.  We use it to turn on/off
-			// generation of the overview files if there is only one file
-			// to process.
-			int n = Integer.valueOf(val);
-			if (n > 1) {
-				// More than one file so do the overview map
-				MapEventListener overview = new OverviewMapBuilder();
-				registerListener(overview);
-			}
-		} else if (opt.equals("gmapsupp")) {
-			MapEventListener gmapsupp = new GmapsuppBuilder();
-			registerListener(gmapsupp);
-		}
-	}
-
-	private void registerListener(MapEventListener listener) {
-		maker.addMapListener(listener);
-		reader.addMapListener(listener);
 	}
 
 	/**
@@ -88,13 +89,80 @@ public class Main implements ArgumentProcessor {
 	 * @param filename The filename to process.
 	 */
 	public void processFilename(CommandArgs args, String filename) {
-		if (filename.toLowerCase(Locale.ENGLISH).endsWith(".img"))
-			reader.processFilename(args, filename);
-		else
-			maker.processFilename(args, filename);
+		String ext = extractExtension(filename);
+		log.debug("file", filename, ", extension is", ext);
+
+		MapProcessor mp = mapMaker(ext);
+		String output = mp.makeMap(args, filename);
+		filenames.add(output);
+	}
+
+	private MapProcessor mapMaker(String ext) {
+		MapProcessor mp = processMap.get(ext);
+		if (mp == null)
+			mp = maker;
+		return mp;
+	}
+
+	public void processOption(String opt, String val) {
+		log.debug("option:", opt, val);
+
+		if (opt.equals("number-of-files")) {
+
+			// This option always appears first.  We use it to turn on/off
+			// generation of the overview files if there is only one file
+			// to process.
+			int n = Integer.valueOf(val);
+			if (n > 1) {
+				doTdbfile = true;
+				// More than one file so do the overview map
+				//MapEventListener overview = new OverviewMapBuilder();
+				//registerListener(overview);
+			}
+		} else if (opt.equals("tdbfile")) {
+			doTdbfile = true;
+		} else if (opt.equals("gmapsupp")) {
+			doGmapsupp = true;
+			//MapEventListener gmapsupp = new GmapsuppBuilder();
+			//registerListener(gmapsupp);
+		}
 	}
 
 	public void endOfOptions() {
-		maker.endOfOptions();
+		//maker.endOfOptions();
+		if (!doGmapsupp && !doTdbfile)
+			return;
+
+		for (String file : filenames) {
+			System.out.println("do file " + file);
+		}
+	}
+
+	private String extractExtension(String filename) {
+		String[] parts = filename.toLowerCase(Locale.ENGLISH).split(".");
+		List<String> ignore = Arrays.asList("gz", "bz2", "bz");
+
+		// We want the last part that is not gz, bz etc (and isn't the first part ;)
+		for (int i = parts.length - 1; i > 0; i--) {
+			String ext = parts[i];
+			if (!ignore.contains(ext)) {
+				return ext;
+			}
+		}
+		return "";
+	}
+
+	private static class NameSaver implements MapProcessor {
+		
+		/**
+	     * Process the given filename.
+		 *
+		 * @param args The user supplied arguments.
+		 * @param filename The name of a file that was given to the program, eg
+		 */
+		public String makeMap(CommandArgs args, String filename) {
+			return filename;
+		}
+
 	}
 }

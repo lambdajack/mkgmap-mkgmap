@@ -27,7 +27,7 @@ OSMDATA = /opt/data/uk-070919-1.osm.gz
 #OSMDATA = /opt/data/osmworld/63260003
 #OSMDATA = --gmapsupp ~/tmp/batch/*.osm
 #OSMDATA = /opt/data/uk-071114.osm.gz
-#OSMDATA = /opt/data/uk/63*
+OSMDATA = --block-size=1024 /opt/data/uk/63*
 #OSMDATA = reg40.osm
 #OSMDATA = longline.osm
 
