@@ -69,8 +69,7 @@ public class TREFile extends ImgFile {
 	private byte poiDisplayFlags;
 
 	// Information about polylines.  eg roads etc.
-	private final List<PolylineOverview> polylineOverviews
-			= new ArrayList<PolylineOverview>();
+	private final List<PolylineOverview> polylineOverviews = new ArrayList<PolylineOverview>();
 	private int polylinePos;
 	private int polylineSize;
 
@@ -88,16 +87,26 @@ public class TREFile extends ImgFile {
 	private static final int SUBDIV_REC_SIZE = 14;
 	private static final int SUBDIV_REC_SIZE2 = 16;
 
-	public TREFile(ImgChannel chan) {
-		setHeaderLength(HEADER_LEN);
-		setType("GARMIN TRE");
-		setWriter(new BufferedWriteStrategy(chan));
+	private final boolean readOnly;
 
-		// Position at the start of the writable area.
-		position(HEADER_LEN);
+	public TREFile(ImgChannel chan, boolean write) {
+		if (write) {
+			readOnly = false;
+			setHeaderLength(HEADER_LEN);
+			setType("GARMIN TRE");
+			setWriter(new BufferedWriteStrategy(chan));
+
+			// Position at the start of the writable area.
+			position(HEADER_LEN);
+		} else {
+			readOnly = true;
+		}
 	}
 
 	public void sync() throws IOException {
+		if (readOnly)
+			return;
+
 		// Do anything that is in structures and that needs to be dealt with.
 		writeBody();
 

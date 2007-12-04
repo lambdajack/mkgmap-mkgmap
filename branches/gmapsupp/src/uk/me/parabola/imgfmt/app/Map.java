@@ -74,7 +74,7 @@ public class Map implements InternalFiles {
 		m.fileSystem = fs;
 
 		m.rgnFile = new RGNFile(m.fileSystem.create(mapname + ".RGN"));
-		m.treFile = new TREFile(m.fileSystem.create(mapname + ".TRE"));
+		m.treFile = new TREFile(m.fileSystem.create(mapname + ".TRE"), true);
 		m.lblFile = new LBLFile(m.fileSystem.create(mapname + ".LBL"));
 
 		m.treFile.setMapId(Integer.parseInt(mapname));

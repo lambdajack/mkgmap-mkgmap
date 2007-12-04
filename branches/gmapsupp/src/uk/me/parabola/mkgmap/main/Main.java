@@ -16,15 +16,17 @@
  */
 package uk.me.parabola.mkgmap.main;
 
+import uk.me.parabola.imgfmt.app.MapReader;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.ArrayList;
+import java.io.FileNotFoundException;
 
 /**
  * The new main program.  There can be many filenames to process and there can
@@ -127,6 +129,11 @@ public class Main implements ArgumentProcessor {
 
 		for (String file : filenames) {
 			System.out.println("do file " + file);
+			try {
+				MapReader mapReader = new MapReader(file);
+			} catch (FileNotFoundException e) {
+				// XXX
+			}
 		}
 	}
 
