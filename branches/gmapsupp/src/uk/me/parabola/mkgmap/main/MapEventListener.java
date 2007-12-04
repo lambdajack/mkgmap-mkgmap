@@ -21,6 +21,7 @@ import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 
 /**
  * @author Steve Ratcliffe
+ * @deprecated to be removed.
  */
 public interface MapEventListener {
 

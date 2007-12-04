@@ -130,6 +130,12 @@ public class Main implements ArgumentProcessor {
 		}
 	}
 
+	/**
+	 * Get the extension of the filename, ignoring any compression suffix.
+	 *
+	 * @param filename The original filename.
+	 * @return The file extension.
+	 */
 	private String extractExtension(String filename) {
 		String[] parts = filename.toLowerCase(Locale.ENGLISH).split("\\.");
 		List<String> ignore = Arrays.asList("gz", "bz2", "bz");

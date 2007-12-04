@@ -42,7 +42,7 @@ import java.util.Set;
  *
  * @author Steve Ratcliffe
  */
-class CommandArgs {
+public class CommandArgs {
 	private static final Logger log = Logger.getLogger(CommandArgs.class);
 
 	private final ArgList arglist = new ArgList();
