@@ -205,7 +205,6 @@ public class MapDetails implements MapCollector {
 	}
 
 	private void splitElement(MapElement element) {
-		System.out.println("too big splitting++++");
 		LineSizeSplitterFilter lineSplitter = new LineSizeSplitterFilter();
 		lineSplitter.doFilter(element, lineChain);
 	}

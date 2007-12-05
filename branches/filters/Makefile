@@ -16,7 +16,7 @@ OSMDATA = localtest/osm5/cricklewood-5.osm
 #OSMDATA = /opt/data/uk-070530.osm.gz
 #OSMDATA = /opt/data/uk-070815.osm.gz
 OSMDATA = /opt/data/uk-070919-1.osm.gz
-#OSMDATA = /opt/data/uk-071010-1.osm.gz /opt/data/uk-071010-2.osm.gz
+OSMDATA = /opt/data/uk-071010-1.osm.gz /opt/data/uk-071010-2.osm.gz
 #OSMDATA = ~/in/germany-070823.osm
 #OSMDATA = vbig.osm
 #OSMDATA = clondon.osm
@@ -28,7 +28,7 @@ OSMDATA = /opt/data/uk-070919-1.osm.gz
 #OSMDATA = --gmapsupp ~/tmp/batch/*.osm
 #OSMDATA = /opt/data/uk-071114.osm.gz
 #OSMDATA = /opt/data/uk/63*
-OSMDATA = reg40.osm
+#OSMDATA = reg40.osm
 #OSMDATA = longline.osm
 
 
