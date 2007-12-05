@@ -84,10 +84,10 @@ public class MapReader {
 		doClose(lblChan);
 	}
 
-	private void doClose(ImgChannel treChan) {
-		if (treChan != null) {
+	private void doClose(ImgChannel chan) {
+		if (chan != null) {
 			try {
-				treChan.close();
+				chan.close();
 			} catch (IOException e) {
 				// ignore
 			}
