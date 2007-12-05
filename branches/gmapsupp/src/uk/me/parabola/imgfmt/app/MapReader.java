@@ -16,15 +16,15 @@
  */
 package uk.me.parabola.imgfmt.app;
 
+import uk.me.parabola.imgfmt.FileSystemParam;
+import uk.me.parabola.imgfmt.fs.DirectoryEntry;
 import uk.me.parabola.imgfmt.fs.FileSystem;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
-import uk.me.parabola.imgfmt.fs.DirectoryEntry;
 import uk.me.parabola.imgfmt.sys.ImgFS;
-import uk.me.parabola.imgfmt.FileSystemParam;
-import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.log.Logger;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -74,6 +74,22 @@ public class MapReader {
 				treChan = imgFs.open(ent.getFullName(), "r");
 				TREFile treFile = new TREFile(treChan, false);
 				area = treFile.getBounds();
+			}
+		}
+	}
+
+	public void close() {
+		doClose(treChan);
+		doClose(rgnChan);
+		doClose(lblChan);
+	}
+
+	private void doClose(ImgChannel treChan) {
+		if (treChan != null) {
+			try {
+				treChan.close();
+			} catch (IOException e) {
+				// ignore
 			}
 		}
 	}
