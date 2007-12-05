@@ -50,6 +50,8 @@ public class MapReader {
 	private FileSystem imgFs;
 
 	public MapReader(String filename) throws FileNotFoundException {
+		System.out.println("yyyyy");
+		log.debug("reader");
 		this.filename = filename;
 		imgFs = ImgFS.openFs(filename);
 
@@ -59,13 +61,20 @@ public class MapReader {
 
 		description = params.getMapDescription();
 		//area = params.
-		
+
 		List<DirectoryEntry> entries = imgFs.list();
 		for (DirectoryEntry ent : entries) {
 			if (ent.isSpecial())
 				continue;
-			
+
 			log.info("file", ent.getFullName());
+			String ext = ent.getExt();
+
+			if ("TRE".equals(ext)) {
+				treChan = imgFs.open(ent.getFullName(), "r");
+				TREFile treFile = new TREFile(treChan, false);
+				area = treFile.getBounds();
+			}
 		}
 	}
 }

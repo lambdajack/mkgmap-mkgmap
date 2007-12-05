@@ -128,11 +128,12 @@ public class Main implements ArgumentProcessor {
 			return;
 
 		for (String file : filenames) {
-			System.out.println("do file " + file);
+			System.out.println("do2 file " + file);
 			try {
 				MapReader mapReader = new MapReader(file);
+				log.debug("hello");
 			} catch (FileNotFoundException e) {
-				// XXX
+				log.error("could not open file", e);
 			}
 		}
 	}

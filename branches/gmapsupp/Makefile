@@ -30,6 +30,7 @@ OSMDATA = /opt/data/uk-070919-1.osm.gz
 OSMDATA = --block-size=1024 /opt/data/uk/63*
 #OSMDATA = reg40.osm
 #OSMDATA = longline.osm
+OSMDATA = --gmapsupp maps/img/*.img
 
 
 TIME=/usr/bin/time --format 'Real: %E, %S+%U'
@@ -40,13 +41,17 @@ OSM_GARMIN_MAP = /home/steve/src/osm/applications/utils/export/osmgarminmap
 #OPTS= --levels='0=24,1=22,2=20'
 OPTS= --gmapsupp
 
-makemap:
-	rm -f gmapsupp/* mkgmap.log out.log
-	rm -f gmapsupp.img 6324*.img 6324*.tdb
+makemap: clean
 	$(TIME) java -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
-	#java -Dlog.config=l -ea -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
 	#cp 63240001.img gmapsupp.img
 	#imgdecode gmapsupp.img
+
+t:
+	java -Dlog.config=l -ea -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
+
+clean:
+	rm -f gmapsupp/* mkgmap.log out.log
+	rm -f gmapsupp.img 6324*.img 6324*.tdb
 
 load:
 	sleep 2
