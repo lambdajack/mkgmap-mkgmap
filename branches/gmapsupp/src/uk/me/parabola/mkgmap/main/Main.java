@@ -16,17 +16,19 @@
  */
 package uk.me.parabola.mkgmap.main;
 
-import uk.me.parabola.imgfmt.app.MapReader;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
+import uk.me.parabola.mkgmap.combiners.Combiner;
+import uk.me.parabola.mkgmap.combiners.GmapsuppBuilder;
+import uk.me.parabola.mkgmap.combiners.OverviewMapBuilder;
 
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.io.FileNotFoundException;
 
 /**
  * The new main program.  There can be many filenames to process and there can
@@ -44,6 +46,8 @@ public class Main implements ArgumentProcessor {
 
 	private boolean doGmapsupp;
 	private boolean doTdbfile;
+
+	private List<Combiner> combiners = new ArrayList<Combiner>();
 
 	// The filenames that will be used in pass2.
 	private List<String> filenames = new ArrayList<String>();
@@ -95,6 +99,7 @@ public class Main implements ArgumentProcessor {
 
 		MapProcessor mp = mapMaker(ext);
 		String output = mp.makeMap(args, filename);
+		log.debug("adding output name", output);
 		filenames.add(output);
 	}
 
@@ -118,23 +123,35 @@ public class Main implements ArgumentProcessor {
 				doTdbfile = true;
 		} else if (opt.equals("tdbfile")) {
 			doTdbfile = true;
+			addCombiner(new OverviewMapBuilder());
 		} else if (opt.equals("gmapsupp")) {
 			doGmapsupp = true;
+			addCombiner(new GmapsuppBuilder());
 		}
 	}
 
-	public void endOfOptions() {
+	private void addCombiner(Combiner combiner) {
+		combiners.add(combiner);
+	}
+
+	public void endOptions(CommandArgs args) {
 		if (!doGmapsupp && !doTdbfile)
 			return;
 
 		for (String file : filenames) {
 			System.out.println("do2 file " + file);
 			try {
-				MapReader mapReader = new MapReader(file);
-				log.debug("hello");
+				FileInfo mapReader = FileInfo.getFileInfo(file);
+				for (Combiner c : combiners) {
+					c.onMapEnd(args, mapReader);
+				}
 			} catch (FileNotFoundException e) {
 				log.error("could not open file", e);
 			}
+		}
+
+		for (Combiner c : combiners) {
+			c.onFinish();
 		}
 	}
 

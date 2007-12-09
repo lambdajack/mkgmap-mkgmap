@@ -115,7 +115,7 @@ public class CommandArgs {
 			a.processArg();
 		}
 
-		proc.endOfOptions();
+		proc.endOptions(this);
 	}
 
 	/**

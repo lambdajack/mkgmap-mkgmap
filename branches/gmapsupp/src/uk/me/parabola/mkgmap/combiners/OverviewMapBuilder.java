@@ -19,13 +19,11 @@ package uk.me.parabola.mkgmap.combiners;
 import uk.me.parabola.imgfmt.FileExistsException;
 import uk.me.parabola.imgfmt.FileNotWritableException;
 import uk.me.parabola.imgfmt.FileSystemParam;
-import uk.me.parabola.imgfmt.app.InternalFiles;
 import uk.me.parabola.imgfmt.app.Map;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
-import uk.me.parabola.mkgmap.main.MapEventListener;
 import uk.me.parabola.mkgmap.main.CommandArgs;
-import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
+import uk.me.parabola.mkgmap.main.FileInfo;
 import uk.me.parabola.mkgmap.general.MapBuilder;
 import uk.me.parabola.mkgmap.reader.overview.OverviewMapDataSource;
 import uk.me.parabola.tdbfmt.DetailMapBlock;
@@ -40,7 +38,7 @@ import java.util.Properties;
  *
  * @author Steve Ratcliffe
  */
-public class OverviewMapBuilder implements MapEventListener {
+public class OverviewMapBuilder implements Combiner {
 	private static final Logger log = Logger.getLogger(OverviewMapBuilder.class);
 	
 	private final OverviewMapDataSource overviewSource = new OverviewMapDataSource();
@@ -54,24 +52,24 @@ public class OverviewMapBuilder implements MapEventListener {
 		tdb.setProductInfo(42, 1, "OSM map", "OSM map");
 	}
 
-	public void onMapEnd(CommandArgs args, LoadableMapDataSource src, InternalFiles map) {
+	public void onMapEnd(CommandArgs args, FileInfo finfo) {
 		log.info("end of map", args);
 		Properties currentOptions = args.getProperties();
-		overviewSource.addMapDataSource(src, currentOptions);
-
-		for (String c : src.copyrightMessages()) {
-			tdb.addCopyright(c);
-		}
+		//overviewSource.addMapDataSource(src, currentOptions);
+		//
+		//for (String c : src.copyrightMessages()) {
+		//	tdb.addCopyright(c);
+		//}
 
 		String cw = "Coverted by mkgmap";
 		tdb.addCopyright(cw);
 
-		long lblsize = map.getLblFile().position();
-		long tresize = map.getTreFile().position();
-		long rgnsize = map.getRgnFile().position();
+		long lblsize = finfo.getLblsize();
+		long tresize = finfo.getTresize();
+		long rgnsize = finfo.getRgnsize();
 
 		DetailMapBlock detail = new DetailMapBlock();
-		detail.setArea(src.getBounds());
+		detail.setArea(finfo.getBounds());
 		String mapname = args.getMapname();
 		detail.setMapName(mapname);
 

@@ -12,31 +12,30 @@
  * 
  * 
  * Author: Steve Ratcliffe
- * Create date: 27-Sep-2007
+ * Create date: Dec 9, 2007
  */
-package uk.me.parabola.mkgmap.main;
+package uk.me.parabola.mkgmap.combiners;
 
-import uk.me.parabola.imgfmt.app.InternalFiles;
-import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
+import uk.me.parabola.mkgmap.main.CommandArgs;
+import uk.me.parabola.mkgmap.main.FileInfo;
 
 /**
  * @author Steve Ratcliffe
- * @deprecated to be removed.
  */
-public interface MapEventListener {
-
+public class TdbBuilder implements Combiner {
 	/**
 	 * This is called when an individual map is complete.
 	 *
 	 * @param args The current options.
-	 * @param src The map data.
-	 * @param map The map.
+	 * @param reader
 	 */
-	public void onMapEnd(CommandArgs args, LoadableMapDataSource src, InternalFiles map);
+	public void onMapEnd(CommandArgs args, FileInfo reader) {
+	}
 
 	/**
 	 * The complete map set has been processed.  Finish off anything that needs
 	 * doing.
 	 */
-	public void onFinish();
+	public void onFinish() {
+	}
 }

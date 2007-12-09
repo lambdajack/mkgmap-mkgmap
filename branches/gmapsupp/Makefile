@@ -16,7 +16,7 @@ OSMDATA = localtest/osm5/cricklewood-5.osm
 #OSMDATA = /opt/data/uk-070530.osm.gz
 #OSMDATA = /opt/data/uk-070815.osm.gz
 OSMDATA = /opt/data/uk-070919-1.osm.gz
-#OSMDATA = /opt/data/uk-071010-1.osm.gz /opt/data/uk-071010-2.osm.gz
+OSMDATA = /opt/data/uk-071010-1.osm.gz /opt/data/uk-071010-2.osm.gz
 #OSMDATA = ~/in/germany-070823.osm
 #OSMDATA = vbig.osm
 #OSMDATA = clondon.osm
@@ -27,10 +27,10 @@ OSMDATA = /opt/data/uk-070919-1.osm.gz
 #OSMDATA = /opt/data/osmworld/63260003
 #OSMDATA = --gmapsupp ~/tmp/batch/*.osm
 #OSMDATA = /opt/data/uk-071114.osm.gz
-OSMDATA = --block-size=1024 /opt/data/uk/63*
+OSMDATA = --gmapsupp /opt/data/uk/63*
 #OSMDATA = reg40.osm
 #OSMDATA = longline.osm
-OSMDATA = --gmapsupp maps/img/*.img
+#OSMDATA = --gmapsupp maps/img/*.img
 
 
 TIME=/usr/bin/time --format 'Real: %E, %S+%U'
@@ -49,6 +49,7 @@ makemap: clean
 t:
 	java -Dlog.config=l -ea -cp build/classes uk.me.parabola.mkgmap.main.Main $(OPTS) $(OSMDATA)
 
+.PHONY: clean
 clean:
 	rm -f gmapsupp/* mkgmap.log out.log
 	rm -f gmapsupp.img 6324*.img 6324*.tdb
@@ -99,10 +100,15 @@ tests:
 	java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main localtest/osm/63243936
 	java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main localtest/osm/63247525
 	java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main localtest/osm/63253506
-	#java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main localtest/osm5/bit-assert-fail.osm
+	java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main localtest/osm5/reg40.osm
+	java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main localtest/osm5/reg71.osm
 	java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main localtest/osm5/cricklewood-5.osm
+	java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main localtest/osm5/reg04.osm
+	java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main localtest/osm5/reg04b.osm
+	java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main localtest/osm5/rus.osm
 	java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main /opt/data/germany-070823.osm.gz
 	java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main /opt/data/uk-070815.osm.gz
+	java -ea -cp build/classes uk.me.parabola.mkgmap.main.Main localtest/osm5/bit-assert-fail.osm
 
 
 tl:

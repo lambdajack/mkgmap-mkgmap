@@ -43,7 +43,8 @@ public abstract class ImgFile {
 	public void close() {
 		try {
 			sync();
-			writer.close();
+			if (writer != null)
+				writer.close();
 		} catch (IOException e) {
 			log.error("error on file close", e);
 		}

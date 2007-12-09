@@ -18,14 +18,11 @@ package uk.me.parabola.mkgmap.combiners;
 
 import uk.me.parabola.imgfmt.FileNotWritableException;
 import uk.me.parabola.imgfmt.FileSystemParam;
-import uk.me.parabola.imgfmt.app.InternalFiles;
 import uk.me.parabola.imgfmt.fs.DirectoryEntry;
 import uk.me.parabola.imgfmt.fs.FileSystem;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.imgfmt.sys.ImgFS;
 import uk.me.parabola.log.Logger;
-import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
-import uk.me.parabola.mkgmap.main.MapEventListener;
 import uk.me.parabola.mkgmap.main.FileInfo;
 import uk.me.parabola.mkgmap.main.CommandArgs;
 
@@ -50,7 +47,7 @@ import java.util.Map;
  *
  * @author Steve Ratcliffe
  */
-public class GmapsuppBuilder implements MapEventListener {
+public class GmapsuppBuilder implements Combiner {
 	private static final Logger log = Logger.getLogger(GmapsuppBuilder.class);
 
 	/**
@@ -67,30 +64,12 @@ public class GmapsuppBuilder implements MapEventListener {
 	 * for preparing the gmapsupp file.
 	 *
 	 * @param args The current options.
-	 * @param src  The map data.
-	 * @param map  The map.
+	 * @param finfo Information about the img file.
 	 */
-	public void onMapEnd(CommandArgs args, LoadableMapDataSource src, InternalFiles map) {
-		int tresize = map.getTreFile().position();
-		int rgnsize = map.getRgnFile().position();
-		int lblsize = map.getLblFile().position();
+	public void onMapEnd(CommandArgs args, FileInfo finfo) {
+		String mapname = finfo.getMapname();
 
-		String mapname = args.getMapname() + ".img";
-		String description = args.getDescription();
-
-		log.debug("sizes", tresize, rgnsize, lblsize);
-		log.debug("mapname", mapname);
-		log.debug("description", description);
-
-		FileInfo info = new FileInfo();
-		info.setDescription(description);
-		info.setMapname(mapname);
-
-		info.setTresize(tresize);
-		info.setRgnsize(rgnsize);
-		info.setLblsize(lblsize);
-
-		files.put(mapname, info);
+		files.put(mapname, finfo);
 	}
 
 	/**
@@ -104,19 +83,20 @@ public class GmapsuppBuilder implements MapEventListener {
 		try {
 			outfs = createGmapsupp();
 
-			for (String name : files.keySet()) {
-			try {
-				FileSystem infs = ImgFS.openFs(name);
-
+			for (FileInfo info : files.values()) {
+				String filename = info.getFilename();
 				try {
-					copyAllFiles(infs, outfs);
-				} finally {
-					infs.close();
+					FileSystem infs = ImgFS.openFs(filename);
+
+					try {
+						copyAllFiles(infs, outfs);
+					} finally {
+						infs.close();
+					}
+				} catch (FileNotFoundException e) {
+					log.warn("Could not open file", filename);
 				}
-			} catch (FileNotFoundException e) {
-				log.warn("Could not open file", name);
 			}
-		}
 		} catch (FileNotWritableException e) {
 			log.warn("Could not create gmapsupp file");
 			System.err.println("Could not create gmapsupp file");
@@ -140,7 +120,6 @@ public class GmapsuppBuilder implements MapEventListener {
 				continue;
 
 			String inname = ent.getFullName();
-			log.debug("inname", inname);
 
 			try {
 				copyFile(inname, infs, outfs);
@@ -160,7 +139,7 @@ public class GmapsuppBuilder implements MapEventListener {
 		BlockInfo bi = calcBlockSize();
 		int blockSize = bi.blockSize;
 		int reserved = 2 + bi.reserveBlocks + bi.headerSlots;
-		log.debug("bs of", blockSize, "reserving", reserved);
+		log.info("bs of", blockSize, "reserving", reserved);
 
 		// Create this file, containing all the sub files
 		FileSystemParam params = new FileSystemParam();
@@ -228,7 +207,7 @@ public class GmapsuppBuilder implements MapEventListener {
 				n = (info.getLblsize() + (bs - 1)) / bs;
 				totHeaderSlots += (n + ENTRY_SIZE - 1) / ENTRY_SIZE;
 
-				log.debug("header slot", totHeaderSlots);
+				//log.debug("header slot", totHeaderSlots);
 			}
 
 			totHeaderSlots += 2;

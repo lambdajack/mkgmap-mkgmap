@@ -17,8 +17,7 @@
 package uk.me.parabola.mkgmap.combiners;
 
 import uk.me.parabola.mkgmap.main.CommandArgs;
-import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
-import uk.me.parabola.imgfmt.app.InternalFiles;
+import uk.me.parabola.mkgmap.main.FileInfo;
 
 /**
  * The interface for all combining operations.  These include creating the
@@ -32,10 +31,9 @@ public interface Combiner {
 	 * This is called when an individual map is complete.
 	 *
 	 * @param args The current options.
-	 * @param src The map data.
-	 * @param map The map.
+	 * @param finfo An interface to read the map.
 	 */
-	public void onMapEnd(CommandArgs args, LoadableMapDataSource src, InternalFiles map);
+	public void onMapEnd(CommandArgs args, FileInfo finfo);
 
 	/**
 	 * The complete map set has been processed.  Finish off anything that needs

@@ -42,8 +42,9 @@ public interface ArgumentProcessor  {
 
 	/**
 	 * Called when all the command line options have been processed.
+	 * @param args
 	 */
-	public void endOfOptions();
+	public void endOptions(CommandArgs args);
 
 	/**
 	 * Called right at the beginning, before any command line options have
