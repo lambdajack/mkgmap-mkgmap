@@ -21,6 +21,7 @@ import uk.me.parabola.mkgmap.ExitException;
 import uk.me.parabola.mkgmap.combiners.Combiner;
 import uk.me.parabola.mkgmap.combiners.GmapsuppBuilder;
 import uk.me.parabola.mkgmap.combiners.OverviewMapBuilder;
+import uk.me.parabola.mkgmap.combiners.TdbBuilder;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -44,9 +45,7 @@ public class Main implements ArgumentProcessor {
 	private final MapProcessor maker = new MapMaker();
 	//private final MapProcessor reader = new MapReader();
 
-	private boolean doGmapsupp;
-	private boolean doTdbfile;
-
+	// Final .img file combiners.
 	private List<Combiner> combiners = new ArrayList<Combiner>();
 
 	// The filenames that will be used in pass2.
@@ -119,13 +118,14 @@ public class Main implements ArgumentProcessor {
 			// generation of the overview files if there is only one file
 			// to process.
 			int n = Integer.valueOf(val);
-			if (n > 1)
-				doTdbfile = true;
+			if (n > 1) {
+				addCombiner(new TdbBuilder());
+				addCombiner(new OverviewMapBuilder());
+			}
 		} else if (opt.equals("tdbfile")) {
-			doTdbfile = true;
+			addCombiner(new TdbBuilder());
 			addCombiner(new OverviewMapBuilder());
 		} else if (opt.equals("gmapsupp")) {
-			doGmapsupp = true;
 			addCombiner(new GmapsuppBuilder());
 		}
 	}
@@ -135,7 +135,7 @@ public class Main implements ArgumentProcessor {
 	}
 
 	public void endOptions(CommandArgs args) {
-		if (!doGmapsupp && !doTdbfile)
+		if (combiners.isEmpty())
 			return;
 
 		for (String file : filenames) {

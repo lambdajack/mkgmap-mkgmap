@@ -30,7 +30,7 @@ OSMDATA = /opt/data/uk-071010-1.osm.gz /opt/data/uk-071010-2.osm.gz
 #OSMDATA = --gmapsupp /opt/data/uk/63*
 #OSMDATA = reg40.osm
 #OSMDATA = longline.osm
-OSMDATA = maps/img/*.img
+OSMDATA = --tdbfile maps/img/*.img
 
 
 TIME=/usr/bin/time --format 'Real: %E, %S+%U'
