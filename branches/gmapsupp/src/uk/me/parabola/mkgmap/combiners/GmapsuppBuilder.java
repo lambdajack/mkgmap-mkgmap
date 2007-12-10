@@ -146,7 +146,10 @@ public class GmapsuppBuilder implements Combiner {
 		params.setBlockSize(blockSize);
 		params.setMapDescription("output file");
 		params.setDirectoryStartBlock(2);
-		params.setReservedDirectoryBlocks(reserved * 512 / blockSize);
+
+		int reserve = (int) Math.ceil(reserved * 512.0 / blockSize);
+		params.setReservedDirectoryBlocks(reserve);
+		log.info("reserved", reserve);
 
 		FileSystem outfs = ImgFS.createFs(GMAPSUPP, params);
 		return outfs;

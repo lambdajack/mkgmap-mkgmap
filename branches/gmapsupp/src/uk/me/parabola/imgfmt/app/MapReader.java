@@ -22,9 +22,9 @@ import uk.me.parabola.imgfmt.fs.FileSystem;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.imgfmt.sys.ImgFS;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.main.FileInfo;
 
 import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.List;
 
 /**
@@ -37,60 +37,5 @@ import java.util.List;
  */
 public class MapReader {
 	private static final Logger log = Logger.getLogger(MapReader.class);
-	
-	private String filename;
-	private String description;
-	private Area area;
 
-	// These are particularly subject to change and should not be exposed outside this class.
-	private ImgChannel treChan;
-	private ImgChannel rgnChan;
-	private ImgChannel lblChan;
-
-	private FileSystem imgFs;
-
-	public MapReader(String filename) throws FileNotFoundException {
-		System.out.println("yyyyy");
-		log.debug("reader");
-		this.filename = filename;
-		imgFs = ImgFS.openFs(filename);
-
-		FileSystemParam params = imgFs.fsparam();
-		log.info("Desc", params.getMapDescription());
-		log.info("Blocksize", params.getBlockSize());
-
-		description = params.getMapDescription();
-		//area = params.
-
-		List<DirectoryEntry> entries = imgFs.list();
-		for (DirectoryEntry ent : entries) {
-			if (ent.isSpecial())
-				continue;
-
-			log.info("file", ent.getFullName());
-			String ext = ent.getExt();
-
-			if ("TRE".equals(ext)) {
-				treChan = imgFs.open(ent.getFullName(), "r");
-				TREFile treFile = new TREFile(treChan, false);
-				area = treFile.getBounds();
-			}
-		}
-	}
-
-	public void close() {
-		doClose(treChan);
-		doClose(rgnChan);
-		doClose(lblChan);
-	}
-
-	private void doClose(ImgChannel chan) {
-		if (chan != null) {
-			try {
-				chan.close();
-			} catch (IOException e) {
-				// ignore
-			}
-		}
-	}
 }
