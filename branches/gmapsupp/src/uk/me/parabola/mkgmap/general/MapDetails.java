@@ -34,7 +34,7 @@ import java.util.Map;
  *
  * @author Steve Ratcliffe
  */
-public class MapDetails implements MapCollector {
+public class MapDetails implements MapCollector, MapDataSource {
 	private final List<MapLine> lines = new ArrayList<MapLine>();
 	private final List<MapShape> shapes = new ArrayList<MapShape>();
 	private final List<MapPoint> points = new ArrayList<MapPoint>();

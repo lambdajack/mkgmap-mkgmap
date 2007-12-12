@@ -58,15 +58,17 @@ public class GmapsuppBuilder implements Combiner {
 	private Map<String, FileInfo> files = new LinkedHashMap<String, FileInfo>();
 	private static final String GMAPSUPP = "gmapsupp.img";
 
+	public void init(CommandArgs args) {
+	}
+
 	/**
 	 * This is called when the map is complete.
 	 * We collect information about the map to be used in the TDB file and
 	 * for preparing the gmapsupp file.
 	 *
-	 * @param args The current options.
 	 * @param finfo Information about the img file.
 	 */
-	public void onMapEnd(CommandArgs args, FileInfo finfo) {
+	public void onMapEnd(FileInfo finfo) {
 		String mapname = finfo.getMapname();
 
 		files.put(mapname, finfo);

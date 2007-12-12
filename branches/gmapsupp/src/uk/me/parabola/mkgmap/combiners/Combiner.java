@@ -26,14 +26,22 @@ import uk.me.parabola.mkgmap.main.FileInfo;
  * @author Steve Ratcliffe
  */
 public interface Combiner {
-	
+
+	/**
+	 * Initialise with the command line arguments.  This is called after all
+	 * the command line arguments have been processed, but before any calls to
+	 * the {@link #onMapEnd} methods.
+	 *
+	 * @param args The command line arguments.
+	 */
+	public void init(CommandArgs args);
+
 	/**
 	 * This is called when an individual map is complete.
 	 *
-	 * @param args The current options.
 	 * @param finfo An interface to read the map.
 	 */
-	public void onMapEnd(CommandArgs args, FileInfo finfo);
+	public void onMapEnd(FileInfo finfo);
 
 	/**
 	 * The complete map set has been processed.  Finish off anything that needs

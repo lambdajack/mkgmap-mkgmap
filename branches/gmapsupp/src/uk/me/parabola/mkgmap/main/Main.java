@@ -20,7 +20,6 @@ import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.ExitException;
 import uk.me.parabola.mkgmap.combiners.Combiner;
 import uk.me.parabola.mkgmap.combiners.GmapsuppBuilder;
-import uk.me.parabola.mkgmap.combiners.OverviewMapBuilder;
 import uk.me.parabola.mkgmap.combiners.TdbBuilder;
 
 import java.io.FileNotFoundException;
@@ -120,11 +119,9 @@ public class Main implements ArgumentProcessor {
 			int n = Integer.valueOf(val);
 			if (n > 1) {
 				addCombiner(new TdbBuilder());
-				addCombiner(new OverviewMapBuilder());
 			}
 		} else if (opt.equals("tdbfile")) {
 			addCombiner(new TdbBuilder());
-			addCombiner(new OverviewMapBuilder());
 		} else if (opt.equals("gmapsupp")) {
 			addCombiner(new GmapsuppBuilder());
 		}
@@ -138,18 +135,24 @@ public class Main implements ArgumentProcessor {
 		if (combiners.isEmpty())
 			return;
 
+		// Get them all set up.
+		for (Combiner c : combiners)
+			c.init(args);
+
+		// Tell them about each filename
 		for (String file : filenames) {
 			System.out.println("do2 file " + file);
 			try {
 				FileInfo mapReader = FileInfo.getFileInfo(file);
 				for (Combiner c : combiners) {
-					c.onMapEnd(args, mapReader);
+					c.onMapEnd(mapReader);
 				}
 			} catch (FileNotFoundException e) {
 				log.error("could not open file", e);
 			}
 		}
 
+		// All done, allow tidy up or file creation to happen
 		for (Combiner c : combiners) {
 			c.onFinish();
 		}
