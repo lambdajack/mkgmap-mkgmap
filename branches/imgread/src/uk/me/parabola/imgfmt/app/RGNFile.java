@@ -40,7 +40,7 @@ public class RGNFile extends ImgFile {
 
 	private static final int HEADER_LEN = RGNHeader.HEADER_LEN;
 
-	private RGNHeader header;
+	private final RGNHeader header;
 
 	private Subdivision currentDivision;
 	private int indPointPtrOff;

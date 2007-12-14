@@ -37,7 +37,7 @@ public class BufferedReadStrategy implements ReadStrategy {
 	private final ImgChannel chan;
 
 	// The buffer that we read out of
-	private ByteBuffer buf = ByteBuffer.allocate(BUF_SIZE);
+	private final ByteBuffer buf = ByteBuffer.allocate(BUF_SIZE);
 	private long bufStart;
 	private int bufSize = -1;
 

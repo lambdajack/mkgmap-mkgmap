@@ -46,7 +46,7 @@ public class LBLFile extends ImgFile {
 
 	private final java.util.Map<String, Label> labelCache = new HashMap<String, Label>();
 
-	private LBLHeader lblheader;
+	private final LBLHeader lblheader;
 
 	public LBLFile(ImgChannel chan) {
 		lblheader = new LBLHeader();

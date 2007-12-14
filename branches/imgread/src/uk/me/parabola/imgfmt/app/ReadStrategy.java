@@ -64,7 +64,7 @@ public interface ReadStrategy {
 	 * Get a 3byte signed quantity.
 	 *
 	 * @return The value read.
-	 * @throws IOException When the file cannot be read.
+	 * @throws ReadFailedException When the file cannot be read.
 	 */
 	public int get3() throws ReadFailedException;
 

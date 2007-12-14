@@ -158,7 +158,7 @@ public class LBLHeader extends CommonHeader {
 		this.labelSize = labelSize;
 	}
 
-	public int getDataPos() {
+	protected int getDataPos() {
 		return dataPos;
 	}
 
