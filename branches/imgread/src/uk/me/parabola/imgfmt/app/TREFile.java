@@ -42,97 +42,39 @@ import java.nio.ByteOrder;
 public class TREFile extends ImgFile {
 	private static final Logger log = Logger.getLogger(TREFile.class);
 
-	private static final int HEADER_LEN = 120; // Other values are possible
-
-	// Bounding box.  All units are in map units.
-	private Area area = new Area(0,0,0,0);
-
-	private static final int MAP_LEVEL_REC_SIZE = 4;
-	private static final char POLYLINE_REC_LEN = 2;
-	private static final char POLYGON_REC_LEN = 2;
-	private static final char POINT_REC_LEN = 3;
-	private static final char COPYRIGHT_REC_SIZE = 0x3;
-
-	private int mapInfoSize;
-
 	// Zoom levels for map
 	//	private List<Zoom> mapLevels = new ArrayList<Zoom>();
 	private final Zoom[] mapLevels = new Zoom[16];
-	private int mapLevelPos;
-	private int mapLevelsSize;
-
-	private int subdivPos;
-	private int subdivSize;
 
 	private final List<Label> copyrights = new ArrayList<Label>();
-	private int copyrightPos;
-	private int copyrightSize;
-
-	private byte poiDisplayFlags;
 
 	// Information about polylines.  eg roads etc.
 	private final List<PolylineOverview> polylineOverviews = new ArrayList<PolylineOverview>();
-	private int polylinePos;
-	private int polylineSize;
 
 	private final List<PolygonOverview> polygonOverviews = new ArrayList<PolygonOverview>();
-	private int polygonPos;
-	private int polygonSize;
 
 	private final List<PointOverview> pointOverviews = new ArrayList<PointOverview>();
-	private int pointPos;
-	private int pointSize;
 
-	private int mapId;
 	private int lastRgnPos;
 
-	private static final int SUBDIV_REC_SIZE = 14;
-	private static final int SUBDIV_REC_SIZE2 = 16;
-
 	private final boolean readOnly;
+	private final TREHeader treHeader;
 
 	public TREFile(ImgChannel chan, boolean write) {
 		if (write) {
 			readOnly = false;
-			setHeaderLength(HEADER_LEN);
-			setType("GARMIN TRE");
 			setWriter(new BufferedWriteStrategy(chan));
 
 			// Position at the start of the writable area.
-			position(HEADER_LEN);
+			position(TREHeader.HEADER_LEN);
+			treHeader = new TREHeader(this);
 		} else {
 			readOnly = true;
+			treHeader = new TREHeader(this);
 			readin(chan);
 		}
 	}
 
-	public void sync() throws IOException {
-		if (readOnly)
-			return;
-
-		// Do anything that is in structures and that needs to be dealt with.
-		writeBody();
-
-		// Now refresh the header
-		position(0);
-		writeCommonHeader();
-		writeHeader();
-
-		getWriter().sync();
-	}
-
-	/**
-	 * Set the bounds based upon the latitude and longitude in degrees.
-	 * @param area The area bounded by the map.
-	 */
-	public void setBounds(Area area) {
-		this.area = area;
-	}
-
-	public Area getBounds() {
-		return area;
-	}
-	
 	public Zoom createZoom(int zoom, int bits) {
 		Zoom z = new Zoom(zoom, bits);
 		mapLevels[zoom] = z;
@@ -148,12 +90,16 @@ public class TREFile extends ImgFile {
 	 */
 	public void addInfo(String msg) {
 		byte[] val = Utils.toBytes(msg);
-		if (position() != HEADER_LEN + mapInfoSize)
+		if (position() != TREHeader.HEADER_LEN + treHeader.getMapInfoSize())
 			throw new IllegalStateException("All info must be added before anything else");
 
-		mapInfoSize += val.length+1;
+		treHeader.setMapInfoSize(treHeader.getMapInfoSize() + (val.length+1));
 		put(val);
 		put((byte) 0);
+	}
+
+	public Area getBounds() {
+		return treHeader.getBounds();
 	}
 
 	public void addCopyright(Label cr) {
@@ -183,7 +129,7 @@ public class TREFile extends ImgFile {
 	private void readHeader(ImgChannel chan) throws IOException {
 		ByteBuffer buf = ByteBuffer.allocate(512);
 		buf.order(ByteOrder.LITTLE_ENDIAN);
-		chan.position(COMMON_HEADER_LEN);
+		chan.position(CommonHeader.COMMON_HEADER_LEN);
 		chan.read(buf);
 
 		buf.flip();
@@ -193,61 +139,8 @@ public class TREFile extends ImgFile {
 		int minLat = get3(buf);
 		int minLon = get3(buf);
 
-		area = new Area(minLat, minLon, maxLat, maxLon);
-		log.info("read area is", area);
-	}
-
-	private void writeHeader()  {
-		put3(area.getMaxLat());
-		put3(area.getMaxLong());
-		put3(area.getMinLat());
-		put3(area.getMinLong());
-
-		putInt(mapLevelPos);
-		putInt(mapLevelsSize);
-
-		putInt(subdivPos);
-		putInt(subdivSize);
-
-		putInt(copyrightPos);
-		putInt(copyrightSize);
-		putChar(COPYRIGHT_REC_SIZE);
-
-		putInt(0);
-
-		put(poiDisplayFlags);
-
-		put3(0x19);
-		putInt(0xd0401);
-
-		putChar((char) 1);
-		put((byte) 0);
-
-		putInt(polylinePos);
-		putInt(polylineSize);
-		putChar(POLYLINE_REC_LEN);
-
-		putChar((char) 0);
-		putChar((char) 0);
-
-		putInt(polygonPos);
-		putInt(polygonSize);
-		putChar(POLYGON_REC_LEN);
-
-		putChar((char) 0);
-		putChar((char) 0);
-
-		putInt(pointPos);
-		putInt(pointSize);
-		putChar(POINT_REC_LEN);
-
-		putChar((char) 0);
-		putChar((char) 0);
-
-		// Map ID
-		putInt(mapId);
-
-		position(HEADER_LEN);
+		treHeader.setBounds(new Area(minLat, minLon, maxLat, maxLon));
+		log.info("read area is", treHeader.getBounds());
 	}
 
 	/**
@@ -272,7 +165,7 @@ public class TREFile extends ImgFile {
 	 * intact.
 	 */
 	private void writeSubdivs() {
-		subdivPos = position();
+		treHeader.setSubdivPos(position());
 		int subdivnum = 1; // numbers start at one
 
 		// First prepare to number them all
@@ -284,7 +177,7 @@ public class TREFile extends ImgFile {
 			Iterator<Subdivision> it = z.subdivIterator();
 			while (it.hasNext()) {
 				Subdivision sd = it.next();
-				log.debug("setting number to", subdivnum);
+				TREFile.this.log.debug("setting number to", subdivnum);
 				sd.setNumber(subdivnum++);
 			}
 		}
@@ -301,13 +194,13 @@ public class TREFile extends ImgFile {
 
 				sd.write(this);
 				if (sd.hasNextLevel())
-					subdivSize += SUBDIV_REC_SIZE2;
+					treHeader.setSubdivSize(treHeader.getSubdivSize() + TREHeader.SUBDIV_REC_SIZE2);
 				else
-					subdivSize += SUBDIV_REC_SIZE;
+					treHeader.setSubdivSize(treHeader.getSubdivSize() + TREHeader.SUBDIV_REC_SIZE);
 			}
 		}
 		putInt(lastRgnPos);
-		subdivSize += 4;
+		treHeader.setSubdivSize(treHeader.getSubdivSize() + 4);
 	}
 
 	/**
@@ -316,13 +209,13 @@ public class TREFile extends ImgFile {
 	 */
 	private void writeMapLevels() {
 		// Write out the map levels (zoom)
-		mapLevelPos = position();
+		treHeader.setMapLevelPos(position());
 		for (int i = 15; i >= 0; i--) {
 			// They need to be written in reverse order I think
 			Zoom z = mapLevels[i];
 			if (z == null)
 				continue;
-			mapLevelsSize += MAP_LEVEL_REC_SIZE;
+			treHeader.setMapLevelsSize(treHeader.getMapLevelsSize() + TREHeader.MAP_LEVEL_REC_SIZE);
 			z.write(this);
 		}
 	}
@@ -333,32 +226,32 @@ public class TREFile extends ImgFile {
 	 * are separate ones for points, lines and polygons.
 	 */
 	private void writeOverviews() {
-		pointPos = position();
+		treHeader.setPointPos(position());
 		
 		// Point overview section
 		Collections.sort(pointOverviews);
 		for (Overview ov : pointOverviews) {
 			ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
 			ov.write(this);
-			pointSize += POINT_REC_LEN;
+			treHeader.setPointSize(treHeader.getPointSize() + TREHeader.POINT_REC_LEN);
 		}
 
 		// Line overview section.
-		polylinePos = position();
+		treHeader.setPolylinePos(position());
 		Collections.sort(polylineOverviews);
 		for (Overview ov : polylineOverviews) {
 			ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
 			ov.write(this);
-			polylineSize += POLYLINE_REC_LEN;
+			treHeader.setPolylineSize(treHeader.getPolylineSize() + TREHeader.POLYLINE_REC_LEN);
 		}
 
 		// Polygon overview section
-		polygonPos = position();
+		treHeader.setPolygonPos(position());
 		Collections.sort(polygonOverviews);
 		for (Overview ov : polygonOverviews) {
 			ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
 			ov.write(this);
-			polygonSize += POLYGON_REC_LEN;
+			treHeader.setPolygonSize(treHeader.getPolygonSize() + TREHeader.POLYGON_REC_LEN);
 		}
 	}
 
@@ -396,22 +289,36 @@ public class TREFile extends ImgFile {
 	 */
 	private void writeCopyrights() {
 		// Write out the pointers to the labels that hold the copyright strings
-		copyrightPos = position();
+		treHeader.setCopyrightPos(position());
 		for (Label l : copyrights) {
-			copyrightSize += COPYRIGHT_REC_SIZE;
+			treHeader.setCopyrightSize(treHeader.getCopyrightSize() + TREHeader.COPYRIGHT_REC_SIZE);
 			put3(l.getOffset());
 		}
 	}
 
-	public void setMapId(int id) {
-		mapId = id;
-	}
-
 	public void setLastRgnPos(int lastRgnPos) {
-		this.lastRgnPos = lastRgnPos;
+		TREFile.this.lastRgnPos = lastRgnPos;
 	}
 
-	public void setPoiDisplayFlags(byte poiDisplayFlags) {
-		this.poiDisplayFlags = poiDisplayFlags;
+		public void sync() throws IOException {
+			if (readOnly)
+				return;
+
+			// Do anything that is in structures and that needs to be dealt with.
+			writeBody();
+
+			// Now refresh the header
+			position(0);
+			treHeader.writeHeader(this);
+
+			getWriter().sync();
+		}
+
+	public void setMapId(int mapid) {
+		treHeader.setMapId(mapid);
+	}
+
+	public void setBounds(Area area) {
+		treHeader.setBounds(area);
 	}
 }

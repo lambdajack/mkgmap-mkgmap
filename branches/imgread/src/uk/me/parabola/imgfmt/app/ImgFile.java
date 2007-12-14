@@ -30,15 +30,11 @@ import java.nio.ByteBuffer;
  * 
  * @author Steve Ratcliffe
  */
-public abstract class ImgFile {
+public abstract class ImgFile  {
 	private static final Logger log = Logger.getLogger(ImgFile.class);
 
-	protected static final int COMMON_HEADER_LEN = 21;
-
-	private int headerLength;
-	private String type;
-
 	private WriteStrategy writer;
+	private ReadStrategy reader;
 
 	public void close() {
 		try {
@@ -60,28 +56,6 @@ public abstract class ImgFile {
 	
 	protected abstract void sync() throws IOException;
 
-	/**
-	 * Writes out the header that is common to all the file types.  It should
-	 * be called by the sync() methods of subclasses when they are ready.
-	 */
-	void writeCommonHeader()  {
-		putChar((char) headerLength);
-		put(Utils.toBytes(type, 10, (byte) 0));
-		put((byte) 1);
-		put((byte) 0);
-		byte[] date = Utils.makeCreationTime(new Date());
-		put(date);
-	}
-
-	void setHeaderLength(int headerLength) {
-		this.headerLength = headerLength;
-	}
-
-	void setType(String type) {
-		this.type = type;
-	}
-
-
 	WriteStrategy getWriter() {
 		return writer;
 	}
@@ -90,13 +64,22 @@ public abstract class ImgFile {
 		this.writer = writer;
 	}
 
+	ReadStrategy getReader() {
+		return reader;
+	}
+
+	void setReader(ReadStrategy reader) {
+		this.reader = reader;
+	}
+
 	/**
 	 * Write out a 3 byte value in the correct byte order etc.
 	 *
 	 * @param val The value to write.
 	 */
 	public void put3(int val) {
-		log.debug("put3 " + val);
+		if (log.isDebugEnabled())
+			log.debug("put3", val);
 		writer.put((byte) (val & 0xff));
 		writer.putChar((char) (val >> 8));
 	}
@@ -151,11 +134,32 @@ public abstract class ImgFile {
 		this.writer = writer;
 	}
 
+	/**
+	 * @deprecated will be new routines via reader.
+	 * @param buf
+	 * @return
+	 */
 	protected int get3(ByteBuffer buf) {
 		int val;
 		val = buf.get() & 0xff;
 		val |= (buf.get() & 0xff) << 8;
 		val |= buf.get() << 16;
 		return val;
+	}
+
+	public byte get() throws IOException {
+		return reader.get();
+	}
+
+	public char getChar() throws IOException {
+		return reader.getChar();
+	}
+
+	public int getInt() throws IOException {
+		return reader.getInt();
+	}
+
+	public byte[] get(int len) throws IOException {
+		return reader.get(len);
 	}
 }
