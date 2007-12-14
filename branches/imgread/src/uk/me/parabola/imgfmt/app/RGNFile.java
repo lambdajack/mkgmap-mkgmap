@@ -38,9 +38,14 @@ import java.io.IOException;
 public class RGNFile extends ImgFile {
 	private static final Logger log = Logger.getLogger(RGNFile.class);
 
-	private static final int HEADER_LEN = 29;
+	private static final int HEADER_LEN = RGNHeader.HEADER_LEN;
 
 	private RGNHeader header;
+
+	private Subdivision currentDivision;
+	private int indPointPtrOff;
+	private int polylinePtrOff;
+	private int polygonPtrOff;
 
 	public RGNFile(ImgChannel chan) {
 		header = new RGNHeader();
@@ -60,11 +65,6 @@ public class RGNFile extends ImgFile {
 
 		getWriter().sync();
 	}
-
-	private Subdivision currentDivision;
-	private int indPointPtrOff;
-	private int polylinePtrOff;
-	private int polygonPtrOff;
 
 	public void startDivision(Subdivision sd) {
 

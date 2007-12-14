@@ -55,20 +55,19 @@ public class TREFile extends ImgFile {
 
 	private int lastRgnPos;
 
-	private final boolean readOnly;
+	private final TREHeader header = new TREHeader();
 
-	private final TREHeader treHeader = new TREHeader();
 
 	public TREFile(ImgChannel chan, boolean write) {
+		setHeader(header);
 		if (write) {
-			readOnly = false;
 			setWriter(new BufferedWriteStrategy(chan));
 
 			// Position at the start of the writable area.
 			position(TREHeader.HEADER_LEN);
 		} else {
-			readOnly = true;
-			readin(chan);
+			setReader(new BufferedReadStrategy(chan));
+			header.readHeader(getReader());
 		}
 	}
 
@@ -87,16 +86,16 @@ public class TREFile extends ImgFile {
 	 */
 	public void addInfo(String msg) {
 		byte[] val = Utils.toBytes(msg);
-		if (position() != TREHeader.HEADER_LEN + treHeader.getMapInfoSize())
+		if (position() != TREHeader.HEADER_LEN + header.getMapInfoSize())
 			throw new IllegalStateException("All info must be added before anything else");
 
-		treHeader.setMapInfoSize(treHeader.getMapInfoSize() + (val.length+1));
+		header.setMapInfoSize(header.getMapInfoSize() + (val.length+1));
 		getWriter().put(val);
 		getWriter().put((byte) 0);
 	}
 
 	public Area getBounds() {
-		return treHeader.getBounds();
+		return header.getBounds();
 	}
 
 	public void addCopyright(Label cr) {
@@ -113,14 +112,6 @@ public class TREFile extends ImgFile {
 
 	public void addPolygonOverview(PolygonOverview ov) {
 		polygonOverviews.add(ov);
-	}
-
-	private void readin(ImgChannel chan) {
-		//try {
-			//readHeader(chan);
-		//} catch (IOException e) {
-		//	log.error("Cound not read TRE header");
-		//}
 	}
 
 	/**
@@ -145,7 +136,7 @@ public class TREFile extends ImgFile {
 	 * intact.
 	 */
 	private void writeSubdivs() {
-		treHeader.setSubdivPos(position());
+		header.setSubdivPos(position());
 		int subdivnum = 1; // numbers start at one
 
 		// First prepare to number them all
@@ -174,13 +165,13 @@ public class TREFile extends ImgFile {
 
 				sd.write(getWriter());
 				if (sd.hasNextLevel())
-					treHeader.setSubdivSize(treHeader.getSubdivSize() + TREHeader.SUBDIV_REC_SIZE2);
+					header.setSubdivSize(header.getSubdivSize() + TREHeader.SUBDIV_REC_SIZE2);
 				else
-					treHeader.setSubdivSize(treHeader.getSubdivSize() + TREHeader.SUBDIV_REC_SIZE);
+					header.setSubdivSize(header.getSubdivSize() + TREHeader.SUBDIV_REC_SIZE);
 			}
 		}
 		getWriter().putInt(lastRgnPos);
-		treHeader.setSubdivSize(treHeader.getSubdivSize() + 4);
+		header.setSubdivSize(header.getSubdivSize() + 4);
 	}
 
 	/**
@@ -189,13 +180,13 @@ public class TREFile extends ImgFile {
 	 */
 	private void writeMapLevels() {
 		// Write out the map levels (zoom)
-		treHeader.setMapLevelPos(position());
+		header.setMapLevelPos(position());
 		for (int i = 15; i >= 0; i--) {
 			// They need to be written in reverse order I think
 			Zoom z = mapLevels[i];
 			if (z == null)
 				continue;
-			treHeader.setMapLevelsSize(treHeader.getMapLevelsSize() + TREHeader.MAP_LEVEL_REC_SIZE);
+			header.setMapLevelsSize(header.getMapLevelsSize() + TREHeader.MAP_LEVEL_REC_SIZE);
 			z.write(getWriter());
 		}
 	}
@@ -206,32 +197,32 @@ public class TREFile extends ImgFile {
 	 * are separate ones for points, lines and polygons.
 	 */
 	private void writeOverviews() {
-		treHeader.setPointPos(position());
+		header.setPointPos(position());
 		
 		// Point overview section
 		Collections.sort(pointOverviews);
 		for (Overview ov : pointOverviews) {
 			ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
 			ov.write(getWriter());
-			treHeader.setPointSize(treHeader.getPointSize() + TREHeader.POINT_REC_LEN);
+			header.setPointSize(header.getPointSize() + TREHeader.POINT_REC_LEN);
 		}
 
 		// Line overview section.
-		treHeader.setPolylinePos(position());
+		header.setPolylinePos(position());
 		Collections.sort(polylineOverviews);
 		for (Overview ov : polylineOverviews) {
 			ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
 			ov.write(getWriter());
-			treHeader.setPolylineSize(treHeader.getPolylineSize() + TREHeader.POLYLINE_REC_LEN);
+			header.setPolylineSize(header.getPolylineSize() + TREHeader.POLYLINE_REC_LEN);
 		}
 
 		// Polygon overview section
-		treHeader.setPolygonPos(position());
+		header.setPolygonPos(position());
 		Collections.sort(polygonOverviews);
 		for (Overview ov : polygonOverviews) {
 			ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
 			ov.write(getWriter());
-			treHeader.setPolygonSize(treHeader.getPolygonSize() + TREHeader.POLYGON_REC_LEN);
+			header.setPolygonSize(header.getPolygonSize() + TREHeader.POLYGON_REC_LEN);
 		}
 	}
 
@@ -269,10 +260,10 @@ public class TREFile extends ImgFile {
 	 */
 	private void writeCopyrights() {
 		// Write out the pointers to the labels that hold the copyright strings
-		treHeader.setCopyrightPos(position());
+		header.setCopyrightPos(position());
 		WriteStrategy writer = getWriter();
 		for (Label l : copyrights) {
-			treHeader.setCopyrightSize(treHeader.getCopyrightSize() + TREHeader.COPYRIGHT_REC_SIZE);
+			header.setCopyrightSize(header.getCopyrightSize() + TREHeader.COPYRIGHT_REC_SIZE);
 			writer.put3(l.getOffset());
 		}
 	}
@@ -282,9 +273,9 @@ public class TREFile extends ImgFile {
 	}
 
 	public void sync() throws IOException {
-		if (readOnly)
+		if (!isWritable())
 			return;
-
+		
 		// Do anything that is in structures and that needs to be dealt with.
 		writeBody();
 
@@ -296,14 +287,14 @@ public class TREFile extends ImgFile {
 	}
 
 	public void setMapId(int mapid) {
-		treHeader.setMapId(mapid);
+		header.setMapId(mapid);
 	}
 
 	public void setBounds(Area area) {
-		treHeader.setBounds(area);
+		header.setBounds(area);
 	}
 
 	public void setPoiDisplayFlags(byte b) {
-		treHeader.setPoiDisplayFlags(b);
+		header.setPoiDisplayFlags(b);
 	}
 }

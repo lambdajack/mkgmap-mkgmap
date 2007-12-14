@@ -81,7 +81,15 @@ public abstract class ImgFile  {
 		return header;
 	}
 
-	public void setHeader(CommonHeader header) {
+	protected final void setHeader(CommonHeader header) {
 		this.header = header;
+	}
+
+	public boolean isWritable() {
+		return writable;
+	}
+
+	public boolean isReadable() {
+		return readable;
 	}
 }

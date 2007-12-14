@@ -16,6 +16,8 @@
  */
 package uk.me.parabola.imgfmt.app;
 
+import uk.me.parabola.imgfmt.ReadFailedException;
+
 import java.io.IOException;
 
 /**
@@ -50,32 +52,32 @@ public interface ReadStrategy {
 	 * Read in a single byte.
 	 * @return The byte that was read.
 	 */
-	public byte get() throws IOException;
+	public byte get() throws ReadFailedException;
 
 	/**
 	 * Read in two bytes.  Done in the correct byte order.
 	 * @return The 2 byte integer that was read.
 	 */
-	public char getChar() throws IOException;
+	public char getChar() throws ReadFailedException;
 
 	/**
-	 * Get a 3byte quantity.
+	 * Get a 3byte signed quantity.
 	 *
 	 * @return The value read.
 	 * @throws IOException When the file cannot be read.
 	 */
-	public int get3() throws IOException;
+	public int get3() throws ReadFailedException;
 
 	/**
 	 * Read in a 4 byte value.
 	 * @return A 4 byte integer.
 	 */
-	public int getInt() throws IOException;
+	public int getInt() throws ReadFailedException;
 
 	/**
 	 * Read in an arbitary length sequence of bytes.
 	 *
 	 * @param len The number of bytes to read.
 	 */
-	public byte[] get(int len) throws IOException;
+	public byte[] get(int len) throws ReadFailedException;
 }

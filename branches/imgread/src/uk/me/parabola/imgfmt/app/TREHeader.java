@@ -17,6 +17,7 @@
 package uk.me.parabola.imgfmt.app;
 
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.imgfmt.ReadFailedException;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -76,7 +77,8 @@ public class TREHeader extends CommonHeader {
 	 *
 	 * @param reader The header is read from here.
 	 */
-	protected void readFileHeader(ReadStrategy reader) throws IOException {
+	protected void readFileHeader(ReadStrategy reader) throws ReadFailedException {
+		assert reader.position() == COMMON_HEADER_LEN;
 		int maxLat = reader.get3();
 		int maxLon = reader.get3();
 		int minLat = reader.get3();

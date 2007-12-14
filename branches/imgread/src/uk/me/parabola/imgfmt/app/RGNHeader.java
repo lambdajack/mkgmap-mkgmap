@@ -16,6 +16,8 @@
  */
 package uk.me.parabola.imgfmt.app;
 
+import uk.me.parabola.imgfmt.ReadFailedException;
+
 import java.io.IOException;
 
 /**
@@ -24,7 +26,7 @@ import java.io.IOException;
  * @author Steve Ratcliffe
  */
 public class RGNHeader extends CommonHeader {
-	private static final int HEADER_LEN = 29;
+	public static final int HEADER_LEN = 29;
 
 	private int dataOffset;
 	private int dataSize;
@@ -41,7 +43,7 @@ public class RGNHeader extends CommonHeader {
 	 *
 	 * @param reader The header is read from here.
 	 */
-	protected void readFileHeader(ReadStrategy reader) throws IOException {
+	protected void readFileHeader(ReadStrategy reader) throws ReadFailedException {
 		dataOffset = reader.getInt();
 		dataSize = reader.getInt();
 	}

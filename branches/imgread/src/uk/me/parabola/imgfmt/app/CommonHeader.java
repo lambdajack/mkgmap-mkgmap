@@ -16,6 +16,7 @@
  */
 package uk.me.parabola.imgfmt.app;
 
+import uk.me.parabola.imgfmt.ReadFailedException;
 import uk.me.parabola.imgfmt.Utils;
 
 import java.io.IOException;
@@ -77,7 +78,7 @@ public abstract class CommonHeader {
 	 * Read the common header.  It starts at the beginning of the file.
 	 * @param reader Used to read the header.
 	 */
-	protected final void readHeader(ReadStrategy reader) throws IOException {
+	protected final void readHeader(ReadStrategy reader) throws ReadFailedException {
 		reader.position(0);
 		headerLength = reader.getChar();
 		byte[] bytes = reader.get(TYPE_LEN);
@@ -101,7 +102,7 @@ public abstract class CommonHeader {
 	 * before this is called.
 	 * @param reader The header is read from here.
 	 */
-	protected abstract void readFileHeader(ReadStrategy reader) throws IOException;
+	protected abstract void readFileHeader(ReadStrategy reader) throws ReadFailedException;
 
 	/**
 	 * Write the rest of the header.  It is guaranteed that the writer will

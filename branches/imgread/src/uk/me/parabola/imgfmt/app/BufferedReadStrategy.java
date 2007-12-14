@@ -17,6 +17,7 @@
 package uk.me.parabola.imgfmt.app;
 
 import uk.me.parabola.imgfmt.fs.ImgChannel;
+import uk.me.parabola.imgfmt.ReadFailedException;
 import uk.me.parabola.log.Logger;
 
 import java.io.IOException;
@@ -80,13 +81,14 @@ public class BufferedReadStrategy implements ReadStrategy {
 	 *
 	 * @return The byte that was read.
 	 */
-	public byte get() throws IOException {
+	public byte get() throws ReadFailedException {
 		// Check if the current position is within the buffer
 		fillBuffer();
 
 		int pos = (int) (position - bufStart);
 		assert pos < bufSize;
 
+		position++;
 		return buf.get(pos);
 	}
 
@@ -95,20 +97,25 @@ public class BufferedReadStrategy implements ReadStrategy {
 	 *
 	 * @return The 2 byte integer that was read.
 	 */
-	public char getChar() throws IOException {
+	public char getChar() throws ReadFailedException {
 		// Slow but sure implementation
 		byte b1 = get();
 		byte b2 = get();
 		return (char) (((b2 & 0xff) << 8) + (b1 & 0xff));
 	}
 
-	public int get3() throws IOException {
+	/**
+	 * Read a three byte signed quantity.
+	 * @return The read value.
+	 * @throws ReadFailedException
+	 */
+	public int get3() throws ReadFailedException {
 		// Slow but sure implementation
 		byte b1 = get();
 		byte b2 = get();
 		byte b3 = get();
 
-		return (char) (((b3 & 0xff) << 16)
+		return ((b3 << 16)
 				| ((b2 & 0xff) << 8)
 				| (b1 & 0xff));
 	}
@@ -118,7 +125,7 @@ public class BufferedReadStrategy implements ReadStrategy {
 	 *
 	 * @return A 4 byte integer.
 	 */
-	public int getInt() throws IOException {
+	public int getInt() throws ReadFailedException {
 		// Slow but sure implementation
 		byte b1 = get();
 		byte b2 = get();
@@ -136,7 +143,7 @@ public class BufferedReadStrategy implements ReadStrategy {
 	 *
 	 * @param len The number of bytes to read.
 	 */
-	public byte[] get(int len) throws IOException {
+	public byte[] get(int len) throws ReadFailedException {
 		byte[] bytes = new byte[len];
 
 		// Slow but sure implementation.
@@ -150,10 +157,10 @@ public class BufferedReadStrategy implements ReadStrategy {
 	 * Check to see if the buffer contains the byte at the current position.
 	 * If not then it is re-read so that it does.
 	 *
-	 * @throws IOException If the buffer needs filling and the file cannot be
+	 * @throws ReadFailedException If the buffer needs filling and the file cannot be
 	 * read.
 	 */
-	private void fillBuffer() throws IOException {
+	private void fillBuffer() throws ReadFailedException {
 		// If we are no longer inside the buffer, then re-read it.
 		if (position < bufStart || position >= bufStart + bufSize) {
 
@@ -163,11 +170,15 @@ public class BufferedReadStrategy implements ReadStrategy {
 			log.debug("reading in a buffer start=", bufStart);
 
 			// Fill buffer
-			buf.reset();
-			int n = chan.read(buf);
+			buf.clear();
+			bufSize = 0;
+			try {
+				bufSize = chan.read(buf);
+			} catch (IOException e) {
+				throw new ReadFailedException("failed to fill buffer", e);
+			}
 
-			bufSize = n;
-			log.debug("there were", n, "bytes read");
+			log.debug("there were", bufSize, "bytes read");
 		}
 	}
 }
