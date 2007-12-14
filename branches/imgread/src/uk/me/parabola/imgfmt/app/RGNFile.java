@@ -40,9 +40,12 @@ public class RGNFile extends ImgFile {
 
 	private static final int HEADER_LEN = 29;
 
-	private int dataSize;
+	private RGNHeader header;
 
 	public RGNFile(ImgChannel chan) {
+		header = new RGNHeader();
+		setHeader(header);
+
 		setWriter(new BufferedWriteStrategy(chan));
 
 		// Position at the start of the writable area.
@@ -50,7 +53,7 @@ public class RGNFile extends ImgFile {
 	}
 
 	public void sync() throws IOException {
-		dataSize = position() - HEADER_LEN;
+		header.setDataSize(position() - HEADER_LEN);
 
 		position(0);
 		getHeader().writeHeader(getWriter());

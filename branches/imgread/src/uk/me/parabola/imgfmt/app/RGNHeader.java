@@ -16,6 +16,8 @@
  */
 package uk.me.parabola.imgfmt.app;
 
+import java.io.IOException;
+
 /**
  * The header for the RGN file.  This is very simple, just a location and size.
  *
@@ -29,6 +31,7 @@ public class RGNHeader extends CommonHeader {
 	
 	public RGNHeader() {
 		super(HEADER_LEN, "GARMIN RGN");
+		dataOffset = HEADER_LEN;
 	}
 
 	/**
@@ -38,7 +41,9 @@ public class RGNHeader extends CommonHeader {
 	 *
 	 * @param reader The header is read from here.
 	 */
-	protected void readFileHeader(ReadStrategy reader) {
+	protected void readFileHeader(ReadStrategy reader) throws IOException {
+		dataOffset = reader.getInt();
+		dataSize = reader.getInt();
 	}
 
 	/**
@@ -48,6 +53,8 @@ public class RGNHeader extends CommonHeader {
 	 * @param writer The header is written here.
 	 */
 	protected void writeFileHeader(WriteStrategy writer) {
+		writer.putInt(dataOffset);
+        writer.putInt(getDataSize());
 	}
 
 	public int getDataOffset() {
