@@ -33,7 +33,7 @@ public class TYPFile extends ImgFile {
 	public TYPFile(ImgChannel chan) {
 
 		WriteStrategy writer = new BufferedWriteStrategy(chan);
-		setWriteStrategy(writer);
+		setWriter(writer);
 
 		//position(HEADER_LEN + INFO_LEN);
 	}
@@ -47,7 +47,7 @@ public class TYPFile extends ImgFile {
 		position(0);
 		getHeader().writeHeader(getWriter());
 
-		put(Utils.toBytes("Some text for the label gap"));
+		getWriter().put(Utils.toBytes("Some text for the label gap"));
 
 		// Sync our writer.
 		getWriter().sync();

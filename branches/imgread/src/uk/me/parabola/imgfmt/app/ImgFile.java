@@ -24,7 +24,7 @@ import java.nio.ByteBuffer;
 /**
  * Base class for all the img files.  There is a common header that
  * all the sub-files share.  They also have means of reading and writing
- * to themselves.
+ * themselves.
  * 
  * @author Steve Ratcliffe
  */
@@ -35,6 +35,9 @@ public abstract class ImgFile  {
 
 	private WriteStrategy writer;
 	private ReadStrategy reader;
+
+	private boolean readable;
+	private boolean writable;
 
 	public void close() {
 		try {
@@ -61,6 +64,7 @@ public abstract class ImgFile  {
 	}
 
 	void setWriter(WriteStrategy writer) {
+		writable = true;
 		this.writer = writer;
 	}
 
@@ -69,101 +73,15 @@ public abstract class ImgFile  {
 	}
 
 	void setReader(ReadStrategy reader) {
+		readable = true;
 		this.reader = reader;
 	}
 
-	public CommonHeader getHeader() {
+	protected CommonHeader getHeader() {
 		return header;
 	}
 
-	/**
-	 * Write out a 3 byte value in the correct byte order etc.
-	 *
-	 * @param val The value to write.
-	 */
-	public void put3(int val) {
-		if (log.isDebugEnabled())
-			log.debug("put3", val);
-		writer.put((byte) (val & 0xff));
-		writer.putChar((char) (val >> 8));
-	}
-
-	/**
-	 * Write out a 4 byte value.
-	 *
-	 * @param val The integer value to write.
-	 */
-	void putInt(int val) {
-		writer.putInt(val);
-	}
-
-	/**
-	 * Write out a 2 byte value.
-	 *
-	 * @param val The value to write.
-	 */
-	public void putChar(char val) {
-		writer.putChar(val);
-	}
-
-	/**
-	 * Write out a single byte value.
-	 *
-	 * @param val The value to write.
-	 */
-	public void put(byte val) {
-		writer.put(val);
-	}
-
-	/**
-	 * Write out a number of bytes from an array.
-	 *
-	 * @param val The values to write.
-	 */
-	void put(byte[] val) {
-		writer.put(val);
-	}
-
-	/**
-	 * Write out a selected section of a byte array.
-	 * @param src The source array.
-	 * @param start The starting position.
-	 * @param length The number to take.
-	 */
-	public void put(byte[] src, int start, int length) {
-		writer.put(src, start, length);
-	}
-
-	void setWriteStrategy(WriteStrategy writer) {
-		this.writer = writer;
-	}
-
-	/**
-	 * @deprecated will be new routines via reader.
-	 * @param buf
-	 * @return
-	 */
-	protected int get3(ByteBuffer buf) {
-		int val;
-		val = buf.get() & 0xff;
-		val |= (buf.get() & 0xff) << 8;
-		val |= buf.get() << 16;
-		return val;
-	}
-
-	public byte get() throws IOException {
-		return reader.get();
-	}
-
-	public char getChar() throws IOException {
-		return reader.getChar();
-	}
-
-	public int getInt() throws IOException {
-		return reader.getInt();
-	}
-
-	public byte[] get(int len) throws IOException {
-		return reader.get(len);
+	public void setHeader(CommonHeader header) {
+		this.header = header;
 	}
 }

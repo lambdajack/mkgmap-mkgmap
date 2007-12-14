@@ -102,6 +102,17 @@ public class BufferedReadStrategy implements ReadStrategy {
 		return (char) (((b2 & 0xff) << 8) + (b1 & 0xff));
 	}
 
+	public int get3() throws IOException {
+		// Slow but sure implementation
+		byte b1 = get();
+		byte b2 = get();
+		byte b3 = get();
+
+		return (char) (((b3 & 0xff) << 16)
+				| ((b2 & 0xff) << 8)
+				| (b1 & 0xff));
+	}
+
 	/**
 	 * Read in a 4 byte value.
 	 *

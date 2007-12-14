@@ -58,12 +58,6 @@ public class RGNFile extends ImgFile {
 		getWriter().sync();
 	}
 
-	private void writeHeader() {
-
-		putInt(HEADER_LEN);
-		putInt(dataSize);
-	}
-
 	private Subdivision currentDivision;
 	private int indPointPtrOff;
 	private int polylinePtrOff;
@@ -96,7 +90,7 @@ public class RGNFile extends ImgFile {
 	}
 
 	public void addMapObject(MapObject item) {
-		item.write(this);
+		item.write(getWriter());
 	}
 
 	public void setIndPointPtr() {
@@ -107,7 +101,7 @@ public class RGNFile extends ImgFile {
 			if (off > 0xffff)
 				throw new IllegalStateException("Too many items in indexed points section");
 
-			putChar((char) off);
+			getWriter().putChar((char) off);
 			position(currPos);
 		}
 	}
@@ -122,7 +116,7 @@ public class RGNFile extends ImgFile {
 
 			if (log.isDebugEnabled())
 				log.debug("setting polyline offset to", off);
-			putChar((char) off);
+			getWriter().putChar((char) off);
 
 			position(currPos);
 		}
@@ -139,7 +133,7 @@ public class RGNFile extends ImgFile {
 			if (log.isDebugEnabled())
 				log.debug("setting polygon offset to ", off, " @", polygonPtrOff);
 			position(polygonPtrOff);
-			putChar((char) off);
+			getWriter().putChar((char) off);
 			position(currPos);
 		}
 	}

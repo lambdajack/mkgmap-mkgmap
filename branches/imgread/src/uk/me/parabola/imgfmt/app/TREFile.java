@@ -25,8 +25,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 /**
  * This is the file that contains the overview of the map.  There
@@ -58,7 +56,8 @@ public class TREFile extends ImgFile {
 	private int lastRgnPos;
 
 	private final boolean readOnly;
-	private final TREHeader treHeader;
+
+	private final TREHeader treHeader = new TREHeader();
 
 	public TREFile(ImgChannel chan, boolean write) {
 		if (write) {
@@ -67,10 +66,8 @@ public class TREFile extends ImgFile {
 
 			// Position at the start of the writable area.
 			position(TREHeader.HEADER_LEN);
-			treHeader = new TREHeader(this);
 		} else {
 			readOnly = true;
-			treHeader = new TREHeader(this);
 			readin(chan);
 		}
 	}
@@ -94,8 +91,8 @@ public class TREFile extends ImgFile {
 			throw new IllegalStateException("All info must be added before anything else");
 
 		treHeader.setMapInfoSize(treHeader.getMapInfoSize() + (val.length+1));
-		put(val);
-		put((byte) 0);
+		getWriter().put(val);
+		getWriter().put((byte) 0);
 	}
 
 	public Area getBounds() {
@@ -119,28 +116,11 @@ public class TREFile extends ImgFile {
 	}
 
 	private void readin(ImgChannel chan) {
-		try {
-			readHeader(chan);
-		} catch (IOException e) {
-			log.error("Cound not read TRE header");
-		}
-	}
-
-	private void readHeader(ImgChannel chan) throws IOException {
-		ByteBuffer buf = ByteBuffer.allocate(512);
-		buf.order(ByteOrder.LITTLE_ENDIAN);
-		chan.position(CommonHeader.COMMON_HEADER_LEN);
-		chan.read(buf);
-
-		buf.flip();
-
-		int maxLat = get3(buf);
-		int maxLon = get3(buf);
-		int minLat = get3(buf);
-		int minLon = get3(buf);
-
-		treHeader.setBounds(new Area(minLat, minLon, maxLat, maxLon));
-		log.info("read area is", treHeader.getBounds());
+		//try {
+			//readHeader(chan);
+		//} catch (IOException e) {
+		//	log.error("Cound not read TRE header");
+		//}
 	}
 
 	/**
@@ -177,7 +157,7 @@ public class TREFile extends ImgFile {
 			Iterator<Subdivision> it = z.subdivIterator();
 			while (it.hasNext()) {
 				Subdivision sd = it.next();
-				TREFile.this.log.debug("setting number to", subdivnum);
+				log.debug("setting number to", subdivnum);
 				sd.setNumber(subdivnum++);
 			}
 		}
@@ -192,14 +172,14 @@ public class TREFile extends ImgFile {
 			while (it.hasNext()) {
 				Subdivision sd = it.next();
 
-				sd.write(this);
+				sd.write(getWriter());
 				if (sd.hasNextLevel())
 					treHeader.setSubdivSize(treHeader.getSubdivSize() + TREHeader.SUBDIV_REC_SIZE2);
 				else
 					treHeader.setSubdivSize(treHeader.getSubdivSize() + TREHeader.SUBDIV_REC_SIZE);
 			}
 		}
-		putInt(lastRgnPos);
+		getWriter().putInt(lastRgnPos);
 		treHeader.setSubdivSize(treHeader.getSubdivSize() + 4);
 	}
 
@@ -216,7 +196,7 @@ public class TREFile extends ImgFile {
 			if (z == null)
 				continue;
 			treHeader.setMapLevelsSize(treHeader.getMapLevelsSize() + TREHeader.MAP_LEVEL_REC_SIZE);
-			z.write(this);
+			z.write(getWriter());
 		}
 	}
 
@@ -232,7 +212,7 @@ public class TREFile extends ImgFile {
 		Collections.sort(pointOverviews);
 		for (Overview ov : pointOverviews) {
 			ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
-			ov.write(this);
+			ov.write(getWriter());
 			treHeader.setPointSize(treHeader.getPointSize() + TREHeader.POINT_REC_LEN);
 		}
 
@@ -241,7 +221,7 @@ public class TREFile extends ImgFile {
 		Collections.sort(polylineOverviews);
 		for (Overview ov : polylineOverviews) {
 			ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
-			ov.write(this);
+			ov.write(getWriter());
 			treHeader.setPolylineSize(treHeader.getPolylineSize() + TREHeader.POLYLINE_REC_LEN);
 		}
 
@@ -250,7 +230,7 @@ public class TREFile extends ImgFile {
 		Collections.sort(polygonOverviews);
 		for (Overview ov : polygonOverviews) {
 			ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
-			ov.write(this);
+			ov.write(getWriter());
 			treHeader.setPolygonSize(treHeader.getPolygonSize() + TREHeader.POLYGON_REC_LEN);
 		}
 	}
@@ -290,9 +270,10 @@ public class TREFile extends ImgFile {
 	private void writeCopyrights() {
 		// Write out the pointers to the labels that hold the copyright strings
 		treHeader.setCopyrightPos(position());
+		WriteStrategy writer = getWriter();
 		for (Label l : copyrights) {
 			treHeader.setCopyrightSize(treHeader.getCopyrightSize() + TREHeader.COPYRIGHT_REC_SIZE);
-			put3(l.getOffset());
+			writer.put3(l.getOffset());
 		}
 	}
 

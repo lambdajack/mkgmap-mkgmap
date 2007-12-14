@@ -101,7 +101,7 @@ public abstract class CommonHeader {
 	 * before this is called.
 	 * @param reader The header is read from here.
 	 */
-	protected abstract void readFileHeader(ReadStrategy reader);
+	protected abstract void readFileHeader(ReadStrategy reader) throws IOException;
 
 	/**
 	 * Write the rest of the header.  It is guaranteed that the writer will

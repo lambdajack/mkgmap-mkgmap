@@ -59,6 +59,14 @@ public interface ReadStrategy {
 	public char getChar() throws IOException;
 
 	/**
+	 * Get a 3byte quantity.
+	 *
+	 * @return The value read.
+	 * @throws IOException When the file cannot be read.
+	 */
+	public int get3() throws IOException;
+
+	/**
 	 * Read in a 4 byte value.
 	 * @return A 4 byte integer.
 	 */

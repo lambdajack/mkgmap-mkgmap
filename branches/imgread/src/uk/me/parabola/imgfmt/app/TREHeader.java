@@ -16,11 +16,27 @@
  */
 package uk.me.parabola.imgfmt.app;
 
+import uk.me.parabola.log.Logger;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.io.IOException;
+
 /**
  * @author Steve Ratcliffe
  */
 public class TREHeader extends CommonHeader {
+	private static final Logger log = Logger.getLogger(TREHeader.class);
+
 	public static final int HEADER_LEN = 120; // Other values are possible
+
+	static final int MAP_LEVEL_REC_SIZE = 4;
+	static final char POLYLINE_REC_LEN = 2;
+	static final char POLYGON_REC_LEN = 2;
+	static final char POINT_REC_LEN = 3;
+	static final char COPYRIGHT_REC_SIZE = 0x3;
+	static final int SUBDIV_REC_SIZE = 14;
+	static final int SUBDIV_REC_SIZE2 = 16;
 
 	// Bounding box.  All units are in map units.
 	private Area area = new Area(0,0,0,0);
@@ -48,148 +64,9 @@ public class TREHeader extends CommonHeader {
 	private int pointSize;
 
 	private int mapId;
-	static final int MAP_LEVEL_REC_SIZE = 4;
-	static final char POLYLINE_REC_LEN = 2;
-	static final char POLYGON_REC_LEN = 2;
-	static final char POINT_REC_LEN = 3;
-	static final char COPYRIGHT_REC_SIZE = 0x3;
-	static final int SUBDIV_REC_SIZE = 14;
-	static final int SUBDIV_REC_SIZE2 = 16;
 
-	public TREHeader(ImgFile imgFile) {
+	public TREHeader() {
 		super(HEADER_LEN, "GARMIN TRE");
-	}
-
-	/**
-	 * Set the bounds based upon the latitude and longitude in degrees.
-	 * @param area The area bounded by the map.
-	 */
-	public void setBounds(Area area) {
-		this.area = area;
-	}
-
-	public Area getBounds() {
-		return area;
-	}
-
-	public void setMapId(int id) {
-		mapId = id;
-	}
-
-	public void setPoiDisplayFlags(byte poiDisplayFlags) {
-		this.poiDisplayFlags = poiDisplayFlags;
-	}
-
-	public int getMapInfoSize() {
-		return mapInfoSize;
-	}
-
-	public void setMapInfoSize(int mapInfoSize) {
-		this.mapInfoSize = mapInfoSize;
-	}
-
-	public int getMapLevelPos() {
-		return mapLevelPos;
-	}
-
-	public void setMapLevelPos(int mapLevelPos) {
-		this.mapLevelPos = mapLevelPos;
-	}
-
-	public int getMapLevelsSize() {
-		return mapLevelsSize;
-	}
-
-	public void setMapLevelsSize(int mapLevelsSize) {
-		this.mapLevelsSize = mapLevelsSize;
-	}
-
-	public int getSubdivPos() {
-		return subdivPos;
-	}
-
-	public void setSubdivPos(int subdivPos) {
-		this.subdivPos = subdivPos;
-	}
-
-	public int getSubdivSize() {
-		return subdivSize;
-	}
-
-	public void setSubdivSize(int subdivSize) {
-		this.subdivSize = subdivSize;
-	}
-
-	public int getCopyrightPos() {
-		return copyrightPos;
-	}
-
-	public void setCopyrightPos(int copyrightPos) {
-		this.copyrightPos = copyrightPos;
-	}
-
-	public int getCopyrightSize() {
-		return copyrightSize;
-	}
-
-	public void setCopyrightSize(int copyrightSize) {
-		this.copyrightSize = copyrightSize;
-	}
-
-	public byte getPoiDisplayFlags() {
-		return poiDisplayFlags;
-	}
-
-	public int getPolylinePos() {
-		return polylinePos;
-	}
-
-	public void setPolylinePos(int polylinePos) {
-		this.polylinePos = polylinePos;
-	}
-
-	public int getPolylineSize() {
-		return polylineSize;
-	}
-
-	public void setPolylineSize(int polylineSize) {
-		this.polylineSize = polylineSize;
-	}
-
-	public int getPolygonPos() {
-		return polygonPos;
-	}
-
-	public void setPolygonPos(int polygonPos) {
-		this.polygonPos = polygonPos;
-	}
-
-	public int getPolygonSize() {
-		return polygonSize;
-	}
-
-	public void setPolygonSize(int polygonSize) {
-		this.polygonSize = polygonSize;
-	}
-
-	public int getPointPos() {
-		return pointPos;
-	}
-
-	public void setPointPos(int pointPos) {
-		this.pointPos = pointPos;
-	}
-
-	public int getPointSize() {
-		return pointSize;
-	}
-
-	public void setPointSize(int pointSize) {
-		this.pointSize = pointSize;
-	}
-
-	public int getMapId() {
-		return mapId;
 	}
 
 	/**
@@ -199,7 +76,15 @@ public class TREHeader extends CommonHeader {
 	 *
 	 * @param reader The header is read from here.
 	 */
-	protected void readFileHeader(ReadStrategy reader) {
+	protected void readFileHeader(ReadStrategy reader) throws IOException {
+		int maxLat = reader.get3();
+		int maxLon = reader.get3();
+		int minLat = reader.get3();
+		int minLon = reader.get3();
+		setBounds(new Area(minLat, minLon, maxLat, maxLon));
+		log.info("read area is", getBounds());
+
+		// more to do...
 	}
 
 	/**
@@ -261,9 +146,142 @@ public class TREHeader extends CommonHeader {
 		writer.position(HEADER_LEN);
 	}
 
+
+	/**
+	 * Set the bounds based upon the latitude and longitude in degrees.
+	 * @param area The area bounded by the map.
+	 */
+	public void setBounds(Area area) {
+		this.area = area;
+	}
+
+	public Area getBounds() {
+		return area;
+	}
+
+	public void setMapId(int id) {
+		mapId = id;
+	}
+
+	public void setPoiDisplayFlags(byte poiDisplayFlags) {
+		this.poiDisplayFlags = poiDisplayFlags;
+	}
+
+	public int getMapInfoSize() {
+		return mapInfoSize;
+	}
+
+	public void setMapInfoSize(int mapInfoSize) {
+		this.mapInfoSize = mapInfoSize;
+	}
+
+	protected int getMapLevelPos() {
+		return mapLevelPos;
+	}
+
+	public void setMapLevelPos(int mapLevelPos) {
+		this.mapLevelPos = mapLevelPos;
+	}
+
+	public int getMapLevelsSize() {
+		return mapLevelsSize;
+	}
+
+	public void setMapLevelsSize(int mapLevelsSize) {
+		this.mapLevelsSize = mapLevelsSize;
+	}
+
+	protected int getSubdivPos() {
+		return subdivPos;
+	}
+
+	public void setSubdivPos(int subdivPos) {
+		this.subdivPos = subdivPos;
+	}
+
+	public int getSubdivSize() {
+		return subdivSize;
+	}
+
+	public void setSubdivSize(int subdivSize) {
+		this.subdivSize = subdivSize;
+	}
+
+	protected int getCopyrightPos() {
+		return copyrightPos;
+	}
+
+	public void setCopyrightPos(int copyrightPos) {
+		this.copyrightPos = copyrightPos;
+	}
+
+	public int getCopyrightSize() {
+		return copyrightSize;
+	}
+
+	public void setCopyrightSize(int copyrightSize) {
+		this.copyrightSize = copyrightSize;
+	}
+
+	protected byte getPoiDisplayFlags() {
+		return poiDisplayFlags;
+	}
+
+	protected int getPolylinePos() {
+		return polylinePos;
+	}
+
+	public void setPolylinePos(int polylinePos) {
+		this.polylinePos = polylinePos;
+	}
+
+	public int getPolylineSize() {
+		return polylineSize;
+	}
+
+	public void setPolylineSize(int polylineSize) {
+		this.polylineSize = polylineSize;
+	}
+
+	protected int getPolygonPos() {
+		return polygonPos;
+	}
+
+	public void setPolygonPos(int polygonPos) {
+		this.polygonPos = polygonPos;
+	}
+
+	public int getPolygonSize() {
+		return polygonSize;
+	}
+
+	public void setPolygonSize(int polygonSize) {
+		this.polygonSize = polygonSize;
+	}
+
+	protected int getPointPos() {
+		return pointPos;
+	}
+
+	public void setPointPos(int pointPos) {
+		this.pointPos = pointPos;
+	}
+
+	public int getPointSize() {
+		return pointSize;
+	}
+
+	public void setPointSize(int pointSize) {
+		this.pointSize = pointSize;
+	}
+
+	protected int getMapId() {
+		return mapId;
+	}
+
 	private static class Section {
-		int itemSize;
-		int totalSize;
+		private int itemSize;
+		private int totalSize;
 
 		private Section(int itemSize) {
 			this.itemSize = itemSize;
