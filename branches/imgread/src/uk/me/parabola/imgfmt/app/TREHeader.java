@@ -16,12 +16,8 @@
  */
 package uk.me.parabola.imgfmt.app;
 
-import uk.me.parabola.log.Logger;
 import uk.me.parabola.imgfmt.ReadFailedException;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.io.IOException;
+import uk.me.parabola.log.Logger;
 
 /**
  * @author Steve Ratcliffe
@@ -50,19 +46,12 @@ public class TREHeader extends CommonHeader {
 	private int subdivPos;
 	private int subdivSize;
 
-	private int copyrightPos;
-	private int copyrightSize;
-
 	private byte poiDisplayFlags;
 
-	private int polylinePos;
-	private int polylineSize;
-
-	private int polygonPos;
-	private int polygonSize;
-
-	private int pointPos;
-	private int pointSize;
+	private Section copyright = new Section(COPYRIGHT_REC_SIZE);
+	private Section polyline = new Section(POLYLINE_REC_LEN);
+	private Section polygon = new Section(POLYLINE_REC_LEN);
+	private Section points = new Section(POLYLINE_REC_LEN);
 
 	private int mapId;
 
@@ -107,9 +96,9 @@ public class TREHeader extends CommonHeader {
 		writer.putInt(getSubdivPos());
 		writer.putInt(getSubdivSize());
 
-		writer.putInt(getCopyrightPos());
-		writer.putInt(getCopyrightSize());
-		writer.putChar(COPYRIGHT_REC_SIZE);
+		writer.putInt(copyright.getPosition());
+		writer.putInt(copyright.getSize());
+		writer.putChar(copyright.getItemSize());
 
 		writer.putInt(0);
 
@@ -121,23 +110,23 @@ public class TREHeader extends CommonHeader {
 		writer.putChar((char) 1);
 		writer.put((byte) 0);
 
-		writer.putInt(getPolylinePos());
-		writer.putInt(getPolylineSize());
-		writer.putChar(POLYLINE_REC_LEN);
+		writer.putInt(polyline.getPosition());
+		writer.putInt(polyline.getSize());
+		writer.putChar(polyline.getItemSize());
 
 		writer.putChar((char) 0);
 		writer.putChar((char) 0);
 
-		writer.putInt(getPolygonPos());
-		writer.putInt(getPolygonSize());
-		writer.putChar(POLYGON_REC_LEN);
+		writer.putInt(polygon.getPosition());
+		writer.putInt(polygon.getSize());
+		writer.putChar(polygon.getItemSize());
 
 		writer.putChar((char) 0);
 		writer.putChar((char) 0);
 
-		writer.putInt(getPointPos());
-		writer.putInt(getPointSize());
-		writer.putChar(POINT_REC_LEN);
+		writer.putInt(points.getPosition());
+		writer.putInt(points.getSize());
+		writer.putChar(points.getItemSize());
 
 		writer.putChar((char) 0);
 		writer.putChar((char) 0);
@@ -210,87 +199,90 @@ public class TREHeader extends CommonHeader {
 	}
 
 	protected int getCopyrightPos() {
-		return copyrightPos;
+		return copyright.getPosition();
 	}
 
 	public void setCopyrightPos(int copyrightPos) {
-		this.copyrightPos = copyrightPos;
+		//this.copyrightPos = copyrightPos;
+		copyright.setPosition(copyrightPos);
 	}
 
-	public int getCopyrightSize() {
-		return copyrightSize;
-	}
-
-	public void setCopyrightSize(int copyrightSize) {
-		this.copyrightSize = copyrightSize;
+	public void incCopyrightSize() {
+		copyright.inc();
+		//this.copyrightSize = copyrightSize;
 	}
 
 	protected byte getPoiDisplayFlags() {
 		return poiDisplayFlags;
 	}
 
-	protected int getPolylinePos() {
-		return polylinePos;
-	}
-
 	public void setPolylinePos(int polylinePos) {
-		this.polylinePos = polylinePos;
+		polyline.setPosition(polylinePos);
 	}
 
-	public int getPolylineSize() {
-		return polylineSize;
-	}
-
-	public void setPolylineSize(int polylineSize) {
-		this.polylineSize = polylineSize;
-	}
-
-	protected int getPolygonPos() {
-		return polygonPos;
+	public void incPolylineSize() {
+		polyline.inc();
 	}
 
 	public void setPolygonPos(int polygonPos) {
-		this.polygonPos = polygonPos;
+		polygon.setPosition(polygonPos);
 	}
 
-	public int getPolygonSize() {
-		return polygonSize;
-	}
-
-	public void setPolygonSize(int polygonSize) {
-		this.polygonSize = polygonSize;
-	}
-
-	protected int getPointPos() {
-		return pointPos;
+	public void incPolygonSize() {
+		polygon.inc();
 	}
 
 	public void setPointPos(int pointPos) {
-		this.pointPos = pointPos;
+		points.setPosition(pointPos);
 	}
 
-	public int getPointSize() {
-		return pointSize;
-	}
-
-	public void setPointSize(int pointSize) {
-		this.pointSize = pointSize;
+	public void incPointSize() {
+		points.inc();
 	}
 
 	protected int getMapId() {
 		return mapId;
 	}
 
+	/**
+	 * Represents an item size the position where those items start and the
+	 * total size of the section.
+	 */
 	private static class Section {
-		private int itemSize;
-		private int totalSize;
+		private char itemSize;
+		private int size;
+		private int position;
 
-		private Section(int itemSize) {
+		private Section(char itemSize) {
 			this.itemSize = itemSize;
 		}
 
-		public void add() {
-			totalSize += itemSize;
+		public void inc() {
+			size += itemSize;
+		}
+
+		public char getItemSize() {
+			return itemSize;
+		}
+
+		public void setItemSize(char itemSize) {
+			this.itemSize = itemSize;
+		}
+
+		public int getSize() {
+			return size;
+		}
+
+		public void setSize(int size) {
+			this.size = size;
+		}
+
+		public int getPosition() {
+			return position;
+		}
+
+		public void setPosition(int position) {
+			this.position = position;
 		}
 	}
 }

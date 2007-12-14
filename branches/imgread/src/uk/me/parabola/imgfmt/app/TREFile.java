@@ -204,7 +204,7 @@ public class TREFile extends ImgFile {
 		for (Overview ov : pointOverviews) {
 			ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
 			ov.write(getWriter());
-			header.setPointSize(header.getPointSize() + TREHeader.POINT_REC_LEN);
+			header.incPointSize();
 		}
 
 		// Line overview section.
@@ -213,7 +213,7 @@ public class TREFile extends ImgFile {
 		for (Overview ov : polylineOverviews) {
 			ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
 			ov.write(getWriter());
-			header.setPolylineSize(header.getPolylineSize() + TREHeader.POLYLINE_REC_LEN);
+			header.incPolylineSize();
 		}
 
 		// Polygon overview section
@@ -222,7 +222,7 @@ public class TREFile extends ImgFile {
 		for (Overview ov : polygonOverviews) {
 			ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
 			ov.write(getWriter());
-			header.setPolygonSize(header.getPolygonSize() + TREHeader.POLYGON_REC_LEN);
+			header.incPolygonSize();
 		}
 	}
 
@@ -263,7 +263,7 @@ public class TREFile extends ImgFile {
 		header.setCopyrightPos(position());
 		WriteStrategy writer = getWriter();
 		for (Label l : copyrights) {
-			header.setCopyrightSize(header.getCopyrightSize() + TREHeader.COPYRIGHT_REC_SIZE);
+			header.incCopyrightSize();
 			writer.put3(l.getOffset());
 		}
 	}
