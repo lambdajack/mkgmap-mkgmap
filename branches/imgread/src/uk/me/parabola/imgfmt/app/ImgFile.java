@@ -16,22 +16,22 @@
  */
 package uk.me.parabola.imgfmt.app;
 
-import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.log.Logger;
 
-import java.util.Date;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
  * Base class for all the img files.  There is a common header that
- * all the sub-files share.  This will be handled in this class.
- * Also provides common services for writing the file.
+ * all the sub-files share.  They also have means of reading and writing
+ * to themselves.
  * 
  * @author Steve Ratcliffe
  */
 public abstract class ImgFile  {
 	private static final Logger log = Logger.getLogger(ImgFile.class);
+
+	private CommonHeader header;
 
 	private WriteStrategy writer;
 	private ReadStrategy reader;
@@ -70,6 +70,10 @@ public abstract class ImgFile  {
 
 	void setReader(ReadStrategy reader) {
 		this.reader = reader;
+	}
+
+	public CommonHeader getHeader() {
+		return header;
 	}
 
 	/**

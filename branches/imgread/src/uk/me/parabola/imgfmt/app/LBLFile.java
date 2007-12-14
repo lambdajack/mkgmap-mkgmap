@@ -42,11 +42,10 @@ import java.util.HashMap;
 public class LBLFile extends ImgFile {
 	private static final Logger log = Logger.getLogger(LBLFile.class);
 
-	private static final int HEADER_LEN = 196; // Other lengths are possible
 	private static final int INFO_LEN = 28;
 
 	private int labelSize; // Size of file.
-	private int dataPos = HEADER_LEN + INFO_LEN;
+	private int dataPos = LBLHeader.HEADER_LEN + INFO_LEN;
 
 	private static final char COUNTRY_REC_LEN = 3;
 	private static final char REGION_REC_LEN = 5;
@@ -72,13 +71,11 @@ public class LBLFile extends ImgFile {
 	private final java.util.Map<String, Label> labelCache = new HashMap<String, Label>();
 
 	public LBLFile(ImgChannel chan) {
-		setHeaderLength(HEADER_LEN);
-		setType("GARMIN LBL");
 
 		WriteStrategy writer = new BufferedWriteStrategy(chan);
 		setWriteStrategy(writer);
 
-		position(HEADER_LEN + INFO_LEN);
+		position(LBLHeader.HEADER_LEN + INFO_LEN);
 
 		// The zero offset is for no label.
 		put((byte) 0);
@@ -91,8 +88,7 @@ public class LBLFile extends ImgFile {
 
 		// Reposition to re-write the header with all updated values.
 		position(0);
-		writeCommonHeader();
-		writeHeader();
+		getHeader().writeHeader(getWriter());
 
 		put(Utils.toBytes("Some text for the label gap"));
 		
@@ -138,7 +134,7 @@ public class LBLFile extends ImgFile {
 			l = new Label(etext);
 			labelCache.put(text, l);
 
-			l.setOffset(position() - (HEADER_LEN+INFO_LEN));
+			l.setOffset(position() - (LBLHeader.HEADER_LEN+INFO_LEN));
 			l.write(this);
 
 			labelSize += l.getLength();
@@ -154,7 +150,7 @@ public class LBLFile extends ImgFile {
 	private void writeHeader()  {
 
 		// LBL1 section, these are regular labels
-		putInt(HEADER_LEN + INFO_LEN);
+		putInt(LBLHeader.HEADER_LEN + INFO_LEN);
 		putInt(labelSize);
 
 		put((byte) 0);
@@ -217,7 +213,7 @@ public class LBLFile extends ImgFile {
 		putInt(0);
 
 		// Sort descriptor ???
-		putInt(HEADER_LEN);
+		putInt(LBLHeader.HEADER_LEN);
 		putInt(INFO_LEN);
 
 		putInt(dataPos);

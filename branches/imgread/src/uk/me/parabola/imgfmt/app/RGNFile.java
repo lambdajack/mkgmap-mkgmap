@@ -24,7 +24,7 @@ import java.io.IOException;
 /**
  * The region file.  Holds actual details of points and lines etc.
  *
- * The header is very simple, just a location and size.
+ * 
  *
  * The data is rather complicated and is packed to save space.  This class does
  * not really handle that format however as it is written by the {@link
@@ -43,8 +43,6 @@ public class RGNFile extends ImgFile {
 	private int dataSize;
 
 	public RGNFile(ImgChannel chan) {
-		setHeaderLength(HEADER_LEN);
-		setType("GARMIN RGN");
 		setWriter(new BufferedWriteStrategy(chan));
 
 		// Position at the start of the writable area.
@@ -55,8 +53,7 @@ public class RGNFile extends ImgFile {
 		dataSize = position() - HEADER_LEN;
 
 		position(0);
-		writeCommonHeader();
-		writeHeader();
+		getHeader().writeHeader(getWriter());
 
 		getWriter().sync();
 	}

@@ -57,7 +57,7 @@ public class TREHeader extends CommonHeader {
 	static final int SUBDIV_REC_SIZE2 = 16;
 
 	public TREHeader(ImgFile imgFile) {
-		super(imgFile, HEADER_LEN, "GARMIN TRE");
+		super(HEADER_LEN, "GARMIN TRE");
 	}
 
 	/**
@@ -192,59 +192,73 @@ public class TREHeader extends CommonHeader {
 		return mapId;
 	}
 
-	void writeHeader(TREFile treFile)  {
-		writeCommonHeader();
-		
-		treFile.put3(area.getMaxLat());
-		treFile.put3(area.getMaxLong());
-		treFile.put3(area.getMinLat());
-		treFile.put3(area.getMinLong());
+	/**
+	 * Read the rest of the header.  Specific to the given file.  It is guaranteed
+	 * that the file position will be set to the correct place before this is
+	 * called.
+	 *
+	 * @param reader The header is read from here.
+	 */
+	protected void readFileHeader(ReadStrategy reader) {
+	}
 
-		treFile.putInt(getMapLevelPos());
-		treFile.putInt(getMapLevelsSize());
+	/**
+	 * Write the rest of the header.  It is guaranteed that the writer will be set
+	 * to the correct position before calling.
+	 *
+	 * @param writer The header is written here.
+	 */
+	protected void writeFileHeader(WriteStrategy writer) {
+		writer.put3(area.getMaxLat());
+		writer.put3(area.getMaxLong());
+		writer.put3(area.getMinLat());
+		writer.put3(area.getMinLong());
 
-		treFile.putInt(getSubdivPos());
-		treFile.putInt(getSubdivSize());
+		writer.putInt(getMapLevelPos());
+		writer.putInt(getMapLevelsSize());
 
-		treFile.putInt(getCopyrightPos());
-		treFile.putInt(getCopyrightSize());
-		treFile.putChar(COPYRIGHT_REC_SIZE);
+		writer.putInt(getSubdivPos());
+		writer.putInt(getSubdivSize());
 
-		treFile.putInt(0);
+		writer.putInt(getCopyrightPos());
+		writer.putInt(getCopyrightSize());
+		writer.putChar(COPYRIGHT_REC_SIZE);
 
-		treFile.put(getPoiDisplayFlags());
+		writer.putInt(0);
 
-		treFile.put3(0x19);
-		treFile.putInt(0xd0401);
+		writer.put(getPoiDisplayFlags());
 
-		treFile.putChar((char) 1);
-		treFile.put((byte) 0);
+		writer.put3(0x19);
+		writer.putInt(0xd0401);
 
-		treFile.putInt(getPolylinePos());
-		treFile.putInt(getPolylineSize());
-		treFile.putChar(POLYLINE_REC_LEN);
+		writer.putChar((char) 1);
+		writer.put((byte) 0);
 
-		treFile.putChar((char) 0);
-		treFile.putChar((char) 0);
+		writer.putInt(getPolylinePos());
+		writer.putInt(getPolylineSize());
+		writer.putChar(POLYLINE_REC_LEN);
 
-		treFile.putInt(getPolygonPos());
-		treFile.putInt(getPolygonSize());
-		treFile.putChar(POLYGON_REC_LEN);
+		writer.putChar((char) 0);
+		writer.putChar((char) 0);
 
-		treFile.putChar((char) 0);
-		treFile.putChar((char) 0);
+		writer.putInt(getPolygonPos());
+		writer.putInt(getPolygonSize());
+		writer.putChar(POLYGON_REC_LEN);
 
-		treFile.putInt(getPointPos());
-		treFile.putInt(getPointSize());
-		treFile.putChar(POINT_REC_LEN);
+		writer.putChar((char) 0);
+		writer.putChar((char) 0);
 
-		treFile.putChar((char) 0);
-		treFile.putChar((char) 0);
+		writer.putInt(getPointPos());
+		writer.putInt(getPointSize());
+		writer.putChar(POINT_REC_LEN);
+
+		writer.putChar((char) 0);
+		writer.putChar((char) 0);
 
 		// Map ID
-		treFile.putInt(getMapId());
+		writer.putInt(getMapId());
 
-		treFile.position(HEADER_LEN);
+		writer.position(HEADER_LEN);
 	}
 
 	private static class Section {

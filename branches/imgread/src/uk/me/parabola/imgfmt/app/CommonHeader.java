@@ -30,7 +30,7 @@ import java.util.Date;
  *
  * @author Steve Ratcliffe
  */
-public class CommonHeader {
+public abstract class CommonHeader {
 	public static final int COMMON_HEADER_LEN = 21;
 	private static final int TYPE_LEN = 10;
 
@@ -46,46 +46,69 @@ public class CommonHeader {
 	// A date of creation.
 	private Date creationDate;
 
-	// The file that this header belongs to.
-	protected final ImgFile imgFile;
-
-	public CommonHeader(ImgFile imgFile, int headerLength, String type) {
+	protected CommonHeader(int headerLength, String type) {
 		this.headerLength = headerLength;
 		this.type = type;
-		this.imgFile = imgFile;
 	}
 
 	/**
 	 * Writes out the header that is common to all the file types.  It should
 	 * be called by the sync() methods of subclasses when they are ready.
+	 * @param writer Used to write the header.
 	 */
-	protected void writeCommonHeader()  {
-		imgFile.putChar((char) headerLength);
-		imgFile.put(Utils.toBytes(type, TYPE_LEN, (byte) 0));
-		imgFile.put((byte) 1);  // unknown
-		imgFile.put((byte) 0);  // not locked
+	protected final void writeHeader(WriteStrategy writer)  {
+		writePrepare();
+
+		writer.position(0);
+
+		writer.putChar((char) headerLength);
+		writer.put(Utils.toBytes(type, TYPE_LEN, (byte) 0));
+
+		writer.put((byte) 1);  // unknown
+		writer.put((byte) 0);  // not locked
+
 		byte[] date = Utils.makeCreationTime(new Date());
-		imgFile.put(date);
+		writer.put(date);
+
+		writeFileHeader(writer);
 	}
 
 	/**
 	 * Read the common header.  It starts at the beginning of the file.
+	 * @param reader Used to read the header.
 	 */
-	protected void readCommonHeader() throws IOException {
-		imgFile.position(0);
-		headerLength = imgFile.getChar();
-		byte[] bytes = imgFile.get(TYPE_LEN);
+	protected final void readHeader(ReadStrategy reader) throws IOException {
+		reader.position(0);
+		headerLength = reader.getChar();
+		byte[] bytes = reader.get(TYPE_LEN);
 		try {
 			type = new String(bytes, "ascii");
 		} catch (UnsupportedEncodingException e) {
 			// ascii is supported always, so this can't happen
 		}
-		imgFile.get(); // ignore
-		imgFile.get(); // ignore
+		reader.get(); // ignore
+		reader.get(); // ignore
 
-		byte[] date = imgFile.get(7);
+		byte[] date = reader.get(7);
 		creationDate = Utils.makeCreationTime(date);
+
+		readFileHeader(reader);
 	}
+
+	/**
+	 * Read the rest of the header.  Specific to the given file.  It is
+	 * guaranteed that the file position will be set to the correct place
+	 * before this is called.
+	 * @param reader The header is read from here.
+	 */
+	protected abstract void readFileHeader(ReadStrategy reader);
+
+	/**
+	 * Write the rest of the header.  It is guaranteed that the writer will
+	 * be set to the correct position before calling.
+	 * @param writer The header is written here.
+	 */
+	protected abstract void writeFileHeader(WriteStrategy writer);
 
 	public byte getLockFlag() {
 		return lockFlag;
@@ -101,5 +124,12 @@ public class CommonHeader {
 
 	public void setCreationDate(Date creationDate) {
 		this.creationDate = creationDate;
+	}
+
+	private void writePrepare() {
+		// Prepare for write by setting our defaults.
+		lockFlag = 0;
+		if (creationDate == null)
+			creationDate = new Date();
 	}
 }

@@ -300,19 +300,19 @@ public class TREFile extends ImgFile {
 		TREFile.this.lastRgnPos = lastRgnPos;
 	}
 
-		public void sync() throws IOException {
-			if (readOnly)
-				return;
+	public void sync() throws IOException {
+		if (readOnly)
+			return;
 
-			// Do anything that is in structures and that needs to be dealt with.
-			writeBody();
+		// Do anything that is in structures and that needs to be dealt with.
+		writeBody();
 
-			// Now refresh the header
-			position(0);
-			treHeader.writeHeader(this);
+		// Now refresh the header
+		position(0);
+		getHeader().writeHeader(getWriter());
 
-			getWriter().sync();
-		}
+		getWriter().sync();
+	}
 
 	public void setMapId(int mapid) {
 		treHeader.setMapId(mapid);
@@ -320,5 +320,9 @@ public class TREFile extends ImgFile {
 
 	public void setBounds(Area area) {
 		treHeader.setBounds(area);
+	}
+
+	public void setPoiDisplayFlags(byte b) {
+		treHeader.setPoiDisplayFlags(b);
 	}
 }
