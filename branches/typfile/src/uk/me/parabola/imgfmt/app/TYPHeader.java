@@ -37,10 +37,6 @@ public class TYPHeader extends CommonHeader {
 	private Section sect3 = new Section();
 	private Section sect4 = new Section();
 	private Section shapeStacking = new Section();
-	private char unk1;
-	private char unk2;
-	private char unk3;
-	private char unk4;
 	private char unk5;
 
 	public TYPHeader() {
@@ -73,23 +69,22 @@ public class TYPHeader extends CommonHeader {
 		sect1.setSize(reader.getInt());
 
 		productId = reader.getChar();
-		//System.out.println("product id was:" + productId);
 		unk5 = reader.getChar();
 
 		sect6.setPosition(reader.getInt());
-		unk1 = reader.getChar();
+		sect6.setItemSize(reader.getChar());
 		sect6.setSize(reader.getInt());
 
 		sect3.setPosition(reader.getInt());
-		unk2 = reader.getChar();
+		sect3.setItemSize(reader.getChar());
 		sect3.setSize(reader.getInt());
 
 		sect4.setPosition(reader.getInt());
-		unk3 = reader.getChar();
+		sect4.setItemSize(reader.getChar());
 		sect4.setSize(reader.getInt());
 
 		shapeStacking.setPosition(reader.getInt());
-		unk4 = reader.getChar();
+		shapeStacking.setItemSize(reader.getChar());
 		shapeStacking.setSize(reader.getInt());
 	}
 
@@ -111,24 +106,23 @@ public class TYPHeader extends CommonHeader {
 		writer.putInt(sect1.getPosition());
 		writer.putInt(sect1.getSize());
 
-		System.out.println("product id (W) was:" + productId);
 		writer.putChar(productId);
 		writer.putChar(unk5);
 
 		writer.putInt(sect6.getPosition());
-		writer.putChar(unk1);
+		writer.putChar(sect6.getItemSize());
 		writer.putInt(sect6.getSize());
 
 		writer.putInt(sect3.getPosition());
-		writer.putChar(unk2);
+		writer.putChar(sect3.getItemSize());
 		writer.putInt(sect3.getSize());
 
 		writer.putInt(sect4.getPosition());
-		writer.putChar(unk3);
+		writer.putChar(sect4.getItemSize());
 		writer.putInt(sect4.getSize());
 
 		writer.putInt(shapeStacking.getPosition());
-		writer.putChar(unk4);
+		writer.putChar(shapeStacking.getItemSize());
 		writer.putInt(shapeStacking.getSize());
 	}
 
