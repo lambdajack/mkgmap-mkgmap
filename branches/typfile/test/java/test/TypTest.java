@@ -92,12 +92,20 @@ public class TypTest {
 
 		System.out.println("\nFile header");
 
+		int value;
+		int size;
+		off = printUnknown(off, un, 0x17);
+
+		value = getInt(un, 0x17);
+		Section section = Section.addSection("u sect5", value);
+		off = printSection(off, section);
+
 		off = printUnknown(off, un, 0x1f);
-		int value = getInt(un, 0x1f);
-		int size = getInt(un, 0x23);
+		value = getInt(un, 0x1f);
+		size = getInt(un, 0x23);
 		//off = printInt(off, "Line def offset", value);
 		//off = printInt(off, "Line def size", size);
-		Section section = Section.addSection("Lines", value, size);
+		section = Section.addSection("Lines", value, size);
 		off = printSection(off, section);
 
 		value = getInt(un, 0x27);
@@ -113,14 +121,18 @@ public class TypTest {
 		off = printUnknown(off, un, 0x3d);
 
 		value = getInt(un, 0x3d);
-		off = printInt(off, "u sect3", value);
-		Section.addSection("u sect3", value);
+		size = getInt(un, 0x43);
+		//off = printInt(off, "u sect3", value);
+		section = Section.addSection("u sect3", value, size);
+		off = printSection(off, section);
 
 		off = printUnknown(off, un, 0x47);
 
 		value = getInt(un, 0x47);
-		off = printInt(off, "u sect4", value);
-		Section.addSection("u sect4", value);
+		size = getInt(un, 0x4d);
+		//off = printInt(off, "u sect4", value);
+		section = Section.addSection("u sect4", value, size);
+		off = printSection(off, section);
 
 		off = printUnknown(off, un, 0x51);
 
@@ -135,7 +147,7 @@ public class TypTest {
 
 		analyseSections();
 		printSpeculation(un);
-		System.exit(0);
+		//System.exit(0);
 	}
 
 	/*
@@ -143,6 +155,7 @@ public class TypTest {
 	 */
 	private static void printSpeculation(byte[] un) {
 		System.out.println("offset 0043 maybe u sect3 size: " + getInt(un, 0x43));
+		// this one seems solid
 		System.out.println("offset 004d maybe u sect4 size: " + getInt(un, 0x4d));
 	}
 
