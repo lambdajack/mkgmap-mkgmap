@@ -24,10 +24,12 @@ import uk.me.parabola.imgfmt.app.TYPHeader;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.imgfmt.sys.FileImgChannel;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Formatter;
 import java.util.List;
 
@@ -35,9 +37,13 @@ import java.util.List;
  * @author Steve Ratcliffe
  */
 public class TypTest {
+	private static long filelen;
 
 	public static void main(String[] args) throws FileNotFoundException {
 		String name = args[0];
+
+		File file = new File(name);
+		filelen = file.length();
 
 		RandomAccessFile raf = new RandomAccessFile(name, "r");
 		FileChannel channel = raf.getChannel();
@@ -92,14 +98,14 @@ public class TypTest {
 		//off = printInt(off, "Line def offset", value);
 		//off = printInt(off, "Line def size", size);
 		Section section = Section.addSection("Lines", value, size);
-		off = printSection(off, "sect1", section);
+		off = printSection(off, section);
 
 		value = getInt(un, 0x27);
 		size = getInt(un, 0x2b);
 		//off = printInt(off, "u sect1", value);
 		//off = printInt(off, "u sect1 size?", size);
 		section = Section.addSection("u sect1", value, size);
-		off = printSection(off, "sect2", section);
+		off = printSection(off, section);
 
 		char cvalue = getShort(un, 0x2f);
 		off = printUShort(off, "product", cvalue);
@@ -108,29 +114,71 @@ public class TypTest {
 
 		value = getInt(un, 0x3d);
 		off = printInt(off, "u sect3", value);
+		Section.addSection("u sect3", value);
+
+		off = printUnknown(off, un, 0x47);
+
+		value = getInt(un, 0x47);
+		off = printInt(off, "u sect4", value);
+		Section.addSection("u sect4", value);
 
 		off = printUnknown(off, un, 0x51);
 
 		value = getInt(un, 0x51);
 		off = printInt(off, "polygon stack", value);
+		Section.addSection("polygon stack", value);
 
 		off = printUnknown(off, un, 0x5b);
 
 
 		System.out.println("end offset is " + Integer.toHexString(off));
+
+		analyseSections();
+		printSpeculation(un);
 		System.exit(0);
+	}
+
+	/*
+	 * Print out things that we believe so that they can be checked.
+	 */
+	private static void printSpeculation(byte[] un) {
+		System.out.println("offset 0043 maybe u sect3 size: " + getInt(un, 0x43));
+		System.out.println("offset 004d maybe u sect4 size: " + getInt(un, 0x4d));
+	}
+
+	/**
+	 * Print out what we think are sections.  Print out the gaps between
+	 * the ones we have identified.
+	 */
+	private static void analyseSections() {
+		List<Section> sects = Section.getList();
+
+		Collections.sort(sects);
+
+		int lastoff = 0;
+		for (Section s : sects) {
+			int off = s.getOffset();
+			if (lastoff != 0) {
+				int len = off - lastoff;
+				System.out.format("%56s: %8x (%d)\n", "implied len", len, len);
+			}
+			lastoff = off;
+			System.out.println(s);
+		}
+
+		int len = (int) (filelen - lastoff);
+		System.out.format("%56s: %8x (%d)\n", "implied len", len, len);
 	}
 
 	/**
 	 * print a section.  Allows us to print the end offset which may help in
 	 * finding other sections.
 	 * @param off Offset to print.
-	 * @param desc The description.
 	 * @param sect The section to print.
 	 * @return The new offset.
 	 */
-	private static int printSection(int off, String desc, Section sect) {
-		printOffDesc(off, desc);
+	private static int printSection(int off, Section sect) {
+		printOffDesc(off, sect.getDescription());
 		System.out.format("Off: %8x,    Next: %8x\n", sect.getOffset(),
 				sect.getOffset()+sect.getLen());
 
@@ -191,21 +239,54 @@ public class TypTest {
 		);
 	}
 
-	static class Section {
+	static class Section implements Comparable<Section> {
 
 		private String description;
-		private int offset;
-		private int len;
+		private final int offset;
+		private final int len;
 		private static List<Section> list = new ArrayList<Section>();
 
+		private Section(int off, int len) {
+			this.offset = off;
+			this.len = len;
+		}
+
 		public static Section addSection(String desc, int off, int size) {
-			Section section = new Section();
+			Section section = new Section(off, size);
 			section.description = desc;
-			section.offset = off;
-			section.len = size;
 
 			list.add(section);
 			return section;
+		}
+
+		/**
+		 * Add a section of unknown length.
+		 * @param s The description.
+		 * @param off The offset
+		 * @return The new section.
+		 */
+		public static Section addSection(String s, int off) {
+			return addSection(s, off, 0);
+		}
+
+		/**
+		 * Compares this object with the specified object for order.  Returns a
+		 * negative integer, zero, or a positive integer as this object is less than,
+		 * equal to, or greater than the specified object.<p>
+		 *
+		 * @param o the Object to be compared.
+		 * @return a negative integer, zero, or a positive integer as this object is
+		 *         less than, equal to, or greater than the specified object.
+		 * @throws ClassCastException if the specified object's type prevents it from
+		 * being compared to this Object.
+		 */
+		public int compareTo(Section o) {
+			if (offset < o.offset)
+				return -1;
+			else if (offset == o.offset)
+				return 0;
+			else
+				return 1;
 		}
 
 		public static List<Section> getList() {
@@ -222,6 +303,15 @@ public class TypTest {
 
 		public int getLen() {
 			return len;
+		}
+
+		public String toString() {
+			StringBuffer sb = new StringBuffer();
+
+			Formatter fmt = new Formatter(sb);
+			fmt.format("%-20s| Start: %8x, End %8x, Len: %8x (%d)",
+					description, offset, offset + len, len, len);
+			return sb.toString();
 		}
 	}
 }
