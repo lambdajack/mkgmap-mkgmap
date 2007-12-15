@@ -71,17 +71,22 @@ public class TypTest {
 		int fakestart = pos & ~0xf;
 		System.out.printf("%#06x  %-10s:", fakestart, "???");
 		int off = fakestart;
+		StringBuffer ascii = new StringBuffer();
 		for (int count = 0; count < 16; count++, off++) {
-			if (count == 8)
+			if (count == 8) {
 				System.out.print(" ");
+				ascii.append(' ');
+			}
 			if (off < pos) {
 				System.out.printf("   ");
+				ascii.append(' ');
 			} else {
 				byte b = reader.get();
 				System.out.printf(" %02x", b);
+				ascii.append(Character.isLetterOrDigit(b) ? (char)b : '.');
 			}
 		}
-		System.out.printf("\n");
+		System.out.printf(" %s\n", ascii);
 		return off;
 	}
 
@@ -131,6 +136,11 @@ public class TypTest {
 		char cvalue = getShort(un, 0x2f);
 		off = printUShort(off, "product", cvalue);
 		
+		off = printUnknown(off, un, 0x33);
+		value = getInt(un, 0x33);
+		section = Section.addSection("u sect6", value);
+		off = printSection(off, section);
+
 		off = printUnknown(off, un, 0x3d);
 
 		value = getInt(un, 0x3d);
@@ -170,6 +180,9 @@ public class TypTest {
 		System.out.println("offset 0043 maybe u sect3 size: " + getInt(un, 0x43));
 		// this one seems solid
 		System.out.println("offset 004d maybe u sect4 size: " + getInt(un, 0x4d));
+		System.out.format("offset 33 might be section start 6: %x\n", getInt(un, 0x33));
+		System.out.format("offset 39 might be sect6 size: %x\n", getInt(un, 0x39));
+		System.out.format("offset 1b might be sect5 size: %x\n", getInt(un, 0x1b));
 	}
 
 	/**
@@ -194,6 +207,7 @@ public class TypTest {
 
 		int len = (int) (filelen - lastoff);
 		System.out.format("%56s: %8x (%d)\n", "implied len", len, len);
+		System.out.format("End of file at %#x\n", filelen);
 	}
 
 	/**
@@ -205,10 +219,12 @@ public class TypTest {
 	 */
 	private static int printSection(int off, Section sect) {
 		printOffDesc(off, sect.getDescription());
-		System.out.format("Off: %8x,    Next: %8x\n", sect.getOffset(),
-				sect.getOffset()+sect.getLen());
+		System.out.format("Off: %8x", sect.getOffset());
+		if (sect.getLen() > 0)
+			System.out.format(", Next: %8x", sect.getOffset()+sect.getLen());
 
-		return off + 8;
+		System.out.println();
+		return off + ((sect.getLen() == 0)? 4: 8);
 	}
 
 	private static int printUnknown(int startoff, byte[] un, int end) {
@@ -335,8 +351,9 @@ public class TypTest {
 			StringBuffer sb = new StringBuffer();
 
 			Formatter fmt = new Formatter(sb);
-			fmt.format("%-20s| Start: %8x, End %8x, Len: %8x (%d)",
-					description, offset, offset + len, len, len);
+			fmt.format("%-20s| Start: %8x", description, offset);
+			if (len > 0)
+				fmt.format(", End %8x, Len: %8x (%d)", offset + len, len, len);
 			return sb.toString();
 		}
 	}
