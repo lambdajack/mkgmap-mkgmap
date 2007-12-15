@@ -26,6 +26,23 @@ public class TYPHeader extends CommonHeader {
 
 	private byte[] unknown;
 
+	// Not clear what a lot of this does, even things that are confidently named
+	// may turn out to be wrong...
+	private char headerId;
+	private char productId;
+	private Section lineData = new Section();
+	private Section sect5 = new Section();
+	private Section sect1 = new Section();
+	private Section sect6 = new Section();
+	private Section sect3 = new Section();
+	private Section sect4 = new Section();
+	private Section shapeStacking = new Section();
+	private char unk1;
+	private char unk2;
+	private char unk3;
+	private char unk4;
+	private char unk5;
+
 	public TYPHeader() {
 		super(HEADER_LEN, "GARMIN TYP");
 	}
@@ -38,7 +55,42 @@ public class TYPHeader extends CommonHeader {
 	 * @param reader The header is read from here.
 	 */
 	protected void readFileHeader(ReadStrategy reader) {
+		// to compare that we have got it right.
 		unknown = reader.get(HEADER_LEN - COMMON_HEADER_LEN);
+
+		// Reset position for the real header reading code.
+		reader.position(COMMON_HEADER_LEN);
+
+		headerId = reader.getChar();
+
+		sect5.setPosition(reader.getInt());
+		sect5.setSize(reader.getInt());
+
+		lineData.setPosition(reader.getInt());
+		lineData.setSize(reader.getInt());
+
+		sect1.setPosition(reader.getInt());
+		sect1.setSize(reader.getInt());
+
+		productId = reader.getChar();
+		//System.out.println("product id was:" + productId);
+		unk5 = reader.getChar();
+
+		sect6.setPosition(reader.getInt());
+		unk1 = reader.getChar();
+		sect6.setSize(reader.getInt());
+
+		sect3.setPosition(reader.getInt());
+		unk2 = reader.getChar();
+		sect3.setSize(reader.getInt());
+
+		sect4.setPosition(reader.getInt());
+		unk3 = reader.getChar();
+		sect4.setSize(reader.getInt());
+
+		shapeStacking.setPosition(reader.getInt());
+		unk4 = reader.getChar();
+		shapeStacking.setSize(reader.getInt());
 	}
 
 	/**
@@ -48,6 +100,36 @@ public class TYPHeader extends CommonHeader {
 	 * @param writer The header is written here.
 	 */
 	protected void writeFileHeader(WriteStrategy writer) {
+		System.out.println("in file header write");
+		writer.putChar(headerId);
+		writer.putInt(sect5.getPosition());
+		writer.putInt(sect5.getSize());
+
+		writer.putInt(lineData.getPosition());
+		writer.putInt(lineData.getSize());
+
+		writer.putInt(sect1.getPosition());
+		writer.putInt(sect1.getSize());
+
+		System.out.println("product id (W) was:" + productId);
+		writer.putChar(productId);
+		writer.putChar(unk5);
+
+		writer.putInt(sect6.getPosition());
+		writer.putChar(unk1);
+		writer.putInt(sect6.getSize());
+
+		writer.putInt(sect3.getPosition());
+		writer.putChar(unk2);
+		writer.putInt(sect3.getSize());
+
+		writer.putInt(sect4.getPosition());
+		writer.putChar(unk3);
+		writer.putInt(sect4.getSize());
+
+		writer.putInt(shapeStacking.getPosition());
+		writer.putChar(unk4);
+		writer.putInt(shapeStacking.getSize());
 	}
 
 	public byte[] getUnknown() {
