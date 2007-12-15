@@ -60,7 +60,8 @@ public class TypTest {
 	}
 
 	private static void printBody(ReadStrategy reader) {
-		for (int pos = 91; pos < filelen + 8; ) {
+		int pos = 91;
+		while (pos < filelen + 8) {
 			pos = printUnknownBodyLine(reader, pos);
 		}
 	}
@@ -139,31 +140,41 @@ public class TypTest {
 		
 		off = printUnknown(off, un, 0x33);
 		value = getInt(un, 0x33);
+		off = printInt(off, "u sect6", value);
+		off = printUnknown(off, un, 0x39);
 		size = getInt(un, 0x39);
-		section = Section.addSection("u sect6", value, size);
-		off = printSection(off, section);
+		off = printInt(off, "u sect6 size", size);
+		Section.addSection("u sect6", value, size);
+		//off = printSection(off, section);
 
 		off = printUnknown(off, un, 0x3d);
 
 		value = getInt(un, 0x3d);
+		off = printInt(off, "u sect3", value);
+		off = printUnknown(off, un, 0x43);
 		size = getInt(un, 0x43);
-		//off = printInt(off, "u sect3", value);
-		section = Section.addSection("u sect3", value, size);
-		off = printSection(off, section);
+		off = printInt(off, "u sect3 size", value);
+		Section.addSection("u sect3", value, size);
+		//off = printSection(off, section);
 
 		off = printUnknown(off, un, 0x47);
 
 		value = getInt(un, 0x47);
+		off = printInt(off, "u sect4", value);
+		off = printUnknown(off, un, 0x4d);
 		size = getInt(un, 0x4d);
-		//off = printInt(off, "u sect4", value);
-		section = Section.addSection("u sect4", value, size);
-		off = printSection(off, section);
+		off = printInt(off, "u sect4 size", size);
+		Section.addSection("u sect4", value, size);
+		//off = printSection(off, section);
 
 		off = printUnknown(off, un, 0x51);
 
 		value = getInt(un, 0x51);
 		off = printInt(off, "polygon stack", value);
-		Section.addSection("polygon stack", value);
+		off = printUnknown(off, un, 0x57);
+		size = getInt(un, 0x57);
+		off = printInt(off, "polygon stack size", size);
+		Section.addSection("polygon stack", value, size);
 
 		off = printUnknown(off, un, 0x5b);
 
@@ -179,12 +190,13 @@ public class TypTest {
 	 * Print out things that we believe so that they can be checked.
 	 */
 	private static void printSpeculation(byte[] un) {
-		System.out.println("offset 0043 maybe u sect3 size: " + getInt(un, 0x43));
-		System.out.println("offset 004d maybe u sect4 size: " + getInt(un, 0x4d));
-		System.out.format("offset 33 might be section start 6: %x\n", getInt(un, 0x33));
-		System.out.format("offset 39 might be sect6 size: %x\n", getInt(un, 0x39));
-		System.out.format("offset 1b might be sect5 size: %x\n", getInt(un, 0x1b));
-		System.out.format("offset 57 might be polygon stack size: %x\n", getInt(un, 0x57));
+		// OK belive all this now.
+		//System.out.println("offset 0043 maybe u sect3 size: " + getInt(un, 0x43));
+		//System.out.println("offset 004d maybe u sect4 size: " + getInt(un, 0x4d));
+		//System.out.format("offset 33 might be section start 6: %x\n", getInt(un, 0x33));
+		//System.out.format("offset 39 might be sect6 size: %x\n", getInt(un, 0x39));
+		//System.out.format("offset 1b might be sect5 size: %x\n", getInt(un, 0x1b));
+		//System.out.format("offset 57 might be polygon stack size: %x\n", getInt(un, 0x57));
 	}
 
 	/**
@@ -226,7 +238,7 @@ public class TypTest {
 			System.out.format(", Next: %8x", sect.getOffset()+sect.getLen());
 
 		System.out.println();
-		return off + ((sect.getLen() == 0)? 4: 8);
+		return off + ((sect.isSizeSet())? 8: 4);
 	}
 
 	private static int printUnknown(int startoff, byte[] un, int end) {
@@ -288,6 +300,7 @@ public class TypTest {
 		private String description;
 		private final int offset;
 		private final int len;
+		private boolean sizeSet;
 		private static List<Section> list = new ArrayList<Section>();
 
 		private Section(int off, int len) {
@@ -298,6 +311,7 @@ public class TypTest {
 		public static Section addSection(String desc, int off, int size) {
 			Section section = new Section(off, size);
 			section.description = desc;
+			section.sizeSet = true;
 
 			list.add(section);
 			return section;
@@ -305,12 +319,17 @@ public class TypTest {
 
 		/**
 		 * Add a section of unknown length.
-		 * @param s The description.
+		 * @param desc The description.
 		 * @param off The offset
 		 * @return The new section.
 		 */
-		public static Section addSection(String s, int off) {
-			return addSection(s, off, 0);
+		public static Section addSection(String desc, int off) {
+			Section section = new Section(off, 0);
+			section.description = desc;
+			section.sizeSet = false;
+
+			list.add(section);
+			return section;
 		}
 
 		/**
@@ -357,6 +376,10 @@ public class TypTest {
 			if (len > 0)
 				fmt.format(", End %8x, Len: %8x (%d)", offset + len, len, len);
 			return sb.toString();
+		}
+
+		public boolean isSizeSet() {
+			return sizeSet;
 		}
 	}
 }
