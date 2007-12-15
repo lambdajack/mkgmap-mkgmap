@@ -115,7 +115,8 @@ public class TypTest {
 		off = printUnknown(off, un, 0x17);
 
 		value = getInt(un, 0x17);
-		Section section = Section.addSection("u sect5", value);
+		size = getInt(un, 0x1b);
+		Section section = Section.addSection("u sect5", value, size);
 		off = printSection(off, section);
 
 		off = printUnknown(off, un, 0x1f);
@@ -138,7 +139,8 @@ public class TypTest {
 		
 		off = printUnknown(off, un, 0x33);
 		value = getInt(un, 0x33);
-		section = Section.addSection("u sect6", value);
+		size = getInt(un, 0x39);
+		section = Section.addSection("u sect6", value, size);
 		off = printSection(off, section);
 
 		off = printUnknown(off, un, 0x3d);
@@ -178,11 +180,11 @@ public class TypTest {
 	 */
 	private static void printSpeculation(byte[] un) {
 		System.out.println("offset 0043 maybe u sect3 size: " + getInt(un, 0x43));
-		// this one seems solid
 		System.out.println("offset 004d maybe u sect4 size: " + getInt(un, 0x4d));
 		System.out.format("offset 33 might be section start 6: %x\n", getInt(un, 0x33));
 		System.out.format("offset 39 might be sect6 size: %x\n", getInt(un, 0x39));
 		System.out.format("offset 1b might be sect5 size: %x\n", getInt(un, 0x1b));
+		System.out.format("offset 57 might be polygon stack size: %x\n", getInt(un, 0x57));
 	}
 
 	/**
