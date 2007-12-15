@@ -60,16 +60,29 @@ public class TypTest {
 	}
 
 	private static void printBody(ReadStrategy reader) {
-		int pos = 91;
-		for (; ; pos++) {
-			reader.position(pos);
-			byte b = reader.get();
-
-			System.out.printf("%#06x  %-10s: ", pos, "???");
-			System.out.printf("%#04x", b);
-			System.out.printf("\n");
-
+		for (int pos = 91; pos < filelen + 8; ) {
+			pos = printUnknownBodyLine(reader, pos);
 		}
+	}
+
+	private static int printUnknownBodyLine(ReadStrategy reader, int pos) {
+		reader.position(pos);
+
+		int fakestart = pos & ~0xf;
+		System.out.printf("%#06x  %-10s:", fakestart, "???");
+		int off = fakestart;
+		for (int count = 0; count < 16; count++, off++) {
+			if (count == 8)
+				System.out.print(" ");
+			if (off < pos) {
+				System.out.printf("   ");
+			} else {
+				byte b = reader.get();
+				System.out.printf(" %02x", b);
+			}
+		}
+		System.out.printf("\n");
+		return off;
 	}
 
 	private static void printHeader(CommonHeader header) {
