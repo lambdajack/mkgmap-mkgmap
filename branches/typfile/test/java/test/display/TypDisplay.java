@@ -43,8 +43,11 @@ public class TypDisplay {
 		readCommonHeader();
 		readFileHeader();
 
-		LineSectDisplayer d = new LineSectDisplayer(reader, outStream);
-		d.print();
+		LineSectDisplayer ld = new LineSectDisplayer(reader, outStream);
+		ld.print();
+
+		StackingDisplayer sd = new StackingDisplayer(reader, outStream);
+		sd.print();
 	}
 
 	private void readFileHeader() {

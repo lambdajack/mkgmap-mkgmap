@@ -122,10 +122,10 @@ public class DisplayItem {
 		texts.add(sb.toString());
 	}
 
-	public byte[] setBytes(byte[] bytes) {
+	public byte[] setBytes(byte[] buf) {
 		assert this.bytes == null;
-		this.bytes = bytes;
-		this.nbytes = bytes.length;
-		return bytes;
+		this.bytes = buf;
+		this.nbytes = buf.length;
+		return buf;
 	}
 }

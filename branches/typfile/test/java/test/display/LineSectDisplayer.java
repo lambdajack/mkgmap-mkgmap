@@ -20,11 +20,13 @@ import uk.me.parabola.imgfmt.app.ReadStrategy;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
 /**
+ * Print out the line sections.
+ *
  * @author Steve Ratcliffe
  */
 public class LineSectDisplayer {
@@ -117,7 +119,7 @@ public class LineSectDisplayer {
 	}
 
 	private Map<Integer, Integer> calcSizes(int size) {
-		Map<Integer, Integer> sizes = new HashMap<Integer, Integer>();
+		Map<Integer, Integer> sizes = new LinkedHashMap<Integer, Integer>();
 		for (int i = 0; i < offsets.size(); i++) {
 			int start = offsets.get(i);
 			long next;

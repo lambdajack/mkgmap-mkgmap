@@ -18,12 +18,10 @@ package test.display;
 
 import uk.me.parabola.imgfmt.app.ReadStrategy;
 
-import java.io.PrintStream;
 import java.io.ByteArrayOutputStream;
-import java.util.List;
+import java.io.PrintStream;
 import java.util.ArrayList;
-
-import com.sun.corba.se.impl.encoding.ByteBufferWithInfo;
+import java.util.List;
 
 /**
  * Displays data in a manner similar to imgdecode written by John Mechalas.
@@ -49,6 +47,11 @@ public class Displayer {
 		this.reader = reader;
 	}
 
+	/**
+	 * Prints this displayer, and causes all the contained display items to
+	 * be printed out.
+	 * @param writer The stream to write to.
+	 */
 	public void print(PrintStream writer) {
 		printTitle(writer);
 		for (DisplayItem item : items) {
@@ -71,25 +74,39 @@ public class Displayer {
 		this.title = title;
 	}
 
+	/**
+	 * Create a display item for the current position.  You can add data and
+	 * lines of text to it.  If you can its easier to use the convenience
+	 * routines below.
+	 *
+	 * This must be called *before* getting any data from the reader as it
+	 * records the file postition.
+	 *
+	 * @return A display item.
+	 */
 	public DisplayItem item() {
 		DisplayItem item = new DisplayItem();
 		item.setStartPos(reader.position());
 
 		items.add(item);
-		
 		return item;
 	}
 
+	/**
+	 * Make a gap in the display, nothing will be printed apart from the
+	 * separators.
+	 */
 	public void gap() {
 		DisplayItem item = new DisplayItem();
 		item.addText(" ");
 		items.add(item);
 	}
 
-	public void byteValue(String text) {
+	public int byteValue(String text) {
 		DisplayItem item = item();
 		int val = item.setBytes(reader.get());
 		item.addText(text, val);
+		return val;
 	}
 
 	public int charValue(String text) {
@@ -99,10 +116,11 @@ public class Displayer {
 		return val;
 	}
 
-	public void intValue(String text) {
+	public int intValue(String text) {
 		DisplayItem item = item();
 		int val = item.setBytes(reader.getInt());
 		item.addText(text, val);
+		return val;
 	}
 
 	public int int3Value(String text) {
@@ -118,10 +136,12 @@ public class Displayer {
 		item.addText(text);
 	}
 
-	public void stringValue(int n, String text) {
+	public String stringValue(int n, String text) {
 		DisplayItem item = item();
 		byte[] b = item.setBytes(reader.get(n));
-		item.addText(text, new String(b));
+		String val = new String(b);
+		item.addText(text, val);
+		return val;
 	}
 
 	public String zstringValue(String text) {
