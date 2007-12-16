@@ -55,8 +55,6 @@ public class TypTest {
 
 		printHeader(header);
 
-		writeHeader(header);
-
 		Section lines = Section.getByName("Lines");
 		Section lineControl = Section.getByName("sect3");
 
@@ -71,18 +69,6 @@ public class TypTest {
 		int step = lineControl.getItemSize();
 	}
 
-	/**
-	 * By writing the header and comparing we know that we have not missed
-	 * anything out even if we don't know what it does.
-	 *
-	 * @param header The header to write.
-	 */
-	private static void writeHeader(CommonHeader header) {
-		ImgChannel chan = new FileImgChannel("test2.typ");
-		TYPFile wf = new TYPFile(chan, true);
-		wf.setHeader(header);
-		wf.close();
-	}
 
 	private static void printBody(ReadStrategy reader) {
 		int pos = 91;
