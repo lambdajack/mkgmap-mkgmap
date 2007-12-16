@@ -166,7 +166,7 @@ public class BufferedReadStrategy implements ReadStrategy {
 		if (position < bufStart || position >= bufStart + bufSize) {
 
 			// Get channel position on a block boundry.
-			bufStart = position & ~(bufSize - 1);
+			bufStart = position & ~(BUF_SIZE - 1);
 			chan.position(bufStart);
 			log.debug("reading in a buffer start=", bufStart);
 
