@@ -50,6 +50,10 @@ public class DisplayItem {
 		return setBytes(in, 1);
 	}
 
+	public int setBytes3(int in) {
+		return setBytes(in, 3);
+	}
+
 	private int setBytes(int in, int n) {
 		nbytes += n;
 		bytes = new byte[n];

@@ -21,10 +21,10 @@ import uk.me.parabola.imgfmt.app.ReadStrategy;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.imgfmt.sys.FileImgChannel;
 
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.RandomAccessFile;
 
 /**
  * Standalone program to display the TYP file as it is worked out.
@@ -56,8 +56,8 @@ public class TypDisplay {
 		d.intValue("Unknown sect5 start %x");
 		d.intValue("Unknown sect5 size %d");
 
-		d.intValue("line data start %x");
-		d.intValue("line data size %d");
+		d.intValue("Line data start %x");
+		d.intValue("Line data size %d");
 
 		d.intValue("Unknown sect1 start %x");
 		d.intValue("Unknown sect1 size %d");
@@ -69,9 +69,9 @@ public class TypDisplay {
 		d.charValue("Unknown sect6 item size %d");
 		d.intValue("Unknown sect6 size %d");
 
-		d.intValue("Unknown sect3 start %x");
-		d.charValue("Unknown sect3 item size %d");
-		d.intValue("Unknown sect3 size %d");
+		d.intValue("Line types start %x");
+		d.charValue("Line types sect item size %d");
+		d.intValue("Line types sect size %d");
 
 		d.intValue("Unknown sect4 start %x");
 		d.charValue("Unknown sect4 item size %d");
@@ -109,10 +109,10 @@ public class TypDisplay {
 
 		String name = args[0];
 
-		FileInputStream is = null;
+		RandomAccessFile raf = null;
 		try {
-			is = new FileInputStream(name);
-			ImgChannel chan = new FileImgChannel(is.getChannel());
+			raf = new RandomAccessFile(name, "r");
+			ImgChannel chan = new FileImgChannel(raf.getChannel());
 			BufferedReadStrategy reader = new BufferedReadStrategy(chan);
 			TypDisplay display = new TypDisplay(reader);
 			display.print();
@@ -120,9 +120,9 @@ public class TypDisplay {
 			System.err.println("Could not open file: " + name);
 			System.exit(1);
 		} finally {
-			if (is != null) {
+			if (raf != null) {
 				try {
-					is.close();
+					raf.close();
 				} catch (IOException e) {
 					// ok
 				}

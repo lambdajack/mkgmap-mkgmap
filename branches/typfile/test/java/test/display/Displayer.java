@@ -19,8 +19,11 @@ package test.display;
 import uk.me.parabola.imgfmt.app.ReadStrategy;
 
 import java.io.PrintStream;
+import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.ArrayList;
+
+import com.sun.corba.se.impl.encoding.ByteBufferWithInfo;
 
 /**
  * Displays data in a manner similar to imgdecode written by John Mechalas.
@@ -77,22 +80,36 @@ public class Displayer {
 		return item;
 	}
 
+	public void gap() {
+		DisplayItem item = new DisplayItem();
+		item.addText(" ");
+		items.add(item);
+	}
+
 	public void byteValue(String text) {
 		DisplayItem item = item();
 		int val = item.setBytes(reader.get());
 		item.addText(text, val);
 	}
 
-	public void charValue(String text) {
+	public int charValue(String text) {
 		DisplayItem item = item();
 		int val = item.setBytes(reader.getChar());
 		item.addText(text, val);
+		return val;
 	}
 
 	public void intValue(String text) {
 		DisplayItem item = item();
 		int val = item.setBytes(reader.getInt());
 		item.addText(text, val);
+	}
+
+	public int int3Value(String text) {
+		DisplayItem item = item();
+		int val = item.setBytes3(reader.get3());
+		item.addText(text, (val & 0xffffff));
+		return val;
 	}
 
 	public void rawValue(int n, String text) {
@@ -105,5 +122,18 @@ public class Displayer {
 		DisplayItem item = item();
 		byte[] b = item.setBytes(reader.get(n));
 		item.addText(text, new String(b));
+	}
+
+	public String zstringValue(String text) {
+		DisplayItem item = item();
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		byte b;
+		while ((b = reader.get()) != '\0')
+			os.write(b);
+		String val = os.toString();
+		os.write('\0');
+		item.setBytes(os.toByteArray());
+		item.addText(text, val);
+		return val;
 	}
 }
