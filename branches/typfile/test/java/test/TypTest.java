@@ -56,10 +56,19 @@ public class TypTest {
 		printHeader(header);
 
 		writeHeader(header);
+
+		Section lines = Section.getByName("Lines");
+		Section lineControl = Section.getByName("sect3");
+
+		printLines(lineControl, lines);
 		System.exit(1);
 
 		ReadStrategy reader = typFile.getReader();
 		printBody(reader);
+	}
+
+	private static void printLines(Section lineControl, Section lines) {
+		int step = lineControl.getItemSize();
 	}
 
 	/**
@@ -129,71 +138,56 @@ public class TypTest {
 
 		int value;
 		int size;
+		int itemSize;
 		off = printUnknown(off, un, 0x17);
 
 		value = getInt(un, 0x17);
 		size = getInt(un, 0x1b);
-		Section section = Section.addSection("u sect5", value, size);
+
+		Section section = Section.addSection("sect5", value, size);
 		off = printSection(off, section);
 
 		off = printUnknown(off, un, 0x1f);
 		value = getInt(un, 0x1f);
 		size = getInt(un, 0x23);
-		//off = printInt(off, "Line def offset", value);
-		//off = printInt(off, "Line def size", size);
 		section = Section.addSection("Lines", value, size);
 		off = printSection(off, section);
 
 		value = getInt(un, 0x27);
 		size = getInt(un, 0x2b);
-		//off = printInt(off, "u sect1", value);
-		//off = printInt(off, "u sect1 size?", size);
-		section = Section.addSection("u sect1", value, size);
+		section = Section.addSection("sect1", value, size);
 		off = printSection(off, section);
 
 		char cvalue = getShort(un, 0x2f);
 		off = printUShort(off, "product", cvalue);
 		
 		off = printUnknown(off, un, 0x33);
-		value = getInt(un, 0x33);
-		off = printInt(off, "u sect6", value);
-		off = printUnknown(off, un, 0x39);
-		size = getInt(un, 0x39);
-		off = printInt(off, "u sect6 size", size);
-		Section.addSection("u sect6", value, size);
-		//off = printSection(off, section);
 
-		off = printUnknown(off, un, 0x3d);
+		value = getInt(un, 0x33);
+		itemSize = getShort(un, 0x37);
+		size = getInt(un, 0x39);
+		section = Section.addSection("sect6", value, size, itemSize);
+		off = printSection(off, section);
 
 		value = getInt(un, 0x3d);
-		off = printInt(off, "u sect3", value);
-		off = printUnknown(off, un, 0x43);
+		itemSize = getShort(un, 0x41);
 		size = getInt(un, 0x43);
-		off = printInt(off, "u sect3 size", value);
-		Section.addSection("u sect3", value, size);
-		//off = printSection(off, section);
-
-		off = printUnknown(off, un, 0x47);
+		section = Section.addSection("sect3", value, size, itemSize);
+		off = printSection(off, section);
 
 		value = getInt(un, 0x47);
-		off = printInt(off, "u sect4", value);
-		off = printUnknown(off, un, 0x4d);
+		itemSize = getShort(un, 0x4b);
 		size = getInt(un, 0x4d);
-		off = printInt(off, "u sect4 size", size);
-		Section.addSection("u sect4", value, size);
-		//off = printSection(off, section);
-
-		off = printUnknown(off, un, 0x51);
+		section = Section.addSection("sect4", value, size, itemSize);
+		off = printSection(off, section);
 
 		value = getInt(un, 0x51);
-		off = printInt(off, "polygon stack", value);
-		off = printUnknown(off, un, 0x57);
+		itemSize = getShort(un, 0x55);
 		size = getInt(un, 0x57);
-		off = printInt(off, "polygon stack size", size);
-		Section.addSection("polygon stack", value, size);
+		section = Section.addSection("polygon stack", value, size, itemSize);
+		off = printSection(off, section);
 
 		off = printUnknown(off, un, 0x5b);
-
 
 		System.out.println("end offset is " + Integer.toHexString(off));
 
@@ -250,11 +244,18 @@ public class TypTest {
 	private static int printSection(int off, Section sect) {
 		printOffDesc(off, sect.getDescription());
 		System.out.format("Off: %8x", sect.getOffset());
-		if (sect.getLen() > 0)
+		if (sect.isSizeSet())
 			System.out.format(", Next: %8x", sect.getOffset()+sect.getLen());
+		if (sect.itemSet)
+			System.out.format(", items of %d", sect.itemSize);
 
 		System.out.println();
-		return off + ((sect.isSizeSet())? 8: 4);
+		int add = 4;
+		if (sect.isSizeSet())
+			add += 4;
+		if (sect.itemSet)
+			add += 2;
+		return off + add;
 	}
 
 	private static int printUnknown(int startoff, byte[] un, int end) {
@@ -316,7 +317,11 @@ public class TypTest {
 		private String description;
 		private final int offset;
 		private final int len;
+		private int itemSize;
+
 		private boolean sizeSet;
+		private boolean itemSet;
+
 		private static List<Section> list = new ArrayList<Section>();
 
 		private Section(int off, int len) {
@@ -343,6 +348,17 @@ public class TypTest {
 			Section section = new Section(off, 0);
 			section.description = desc;
 			section.sizeSet = false;
+
+			list.add(section);
+			return section;
+		}
+
+		public static Section addSection(String desc, int off, int size, int item) {
+			Section section = new Section(off, size);
+			section.description = desc;
+			section.itemSize = item;
+			section.sizeSet = true;
+			section.itemSet = true;
 
 			list.add(section);
 			return section;
@@ -384,6 +400,15 @@ public class TypTest {
 			return len;
 		}
 
+		public static Section getByName(String name) {
+			for (Section s : list) {
+				if (s.description.equals(name)) {
+					return s;
+				}
+			}
+			return null;
+		}
+
 		public String toString() {
 			StringBuffer sb = new StringBuffer();
 
@@ -391,11 +416,18 @@ public class TypTest {
 			fmt.format("%-20s| Start: %8x", description, offset);
 			if (len > 0)
 				fmt.format(", End %8x, Len: %8x (%d)", offset + len, len, len);
+			if (itemSet)
+				fmt.format(", items of %d", itemSize);
+			
 			return sb.toString();
 		}
 
 		public boolean isSizeSet() {
 			return sizeSet;
+		}
+
+		public int getItemSize() {
+			return itemSize;
 		}
 	}
 }
