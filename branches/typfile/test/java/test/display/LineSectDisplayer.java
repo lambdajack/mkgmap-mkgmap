@@ -20,6 +20,7 @@ import uk.me.parabola.imgfmt.app.ReadStrategy;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Formatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,12 +55,16 @@ public class LineSectDisplayer {
 		int itemsize = reader.getChar();
 		int size = reader.getInt();
 
-		d = printTypes(typestart, itemsize, size);
-		d.print(outStream);
-
-		// Now get the styles section.
+		// Now get the styles start, as needed
 		reader.position(0x1f);
 		long stylestart = reader.getInt();
+
+		d = printTypes(typestart, itemsize, size, stylestart);
+		d.print(outStream);
+
+		reader.position(0x1f);
+		stylestart = reader.getInt();
+
 		size = reader.getInt();
 		d = printStyles(stylestart, size);
 		d.print(outStream);
@@ -81,25 +86,82 @@ public class LineSectDisplayer {
 			reader.position(pos);
 			int totalSize = ent.getValue();
 
+			// The first two bytes appear to determine what comes next
 			int flags = d.charValue("Flags %04x");
 			totalSize -= 2;
 
-			if ((flags & 0x0200) != 0) {
+			// If the bottom byte is clear then it is straight forward.
+			DisplayItem item;
+			boolean known = false;
+			if ((flags & 0xff) == 0) {
+				known = true;
+				d.int3Value("Foreground %06x");
+				d.int3Value("Border %06x");
+
+				byte width = d.byteValue("Line width %d");
+
+				item = d.item();
+				int total = item.setBytes(reader.get());
+				Formatter fmt = new Formatter();
+				item.addText(fmt.format("border width %3.1f", (total-width)/2.0).toString());
+				totalSize -= 8;
+			} else {
+				// else it isn't :)
+
+				// Always does appear to be two colours follow, although second
+				// doesn't do anything.
 				d.int3Value("Foreground %06x");
 				d.int3Value("Background %06x");
+				totalSize -= 6;
+				// There is then a bit sequence that defines the icon, but I've
+				// not worked out how to get the size.
 
-				// Might be width, but not when flags & 0xf
-				d.charValue("??? width?");
-				totalSize -= 8;
+				// Some empirical entries
+				int pp = flags & 0xff;
+				known = true;
+				switch (pp) {
+				case 0x01:
+					// 1x24 not bitmap
+					totalSize = tmpPrintUnknown(d, totalSize, 8);
+					break;
+				case 0x0f:
+					totalSize = tmpPrintUnknown(d, totalSize, 4);
+					break;
+				case 0x13:
+					// not a bit map??
+					totalSize = tmpPrintUnknown(d, totalSize, 11);
+					break;
+				case 0x17:
+					// not a bit map??
+					totalSize = tmpPrintUnknown(d, totalSize, 8);
+					break;
+				case 0x1b:
+					totalSize = tmpPrintUnknown(d, totalSize, 15);
+					break;
+				case 0x21:
+					totalSize = tmpPrintUnknown(d, totalSize, 22);
+					break;
+				case 0x23:
+					totalSize = tmpPrintUnknown(d, totalSize, 19);
+					break;
+				case 0x27:
+					totalSize = tmpPrintUnknown(d, totalSize, 16);
+					break;
+				case 0x2f: // 5x32
+					totalSize = tmpPrintUnknown(d, totalSize, 20);
+					break;
+				default:
+					known = false;
+					break;
+				}
 			}
 
-			if ((flags & 0xf) != 0) {
-				d.charValue("??? f");
-				totalSize -= 2;
-			}
-			
-			if ((flags & 0x0100) != 0) {
-				d.charValue("???");
+
+			// This seems solid, as long as we have worked out the size of the
+			// previous section, which we don't ...
+			if ((flags & 0x0100) != 0 && known) {
+				d.byteValue("???");
+				d.byteValue("Lang %d");
 				String s = d.zstringValue("Label: %s");
 				totalSize -= 2 + s.length() + 1;
 			}
@@ -107,7 +169,7 @@ public class LineSectDisplayer {
 			// Now display everything that is left
 			assert totalSize >= 0;
 			if (totalSize > 0) {
-				DisplayItem item = d.item();
+				item = d.item();
 				byte[] b = reader.get(totalSize);
 				item.setBytes(b);
 				item.addText("???");
@@ -116,6 +178,11 @@ public class LineSectDisplayer {
 			d.gap();
 		}
 		return d;
+	}
+
+	private int tmpPrintUnknown(Displayer d, int totalSize, int n) {
+		d.rawValue(n, "code " + n + " unknown");
+		return totalSize - n;
 	}
 
 	private Map<Integer, Integer> calcSizes(int size) {
@@ -134,7 +201,7 @@ public class LineSectDisplayer {
 		return sizes;
 	}
 
-	private Displayer printTypes(long typestart, int itemsize, int size) {
+	private Displayer printTypes(long typestart, int itemsize, int size, long stylestart) {
 		Displayer d = new Displayer(reader);
 		d.setTitle("Line types");
 
@@ -151,7 +218,7 @@ public class LineSectDisplayer {
 			// The line type is found by reading the first two byte in little-endian
 			// order and then extracting from there.
 			int type = (b[0] & 0xff | ((b[1] & 0xff) << 8)) >> 5;
-			item.addText("Line type %d", type);
+			item.addText("Line type %#x", type);
 
 			// Get the offset into the line style section.  This is the
 			// third byte and the fourth if there is one.
@@ -160,7 +227,7 @@ public class LineSectDisplayer {
 				off += (b[3] & 0xff) << 8;
 
 			offsets.add(off);
-			item.addText("Offset in line-styles %#x", off);
+			item.addText("Style at %#x", (int) (stylestart+off));
 		}
 
 		return d;

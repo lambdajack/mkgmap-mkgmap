@@ -102,18 +102,18 @@ public class Displayer {
 		items.add(item);
 	}
 
-	public int byteValue(String text) {
+	public byte byteValue(String text) {
 		DisplayItem item = item();
 		int val = item.setBytes(reader.get());
 		item.addText(text, val);
-		return val;
+		return (byte) val;
 	}
 
-	public int charValue(String text) {
+	public char charValue(String text) {
 		DisplayItem item = item();
 		int val = item.setBytes(reader.getChar());
 		item.addText(text, val);
-		return val;
+		return (char) val;
 	}
 
 	public int intValue(String text) {

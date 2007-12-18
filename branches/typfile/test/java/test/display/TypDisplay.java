@@ -46,6 +46,7 @@ public class TypDisplay {
 		LineSectDisplayer ld = new LineSectDisplayer(reader, outStream);
 		ld.print();
 
+		System.exit(1);
 		StackingDisplayer sd = new StackingDisplayer(reader, outStream);
 		sd.print();
 	}
