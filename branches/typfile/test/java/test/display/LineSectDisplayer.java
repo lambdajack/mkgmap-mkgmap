@@ -92,11 +92,18 @@ public class LineSectDisplayer {
 
 			// If the bottom byte is clear then it is straight forward.
 			DisplayItem item;
-			boolean known = false;
-			if ((flags & 0xff) == 0) {
+			boolean known;
+			if ((flags & 0xfe) == 0) {
 				known = true;
 				d.int3Value("Foreground %06x");
 				d.int3Value("Border %06x");
+				totalSize -= 6;
+
+				if ((flags & 0x1) == 0x1) {
+					d.int3Value("Foreground %06x");
+					d.int3Value("Border %06x");
+					totalSize -= 6;
+				}
 
 				byte width = d.byteValue("Line width %d");
 
@@ -104,7 +111,7 @@ public class LineSectDisplayer {
 				int total = item.setBytes(reader.get());
 				Formatter fmt = new Formatter();
 				item.addText(fmt.format("border width %3.1f", (total-width)/2.0).toString());
-				totalSize -= 8;
+				totalSize -= 2;
 			} else {
 				// else it isn't :)
 
@@ -124,21 +131,19 @@ public class LineSectDisplayer {
 					// 1x24 not bitmap
 					totalSize = tmpPrintUnknown(d, totalSize, 8);
 					break;
-				case 0x0f:
+				case 0x0f: // 1x32
 					totalSize = tmpPrintUnknown(d, totalSize, 4);
 					break;
 				case 0x13:
-					// not a bit map??
 					totalSize = tmpPrintUnknown(d, totalSize, 11);
 					break;
 				case 0x17:
-					// not a bit map??
 					totalSize = tmpPrintUnknown(d, totalSize, 8);
 					break;
 				case 0x1b:
 					totalSize = tmpPrintUnknown(d, totalSize, 15);
 					break;
-				case 0x21:
+				case 0x21: // 4x32 with two more colours, and background colour is used
 					totalSize = tmpPrintUnknown(d, totalSize, 22);
 					break;
 				case 0x23:
