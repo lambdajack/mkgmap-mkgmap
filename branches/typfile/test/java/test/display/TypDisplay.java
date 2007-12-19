@@ -46,9 +46,14 @@ public class TypDisplay {
 		LineSectDisplayer ld = new LineSectDisplayer(reader, outStream);
 		ld.print();
 
-		System.exit(1);
 		StackingDisplayer sd = new StackingDisplayer(reader, outStream);
 		sd.print();
+
+		PointDisplayer pd = new PointDisplayer(reader, outStream);
+		pd.print();
+
+		PolygonDisplayer pgd = new PolygonDisplayer(reader, outStream);
+		pgd.print();
 	}
 
 	private void readFileHeader() {
