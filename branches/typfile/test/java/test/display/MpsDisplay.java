@@ -31,7 +31,7 @@ import java.io.RandomAccessFile;
  * Standalone program to display the TYP file as it is worked out.
  *
  * The names and lengths of the fields were obtained from the program gpsexplorer
- * with the author identified as 'garminmaploader@yahoo.com' and released
+ * by the author identified as 'garminmaploader@yahoo.com' and released
  * under GPL2+.
  *
  * @author Steve Ratcliffe
