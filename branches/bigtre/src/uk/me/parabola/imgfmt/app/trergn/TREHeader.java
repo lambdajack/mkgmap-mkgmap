@@ -30,7 +30,8 @@ import uk.me.parabola.log.Logger;
 public class TREHeader extends CommonHeader {
 	private static final Logger log = Logger.getLogger(TREHeader.class);
 
-	public static final int HEADER_LEN = 120; // Other values are possible
+	//public static final int HEADER_LEN = 120; // Other values are possible
+	public static final int HEADER_LEN = 184; // Other values are possible
 
 	static final int MAP_LEVEL_REC_SIZE = 4;
 	private static final char POLYLINE_REC_LEN = 2;
@@ -57,6 +58,9 @@ public class TREHeader extends CommonHeader {
 	private final Section polyline = new Section(POLYLINE_REC_LEN);
 	private final Section polygon = new Section(POLYGON_REC_LEN);
 	private final Section points = new Section(POINT_REC_LEN);
+	private Section tre7 = new Section(points, (char) 13);
+	private Section tre8 = new Section(tre7, (char) 4);
+	//private Section tre9 = new Section(tre8);
 
 	private int mapId;
 
@@ -86,9 +90,8 @@ public class TREHeader extends CommonHeader {
 	private void writeSectionInfo(WriteStrategy writer, Section section) {
 		writer.putInt(section.getPosition());
 		writer.putInt(section.getSize());
-		writer.putChar(section.getItemSize());
-
-		writer.putInt(0);
+		if (section.getItemSize() > 0)
+			writer.putChar(section.getItemSize());
 	}
 
 	/**
@@ -110,6 +113,7 @@ public class TREHeader extends CommonHeader {
 		writer.putInt(getSubdivSize());
 
 		writeSectionInfo(writer, copyright);
+		writer.putInt(0);
 
 		writer.put(getPoiDisplayFlags());
 
@@ -120,12 +124,28 @@ public class TREHeader extends CommonHeader {
 		writer.put((byte) 0);
 
 		writeSectionInfo(writer, polyline);
+		writer.putInt(0);
 		writeSectionInfo(writer, polygon);
+		writer.putInt(0);
 		writeSectionInfo(writer, points);
+		writer.putInt(0);
 
 		// Map ID
-		writer.putInt(getMapId());
 
+		if (HEADER_LEN > 116) {
+			writer.putInt(getMapId());
+		}
+
+		if (HEADER_LEN > 120) {
+			writer.putInt(0);
+
+			writeSectionInfo(writer, tre7);
+			writer.putInt(0); // not usually zero
+
+			writeSectionInfo(writer, tre8);
+			writer.putInt(4);
+			writer.putInt(0);
+		}
 		writer.position(HEADER_LEN);
 	}
 
