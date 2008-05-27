@@ -38,6 +38,8 @@ import java.util.List;
 public class Polyline extends MapObject {
 	private static final Logger log = Logger.getLogger(Polyline.class);
 
+	private int number;
+
 	// Set if it is a one-way street for example.
 	private boolean direction;
 
@@ -109,4 +111,11 @@ public class Polyline extends MapObject {
 		this.direction = direction;
 	}
 
+	void setNumber(int n) {
+		number = n;
+	}
+
+	public int getNumber() {
+		return number;
+	}
 }
