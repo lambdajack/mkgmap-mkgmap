@@ -18,6 +18,7 @@ package uk.me.parabola.imgfmt.app.net;
 
 import uk.me.parabola.imgfmt.app.Label;
 import uk.me.parabola.imgfmt.app.WriteStrategy;
+import uk.me.parabola.imgfmt.app.OffsetWriterList;
 import uk.me.parabola.imgfmt.app.trergn.Polyline;
 
 import java.util.List;
@@ -33,6 +34,7 @@ public class RoadDef {
 	private static final int MAX_LABELS = 4;
 
 	private int offset = -1;
+	private OffsetWriterList owList = new OffsetWriterList();
 
 	// There can be up to 4 labels for the same road.
 	private final Label[] labels = new Label[MAX_LABELS];
@@ -43,6 +45,10 @@ public class RoadDef {
 	private int roadLength;  // in feet?
 
 	private List<RoadIndex> roadIndexes = new ArrayList<RoadIndex>();
+
+	public void addOffsetTarget(WriteStrategy writer, int ormask) {
+		owList.addTarget(writer, ormask);
+	}
 
 	public void addPolylineRef(Polyline pl) {
 		roadIndexes.add(new RoadIndex(pl));
@@ -59,6 +65,9 @@ public class RoadDef {
 
 	int calcOffset(int ofs) {
 		offset = ofs;
+		if (owList != null) {
+			owList.writeOffset(ofs);
+		}
 
 		int len = 5; // basic len
 		len += 3 * numlabels;
