@@ -22,6 +22,7 @@ import uk.me.parabola.imgfmt.FileSystemParam;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Label;
 import uk.me.parabola.imgfmt.app.lbl.LBLFile;
+import uk.me.parabola.imgfmt.app.net.NETFile;
 import uk.me.parabola.imgfmt.app.trergn.InternalFiles;
 import uk.me.parabola.imgfmt.app.trergn.MapObject;
 import uk.me.parabola.imgfmt.app.trergn.PointOverview;
@@ -55,7 +56,7 @@ public class Map implements InternalFiles {
 	private TREFile treFile;
 	private RGNFile rgnFile;
 	private LBLFile lblFile;
-
+	private NETFile netFile;
 
 	// Use createMap() or loadMap() instead of creating a map directly.
 	private Map() {
@@ -88,6 +89,7 @@ public class Map implements InternalFiles {
 		m.rgnFile = new RGNFile(m.fileSystem.create(mapname + ".RGN"));
 		m.treFile = new TREFile(m.fileSystem.create(mapname + ".TRE"), true);
 		m.lblFile = new LBLFile(m.fileSystem.create(mapname + ".LBL"));
+		m.netFile = new NETFile(m.fileSystem.create(mapname + ".NET"), true);
 
 		m.treFile.setMapId(Integer.parseInt(mapname));
 		m.fileSystem = fs;
@@ -219,6 +221,7 @@ public class Map implements InternalFiles {
 		rgnFile.close();
 		treFile.close();
 		lblFile.close();
+		netFile.close();
 
 		fileSystem.close();
 	}
@@ -237,5 +240,9 @@ public class Map implements InternalFiles {
 
 	public TREFile getTreFile() {
 		return treFile;
+	}
+
+	public NETFile getNetFile() {
+		return netFile;
 	}
 }
