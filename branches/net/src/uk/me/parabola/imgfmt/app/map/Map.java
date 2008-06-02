@@ -89,7 +89,8 @@ public class Map implements InternalFiles {
 		m.rgnFile = new RGNFile(m.fileSystem.create(mapname + ".RGN"));
 		m.treFile = new TREFile(m.fileSystem.create(mapname + ".TRE"), true);
 		m.lblFile = new LBLFile(m.fileSystem.create(mapname + ".LBL"));
-		m.netFile = new NETFile(m.fileSystem.create(mapname + ".NET"), true);
+		if (true)
+			m.netFile = new NETFile(m.fileSystem.create(mapname + ".NET"), true);
 
 		m.treFile.setMapId(Integer.parseInt(mapname));
 		m.fileSystem = fs;
@@ -221,7 +222,8 @@ public class Map implements InternalFiles {
 		rgnFile.close();
 		treFile.close();
 		lblFile.close();
-		netFile.close();
+		if (netFile != null)
+			netFile.close();
 
 		fileSystem.close();
 	}

@@ -114,6 +114,9 @@ public class MapBuilder {
 		LBLFile lbl = target.getLblFile();
 		NETFile net = target.getNetFile();
 
+		if (net == null)
+			return;
+		
 		for (MapLine l : src.getLines()) {
 			Label label = lbl.newLabel(l.getName());
 			RoadDef r = net.createRoadDef(label);
@@ -121,7 +124,11 @@ public class MapBuilder {
 		}
 	}
 	private void postProcessRoads(Map target, MapDataSource src) {
-		target.getNetFile().allRoadDefsDone();
+		NETFile net = target.getNetFile();
+
+		if (net == null)
+			return;
+		net.allRoadDefsDone();
 	}
 
 	/**
