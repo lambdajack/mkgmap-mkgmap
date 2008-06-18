@@ -17,6 +17,8 @@
 package uk.me.parabola.tdbfmt;
 
 import uk.me.parabola.imgfmt.app.Area;
+import uk.me.parabola.io.StructuredInputStream;
+import uk.me.parabola.io.StructuredOutputStream;
 
 import java.io.IOException;
 
@@ -104,6 +106,7 @@ public class OverviewMapBlock {
 	}
 
 	public void setMapName(String mapNumber) {
+		// TODO deal with map names that are not numbers.
 		this.mapNumber = Integer.parseInt(mapNumber);
 	}
 

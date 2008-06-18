@@ -21,6 +21,8 @@ import uk.me.parabola.imgfmt.app.WriteStrategy;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * This is really part of the LBLFile.  We split out all the parts of the file
@@ -29,14 +31,15 @@ import java.util.Map;
  * @author Steve Ratcliffe
  */
 public class PlacesFile {
-	private Map<String, Country> countries = new LinkedHashMap<String, Country>();
-	private Map<String, Region> regions = new LinkedHashMap<String, Region>();
-	private Map<String, City> cities = new LinkedHashMap<String, City>();
-	private Map<String, Zip> postalCodes = new LinkedHashMap<String, Zip>();
-	private Map<String, POIRecord> pois = new LinkedHashMap<String, POIRecord>();
+	private final Map<String, Country> countries = new LinkedHashMap<String, Country>();
+	private final Map<String, Region> regions = new LinkedHashMap<String, Region>();
+	private final Map<String, City> cities = new LinkedHashMap<String, City>();
+	private final Map<String, Zip> postalCodes = new LinkedHashMap<String, Zip>();
+	private final List<POIRecord> pois = new ArrayList<POIRecord>();
 
 	private LBLFile lblFile;
 	private PlacesHeader placeHeader;
+	private boolean poisClosed;
 
 	/**
 	 * We need to have links back to the main LBL file and need to be passed
@@ -63,12 +66,16 @@ public class PlacesFile {
 			c.write(writer);
 		placeHeader.endCity(writer.position());
 
+		int poistart = writer.position();
+		byte poiglobalflags = placeHeader.getPOIGlobalFlags();
+		for (POIRecord p : pois)
+			p.write(writer, poiglobalflags,
+				writer.position() - poistart);
+		placeHeader.endPOI(writer.position());
+
 		for (Zip z : postalCodes.values())
 			z.write(writer);
 		placeHeader.endZip(writer.position());
-
-		for (POIRecord p : pois.values())
-			p.write(writer);
 	}
 
 	Country createCountry(String name, String abbr) {
@@ -113,10 +120,29 @@ public class PlacesFile {
 		return z;
 	}
 
-	POIRecord createPOI() {
+	POIRecord createPOI(String name) {
+		assert poisClosed == false;
 		// TODO...
 		POIRecord p = new POIRecord();
-		pois.put("xx", p);
+
+		Label l = lblFile.newLabel(name);
+		p.setLabel(l);
+
+		pois.add(p);
 		return p;
+	}
+
+	void allPOIsDone() {
+		poisClosed = true;
+
+		byte POIFlags = 0;
+		for (POIRecord p : pois) {
+			POIFlags |= p.getPOIFlags();
+		}
+		placeHeader.setPOIGlobalFlags(POIFlags);
+
+		int ofs = 0;
+		for (POIRecord p : pois)
+			ofs += p.calcOffset(ofs, POIFlags);
 	}
 }

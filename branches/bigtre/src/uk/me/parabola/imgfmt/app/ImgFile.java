@@ -84,7 +84,7 @@ public abstract class ImgFile  {
 		this.header = header;
 	}
 
-	public boolean isWritable() {
+	protected boolean isWritable() {
 		return writable;
 	}
 

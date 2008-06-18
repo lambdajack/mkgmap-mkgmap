@@ -16,22 +16,31 @@
  */
 package uk.me.parabola.mkgmap.main;
 
-import uk.me.parabola.log.Logger;
-import uk.me.parabola.mkgmap.ExitException;
-import uk.me.parabola.mkgmap.ArgumentProcessor;
-import uk.me.parabola.mkgmap.CommandArgs;
-import uk.me.parabola.mkgmap.combiners.Combiner;
-import uk.me.parabola.mkgmap.combiners.GmapsuppBuilder;
-import uk.me.parabola.mkgmap.combiners.TdbBuilder;
-import uk.me.parabola.mkgmap.combiners.FileInfo;
-
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.ArgumentProcessor;
+import uk.me.parabola.mkgmap.CommandArgs;
+import uk.me.parabola.mkgmap.ExitException;
+import uk.me.parabola.mkgmap.Version;
+import uk.me.parabola.mkgmap.combiners.Combiner;
+import uk.me.parabola.mkgmap.combiners.FileInfo;
+import uk.me.parabola.mkgmap.combiners.GmapsuppBuilder;
+import uk.me.parabola.mkgmap.combiners.TdbBuilder;
+import uk.me.parabola.mkgmap.reader.osm.StyleFileLoader;
+import uk.me.parabola.mkgmap.reader.osm.Style;
+import uk.me.parabola.mkgmap.reader.osm.StyleInfo;
 
 /**
  * The new main program.  There can be many filenames to process and there can
@@ -54,6 +63,7 @@ public class Main implements ArgumentProcessor {
 	private final List<String> filenames = new ArrayList<String>();
 
 	private final Map<String, MapProcessor> processMap = new HashMap<String, MapProcessor>();
+	private String styleFile = "classpath:styles";
 
 	/**
 	 * The main program to make or combine maps.  We now use a two pass process,
@@ -66,7 +76,8 @@ public class Main implements ArgumentProcessor {
 
 		// We need at least one argument.
 		if (args.length < 1) {
-			System.err.println("Usage: mkgmap <file.osm>");
+			System.err.println("Usage: mkgmap [options...] <file.osm>");
+			printHelp(System.err, getLang(), "options");
 			System.exit(1);
 		}
 
@@ -79,6 +90,31 @@ public class Main implements ArgumentProcessor {
 		} catch (ExitException e) {
 			System.err.println(e.getMessage());
 			System.exit(1);
+		}
+	}
+
+	/**
+	 * Grab the options help file and print it.
+	 * @param err The output print stream to write to.
+	 * @param lang A language hint.  The help will be displayed in this
+     * language if it has been translated.
+	 * @param file The help file to display.
+	 */
+	private static void printHelp(PrintStream err, String lang, String file) {
+		String path = "/help/" + lang + '/' + file;
+		InputStream stream = Main.class.getResourceAsStream(path);
+		if (stream == null) {
+			err.println("Could not find the help topic: " + file + ", sorry");
+			return;
+		}
+
+		BufferedReader r = new BufferedReader(new InputStreamReader(stream));
+		try {
+			String line;
+			while ((line = r.readLine()) != null)
+				err.println(line);
+		} catch (IOException e) {
+			err.println("Could not read the help topic: " + file + ", sorry");
 		}
 	}
 
@@ -134,7 +170,54 @@ public class Main implements ArgumentProcessor {
 			addCombiner(new TdbBuilder());
 		} else if (opt.equals("gmapsupp")) {
 			addCombiner(new GmapsuppBuilder());
+		} else if (opt.equals("help")) {
+			printHelp(System.out, getLang(), (val != null) ? val : "help");
+		} else if (opt.equals("style-file") || opt.equals("map-features")) {
+			styleFile = val;
+		} else if (opt.equals("list-styles")) {
+			listStyles();
+		} else if (opt.equals("version")) {
+			System.err.println(Version.VERSION);
+			System.exit(0);
 		}
+	}
+
+	private void listStyles() {
+
+		String[] names;
+		try {
+			StyleFileLoader loader = StyleFileLoader.createStyleLoader(styleFile, null);
+			names = loader.list();
+			loader.close();
+		} catch (FileNotFoundException e) {
+			log.debug("didn't find style file", e);
+			throw new ExitException("Could not list style file " + styleFile);
+		}
+
+		Arrays.sort(names);
+		System.out.println("The following styles are available:");
+		for (String name : names) {
+			Style style;
+			try {
+				style = new Style(styleFile, name);
+			} catch (FileNotFoundException e) {
+				log.debug("could not find style", name);
+				try {
+					style = new Style(styleFile, null);
+				} catch (FileNotFoundException e1) {
+					log.debug("could not find style", styleFile);
+					continue;
+				}
+			}
+
+			StyleInfo info = style.getInfo();
+			System.out.format("%-15s %6s: %s\n",
+					name,info.getVersion(), info.getDescription());
+		}
+	}
+
+	private static String getLang() {
+		return "en";
 	}
 
 	private void addCombiner(Combiner combiner) {

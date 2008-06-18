@@ -43,7 +43,7 @@ class Osm5XmlHandler extends DefaultHandler {
 	private Node currentNode;
 	private Way5 currentWay;
 
-	private FeatureListConverter converter;
+	private OsmConverter converter;
 	private MapCollector mapper;
 	private long currentNodeId;
 
@@ -134,8 +134,10 @@ class Osm5XmlHandler extends DefaultHandler {
 		if (mode == MODE_NODE) {
 			if (qName.equals("node")) {
 				mode = 0;
-				if (currentNode != null)
+				if (currentNode != null) {
+					converter.convertName(currentNode);
 					converter.convertNode(currentNode);
+				}
 				currentNodeId = 0;
 				currentNode = null;
 			}
@@ -144,6 +146,7 @@ class Osm5XmlHandler extends DefaultHandler {
 			if (qName.equals("way")) {
 				mode = 0;
 				// Process the way.
+				converter.convertName(currentWay);
 				converter.convertWay(currentWay);
 			}
 		}
@@ -170,16 +173,19 @@ class Osm5XmlHandler extends DefaultHandler {
 	 * @param slon The longitude as a string.
 	 */
 	private void addNode(String sid, String slat, String slon) {
-		long id = Long.parseLong(sid);
-		double lat = Double.parseDouble(slat);
-		double lon = Double.parseDouble(slon);
+		try {
+			long id = Long.parseLong(sid);
+			double lat = Double.parseDouble(slat);
+			double lon = Double.parseDouble(slon);
 
-		//if (log.isDebugEnabled())
-		//	log.debug("adding node" + lat + '/' + lon);
-		Coord co = new Coord(lat, lon);
-		nodeMap.put(id, co);
-		currentNodeId = id;
-		mapper.addToBounds(co);
+			Coord co = new Coord(lat, lon);
+			nodeMap.put(id, co);
+			currentNodeId = id;
+			mapper.addToBounds(co);
+		} catch (NumberFormatException e) {
+			// ignore bad numeric data.
+		}
+
 	}
 
 	private void addNodeToWay(long id) {
@@ -192,7 +198,7 @@ class Osm5XmlHandler extends DefaultHandler {
 		mapper = mapCollector;
 	}
 
-	public void setConverter(FeatureListConverter converter) {
+	public void setConverter(OsmConverter converter) {
 		this.converter = converter;
 	}
 

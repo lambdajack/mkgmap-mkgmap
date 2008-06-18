@@ -46,7 +46,9 @@ public class FileInfo {
 	// The file is a plain file and it doesn't need to be extracted from a .img
 	public static final int FILE_KIND = 1;
 	// The file is of an unknown or unsupported kind, and so it should be ignored.
-	public static final int UNKNOWN_KIND = 99;
+	private static final int UNKNOWN_KIND = 99;
+
+	private static final int ENTRY_SIZE = 240;
 
 	private static final List<String> KNOWN_FILE_TYPE_EXT = Arrays.asList(
 			"TRE", "RGN", "LBL", "NET", "NOD",
@@ -67,8 +69,8 @@ public class FileInfo {
 	private int tresize;
 	private int lblsize;
 
-	private List<Integer> fileSizes = new ArrayList<Integer>();
-	private static final int ENTRY_SIZE = 240;
+	private final List<Integer> fileSizes = new ArrayList<Integer>();
+	private String[] copyrights;
 
 	private FileInfo(String filename, int kind) {
 		this.filename = filename;
@@ -82,7 +84,7 @@ public class FileInfo {
 		return mapname;
 	}
 
-	public void setMapname(String mapname) {
+	protected void setMapname(String mapname) {
 		this.mapname = mapname;
 	}
 
@@ -90,7 +92,7 @@ public class FileInfo {
 		return description;
 	}
 
-	public void setDescription(String description) {
+	protected void setDescription(String description) {
 		this.description = description;
 	}
 
@@ -98,7 +100,7 @@ public class FileInfo {
 		return rgnsize;
 	}
 
-	public void setRgnsize(int rgnsize) {
+	protected void setRgnsize(int rgnsize) {
 		this.rgnsize = rgnsize;
 	}
 
@@ -106,7 +108,7 @@ public class FileInfo {
 		return tresize;
 	}
 
-	public void setTresize(int tresize) {
+	protected void setTresize(int tresize) {
 		this.tresize = tresize;
 	}
 
@@ -114,7 +116,7 @@ public class FileInfo {
 		return lblsize;
 	}
 
-	public void setLblsize(int lblsize) {
+	protected void setLblsize(int lblsize) {
 		this.lblsize = lblsize;
 	}
 
@@ -173,43 +175,50 @@ public class FileInfo {
 	private static FileInfo imgInfo(String inputName) throws FileNotFoundException {
 		FileSystem imgFs = ImgFS.openFs(inputName);
 
-		FileSystemParam params = imgFs.fsparam();
-		log.info("Desc", params.getMapDescription());
-		log.info("Blocksize", params.getBlockSize());
+		try {
+			FileSystemParam params = imgFs.fsparam();
+			log.info("Desc", params.getMapDescription());
+			log.info("Blocksize", params.getBlockSize());
 
-		FileInfo info = new FileInfo(inputName, IMG_KIND);
-		info.setFilename(inputName);
-		info.setDescription(params.getMapDescription());
+			FileInfo info = new FileInfo(inputName, IMG_KIND);
+			info.setFilename(inputName);
+			info.setDescription(params.getMapDescription());
 
-		List<DirectoryEntry> entries = imgFs.list();
-		for (DirectoryEntry ent : entries) {
-			if (ent.isSpecial())
-				continue;
+			List<DirectoryEntry> entries = imgFs.list();
+			for (DirectoryEntry ent : entries) {
+				if (ent.isSpecial())
+					continue;
 
-			log.info("file", ent.getFullName());
-			String ext = ent.getExt();
+				log.info("file", ent.getFullName());
+				String ext = ent.getExt();
 
-			if ("TRE".equals(ext)) {
-				info.setTresize(ent.getSize());
-				info.setMapname(ent.getName());
+				if ("TRE".equals(ext)) {
+					info.setTresize(ent.getSize());
+					info.setMapname(ent.getName());
 
-				ImgChannel treChan = imgFs.open(ent.getFullName(), "r");
-				TREFile treFile = new TREFile(treChan, false);
-				Area area = treFile.getBounds();
-				info.setBounds(area);
-				//info.set
-				treFile.close();
-			} else if ("RGN".equals(ext)) {
-				int size = ent.getSize();
-				info.setRgnsize(size);
-			} else if ("LBL".equals(ext)) {
-				info.setLblsize(ent.getSize());
+					ImgChannel treChan = imgFs.open(ent.getFullName(), "r");
+					TREFile treFile = new TREFile(treChan, false);
+					Area area = treFile.getBounds();
+					info.setBounds(area);
+
+					String[] copyrights = treFile.getCopyrights();
+					info.setCopyrights(copyrights);
+
+					treFile.close();
+				} else if ("RGN".equals(ext)) {
+					int size = ent.getSize();
+					info.setRgnsize(size);
+				} else if ("LBL".equals(ext)) {
+					info.setLblsize(ent.getSize());
+				}
+
+				// add to the total size based on the rounded up size of this file
+				info.fileSizes.add(ent.getSize());
 			}
-
-			// add to the total size based on the rounded up size of this file
-			info.fileSizes.add(ent.getSize());
+			return info;
+		} finally {
+			imgFs.close();
 		}
-		return info;
 	}
 
 	private void setBounds(Area area) {
@@ -260,4 +269,11 @@ public class FileInfo {
 		}
 	}
 
+	protected void setCopyrights(String[] copyrights) {
+		this.copyrights = copyrights;
+	}
+
+	public String[] getCopyrights() {
+		return copyrights;
+	}
 }

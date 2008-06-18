@@ -14,7 +14,7 @@
  * Author: Steve Ratcliffe
  * Create date: 23-Sep-2007
  */
-package uk.me.parabola.tdbfmt;
+package uk.me.parabola.io;
 
 import java.io.IOException;
 import java.io.OutputStream;

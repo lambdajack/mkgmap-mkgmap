@@ -22,14 +22,11 @@ import uk.me.parabola.imgfmt.app.BufferedWriteStrategy;
 import uk.me.parabola.imgfmt.app.ImgFile;
 import uk.me.parabola.imgfmt.app.Label;
 import uk.me.parabola.imgfmt.app.ReadStrategy;
-import uk.me.parabola.imgfmt.app.WriteStrategy;
 import uk.me.parabola.imgfmt.app.labelenc.BaseEncoder;
 import uk.me.parabola.imgfmt.app.labelenc.CharacterDecoder;
 import uk.me.parabola.imgfmt.app.labelenc.CharacterEncoder;
 import uk.me.parabola.imgfmt.app.labelenc.CodeFunctions;
 import uk.me.parabola.imgfmt.app.labelenc.EncodedText;
-import uk.me.parabola.imgfmt.app.labelenc.Format6Decoder;
-import uk.me.parabola.imgfmt.app.labelenc.SimpleDecoder;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.log.Logger;
 
@@ -66,13 +63,6 @@ public class LBLFile extends ImgFile {
 	public LBLFile(ImgChannel chan, boolean write) {
 		setHeader(lblHeader);
 
-		WriteStrategy writer = new BufferedWriteStrategy(chan);
-		setWriter(writer);
-
-		position(LBLHeader.HEADER_LEN + LBLHeader.INFO_LEN);
-
-		// The zero offset is for no label.
-		getWriter().put((byte) 0);
 		if (write) {
 			setWriter(new BufferedWriteStrategy(chan));
 
@@ -84,7 +74,7 @@ public class LBLFile extends ImgFile {
 			setReader(new BufferedReadStrategy(chan));
 			lblHeader.readHeader(getReader());
 			CodeFunctions funcs = CodeFunctions.createEncoderForLBL(
-					lblHeader.getEncodingType(), lblHeader.getCodePage());
+					lblHeader.getEncodingType());
 			textEncoder = funcs.getEncoder();
 			textDecoder = funcs.getDecoder();
 		}
@@ -147,6 +137,14 @@ public class LBLFile extends ImgFile {
 		}
 
 		return l;
+	}
+
+	public POIRecord createPOI(String name) {
+		return places.createPOI(name);
+	}
+
+	public void allPOIsDone() {
+		places.allPOIsDone();
 	}
 
 	public void setCodePage(int codePage) {

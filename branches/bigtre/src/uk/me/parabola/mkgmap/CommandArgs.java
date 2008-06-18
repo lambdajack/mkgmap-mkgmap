@@ -194,11 +194,12 @@ public class CommandArgs {
 	public int getCodePage() {
 		int cp;
 
-		String s = arglist.getProperty("xcode-page", "1252");
+		// xcode-page is the old name
+		String s = arglist.getProperty("code-page", arglist.getProperty("xcode-page", "0"));
 		try {
 			cp = Integer.parseInt(s);
 		} catch (NumberFormatException e) {
-			cp = 850;
+			cp = 0;
 		}
 
 		return cp;
@@ -411,7 +412,7 @@ public class CommandArgs {
 				value = v[1].trim();
 			} else {
 				option = optval;
-				value = "1";
+				value = "";
 			}
 		}
 

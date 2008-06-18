@@ -32,9 +32,9 @@ public class NETHeader extends CommonHeader {
 
 	private static final char SORTED_ROAD_RECSIZE = 3;
 
-	private Section roadDefinitions = new Section();
-	private Section segmentedRoads = new Section(roadDefinitions);
-	private Section sortedRoads = new Section(segmentedRoads, SORTED_ROAD_RECSIZE);
+	private final Section roadDefinitions = new Section();
+	private final Section segmentedRoads = new Section(roadDefinitions);
+	private final Section sortedRoads = new Section(segmentedRoads, SORTED_ROAD_RECSIZE);
 
 	private byte roadShift;
 	private byte segmentShift;
@@ -90,5 +90,13 @@ public class NETHeader extends CommonHeader {
 		writer.putInt(0);
 		writer.put((byte) 1);
 		writer.put((byte) 0);
+	}
+
+	void startRoadDefs(int pos) {
+		roadDefinitions.setPosition(pos);
+	}
+
+	void endRoadDefs(int pos) {
+		roadDefinitions.setSize(pos - roadDefinitions.getPosition());
 	}
 }

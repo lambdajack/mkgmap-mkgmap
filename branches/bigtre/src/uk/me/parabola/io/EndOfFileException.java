@@ -14,7 +14,7 @@
  * Author: Steve Ratcliffe
  * Create date: 23-Sep-2007
  */
-package uk.me.parabola.tdbfmt;
+package uk.me.parabola.io;
 
 import java.io.IOException;
 
@@ -23,8 +23,8 @@ import java.io.IOException;
  *
  * @author Steve Ratcliffe
  */
-class EndOfFileException extends IOException {
-	EndOfFileException() {
+public class EndOfFileException extends IOException {
+	public EndOfFileException() {
 		super("End of file");
 	}
 }

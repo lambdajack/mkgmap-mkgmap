@@ -62,6 +62,8 @@ class FeatureListConverter implements OsmConverter {
 
 	private static final int DEFAULT_RESOLUTION = 24;
 
+	private static final double METERS_TO_FEET = 3.2808399;
+
 	// Maps of osm feature names to the garmin type information
 	private final Map<String, GarminType> pointFeatures = new HashMap<String, GarminType>();
 	private final Map<String, GarminType> lineFeatures = new HashMap<String, GarminType>();
@@ -73,7 +75,7 @@ class FeatureListConverter implements OsmConverter {
 	FeatureListConverter(MapCollector collector, Properties config) {
 		this.mapper = collector;
 
-		InputStream is = getMapFeatures(config);
+		InputStream is = getMapFeaturesInputStream(config);
 
 		try {
 			Reader r = new InputStreamReader(is, "utf-8");
@@ -89,13 +91,25 @@ class FeatureListConverter implements OsmConverter {
 	}
 
 	/**
+	 * Constructor used for new style system.  To begin with we are just
+	 * making use of the old way of doing the styles.
+	 * @param mapper The map collector.
+	 * @param input The map-features that is built into the style.
+	 * @throws IOException If reading the file fails.
+	 */
+	FeatureListConverter(MapCollector mapper, Reader input) throws IOException {
+		this.mapper = mapper;
+		readFeatures(new BufferedReader(input));
+	}
+
+	/**
 	 * Get an input stream to a map-features file.  This could have been on the
 	 * command line, in which case return an open handle to it.
 	 *
 	 * @param config Properties that may contain the name of a file to use.
 	 * @return An open stream to a map features file.
 	 */
-	private InputStream getMapFeatures(Properties config) {
+	private InputStream getMapFeaturesInputStream(Properties config) {
 		String file = config.getProperty("map-features");
 		InputStream is;
 		if (file != null) {
@@ -134,17 +148,21 @@ class FeatureListConverter implements OsmConverter {
 	 * @param way The OSM way.
 	 */
 	public void convertWay(Way way) {
+		GarminType foundType = null;
 
 		// Try looking for polygons first.
 		for (String tagKey : way) {
 			GarminType gt = shapeFeatures.get(tagKey);
-			if (gt != null) {
-				addShape(way, gt);
-				return;
+			if (gt != null && (foundType == null || gt.isBetter(foundType))) {
+				foundType = gt;
 			}
 		}
 
-		GarminType foundType = null;
+		if (foundType != null) {
+			addShape(way, foundType);
+			return;
+		}
+
 		String foundKey = null;
 		for (String tagKey : way) {
 			// See if this is a line feature
@@ -162,39 +180,42 @@ class FeatureListConverter implements OsmConverter {
 
 	private void addShape(Way way, GarminType gt) {
 		// Add to the map
-		List<List<Coord>> pointLists =  way.getPoints();
-		for (List<Coord> points : pointLists) {
-			MapShape shape = new MapShape();
-			shape.setName(way.getName());
-			shape.setPoints(points);
-			shape.setType(gt.getType());
-			shape.setMinResolution(gt.getMinResolution());
+		List<Coord> points =  way.getPoints();
+		MapShape shape = new MapShape();
+		shape.setName(way.getName());
+		shape.setPoints(points);
+		shape.setType(gt.getType());
+		shape.setMinResolution(gt.getMinResolution());
 
-			mapper.addShape(shape);
-		}
+		mapper.addShape(shape);
 	}
 
 	private void addLine(Way way, String tagKey, GarminType gt) {
 		// Found it! Now add to the map.
-		List<List<Coord>> pointLists = way.getPoints();
-		for (List<Coord> points : pointLists) {
-			if (points.isEmpty())
-				continue;
+		List<Coord> points = way.getPoints();
+		if (points.isEmpty())
+			return;
 
-			MapLine line = new MapLine();
-			line.setName(way.getName());
-			line.setPoints(points);
-			line.setType(gt.getType());
-			line.setMinResolution(gt.getMinResolution());
+		MapLine line = new MapLine();
+		line.setName(way.getName());
+		line.setPoints(points);
+		line.setType(gt.getType());
+		line.setMinResolution(gt.getMinResolution());
 
-			if (way.isBoolTag("oneway"))
-				line.setDirection(true);
+		if (way.isBoolTag("oneway"))
+			line.setDirection(true);
 
-			if (tagKey.equals("contour|elevation")) {
-				line.setName(way.getTag("ele"));
+		if (tagKey.equals("contour|elevation")) {
+			String ele = way.getTag("ele");
+			try {
+				long n = Math.round(Integer.parseInt(ele) * METERS_TO_FEET);
+				line.setName(String.valueOf(n));
+			} catch (NumberFormatException e) {
+				line.setName(ele);
 			}
-			mapper.addLine(line);
 		}
+
+		mapper.addLine(line);
 	}
 
 	/**
@@ -219,6 +240,33 @@ class FeatureListConverter implements OsmConverter {
 				mapper.addPoint(point);
 				return;
 			}
+		}
+	}
+
+	/**
+	 * A simple implementation that looks at 'name' and 'ref', if only one
+	 * of those exists, then it is used.  When they are both there then
+	 * the 'ref' is in brackets after the name.
+	 *
+	 * <p>This is called from both nodes and ways, and I guess we should
+	 * restrict the 'ref' treatment to the highways.  This is something
+	 * that might happen in the styled converter.
+	 *
+	 * @param el The element, both nodes and ways go through here.
+	 */
+	public void convertName(Element el) {
+		String ref = el.getTag("ref");
+		String name = el.getTag("name");
+		if (name == null) {
+			el.setName(ref);
+		} else if (ref != null) {
+			StringBuffer ret = new StringBuffer(name);
+			ret.append(" (");
+			ret.append(ref);
+			ret.append(')');
+			el.setName(ret.toString());
+		} else {
+			el.setName(name);
 		}
 	}
 
@@ -272,9 +320,9 @@ class FeatureListConverter implements OsmConverter {
 	private void saveFeature(String[] fields, Map<String, GarminType> features) {
 		String osm = makeKey(fields[F_OSM_TYPE], fields[F_OSM_SUBTYPE]);
 
-		GarminType gtype;
 		String gsubtype = fields[F_GARMIN_SUBTYPE];
 		log.debug("subtype", gsubtype);
+		GarminType gtype;
 		if (gsubtype == null || gsubtype.length() == 0) {
 			log.debug("took the subtype road");
 			gtype = new GarminType(fields[F_GARMIN_TYPE]);

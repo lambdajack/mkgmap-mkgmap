@@ -35,8 +35,8 @@ public class TREHeader extends CommonHeader {
 
 	static final int MAP_LEVEL_REC_SIZE = 4;
 	private static final char POLYLINE_REC_LEN = 2;
-	static final char POLYGON_REC_LEN = 2;
-	static final char POINT_REC_LEN = 3;
+	private static final char POLYGON_REC_LEN = 2;
+	private static final char POINT_REC_LEN = 3;
 	private static final char COPYRIGHT_REC_SIZE = 0x3;
 	static final int SUBDIV_REC_SIZE = 14;
 	static final int SUBDIV_REC_SIZE2 = 16;
@@ -85,9 +85,24 @@ public class TREHeader extends CommonHeader {
 		log.info("read area is", getBounds());
 
 		// more to do...
+		int levels = reader.getInt();
+		mapInfoSize = levels - getHeaderLength();
+		
+		reader.getInt();
+		reader.getInt();
+		reader.getInt();
+
+		readSectionInfo(reader, copyright);
+		reader.getInt();
 	}
 
-	private void writeSectionInfo(WriteStrategy writer, Section section) {
+	private void readSectionInfo(ReadStrategy reader, Section sect) {
+		sect.setPosition(reader.getInt());
+		sect.setSize(reader.getInt());
+		sect.setItemSize(reader.getChar());
+	}
+
+	protected void writeSectionInfo(WriteStrategy writer, Section section) {
 		writer.putInt(section.getPosition());
 		writer.putInt(section.getSize());
 		if (section.getItemSize() > 0)
@@ -221,7 +236,10 @@ public class TREHeader extends CommonHeader {
 
 	public void incCopyrightSize() {
 		copyright.inc();
-		//this.copyrightSize = copyrightSize;
+	}
+
+	public Section getCopyrightSection() {
+		return copyright;
 	}
 
 	protected byte getPoiDisplayFlags() {

@@ -16,6 +16,9 @@
  */
 package uk.me.parabola.tdbfmt;
 
+import uk.me.parabola.io.StructuredInputStream;
+import uk.me.parabola.io.StructuredOutputStream;
+
 import java.io.IOException;
 
 /**
@@ -49,7 +52,7 @@ class HeaderBlock {
 		StructuredInputStream ds = block.getInputStream();
 
 		productId = (short) ds.read2();
-		int junk = ds.read2();
+		/*int junk = */ds.read2();
 		//assert junk == 0;
 		// junk is the product id, in version 4 of the format anyway
 
