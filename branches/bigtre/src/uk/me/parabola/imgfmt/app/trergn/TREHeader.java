@@ -30,8 +30,15 @@ import uk.me.parabola.log.Logger;
 public class TREHeader extends CommonHeader {
 	private static final Logger log = Logger.getLogger(TREHeader.class);
 
-	//public static final int HEADER_LEN = 120; // Other values are possible
-	public static final int HEADER_LEN = 184; // Other values are possible
+	// The tre section comes in different versions with different length
+	// headers.  We just refer to them by the header length for lack of any
+	// better description.
+	public static final int TRE_120 = 120;
+	public static final int TRE_184 = 184;
+	public static final int TRE_188 = 188;
+
+	// The header length to use when creating a file.
+	public static final int DEFAULT_HEADER_LEN = TRE_188;
 
 	static final int MAP_LEVEL_REC_SIZE = 4;
 	private static final char POLYLINE_REC_LEN = 2;
@@ -65,7 +72,7 @@ public class TREHeader extends CommonHeader {
 	private int mapId;
 
 	public TREHeader() {
-		super(HEADER_LEN, "GARMIN TRE");
+		super(DEFAULT_HEADER_LEN, "GARMIN TRE");
 	}
 
 	/**
@@ -145,23 +152,37 @@ public class TREHeader extends CommonHeader {
 		writeSectionInfo(writer, points);
 		writer.putInt(0);
 
-		// Map ID
-
-		if (HEADER_LEN > 116) {
+		// There are a number of versions of the header with increasing lengths
+		if (getHeaderLength() > 116)
 			writer.putInt(getMapId());
-		}
 
-		if (HEADER_LEN > 120) {
+		if (getHeaderLength() > 120) {
 			writer.putInt(0);
 
 			writeSectionInfo(writer, tre7);
 			writer.putInt(0); // not usually zero
 
 			writeSectionInfo(writer, tre8);
-			writer.putInt(4);
+			writer.putChar((char) 0);
 			writer.putInt(0);
 		}
-		writer.position(HEADER_LEN);
+
+		if (getHeaderLength() > 154) {
+			MapValues mv = new MapValues(mapId, getHeaderLength());
+			mv.calculate();
+			writer.putInt(mv.value(0));
+			writer.putInt(mv.value(1));
+			writer.putInt(mv.value(2));
+			writer.putInt(mv.value(3));
+
+			writer.putInt(0);
+			writer.putInt(0);
+			writer.putInt(0);
+			writer.putChar((char) 0);
+			writer.putInt(0);
+		}
+		
+		writer.position(getHeaderLength());
 	}
 
 
