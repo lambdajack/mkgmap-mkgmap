@@ -51,6 +51,7 @@ public class Map implements InternalFiles {
 	private static final Logger log = Logger.getLogger(Map.class);
 
 	private String filename;
+	private String mapName;
 	private FileSystem fileSystem;
 
 	private TREFile treFile;
@@ -80,6 +81,7 @@ public class Map implements InternalFiles {
 			throws FileExistsException, FileNotWritableException
 	{
 		Map m = new Map();
+		m.mapName = mapname;
 		String outFilename = mapname + ".img";
 
 		FileSystem fs = ImgFS.createFs(outFilename, params);
@@ -89,13 +91,15 @@ public class Map implements InternalFiles {
 		m.rgnFile = new RGNFile(m.fileSystem.create(mapname + ".RGN"));
 		m.treFile = new TREFile(m.fileSystem.create(mapname + ".TRE"), true);
 		m.lblFile = new LBLFile(m.fileSystem.create(mapname + ".LBL"));
-		if (true)
-			m.netFile = new NETFile(m.fileSystem.create(mapname + ".NET"), true);
 
 		m.treFile.setMapId(Integer.parseInt(mapname));
 		m.fileSystem = fs;
 
 		return m;
+	}
+
+	public void addNet() throws FileExistsException {
+		netFile = new NETFile(fileSystem.create(mapName + ".NET"), true);
 	}
 
 	/**
