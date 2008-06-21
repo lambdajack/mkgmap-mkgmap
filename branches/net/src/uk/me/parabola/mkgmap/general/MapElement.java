@@ -29,7 +29,7 @@ public abstract class MapElement {
 	private int minResolution = 24;
 
 	// So top code can link objects from here
-	private Object user_data;
+	private Object userData;
 
 	protected MapElement() {
 	}
@@ -38,7 +38,7 @@ public abstract class MapElement {
 		name = orig.name;
 		type = orig.type;
 		minResolution = orig.minResolution;
-		user_data = orig.user_data;
+		userData = orig.userData;
 	}
 
 	public String getName() {
@@ -88,10 +88,10 @@ public abstract class MapElement {
 	}
 
 	public Object getUserData() {
-		return user_data;
+		return userData;
 	}
 
 	public void setUserData(Object obj) {
-		user_data = obj;
+		userData = obj;
 	}
 }

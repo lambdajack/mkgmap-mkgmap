@@ -38,7 +38,7 @@ public class RoadDef {
 
 	// There can be up to 4 labels for the same road.
 	private final Label[] labels = new Label[MAX_LABELS];
-	private int numlabels = 0;
+	private int numlabels;
 
 	private byte roadFlags = (byte) 0x4;
 
