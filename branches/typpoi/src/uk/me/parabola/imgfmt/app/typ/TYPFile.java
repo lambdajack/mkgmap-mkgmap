@@ -34,9 +34,7 @@ import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.log.Logger;
 
 /**
- * The TYP file.  I know next to nothing about this file, so the code will be
- * very experimental for a while and indeed will be mostly to investigate
- * the file format.
+ * The TYP file.
  *
  * @author Thomas Lußnig
  */
