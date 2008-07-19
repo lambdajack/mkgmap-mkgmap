@@ -77,20 +77,24 @@ public class TYPFile extends ImgFile {
 		getWriter().position(TYPHeader.HEADER_LEN);
 
 		int pos = getWriter().position();
+		header.getPointData().setPosition(pos);
+
 		for (Writeable w : images)
 			w.write(getWriter());
 		int len = getWriter().position() - pos;
-		header.getPointData().setPos(pos, len);
-		if (len < 0x100) header.getPointIndex().setItemSize((char) 3);
+		header.getPointData().setSize(len);
+
+		if (len < 0x100)
+			header.getPointIndex().setItemSize((char) 3);
 		pos = getWriter().position();
 		for (PointInfo w : pointInfo)
 			w.write(getWriter(), header.getPointData().getSize());
-		header.getPointIndex().setPos(pos, getWriter().position() - pos);
+		header.getPointIndex().setSize(getWriter().position() - pos);
 
 		pos = getWriter().position();
 		for (Writeable w : drawOrder)
 			w.write(getWriter());
-		header.getShapeStacking().setPos(pos, getWriter().position() - pos);
+		header.getShapeStacking().setSize(getWriter().position() - pos);
 
 		log.debug("syncing TYP file");
 		getHeader().writeHeader(getWriter());
