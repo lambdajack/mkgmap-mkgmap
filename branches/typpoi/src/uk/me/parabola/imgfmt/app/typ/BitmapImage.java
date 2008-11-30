@@ -5,10 +5,12 @@ import java.util.Map;
 
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
 import uk.me.parabola.imgfmt.app.Writeable;
+import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.log.Logger;
 
 public class BitmapImage implements Writeable, Comparator<BitmapImage> {
 	private static final Logger log = Logger.getLogger(BitmapImage.class);
+
 	private int off;
 	private byte dayNight;	// 7=Night 1=Day
 	private byte width;
@@ -20,11 +22,11 @@ public class BitmapImage implements Writeable, Comparator<BitmapImage> {
 	private Map<String, Rgb> colors;
 
 	public final byte getTyp() {
-		return this.typ;
+		return typ;
 	}
 
 	public final byte getSubtype() {
-		return this.subtype;
+		return subtype;
 	}
 
 	private BitmapImage() { /*for compare*/ }
@@ -33,90 +35,96 @@ public class BitmapImage implements Writeable, Comparator<BitmapImage> {
 		return new BitmapImage();
 	}
 
-	public BitmapImage(byte typ_, byte subtype_, byte dayNight_, int width_,
-			Map<String, Rgb> colors_, int cpc_, String image_)
+	public BitmapImage(byte typ, byte subtype, byte dayNight, int width,
+			Map<String, Rgb> colours, int cpc, String image)
 	{
-		if (image_ == null)
-			throw new RuntimeException("NULL Image");
-		this.height = (byte) (image_.length() / width_);
-		this.colors = colors_;
-		if (width_ != 16)
-			throw new RuntimeException("Only 16 pixel with supported");
-		if (this.height * width_ != image_.length())
-			throw new RuntimeException("Only 16 pixel with supported");
-		this.cpc = cpc_;
-		this.dayNight = dayNight_;
-		this.width = (byte) width_;
-		this.image = image_;
-		this.typ = typ_;
-		this.subtype = subtype_;
+		if (image == null)
+			throw new FormatException("NULL Image");
+		height = (byte) (image.length() / width);
+		colors = colours;
+		if (width != 16)
+			throw new FormatException("Only 16 pixel with supported");
+		if (height * width != image.length())
+			throw new FormatException("Only 16 pixel with supported");
+		this.cpc = cpc;
+		this.dayNight = dayNight;
+		this.width = (byte) width;
+		this.image = image;
+		this.typ = typ;
+		this.subtype = subtype;
 	}
 
 	public void write(ImgFileWriter writer) {
-		this.off = writer.position();
-		byte cc = (byte) (this.colors.size());
+		off = writer.position();
+		byte cc = (byte) (colors.size());
 		// We only Support up to 16 Colors(currently)
-		writer.put(this.dayNight);
-		writer.put(this.width);
-		writer.put(this.height);
+		writer.put(dayNight);
+		writer.put(width);
+		writer.put(height);
 		writer.put(cc);
 		writer.put((byte) 0x10); // 0x10 => 888 (8Bits per Color)
 		// 0x20 => 444 (4Bits per Color)
 		int cid = 0;
-		for (Rgb rgb : this.colors.values()) {
+		for (Rgb rgb : colors.values()) {
 			rgb.write(writer, (byte) 0x10);
-			rgb.idx = cid++;
+			rgb.setIdx(cid++);
 		}
 		int idx = 0;
 		try {
-			if (cc <= 16)
-				for (idx = 0; idx < this.image.length(); idx += 2 * this.cpc) {
-					int p2 = this.colors.get(this.image.substring(idx + 0, idx + 0 + this.cpc)).idx;
-					int p1 = this.colors.get(this.image.substring(idx + 1, idx + 1 + this.cpc)).idx;
+			if (cc <= 16) {
+				for (idx = 0; idx < image.length(); idx += 2 * cpc) {
+					int p2 = colors.get(image.substring(idx, idx + cpc)).getIdx();
+					int p1 = colors.get(image.substring(idx + 1, idx + 1 + cpc)).getIdx();
 					if (p1 == -1 || p2 == -1)
-						throw new RuntimeException("Invalid Color Code");
+						throw new FormatException("Invalid Color Code");
 					byte p = (byte) (p1 << 4 | p2);
 					writer.put(p);
 				}
-			else
-				for (idx = 0; idx < this.image.length(); idx += 2) {
-					int p = this.colors.get(this.image.substring(idx + 0, idx + 0 + this.cpc)).idx;
-					if (p == -1) throw new RuntimeException("Invalid Color Code");
+			} else {
+				for (idx = 0; idx < image.length(); idx += 2) {
+					int p = colors.get(image.substring(idx, idx + cpc)).getIdx();
+					if (p == -1)
+						throw new FormatException("Invalid Color Code");
 					writer.put((byte) p);
 				}
+			}
 		}
 		catch (Throwable ex) {
 			log.error(ex.getMessage(), ex);
-			for (Map.Entry<String, Rgb> e : this.colors.entrySet())
+			for (Map.Entry<String, Rgb> e : colors.entrySet())
 				log.info("'" + e.getKey() + "' c rgb(" + e.getValue().r + " , " + e
 						.getValue().g + " , " + e.getValue().r + ")");
-			log.info("bild[idx+0]='" + this.image
-					.substring(idx + 0, idx + 0 + this.cpc) + "' => " + this.colors
-					.get(this.image.substring(idx + 0, idx + 0 + this.cpc)));
-			log.info("bild[idx+1]='" + this.image
-					.substring(idx + 0, idx + 1 + this.cpc) + "' => " + this.colors
-					.get(this.image.substring(idx + 0, idx + 1 + this.cpc)));
-			log.info("bild[?]=' ' => " + this.colors.get(this.image.charAt(idx + 1)));
+			log.info("bild[idx+0]='" + image
+					.substring(idx, idx + cpc) + "' => " + colors
+					.get(image.substring(idx, idx + cpc)));
+			log.info(new StringBuilder().append("bild[idx+1]='").append(image
+					.substring(idx, idx + 1 + cpc)).append("' => ").append(colors
+					.get(image.substring(idx, idx + 1 + cpc))).toString());
 		}
 		// TODO String with names
 	}
 
 	public int getOffset() {
-		return this.off - TYPHeader.HEADER_LEN;
+		return off - TYPHeader.HEADER_LEN;
 	}
 
 	public int getSize() {
-		return 5 + this.colors.size() * 3 + this.width * this.height / 2;
+		return 5 + colors.size() * 3 + width * height / 2;
 	}
 
 	public int compare(BitmapImage a, BitmapImage b) {
-		if (a == null) return 1;
-		if (b == null) return -1;
-		if (a.typ < b.typ) return -1;
-		if (a.typ > b.typ) return 1;
-		if (a.dayNight < b.dayNight) return -1;
-		if (a.dayNight > b.dayNight) return 1;
+		if (a == null)
+			return 1;
+		if (b == null)
+			return -1;
+		if (a.typ < b.typ)
+			return -1;
+		if (a.typ > b.typ)
+			return 1;
+		if (a.dayNight < b.dayNight)
+			return -1;
+		if (a.dayNight > b.dayNight)
+			return 1;
 		return 0;
 	}
-
 }

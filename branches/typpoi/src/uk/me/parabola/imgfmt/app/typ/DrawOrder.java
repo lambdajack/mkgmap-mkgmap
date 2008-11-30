@@ -7,17 +7,16 @@ public class DrawOrder implements Writeable {
 	private final char typ;
 	private final char unk1;
 	private final byte unk2;
-	public DrawOrder(char typ_, char unk1_, byte unk2_) {
-		super();
-		this.typ  = typ_;
-		this.unk1 = unk1_;
-		this.unk2 = unk2_;
-	}
-	
-	public void write(ImgFileWriter writer) {
-		writer.putChar(this.typ);
-		writer.putChar(this.unk1);
-		writer.put    (this.unk2);
+
+	public DrawOrder(char typ, char unk1, byte unk2) {
+		this.typ = typ;
+		this.unk1 = unk1;
+		this.unk2 = unk2;
 	}
 
+	public void write(ImgFileWriter writer) {
+		writer.putChar(typ);
+		writer.putChar(unk1);
+		writer.put(unk2);
+	}
 }

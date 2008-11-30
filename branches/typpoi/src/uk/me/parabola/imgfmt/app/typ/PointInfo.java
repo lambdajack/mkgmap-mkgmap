@@ -10,12 +10,12 @@ public class PointInfo {
 	}
 
 	public void write(ImgFileWriter writer, int maxOffset) {
-		char wtype = (char) (this.bitmap.getSubtype() | this.bitmap.getTyp() << 5);
+		char wtype = (char) (bitmap.getSubtype() | bitmap.getTyp() << 5);
 		writer.putChar(wtype);
 
 		if (maxOffset < 0x100)
-			writer.put((byte) this.bitmap.getOffset());
+			writer.put((byte) bitmap.getOffset());
 		else
-			writer.putChar((char) this.bitmap.getOffset());
+			writer.putChar((char) bitmap.getOffset());
 	}
 }

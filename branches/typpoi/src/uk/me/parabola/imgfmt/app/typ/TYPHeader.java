@@ -93,7 +93,7 @@ public class TYPHeader extends CommonHeader {
 	 */
 	protected void writeFileHeader(ImgFileWriter writer) {
 		System.out.println("in file header write");
-		writer.putChar(this.codePage);
+		writer.putChar(codePage);
 		writer.putInt(pointData.getPosition());
 		writer.putInt(pointData.getSize());
 
