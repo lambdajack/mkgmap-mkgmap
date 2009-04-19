@@ -88,8 +88,13 @@ public class MapRoad extends MapLine {
 		this.roadDef.setNoThroughRouting();
 	}
 
+	//TODO: calculate from points list at constructor (if CoordNode)
 	public void setStartsWithNode(boolean s) {
 		this.roadDef.setStartsWithNode(s);
+	}
+
+	public void setEndsWithNode(boolean s) {
+		this.roadDef.setEndsWithNode(s);
 	}
 
 	public void setInternalNodes(boolean s) {

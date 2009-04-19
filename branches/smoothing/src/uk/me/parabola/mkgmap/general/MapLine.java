@@ -60,8 +60,13 @@ public class MapLine extends MapElement {
 		if (this.points != null)
 			log.warn("overwriting points");
 		assert points != null : "trying to set null points";
+		assert points.size() != 0 : "trying to set points with zero length";
 
 		this.points = points;
+		testForConsecutivePoints(points);
+	}
+	
+	public void testForConsecutivePoints(List<Coord> points) {
 		Coord last = null;
 		for (Coord co : points) {
 			if (last != null && last.equals(co))
@@ -69,6 +74,18 @@ public class MapLine extends MapElement {
 			addToBounds(co);
 			last = co;
 		}
+	}
+
+	public void insertPointsAtStart(List<Coord> additionalPoints) {
+		testForConsecutivePoints(additionalPoints);
+		points.addAll(0, additionalPoints);
+		points.remove(additionalPoints.size()-1);	//End node exists now twice
+	}
+
+	public void insertPointsAtEnd(List<Coord> additionalPoints) {
+		testForConsecutivePoints(additionalPoints);
+		points.remove(points.size()-1); 
+		points.addAll(additionalPoints);
 	}
 
 	public boolean isDirection() {

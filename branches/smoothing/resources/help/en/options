@@ -78,6 +78,14 @@ Style options:
 	is the equivalent of: "0=24, 1=22, 2=21, 3=19, 4=18, 5=16"
 	although this may change.
 
+--reduce-point-density=num
+	Simplifies the ways with the douglas peucker algorithm.
+	num is the maximal allowed error distance, by which the resulting
+	way may differ from the original one.
+	This distance gets shifted with lower zoom levels. 
+	Recomended setting is 10, this should lead to only small differences
+	(Default is 2.6, which should lead to invisible changes) 
+
 --name-tag-list
 	Get the tag that will be used to supply the name.  Useful for
 	language variations.  You can supply a list and the first one
@@ -99,6 +107,27 @@ Product description options:
 --family-name
 --area-name
 --overview-mapname
+
+Optimization options:
+
+--reduce-point-density=num
+	Simplifies the ways with the douglas peucker algorithm.
+	num is the maximal allowed error distance, by which the resulting
+	way may differ from the original one.
+	This distance gets shifted with lower zoom levels. 
+	Recommended setting is 10, this should lead to only small differences
+	(Default is 2.6, which should lead to invisible changes) 
+
+-- suppress-dead-end-nodes
+	Do not generate nodes at the end of an dead end way. 
+	Decrease file size and should speed up routing slightly.
+	(Cause errors with the drawing of the pink line at the moment, 
+	don't use it!)
+
+--merge-lines
+	Try to merge lines. This helps the simplify filter to straighten out
+    longer chunks at lower zoom levels. Decreases file size more.
+	Increases paint speed at low zoom levels
 
 Misc options:
 --block-size=''number''

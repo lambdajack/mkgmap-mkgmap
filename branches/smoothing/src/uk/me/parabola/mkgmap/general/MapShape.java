@@ -67,6 +67,20 @@ public class MapShape extends MapLine {// So top code can link objects from here
 		return contains(this.getPoints(), co, true);
 	}
 	
+/*	public void setPoints(List<Coord> points) {
+		assert points != null : "trying to set null points";
+
+		int n = points.size()-1;
+
+		// If the first point is identic with the last one, drop it
+		// The type MapShape means that this is a polygon, so we dont need the identic point any more.
+		while ((n > 0) && points.get(0).equals(points.get(n))) {
+			points.remove(n);
+			n--;
+		}
+	}
+*/
+
 	/* 
 	 * Checks if a point is contained within a shape.
 	 * 
@@ -83,6 +97,7 @@ public class MapShape extends MapLine {// So top code can link objects from here
 		boolean inside = false;
 		if (points.size() < 3)
 			return false;
+
 
 		// complete the shape if we're dealing with a MapShape that is not closed
 		Coord start = points.get(0);
@@ -197,6 +212,4 @@ public class MapShape extends MapLine {// So top code can link objects from here
 		}
 		return false;
 	}
-					
-					
 }

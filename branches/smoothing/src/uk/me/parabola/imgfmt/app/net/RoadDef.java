@@ -344,6 +344,7 @@ public class RoadDef implements Comparable {
 
 	// the first point in the road is a node (the above routing node)
 	private boolean startsWithNode = true;
+	private boolean endsWithNode = true;
 	// number of nodes in the road
 	private int nnodes;
 
@@ -371,6 +372,10 @@ public class RoadDef implements Comparable {
 
 	public void setStartsWithNode(boolean s) {
 		startsWithNode = s;
+	}
+
+	public void setEndsWithNode(boolean s) {
+		endsWithNode = s;
 	}
 
 	public void setNumNodes(int n) {
@@ -406,12 +411,16 @@ public class RoadDef implements Comparable {
 		int nbits = nnodes;
 		if (!startsWithNode)
 			nbits++;
+		if (!endsWithNode)
+			nbits++;
 		writer.putChar((char) nbits);
 		boolean[] bits = new boolean[nbits];
 		for (int i = 0; i < bits.length; i++)
 			bits[i] = true;
 		if (!startsWithNode)
 			bits[0] = false;
+		if (!endsWithNode)
+			bits[bits.length-1] = false;
 		for (int i = 0; i < bits.length; i += 8) {
 			int b = 0;
             for (int j = 0; j < 8 && j < bits.length - i; j++)

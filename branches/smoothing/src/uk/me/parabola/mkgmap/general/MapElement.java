@@ -166,6 +166,24 @@ public abstract class MapElement {
 		this.type = type;
 	}
 
+	public boolean isSimilar(MapElement other) {
+		if (this.minResolution != other.minResolution)
+			return false;
+		if (this.maxResolution != other.maxResolution)
+			return false;
+		if (this.type != other.type)
+			return false;
+
+		String thisName = getName();
+		String otherName = other.getName();
+
+		if (thisName == null && otherName == null)	
+			return true;
+		if (thisName!=null && otherName!=null && thisName.equals(otherName))
+			return true;
+		return false;
+	}
+
 	/**
 	 * Get the 'location' of the element.  This is the mid point of the bounding
 	 * box for the element.  For a point, this will be the coordinates of the

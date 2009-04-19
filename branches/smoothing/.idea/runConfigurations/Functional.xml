@@ -4,10 +4,6 @@
       <option name="PATTERN" value="uk.me.parabola.*" />
       <option name="ENABLED" value="true" />
     </pattern>
-    <pattern>
-      <option name="PATTERN" value="*" />
-      <option name="ENABLED" value="true" />
-    </pattern>
     <module name="display" />
     <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
     <option name="ALTERNATIVE_JRE_PATH" value="" />

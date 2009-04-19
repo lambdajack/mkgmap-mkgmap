@@ -49,6 +49,8 @@ import uk.me.parabola.mkgmap.reader.osm.RestrictionRelation;
 import uk.me.parabola.mkgmap.reader.osm.Rule;
 import uk.me.parabola.mkgmap.reader.osm.Style;
 import uk.me.parabola.mkgmap.reader.osm.Way;
+import uk.me.parabola.util.EnhancedProperties;
+
 
 /**
  * Convert from OSM to the mkgmap intermediate format using a style.
@@ -67,6 +69,9 @@ public class StyledConverter implements OsmConverter {
 	private Clipper clipper = Clipper.NULL_CLIPPER;
 	private Area bbox;
 	private Set<Coord> boundaryCoords = new HashSet<Coord>();
+
+	//Suppresses end nodes at dead end streets.
+	private boolean suppressDeadEndNodes;
 
 	// restrictions associates lists of turn restrictions with the
 	// Coord corresponding to the restrictions' 'via' node
@@ -126,8 +131,10 @@ public class StyledConverter implements OsmConverter {
 		}
 	};
 
-	public StyledConverter(Style style, MapCollector collector) {
+	public StyledConverter(Style style, MapCollector collector, EnhancedProperties props) {
 		this.collector = collector;
+
+		suppressDeadEndNodes = props.containsKey("suppress-dead-end-nodes");
 
 		nameTagList = style.getNameTagList();
 		wayRules = style.getWayRules();
@@ -532,8 +539,11 @@ public class StyledConverter implements OsmConverter {
 		String wayName = way.getName();
 
 		// make sure the way has nodes at each end
-		points.get(0).incHighwayCount();
-		points.get(points.size() - 1).incHighwayCount();
+		// supress end nodes if allowed and not a boundary node
+		if (!suppressDeadEndNodes || boundaryCoords.contains(points.get(0)))
+			points.get(0).incHighwayCount();
+		if (!suppressDeadEndNodes || boundaryCoords.contains(points.get(points.size() - 1)))
+			points.get(points.size() - 1).incHighwayCount();
 
 		// collect the Way's nodes
 		for(int i = 0; i < points.size(); ++i) {
@@ -722,6 +732,7 @@ public class StyledConverter implements OsmConverter {
 			}
 
 			road.setStartsWithNode(nodeIndices.get(0) == 0);
+			road.setEndsWithNode(nodeIndices.get(nodeIndices.size()-1) == points.size()-1);
 			road.setInternalNodes(hasInternalNodes);
 		}
 

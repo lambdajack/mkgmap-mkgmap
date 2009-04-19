@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.app.Coord;
@@ -51,12 +52,14 @@ import uk.me.parabola.imgfmt.app.trergn.Zoom;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.Version;
 import uk.me.parabola.mkgmap.filters.BaseFilter;
+import uk.me.parabola.mkgmap.filters.DouglasPeuckerFilter;
 import uk.me.parabola.mkgmap.filters.FilterConfig;
 import uk.me.parabola.mkgmap.filters.LineSplitterFilter;
 import uk.me.parabola.mkgmap.filters.MapFilter;
 import uk.me.parabola.mkgmap.filters.MapFilterChain;
 import uk.me.parabola.mkgmap.filters.PolygonSplitterFilter;
 import uk.me.parabola.mkgmap.filters.RemoveEmpty;
+import uk.me.parabola.mkgmap.filters.SizeFilter;
 import uk.me.parabola.mkgmap.filters.SmoothingFilter;
 import uk.me.parabola.mkgmap.general.Exit;
 import uk.me.parabola.mkgmap.general.LevelInfo;
@@ -102,6 +105,10 @@ public class MapBuilder implements Configurable {
 	private String countryAbbr = "ABC";
 	private String regionName;
 	private String regionAbbr;
+
+	private double reducePointError;
+	private boolean mergeLines;
+
 	private int		locationAutofillLevel;
 	private boolean	poiAddresses = true;
 	private int		poiDisplayFlags;
@@ -119,6 +126,8 @@ public class MapBuilder implements Configurable {
 		countryAbbr = props.getProperty("country-abbr", countryAbbr);
 		regionName = props.getProperty("region-name", null);
 		regionAbbr = props.getProperty("region-abbr", null);
+		reducePointError = props.getProperty("reduce-point-density", 2.6);
+		mergeLines = props.containsKey("merge-lines");
 		
 		if(props.getProperty("no-poi-address", null) != null)
 			poiAddresses = false;
@@ -800,6 +809,126 @@ public class MapBuilder implements Configurable {
 		}
 	}
 
+	class MultiHashMap<K,V> extends HashMap<K,List<V>> {
+	
+		/**
+		* the empty list to be returned when there is key without values.
+		*/
+		private List<V> emptyList = Collections.unmodifiableList(new ArrayList<V>(0));
+
+		/**
+		* Returns the list of values associated with the given key.
+		*
+		* @param o the key to get the values for.
+		* @return a list of values for the given keys or the empty list of no such
+		*         value exist.
+		*/
+		public List<V> get(K key) {
+			List<V> result = super.get(key);
+			return result == null ? emptyList : result;
+		}
+
+
+		public V add(K key, V value )
+		{
+		    
+		    List<V> values = super.get(key);
+		    if (values == null ) {
+		        values = new LinkedList<V>();
+		        super.put( key, values );
+		    }
+		    
+		    boolean results = values.add(value);
+		    
+		    return ( results ? value : null );
+		}
+
+		public V remove(K key, V value )
+		{
+		    
+		    List<V> values = super.get(key);
+		    if (values == null )
+				return null;
+		
+		    values.remove(value);
+			
+			if (values.size() == 0)
+				super.remove(values);
+
+			return value;
+		}
+	}
+
+
+	class LineMergeFilter{
+		List<MapLine> linesMerged;
+		MultiHashMap<Coord, MapLine> startPoints = new MultiHashMap<Coord, MapLine>();
+		MultiHashMap<Coord, MapLine> endPoints = new MultiHashMap<Coord, MapLine>();
+	
+		public LineMergeFilter() {}
+
+		private void addLine(MapLine line) {
+			linesMerged.add(line);
+			List<Coord> points = line.getPoints();
+			startPoints.add(points.get(0), line);
+			endPoints.add(points.get(points.size()-1), line);
+		}
+		
+		private void addPointsAtStart(MapLine line, List<Coord> additionalPoints) {
+			log.info("merged lines before " + line.getName());
+			List<Coord> points = line.getPoints();
+			startPoints.remove(points.get(0), line);
+			line.insertPointsAtStart(additionalPoints);
+			startPoints.add(points.get(0), line);
+		}
+		
+		private void addPointsAtEnd(MapLine line, List<Coord> additionalPoints) {
+			log.info("merged lines after " + line.getName());
+			List<Coord> points = line.getPoints();
+			endPoints.remove(points.get(points.size()-1), line);
+			line.insertPointsAtEnd(additionalPoints);
+			endPoints.add(points.get(points.size()-1), line);
+		}
+
+		public List<MapLine> merge(List<MapLine> lines) {
+			linesMerged = new ArrayList<MapLine>(lines.size());	//better use LinkedList??
+			for (MapLine line1 : lines) {
+				boolean isMerged = false;
+				List<Coord> points1 = line1.getPoints();
+				Coord start = points1.get(0); 
+				Coord end = points1.get(points1.size()-1); 
+
+				// Search for start point in hashlist
+				for (MapLine line2 : startPoints.get(end)) {
+					if (line1.isSimilar(line2)) {
+						addPointsAtStart(line2, points1);
+						isMerged = true;
+						break;
+					}
+				}
+
+				// Search for endpoint in hashlist
+				for (MapLine line2 : endPoints.get(start)) {
+					if (line1.isSimilar(line2) /*&& 
+						!line2.getPoints().get(0).equals(start)*/) {	// don't mak a loop a double loop
+						addPointsAtEnd(line2, points1);
+						isMerged = true;
+						break;
+					}
+				}
+				if (isMerged)
+					continue;
+
+				// No matching, create a new line
+				MapLine l = line1.copy();
+				List<Coord> p = new ArrayList<Coord>(line1.getPoints());	//use better LinkedList for performance?
+				l.setPoints(p);				
+				addLine(l);
+			}
+			return linesMerged;
+		}
+	
+	}
 	/**
 	 * Step through the lines, filter, simplify if necessary, and create a map
 	 * line which is then added to the map.
@@ -820,8 +949,16 @@ public class MapBuilder implements Configurable {
 		FilterConfig config = new FilterConfig();
 		config.setResolution(res);
 
+
+		if (mergeLines) {
+			LineMergeFilter merger = new LineMergeFilter();
+			lines = merger.merge(lines);
+		}
+
 		LayerFilterChain filters = new LayerFilterChain(config);
-		filters.addFilter(new SmoothingFilter());
+		filters.addFilter(new SizeFilter());
+//		filters.addFilter(new SmoothingFilter());
+		filters.addFilter(new DouglasPeuckerFilter(reducePointError));
 		filters.addFilter(new LineSplitterFilter());
 		filters.addFilter(new RemoveEmpty());
 		filters.addFilter(new LineAddFilter(div, map, doRoads));
@@ -854,7 +991,11 @@ public class MapBuilder implements Configurable {
 		FilterConfig config = new FilterConfig();
 		config.setResolution(res);
 		LayerFilterChain filters = new LayerFilterChain(config);
-		filters.addFilter(new SmoothingFilter());
+		filters.addFilter(new SizeFilter());
+//		filters.addFilter(new SmoothingFilter());
+//DouglasPeucker behaves at the moment not really optimal at low zooms, but acceptable.
+//Is there an similar algorithm for polygons?
+		filters.addFilter(new DouglasPeuckerFilter(reducePointError));
 		filters.addFilter(new PolygonSplitterFilter());
 		filters.addFilter(new RemoveEmpty());
 		filters.addFilter(new ShapeAddFilter(div, map));

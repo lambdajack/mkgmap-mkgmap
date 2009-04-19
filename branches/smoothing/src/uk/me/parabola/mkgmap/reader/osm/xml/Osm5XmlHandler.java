@@ -393,6 +393,7 @@ class Osm5XmlHandler extends DefaultHandler {
 					Double.parseDouble(xmlattr.getValue("minlon")),
 					Double.parseDouble(xmlattr.getValue("maxlat")),
 					Double.parseDouble(xmlattr.getValue("maxlon")));
+			log.debug("Map bbox from xmlattr: " + bbox);
 		} catch (NumberFormatException e) {
 			// just ignore it
 			log.warn("NumberformatException: Cannot read bbox");
@@ -404,7 +405,6 @@ class Osm5XmlHandler extends DefaultHandler {
 		try {
 			setBBox(Double.parseDouble(f[0]), Double.parseDouble(f[1]),
 					Double.parseDouble(f[2]), Double.parseDouble(f[3]));
-			log.debug("Map bbox: " + bbox);
 		} catch (NumberFormatException e) {
 			// just ignore it
 			log.warn("NumberformatException: Cannot read bbox");
