@@ -15,6 +15,8 @@
 package uk.me.parabola.imgfmt.app.net;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -67,6 +69,7 @@ public class RouteNode implements Comparable<RouteNode> {
 	private final CoordNode coord;
 	private char latOff;
 	private char lonOff;
+	private List<RouteArc[]> throughRoutes;
 
 	// this is for setting destination class on arcs
 	// we're taking the maximum of roads this node is
@@ -295,15 +298,11 @@ public class RouteNode implements Comparable<RouteNode> {
 
 	private static boolean possiblySameRoad(RouteArc raa, RouteArc rab) {
 
-		if(raa == rab) {
-			// the arcs are the same object
-			return true;
-		}
-
 		RoadDef rda = raa.getRoadDef();
 		RoadDef rdb = rab.getRoadDef();
-		if(rda == rdb) {
-			// the arcs share the same RoadDef
+
+		if(rda.getId() == rdb.getId()) {
+			// roads have the same (OSM) id
 			return true;
 		}
 
@@ -348,6 +347,26 @@ public class RouteNode implements Comparable<RouteNode> {
 		return false;
 	}
 
+	private static boolean rightTurnRequired(int inHeading, int outHeading, int sideHeading) {
+		// given the headings of the incoming, outgoing and side
+		// roads, decide whether a side road is to the left or the
+		// right of the main road
+
+		outHeading -= inHeading;
+		while(outHeading < -180)
+			outHeading += 360;
+		while(outHeading > 180)
+			outHeading -= 360;
+
+		sideHeading -= inHeading;
+		while(sideHeading < -180)
+			sideHeading += 360;
+		while(sideHeading > 180)
+			sideHeading -= 360;
+
+		return sideHeading > outHeading;
+	}
+
 	private static int ATH_OUTGOING = 1;
 	private static int ATH_INCOMING = 2;
 
@@ -384,9 +403,29 @@ public class RouteNode implements Comparable<RouteNode> {
 			final int minDiffBetweenOutgoingAndOtherArcs = 45;
 			final int minDiffBetweenIncomingAndOtherArcs = 50;
 
-			for(RouteArc inArc : incomingArcs) {
+			// list of outgoing arcs discovered at this node
+			List<RouteArc> outgoingArcs = new ArrayList<RouteArc>();
 
-				if(!inArc.isForward() && inArc.getRoadDef().isOneway()) {
+			// sort incoming arcs by decreasing class/speed
+			List<RouteArc> inArcs = new ArrayList<RouteArc>(incomingArcs);
+
+			Collections.sort(inArcs, new Comparator<RouteArc>() {
+					public int compare(RouteArc ra1, RouteArc ra2) {
+						int c1 = ra1.getRoadDef().getRoadClass();
+						int c2 = ra2.getRoadDef().getRoadClass();
+						if(c1 == c2)
+							return (ra2.getRoadDef().getRoadSpeed() - 
+									ra1.getRoadDef().getRoadSpeed());
+						return c2 - c1;
+					}
+				});
+
+			// look at incoming arcs in order of decreasing class/speed
+			for(RouteArc inArc : inArcs) {
+
+				RoadDef inRoadDef = inArc.getRoadDef();
+
+				if(!inArc.isForward() && inRoadDef.isOneway()) {
 					// ignore reverse arc if road is oneway
 					continue;
 				}
@@ -395,30 +434,102 @@ public class RouteNode implements Comparable<RouteNode> {
 				// determine the outgoing arc that is likely to be the
 				// same road as the incoming arc
 				RouteArc outArc = null;
-				for(RouteArc oa : arcs) {
-					if(oa.getDest() != inArc.getSource()) {
-						// this arc is not going to the same node as
-						// inArc came from
-						if((oa.isForward() || !oa.getRoadDef().isOneway()) &&
-						   possiblySameRoad(inArc, oa)) {
-							outArc = oa;
+
+				if(throughRoutes != null) {
+					// through_route relations have the highest precedence
+					for(RouteArc[] pair : throughRoutes) {
+						if(pair[0] == inArc) {
+							outArc = pair[1];
+							log.info("Found through route from " + inRoadDef + " to " + outArc.getRoadDef());
 							break;
 						}
 					}
 				}
+
+				if(outArc == null) {
+					// next, if oa has the same RoadDef as inArc, it's
+					// definitely the same road
+					for(RouteArc oa : arcs) {
+						if(oa.getDest() != inArc.getSource()) {
+							// this arc is not going to the same node as
+							// inArc came from
+							if(oa.getRoadDef() == inRoadDef) {
+								outArc = oa;
+								break;
+							}
+						}
+					}
+				}
+
+				if(outArc == null) {
+					// next, although the RoadDefs don't match, use
+					// possiblySameRoad() to see if the roads' id or
+					// labels (names/refs) match
+					for(RouteArc oa : arcs) {
+						if(oa.getDest() != inArc.getSource()) {
+							// this arc is not going to the same node as
+							// inArc came from
+							if((oa.isForward() || !oa.getRoadDef().isOneway()) &&
+							   possiblySameRoad(inArc, oa)) {
+								outArc = oa;
+								break;
+							}
+						}
+					}
+				}
+
+				if(false && outArc == null) {
+					// last ditch attempt to find the outgoing arc -
+					// try and find a single arc that has the same
+					// road class and speed as the incoming arc
+					int inArcClass = inArc.getRoadDef().getRoadClass();
+					int inArcSpeed = inArc.getRoadDef().getRoadSpeed();
+					for(RouteArc oa : arcs) {
+						if(oa.getDest() != inArc.getSource() &&
+						   oa.getRoadDef().getRoadClass() == inArcClass &&
+						   oa.getRoadDef().getRoadSpeed() == inArcSpeed) {
+							if(outArc != null) {
+								// multiple arcs have the same road
+								// class/speed as the incoming arc so
+								// don't use any of them as the
+								// outgoing arc
+								outArc = null;
+								break;
+							}
+							// oa has the same class/speed as inArc,
+							// now check that oa is not part of
+							// another road by matching names rather
+							// than class/speed because they could be
+							// different
+							boolean paired = false;
+							for(RouteArc z : arcs)
+								if(z != oa && possiblySameRoad(z, oa))
+									paired = true;
+							if(!paired)
+								outArc = oa;
+						}
+					}
+					if(outArc != null)
+						log.info("Matched outgoing arc " + outArc.getRoadDef() + " to " + inRoadDef + " using road class (" + inArcClass + ") and speed (" + inArcSpeed + ") at " + coord.toOSMURL()); 
+				}
+
 				// if we did not find the outgoing arc, give up with
 				// this incoming arc
 				if(outArc == null) {
-					//log.info("Can't continue road " + inArc.getRoadDef() + " at " + coord.toOSMURL());
+					//log.info("Can't continue road " + inRoadDef + " at " + coord.toOSMURL());
 					continue;
 				}
+
+				// remember that this arc is an outgoing arc
+				outgoingArcs.add(outArc);
+
 				int outHeading = outArc.getInitialHeading();
 				int mainHeadingDelta = outHeading - inHeading;
 				while(mainHeadingDelta > 180)
 					mainHeadingDelta -= 360;
 				while(mainHeadingDelta < -180)
 					mainHeadingDelta += 360;
-				//log.info(inArc.getRoadDef() + " continues to " + outArc.getRoadDef() + " with a heading change of " + mainHeadingDelta + " at " + coord.toOSMURL());
+				//log.info(inRoadDef + " continues to " + outArc.getRoadDef() + " with a heading change of " + mainHeadingDelta + " at " + coord.toOSMURL());
 
 				if(Math.abs(mainHeadingDelta) > maxMainRoadHeadingChange) {
 					// if the continuation road heading change is
@@ -449,19 +560,20 @@ public class RouteNode implements Comparable<RouteNode> {
 						continue;
 					}
 
-					if(possiblySameRoad(inArc, otherArc) ||
-					   possiblySameRoad(outArc, otherArc)) {
-						// not obviously a different road so give up
-						continue;
-					}
-
-					if(inArc.getRoadDef().isLinkRoad() &&
+					if(inRoadDef.isLinkRoad() &&
 					   otherArc.getRoadDef().isLinkRoad()) {
 						// it's a link road leaving a link road so
 						// leave the angle unchanged to avoid
 						// introducing a time penalty by increasing
 						// the angle (this stops the router using link
 						// roads that "cut the corner" at roundabouts)
+						continue;
+					}
+
+					if(outgoingArcs.contains(otherArc)) {
+						// this arc was previously matched as an
+						// outgoing arc so we don't want to change its
+						// heading now
 						continue;
 					}
 
@@ -478,33 +590,39 @@ public class RouteNode implements Comparable<RouteNode> {
 						inToOtherDelta += 360;
 
 					int newHeading = otherHeading;
-					if(outToOtherDelta > 0) {
+					if(rightTurnRequired(inHeading, outHeading, otherHeading)) {
 						// side road to the right
 						if((mask & ATH_OUTGOING) != 0 &&
-						   outToOtherDelta < minDiffBetweenOutgoingAndOtherArcs)
+						   Math.abs(outToOtherDelta) < minDiffBetweenOutgoingAndOtherArcs)
 							newHeading = outHeading + minDiffBetweenOutgoingAndOtherArcs;
-						else if((mask & ATH_INCOMING) != 0 &&
-								inToOtherDelta < minDiffBetweenIncomingAndOtherArcs)
-							newHeading = inHeading + minDiffBetweenIncomingAndOtherArcs;
+						if((mask & ATH_INCOMING) != 0 &&
+						   Math.abs(inToOtherDelta) < minDiffBetweenIncomingAndOtherArcs) {
+							int nh = inHeading + minDiffBetweenIncomingAndOtherArcs;
+							if(nh > newHeading)
+								newHeading = nh;
+						}
 
 						if(newHeading > 180)
 							newHeading -= 360;
 					}
-					else if(outToOtherDelta < 0) {
+					else {
 						// side road to the left
 						if((mask & ATH_OUTGOING) != 0 &&
-						   outToOtherDelta > -minDiffBetweenOutgoingAndOtherArcs)
+						   Math.abs(outToOtherDelta) < minDiffBetweenOutgoingAndOtherArcs)
 							newHeading = outHeading - minDiffBetweenOutgoingAndOtherArcs;
-						else if((mask & ATH_INCOMING) != 0 &&
-								inToOtherDelta > -minDiffBetweenIncomingAndOtherArcs)
-							newHeading = inHeading - minDiffBetweenIncomingAndOtherArcs;
+						if((mask & ATH_INCOMING) != 0 &&
+						   Math.abs(inToOtherDelta) < minDiffBetweenIncomingAndOtherArcs) {
+							int nh = inHeading - minDiffBetweenIncomingAndOtherArcs;
+							if(nh < newHeading)
+								newHeading = nh;
+						}
 
 						if(newHeading < -180)
 							newHeading += 360;
 					}
 					if(newHeading != otherHeading) {
 						otherArc.setInitialHeading(newHeading);
-						log.info("Adjusting turn heading from " + otherHeading + " to " + newHeading + " at junction of " + inArc.getRoadDef() + " and " + otherArc.getRoadDef() + " at " + coord.toOSMURL());
+						log.info("Adjusting turn heading from " + otherHeading + " to " + newHeading + " at junction of " + inRoadDef + " and " + otherArc.getRoadDef() + " at " + coord.toOSMURL());
 					}
 				}
 			}
@@ -554,6 +672,32 @@ public class RouteNode implements Comparable<RouteNode> {
 		}
 	}
 
+	// determine "distance" between two nodes on a roundabout
+	private int roundaboutSegmentLength(final RouteNode n1, final RouteNode n2) {
+		List<RouteNode> seen = new ArrayList<RouteNode>();
+		int len = 0;
+		RouteNode n = n1;
+		boolean checkMoreLinks = true;
+		while(checkMoreLinks && !seen.contains(n)) {
+			checkMoreLinks = false;
+			seen.add(n);
+			for(RouteArc a : n.arcs) {
+				if(a.isForward() &&
+				   a.getRoadDef().isRoundabout() &&
+				   !a.getRoadDef().isSynthesised()) {
+					len += a.getLength();
+					n = a.getDest();
+					if(n == n2)
+						return len;
+					checkMoreLinks = true;
+					break;
+				}
+			}
+		}
+		// didn't find n2
+		return Integer.MAX_VALUE;
+	}
+
 	// sanity check roundabout flare roads - the flare roads connect a
 	// two-way road to a roundabout using short one-way segments so
 	// the resulting sub-junction looks like a triangle with two
@@ -566,12 +710,63 @@ public class RouteNode implements Comparable<RouteNode> {
 			// roundabout
 			if(!r.isForward() || !r.getRoadDef().isRoundabout() || r.getRoadDef().isSynthesised())
 				continue;
-			// now try and find the two arcs that make up the
-			// triangular "flare" connected to both ends of r
+
+			// follow the arc to find the first node that connects the
+			// roundabout to a non-roundabout segment
 			RouteNode nb = r.getDest();
+			List<RouteNode> seen = new ArrayList<RouteNode>();
+			seen.add(this);
+
+			for(;;) {
+
+				if(seen.contains(nb)) {
+					// looped - give up
+					nb = null;
+					break;
+				}
+
+				// remember we have seen this node
+				seen.add(nb);
+
+				boolean connectsToNonRoundaboutSegment = false;
+				RouteArc nextRoundaboutArc = null;
+				for(RouteArc nba : nb.arcs) {
+					if(!nba.getRoadDef().isSynthesised()) {
+						if(nba.getRoadDef().isRoundabout()) {
+							if(nba.isForward())
+								nextRoundaboutArc = nba;
+						}
+						else
+							connectsToNonRoundaboutSegment = true;
+					}
+				}
+
+				if(connectsToNonRoundaboutSegment) {
+					// great, that's what we're looking for
+					break;
+				}
+
+				if(nextRoundaboutArc == null) {
+					// not so good, the roundabout stops in mid air?
+					nb = null;
+					break;
+				}
+
+				nb = nextRoundaboutArc.getDest();
+			}
+
+			if(nb == null) {
+				// something's not right so give up
+				continue;
+			}
+
+			// now try and find the two arcs that make up the
+			// triangular "flare" connected to both ends of the
+			// roundabout segment
 			for(RouteArc fa : arcs) {
 				if(!fa.getRoadDef().doFlareCheck())
 					continue;
+
 				for(RouteArc fb : nb.arcs) {
 					if(!fb.getRoadDef().doFlareCheck())
 						continue;
@@ -579,32 +774,24 @@ public class RouteNode implements Comparable<RouteNode> {
 						// found the 3rd point of the triangle that
 						// should be connecting the two flare roads
 
-						// first, special test for roundabouts that
-						// have a single flare and no other
-						// connections - only check the flare for the
-						// shorter of the two roundabout segments
+						// first, special test required to cope with
+						// roundabouts that have a single flare and no
+						// other connections - only check the flare
+						// for the shorter of the two roundabout
+						// segments
 
-						boolean isShortest = true;
-						for(RouteArc rb : nb.arcs) {
-							if(rb.getDest() == this &&
-							   rb.isForward() &&
-							   rb.getRoadDef().isRoundabout()) {
-								isShortest = r.getLength() < rb.getLength();
-								break;
-							}
-						}
-
-						if(!isShortest)
+						if(roundaboutSegmentLength(this, nb) >=
+						   roundaboutSegmentLength(nb, this))
 							continue;
 
 						if(maxFlareLengthRatio > 0) {
 							// if both of the flare roads are much
-							// longer than the length of r, they are
-							// probably not flare roads at all but
-							// just two roads that meet up - so ignore
-							// them
-							final int maxFlareLength = r.getLength() * maxFlareLengthRatio;
-							if(r.getLength() > 0 &&
+							// longer than the length of the
+							// roundabout segment, they are probably
+							// not flare roads at all but just two
+							// roads that meet up - so ignore them
+							final int maxFlareLength = roundaboutSegmentLength(this, nb) * maxFlareLengthRatio;
+							if(maxFlareLength > 0 &&
 							   fa.getLength() > maxFlareLength &&
 							   fb.getLength() > maxFlareLength) {
 								continue;
@@ -731,5 +918,35 @@ public class RouteNode implements Comparable<RouteNode> {
 				}
 			}
 		}
+	}
+
+	public void addThroughRoute(long roadIdA, long roadIdB) {
+		if(throughRoutes == null)
+			throughRoutes = new ArrayList<RouteArc[]>();
+		boolean success = false;
+		for(RouteArc arc1 : incomingArcs) {
+			if(arc1.getRoadDef().getId() == roadIdA) {
+				for(RouteArc arc2 : arcs) {
+					if(arc2.getRoadDef().getId() == roadIdB) {
+						throughRoutes.add(new RouteArc[] { arc1, arc2 });
+						success = true;
+						break;
+					}
+				}
+			}
+			else if(arc1.getRoadDef().getId() == roadIdB) {
+				for(RouteArc arc2 : arcs) {
+					if(arc2.getRoadDef().getId() == roadIdA) {
+						throughRoutes.add(new RouteArc[] { arc1, arc2 });
+						success = true;
+						break;
+					}
+				}
+			}
+		}
+		if(success)
+			log.info("Added through route between ways " + roadIdA + " and " + roadIdB + " at " + coord.toOSMURL());
+		else
+			log.warn("Failed to add through route between ways " + roadIdA + " and " + roadIdB + " at " + coord.toOSMURL() + " - perhaps they don't meet here?");
 	}
 }

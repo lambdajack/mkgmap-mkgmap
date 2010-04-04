@@ -19,19 +19,24 @@ package uk.me.parabola.mkgmap.osmstyle;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.Option;
 import uk.me.parabola.mkgmap.OptionProcessor;
@@ -70,7 +75,7 @@ public class StyleImpl implements Style {
 
 	// General options just have a value and don't need any special processing.
 	private static final Collection<String> OPTION_LIST = new ArrayList<String>(
-			Arrays.asList("levels"));
+			Arrays.asList("levels", "extra-used-tags"));
 
 	// Options that should not be overridden from the command line if the
 	// value is empty.
@@ -187,6 +192,7 @@ public class StyleImpl implements Style {
 	}
 
 	public Rule getNodeRules() {
+		nodes.prepare();
 		return nodes;
 	}
 
@@ -194,10 +200,12 @@ public class StyleImpl implements Style {
 		RuleSet r = new RuleSet();
 		r.addAll(lines);
 		r.addAll(polygons);
+		r.prepare();
 		return r;
 	}
 
 	public Rule getRelationRules() {
+		relations.prepare();
 		return relations;
 	}
 
@@ -212,6 +220,49 @@ public class StyleImpl implements Style {
 			};
 		}
 		return adder;
+	}
+
+	public Set<String> getUsedTags() {
+		Set<String> set = new HashSet<String>();
+		set.addAll(relations.getUsedTags());
+		set.addAll(lines.getUsedTags());
+		set.addAll(polygons.getUsedTags());
+		set.addAll(nodes.getUsedTags());
+
+		// this is to allow style authors to say that tags are really used even
+		// if they are not found in the style file.  This is mostly to work
+		// around situations that we haven't thought of - the style is expected
+		// to get it right for itself.
+		String s = getOption("extra-used-tags");
+		if (s != null)
+			set.addAll(Arrays.asList(COMMA_OR_SPACE_PATTERN.split(s)));
+
+		// These tags are passed on the command line and so must be added
+		if (nameTagList != null)
+			set.addAll(Arrays.asList(nameTagList));
+
+		// There are a lot of tags that are used within mkgmap that 
+		InputStream is = getClass().getResourceAsStream("/styles/builtin-tag-list");
+		try {
+			if (is != null) {
+				BufferedReader br = new BufferedReader(new InputStreamReader(is));
+				//System.out.println("Got built in list");
+				String line;
+				while ((line = br.readLine()) != null) {
+					line = line.trim();
+					if (line.startsWith("#"))
+						continue;
+					//System.out.println("adding " + line);
+					set.add(line);
+				}
+			}
+		} catch (IOException e) {
+			// the file doesn't exist, this is ok but unlikely
+			System.err.println("warning: built in tag list not found");
+		} finally {
+			Utils.closeFile(is);
+		}
+		return set;
 	}
 
 	private void readRules() {
@@ -285,13 +336,13 @@ public class StyleImpl implements Style {
 		addBackwardCompatibleRules();
 
 		for (Map.Entry<String, GType> me : mfr.getLineFeatures().entrySet())
-			lines.add(createRule(me.getKey(), me.getValue()));
+			lines.add(me.getKey(), createRule(me.getKey(), me.getValue()), Collections.<String>emptySet());
 
 		for (Map.Entry<String, GType> me : mfr.getShapeFeatures().entrySet())
-			polygons.add(createRule(me.getKey(), me.getValue()));
+			polygons.add(me.getKey(), createRule(me.getKey(), me.getValue()), Collections.<String>emptySet());
 
 		for (Map.Entry<String, GType> me : mfr.getPointFeatures().entrySet())
-			nodes.add(createRule(me.getKey(), me.getValue()));
+			nodes.add(me.getKey(), createRule(me.getKey(), me.getValue()), Collections.<String>emptySet());
 	}
 
 	/**
@@ -311,7 +362,7 @@ public class StyleImpl implements Style {
 		Op expr = new ExistsOp();
 		expr.setFirst(new ValueOp("highway"));
 		Rule rule = new ActionRule(expr, l);
-		lines.add(rule);
+		lines.add("highway=*", rule, Collections.<String>emptySet());
 
 		// Name rule for contour lines
 		l = new ArrayList<Action>();
@@ -323,13 +374,13 @@ public class StyleImpl implements Style {
 		expr2.setFirst(new ValueOp("contour"));
 		expr2.setSecond(new ValueOp("elevation"));
 		rule = new ActionRule(expr2, l);
-		lines.add(rule); // "contour=elevation"
+		lines.add("contour=elevation", rule, Collections.<String>emptySet()); // "contour=elevation"
 
 		expr2 = new EqualsOp();
-		expr2.setFirst(new ValueOp("contour"));
+		expr2.setFirst(new ValueOp("contour_ext"));
 		expr2.setSecond(new ValueOp("elevation"));
 		rule = new ActionRule(expr2, l);
-		lines.add(rule); // "contour_ext=elevation"
+		lines.add("contour_ext=elevation", rule, Collections.<String>emptySet()); // "contour_ext=elevation"
 	}
 
 	/**

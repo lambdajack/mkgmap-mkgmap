@@ -5,15 +5,20 @@
       <w>bbox</w>
       <w>coord</w>
       <w>coords</w>
+      <w>fixme</w>
+      <w>geofabrik</w>
       <w>indexable</w>
       <w>maxspeed</w>
       <w>multipolygon</w>
       <w>oneway</w>
+      <w>oneways</w>
+      <w>peucker</w>
       <w>ratcliffe</w>
       <w>routable</w>
       <w>seamark</w>
       <w>startup</w>
       <w>subtree</w>
+      <w>usedom</w>
     </words>
   </dictionary>
 </component>

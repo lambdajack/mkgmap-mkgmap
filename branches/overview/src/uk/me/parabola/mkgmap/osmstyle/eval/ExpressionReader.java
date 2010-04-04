@@ -1,11 +1,13 @@
 package uk.me.parabola.mkgmap.osmstyle.eval;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Stack;
 
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.scan.TokenScanner;
 
-import static uk.me.parabola.mkgmap.osmstyle.eval.Op.*;
+import static uk.me.parabola.mkgmap.osmstyle.eval.AbstractOp.*;
 
 /**
  * Read an expression from a style file.
@@ -16,6 +18,8 @@ public class ExpressionReader {
 	private final Stack<Op> stack = new Stack<Op>();
 	private final Stack<Op> opStack = new Stack<Op>();
 	private final TokenScanner scanner;
+
+	private final Set<String> usedTags = new HashSet<String>();
 
 	public ExpressionReader(TokenScanner scanner) {
 		this.scanner = scanner;
@@ -51,6 +55,14 @@ public class ExpressionReader {
 	}
 
 	/**
+	 * Tags used in all the expressions in this file.
+	 * @return A set of tag names.
+	 */
+	public Set<String> getUsedTags() {
+		return usedTags;
+	}
+
+	/**
 	 * An operation is saved on the operation stack.  The tree is built
 	 * as operations of different priorities arrive.
 	 */
@@ -60,9 +72,10 @@ public class ExpressionReader {
 			scanner.skipLine();
 			return;
 		}
+
 		Op op;
 		try {
-			op = Op.createOp(value);
+			op = AbstractOp.createOp(value);
 			while (!opStack.isEmpty() && opStack.peek().hasHigherPriority(op))
 				runOp();
 		} catch (SyntaxException e) {
@@ -106,6 +119,10 @@ public class ExpressionReader {
 		} else if (!op.isType(OPEN_PAREN)) {
 			op.setFirst(stack.pop());
 		}
+
+		if (op.getFirst().isType(VALUE))
+			usedTags.add(op.getFirst().value());
+
 		stack.push(op);
 	}
 

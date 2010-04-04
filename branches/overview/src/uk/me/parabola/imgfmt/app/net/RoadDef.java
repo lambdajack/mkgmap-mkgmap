@@ -70,18 +70,10 @@ public class RoadDef implements Comparable {
 		this.name = name;
 	}
 
-	public void showOSMBrowseURL() {
-		showBrowseURL = true;
-	}
-
 	// for diagnostic purposes
 	public String toString() {
-		String browseURL;
-		if(showBrowseURL)
-			browseURL = "http://www.openstreetmap.org/browse/way/" + id;
-		else
-			browseURL = "" + id;
-
+		// assumes id is an OSM id
+		String browseURL = "http://www.openstreetmap.org/browse/way/" + id;
 		if(name != null)
 			return "(" + name + ", " + browseURL + ")";
 		else
@@ -128,7 +120,6 @@ public class RoadDef implements Comparable {
 	private boolean synthesised;
 	private boolean flareCheck;
 	private boolean deadEndCheck;
-	private boolean showBrowseURL;
 	private Set<String> messageIssued;
 
 	/**
@@ -345,7 +336,7 @@ public class RoadDef implements Comparable {
 	 */
 	void writeRgnOffsets(ImgFileWriter rgn) {
 		if (offsetNet1 >= 0x400000)
-			throw new ExitException("Overflow of the NET1. The tile must be split so that there are fewer road in it");
+			throw new ExitException("Overflow of the NET1. The tile (" + log.threadTag() + ") must be split so that there are fewer roads in it");
 
 		for (Offset off : rgnOffsets) {
 			rgn.position(off.getPosition());
@@ -553,6 +544,10 @@ public class RoadDef implements Comparable {
 
 		/* for NOD 2 */
 		nod2Flags |= (speed << 1);
+	}
+
+	public int getRoadSpeed() {
+		return tabAInfo & 7;
 	}
 
 	public void setOneway() {

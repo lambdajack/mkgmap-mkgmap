@@ -27,6 +27,7 @@ import uk.me.parabola.mkgmap.osmstyle.actions.ActionReader;
 import uk.me.parabola.mkgmap.osmstyle.eval.AndOp;
 import uk.me.parabola.mkgmap.osmstyle.eval.BinaryOp;
 import uk.me.parabola.mkgmap.osmstyle.eval.ExpressionReader;
+import uk.me.parabola.mkgmap.osmstyle.eval.LinkedOp;
 import uk.me.parabola.mkgmap.osmstyle.eval.Op;
 import uk.me.parabola.mkgmap.osmstyle.eval.OrOp;
 import uk.me.parabola.mkgmap.osmstyle.eval.SyntaxException;
@@ -34,7 +35,7 @@ import uk.me.parabola.mkgmap.reader.osm.GType;
 import uk.me.parabola.mkgmap.reader.osm.Rule;
 import uk.me.parabola.mkgmap.scan.TokenScanner;
 
-import static uk.me.parabola.mkgmap.osmstyle.eval.Op.*;
+import static uk.me.parabola.mkgmap.osmstyle.eval.AbstractOp.*;
 
 /**
  * Read a rules file.  A rules file contains a list of rules and the
@@ -93,6 +94,10 @@ public class RuleFileReader {
 			saveRule(expr, actionList, type);
 			scanner.skipSpace();
 		}
+
+		rules.addUsedTags(expressionReader.getUsedTags());
+		rules.addUsedTags(actionReader.getUsedTags());
+		rules.prepare();
 	}
 
 	/**
@@ -116,7 +121,7 @@ public class RuleFileReader {
 		if (op2 instanceof BinaryOp) {
 			optimiseAndSaveBinaryOp((BinaryOp) op2, actions, gt);
 		} else {
-			optimiseAndSaveOtherOp(this, op2, actions, gt);
+			optimiseAndSaveOtherOp(op2, actions, gt);
  		}
 	}
 
@@ -135,18 +140,18 @@ public class RuleFileReader {
 		if (op.isType(AND)) {
 			// Recursively re-arrange the child nodes
 			rearrangeExpression(op.getFirst());
-			rearrangeExpression(((AndOp) op).getSecond());
+			rearrangeExpression(((BinaryOp) op).getSecond());
 
-			swapForSelectivity((AndOp) op);
+			swapForSelectivity((BinaryOp) op);
 			Op op1 = op.getFirst();
-			Op op2 = ((AndOp) op).getSecond();
+			Op op2 = ((BinaryOp) op).getSecond();
 			
 			// If the first term is an EQUALS or EXISTS then this subtree is
 			// already solved and we need to do no more.
 			if (isSolved(op1)) {
-				return rearrangeAnd((AndOp) op, op1, op2);
+				return rearrangeAnd((BinaryOp) op, op1, op2);
 			} else if (isSolved(op2)) {
-				return rearrangeAnd((AndOp) op, op2, op1);
+				return rearrangeAnd((BinaryOp) op, op2, op1);
 			}
 		}
 
@@ -158,7 +163,7 @@ public class RuleFileReader {
 	 * is first.
 	 * @param op A AND operation.
 	 */
-	private static void swapForSelectivity(AndOp op) {
+	private static void swapForSelectivity(BinaryOp op) {
 		Op first = op.getFirst();
 		int sel1 = selectivity(first);
 		Op second = op.getSecond();
@@ -179,7 +184,7 @@ public class RuleFileReader {
 	 * @return A re-arranged expression with an indexable term at the beginning
 	 * or several such expressions ORed together.
 	 */
-	private static BinaryOp rearrangeAnd(AndOp top, Op op1, Op op2) {
+	private static BinaryOp rearrangeAnd(BinaryOp top, Op op1, Op op2) {
 		if (isIndexable(op1)) {
 			top.setFirst(op1);
 			top.setSecond(op2);
@@ -246,7 +251,7 @@ public class RuleFileReader {
 	 */
 	private static boolean isFinished(Op op) {
 		// If we can improve the ordering then we are not done just yet
-		if ((op instanceof BinaryOp) && selectivity(op.getFirst()) > selectivity(((BinaryOp) op).getSecond()))
+		if (op.isType(AND) && selectivity(op.getFirst()) > selectivity(((BinaryOp) op).getSecond()))
 			return false;
 
 		if (isSolved(op))
@@ -282,7 +287,7 @@ public class RuleFileReader {
 			return 1;
 
 		case AND:
-			case OR:
+		case OR:
 			return Math.min(selectivity(op.getFirst()), selectivity(((BinaryOp) op).getSecond()));
 		
 		default:
@@ -290,12 +295,12 @@ public class RuleFileReader {
 		}
 	}
 
-	private static void optimiseAndSaveOtherOp(RuleFileReader ruleFileReader, Op op, ActionList actions, GType gt) {
+	private void optimiseAndSaveOtherOp(Op op, ActionList actions, GType gt) {
 		if (op.isType(EXISTS)) {
 			// The lookup key for the exists operation is 'tag=*'
-			ruleFileReader.createAndSaveRule(op.value() + "=*", op, actions, gt);
+			createAndSaveRule(op.value() + "=*", op, actions, gt);
 		} else {
-			throw new SyntaxException(ruleFileReader.scanner, "Invalid operation '" + op.getType() + "' at top level");
+			throw new SyntaxException(scanner, "Invalid operation '" + op.getType() + "' at top level");
 		}
 	}
 
@@ -321,13 +326,13 @@ public class RuleFileReader {
 		String keystring;
 		if (op.isType(EQUALS)) {
 			if (first.isType(VALUE) && second.isType(VALUE)) {
-				keystring = op.toString();
+				keystring = op.value();
 			} else {
 				throw new SyntaxException(scanner, "Invalid rule file (expr " + op.getType() +')');
 			}
 		} else if (op.isType(AND)) {
 			if (first.isType(EQUALS)) {
-				keystring = first.toString();
+				keystring = first.value();
 			} else if (first.isType(EXISTS)) {
 				keystring = first.value() + "=*";
 			} else if (first.isType(NOT_EXISTS)) {
@@ -336,8 +341,10 @@ public class RuleFileReader {
 				throw new SyntaxException(scanner, "Invalid rule file (expr " + op.getType() +')');
 			}
 		} else if (op.isType(OR)) {
-			saveRule(first, actions, gt);
-			saveRule(second, actions, gt);
+			LinkedOp op1 = LinkedOp.create(first, true);
+			saveRule(op1, actions, gt);
+
+			saveRestOfOr(actions, gt, second, op1);
 			return;
 		} else {
 			throw new SyntaxException(scanner, "Invalid operation '" + op.getType() + "' at top level");
@@ -346,16 +353,29 @@ public class RuleFileReader {
 		createAndSaveRule(keystring, op, actions, gt);
 	}
 
+	private void saveRestOfOr(ActionList actions, GType gt, Op second, LinkedOp op1) {
+		if (second.isType(OR)) {
+			LinkedOp nl = LinkedOp.create(second.getFirst(), false);
+			op1.setLink(nl);
+			saveRule(nl, actions, gt);
+			saveRestOfOr(actions, gt, ((BinaryOp)second).getSecond(), op1);
+		} else {
+			LinkedOp op2 = LinkedOp.create(second, false);
+			op1.setLink(op2);
+			saveRule(op2, actions, gt);
+		}
+	}
+
 	private void createAndSaveRule(String keystring, Op expr, ActionList actions, GType gt) {
 
-		log.debug(keystring); // TODO This will be used - if not delete it
+		//System.out.println(keystring); // TODO This will be used - if not delete it
 		Rule rule;
 		if (actions.isEmpty()) 
 			rule = new ExpressionRule(expr, gt);
 		else
 			rule = new ActionRule(expr, actions.getList(), gt);
 
-		rules.add(rule);
+		rules.add(keystring, rule, actions.getChangeableTags());
 	}
 
 	public static void main(String[] args) throws FileNotFoundException {

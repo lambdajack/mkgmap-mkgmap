@@ -29,6 +29,7 @@ import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.CoordNode;
 import uk.me.parabola.imgfmt.app.Exit;
+import uk.me.parabola.imgfmt.app.Label;
 import uk.me.parabola.imgfmt.app.net.NODHeader;
 import uk.me.parabola.imgfmt.app.trergn.ExtTypeAttributes;
 import uk.me.parabola.log.Logger;
@@ -79,6 +80,8 @@ public class StyledConverter implements OsmConverter {
 	// restrictions associates lists of turn restrictions with the
 	// Coord corresponding to the restrictions' 'via' node
 	private final Map<Coord, List<RestrictionRelation>> restrictions = new IdentityHashMap<Coord, List<RestrictionRelation>>();
+
+	private final List<Relation> throughRouteRelations = new ArrayList<Relation>();
 
 	// originalWay associates Ways that have been created due to
 	// splitting or clipping with the Ways that they were derived
@@ -154,9 +157,11 @@ public class StyledConverter implements OsmConverter {
 		this.collector = collector;
 
 		nameTagList = style.getNameTagList();
+
 		wayRules = style.getWayRules();
 		nodeRules = style.getNodeRules();
 		relationRules = style.getRelationRules();
+
 		ignoreMaxspeeds = props.getProperty("ignore-maxspeeds") != null;
 		driveOnLeft = props.getProperty("drive-on-left") != null;
 		NODHeader.setDriveOnLeft(driveOnLeft);
@@ -167,6 +172,26 @@ public class StyledConverter implements OsmConverter {
 		if (overlayAdder != null)
 			lineAdder = overlayAdder;
 	}
+
+	///**
+	// * There may be tags that are not referenced directly in the style file
+	// * that are used.  This includes the name-tag-list option.  Attempt
+	// * to add such tags here.
+	// * @param style
+	// */
+	//private void addExtraUsedTags(Style style) {
+	//	String s = style.getOption("extra-used-tags");
+	//	Collection<String> usedTags = new HashSet<String>();
+	//	if (s != null)
+	//		usedTags.addAll(Arrays.asList(s.split(" ")));
+	//	if (nameTagList != null)
+	//		usedTags.addAll(Arrays.asList(nameTagList));
+	//
+	//	System.out.println("extra " + usedTags);
+	//	((RuleSet) wayRules).addUsedTags(usedTags);
+	//	((RuleSet) nodeRules).addUsedTags(usedTags);
+	//	((RuleSet) relationRules).addUsedTags(usedTags);
+	//}
 
 	private static final Pattern commaPattern = Pattern.compile(",");
 
@@ -386,6 +411,50 @@ public class StyledConverter implements OsmConverter {
 				rr.addRestriction(collector);
 			}
 		}
+
+		for(Relation relation : throughRouteRelations) {
+			Node node = null;
+			Way w1 = null;
+			Way w2 = null;
+			for(Map.Entry<String,Element> member : relation.getElements()) {
+				if(member.getValue() instanceof Node) {
+					if(node == null)
+						node = (Node)member.getValue();
+					else
+						log.warn("Through route relation " + relation.toBrowseURL() + " has more than 1 node");
+				}
+				else if(member.getValue() instanceof Way) {
+					Way w = (Way)member.getValue();
+					if(w1 == null)
+						w1 = w;
+					else if(w2 == null)
+						w2 = w;
+					else
+						log.warn("Through route relation " + relation.toBrowseURL() + " has more than 2 ways");
+				}
+			}
+
+			Coord junctionPoint = null;
+			Integer nodeId = null;
+			if(node == null)
+				log.warn("Through route relation " + relation.toBrowseURL() + " is missing the junction node");
+			else {
+				junctionPoint = node.getLocation();
+				if(bbox != null && !bbox.contains(junctionPoint)) {
+					// junction is outside of the tile - ignore it
+					continue;
+				}
+				nodeId = nodeIdMap.get(junctionPoint);
+				if(nodeId == null)
+					log.warn("Through route relation " + relation.toBrowseURL() + " junction node at " + junctionPoint.toOSMURL() + " is not a routing node");
+			}
+
+			if(w1 == null || w2 == null)
+				log.warn("Through route relation " + relation.toBrowseURL() + " should reference 2 ways that meet at the junction node");
+
+			if(nodeId != null && w1 != null && w2 != null)
+				collector.addThroughRoute(nodeId, w1.getId(), w2.getId());
+		}
 	}
 
 	/**
@@ -410,6 +479,9 @@ public class StyledConverter implements OsmConverter {
 				}
 				lrr.add(rr);
 			}
+		}
+		else if("through_route".equals(relation.getTag("type"))) {
+			throughRouteRelations.add(relation);
 		}
 	}
 
@@ -500,22 +572,22 @@ public class StyledConverter implements OsmConverter {
 	}
 
 	private String combineRefs(Element element) {
-		String ref = element.getTag("ref");
-		String int_ref = element.getTag("int_ref");
+		String ref = Label.squashSpaces(element.getTag("ref"));
+		String int_ref = Label.squashSpaces(element.getTag("int_ref"));
 		if(int_ref != null) {
 			if(ref == null)
 				ref = int_ref;
 			else
 				ref += ";" + int_ref;
 		}
-		String nat_ref = element.getTag("nat_ref");
+		String nat_ref = Label.squashSpaces(element.getTag("nat_ref"));
 		if(nat_ref != null) {
 			if(ref == null)
 				ref = nat_ref;
 			else
 				ref += ";" + nat_ref;
 		}
-		String reg_ref = element.getTag("reg_ref");
+		String reg_ref = Label.squashSpaces(element.getTag("reg_ref"));
 		if(reg_ref != null) {
 			if(ref == null)
 				ref = reg_ref;
@@ -527,13 +599,13 @@ public class StyledConverter implements OsmConverter {
 	}
 
 	private void elementSetup(MapElement ms, GType gt, Element element) {
-		String name = element.getName();
+		String name = Label.squashSpaces(element.getName());
 		String refs = combineRefs(element);
 		
 		// Insert display_name as first ref.
 		// This causes display_name to be displayed in routing 
 		// directions, instead of only the ref.
-		String displayName = element.getTag("display_name");
+		String displayName = Label.squashSpaces(element.getTag("display_name"));
 
 		if (displayName != null) {
 			// substitute '/' for ';' in display_name to avoid it
@@ -549,6 +621,24 @@ public class StyledConverter implements OsmConverter {
 			// use first ref as name
 			name = SEMI_PATTERN.split(refs)[0].trim();
 		}
+		else if(name != null) {
+			// remove leading spaces (don't use trim() to avoid zapping
+			// shield codes)
+			char leadingCode = 0;
+			if(name.length() > 1 &&
+			   name.charAt(0) < 0x20 &&
+			   name.charAt(1) == ' ') {
+				leadingCode = name.charAt(0);
+				name = name.substring(2);
+			}
+				
+			while(name.length() > 0 && name.charAt(0) == ' ')
+				name = name.substring(1);
+
+			if(leadingCode != 0)
+				name = new Character(leadingCode) + name;
+		}
+
 		if(name != null)
 			ms.setName(name);
 		if(refs != null)
@@ -1304,7 +1394,6 @@ public class StyledConverter implements OsmConverter {
 		line.setPoints(points);
 
 		MapRoad road = new MapRoad(way.getId(), line);
-		road.showOSMBrowseURL();
 
 		boolean doFlareCheck = true;
 		if("roundabout".equals(way.getTag("junction"))) {
