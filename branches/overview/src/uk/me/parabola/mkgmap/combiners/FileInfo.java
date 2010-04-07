@@ -51,7 +51,7 @@ public class FileInfo {
 			"TYP"
 	);
 
-	// The name of the file.
+	/** The name of the file. */
 	private final String filename;
 
 	// The kind of file, see *KIND definitions above.

@@ -12,6 +12,7 @@
  */
 package uk.me.parabola.mkgmap.combiners;
 
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,18 +23,24 @@ import uk.me.parabola.imgfmt.FileSystemParam;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.map.Map;
+import uk.me.parabola.imgfmt.app.map.MapReader;
+import uk.me.parabola.imgfmt.app.trergn.Polyline;
+import uk.me.parabola.imgfmt.app.trergn.Zoom;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.CommandArgs;
 import uk.me.parabola.mkgmap.build.MapBuilder;
 import uk.me.parabola.mkgmap.general.MapShape;
 
 /**
  * Build the overview map.  This is a low resolution map that covers the whole
- * of a map set.  It also contains areas that correspond to the areas
+ * of a map set.  It also contains polygons that correspond to the areas
  * covered by the individual map tiles.
  *
  * @author Steve Ratcliffe
  */
 public class OverviewBuilder implements Combiner {
+	Logger log = Logger.getLogger(OverviewBuilder.class);
+
 	private final OverviewMap overviewSource;
 	private String areaName;
 	private String overviewMapname;
@@ -51,6 +58,21 @@ public class OverviewBuilder implements Combiner {
 
 	public void onMapEnd(FileInfo finfo) {
 		addToOverviewMap(finfo);
+		String filename = finfo.getFilename();
+		try {
+			MapReader reader = new MapReader(filename);
+			Zoom[] levels = reader.getLevels();
+
+			// The first level is always empty, so operate on the next one if
+			// present.  We could search for the first level with actual contents.
+			if (levels.length > 2) {
+				Zoom zoom = levels[1];
+				List<Polyline> list = reader.linesForLevel(zoom.getLevel());
+			}
+		} catch (FileNotFoundException e) {
+			// File no longer present or can't be opened
+			log.warn("cannot open file " + filename);
+		}
 	}
 
 	public void onFinish() {

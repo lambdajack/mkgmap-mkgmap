@@ -31,6 +31,7 @@ import uk.me.parabola.imgfmt.app.trergn.Polyline;
 import uk.me.parabola.imgfmt.app.trergn.RGNFileReader;
 import uk.me.parabola.imgfmt.app.trergn.Subdivision;
 import uk.me.parabola.imgfmt.app.trergn.TREFileReader;
+import uk.me.parabola.imgfmt.app.trergn.Zoom;
 import uk.me.parabola.imgfmt.fs.DirectoryEntry;
 import uk.me.parabola.imgfmt.fs.FileSystem;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
@@ -109,6 +110,10 @@ public class MapReader implements Closeable {
 		}
 
 		return points;
+	}
+
+	public Zoom[] getLevels() {
+		return treFile.getMapLevels();
 	}
 
 	/**

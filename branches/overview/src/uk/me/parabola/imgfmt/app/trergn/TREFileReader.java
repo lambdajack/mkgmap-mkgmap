@@ -56,6 +56,10 @@ public class TREFileReader extends ImgReader {
 		return header.getBounds();
 	}
 
+	public Zoom[] getMapLevels() {
+		return mapLevels;
+	}
+	
 	/**
 	 * Return the subdivisions for the given level.
 	 * @param level The level, 0 being the most detailed.  There may not be
@@ -87,6 +91,7 @@ public class TREFileReader extends ImgReader {
 		for (int count = 0; count < levelDivs.length && reader.position() < end; count++) {
 
 			Subdivision[] divs = levelDivs[count];
+			Zoom zoom = mapLevels[count];
 			if (divs == null)
 				break;
 
@@ -110,6 +115,7 @@ public class TREFileReader extends ImgReader {
 				subdiv.setNumber(subdivNum++);
 				
 				divs[i] = subdiv;
+				zoom.addSubdivision(subdiv);
 
 				lastRgnOffset = endRgnOffset;
 			}
