@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module relativePaths="true" type="JAVA_MODULE" version="4">
+  <component name="FacetManager">
+    <facet type="Python" name="Python">
+      <configuration sdkName="" />
+    </facet>
+  </component>
   <component name="NewModuleRootManager" inherit-compiler-output="false">
     <output url="file://$MODULE_DIR$/build/classes" />
     <output-test url="file://$MODULE_DIR$/build/test" />
@@ -11,7 +16,7 @@
       <sourceFolder url="file://$MODULE_DIR$/extra/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/63240005" />
       <excludeFolder url="file://$MODULE_DIR$/dist" />
-      <excludeFolder url="file://$MODULE_DIR$/doc/api" />
+      <excludeFolder url="file://$MODULE_DIR$/doc" />
       <excludeFolder url="file://$MODULE_DIR$/g" />
       <excludeFolder url="file://$MODULE_DIR$/gmapsupp" />
       <excludeFolder url="file://$MODULE_DIR$/localtest" />

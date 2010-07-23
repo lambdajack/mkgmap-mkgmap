@@ -36,7 +36,7 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import uk.me.parabola.imgfmt.ExitException;
+import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.Exit;
@@ -109,6 +109,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 	private final boolean makeOppositeCycleways;
 	private final boolean makeCycleways;
 	private final boolean ignoreBounds;
+	private final boolean processBoundaryRelations;
 	private final boolean ignoreTurnRestrictions;
 	private final boolean linkPOIsToWays;
 	private final boolean generateSea;
@@ -175,6 +176,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 			minimumArcLength = null;
 		frigRoundabouts = props.getProperty("frig-roundabouts");
 		ignoreTurnRestrictions = props.getProperty("ignore-turn-restrictions", false);
+		processBoundaryRelations = props.getProperty("process-boundary-relations", false);
 		reportUndefinedNodes = props.getProperty("report-undefined-nodes", false);
 		String deleteTagsFileName = props.getProperty("delete-tags-file");
 		if(deleteTagsFileName != null)
@@ -614,7 +616,13 @@ public class Osm5XmlHandler extends DefaultHandler {
 			long id = currentRelation.getId();
 
 			relationMap.put(id, currentRelation);
-			currentRelation.processElements();
+			if (!processBoundaryRelations &&
+			     currentRelation instanceof MultiPolygonRelation &&
+				 ((MultiPolygonRelation)currentRelation).isBoundaryRelation()) {
+				log.info("Ignore boundary multipolygon "+currentRelation.toBrowseURL());
+			} else {
+				currentRelation.processElements();
+			}
 
 			List<Map.Entry<String,Relation>> entries =
 				deferredRelationMap.remove(id);
@@ -636,7 +644,6 @@ public class Osm5XmlHandler extends DefaultHandler {
 	 * another exception.
 	 */
 	public void endDocument() throws SAXException {
-		System.out.println("END DOCUMENT");
 		
 		for (Node e : exits) {
 			String refTag = Exit.TAG_ROAD_REF;
@@ -1277,7 +1284,6 @@ public class Osm5XmlHandler extends DefaultHandler {
 		// the remaining shoreline segments should intersect the boundary
 		// find the intersection points and store them in a SortedMap
 		SortedMap<EdgeHit, Way> hitMap = new TreeMap<EdgeHit, Way>();
-		boolean shorelineReachesBoundary = false;
 		long seaId;
 		Way sea;
 		for (Way w : shoreline) {
@@ -1375,6 +1381,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 
 		// now construct inner ways from these segments
 		NavigableSet<EdgeHit> hits = (NavigableSet<EdgeHit>) hitMap.keySet();
+		boolean shorelineReachesBoundary = false;
 		while (!hits.isEmpty()) {
 			long id = FakeIdGenerator.makeFakeId();
 			Way w = new Way(id);
@@ -1610,7 +1617,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 				return false;
 		}
 
-		Coord getPoint(Area a) {
+		private Coord getPoint(Area a) {
 			log.info("getPoint: ", this, a);
 			switch (edge) {
 			case 0:
@@ -1626,7 +1633,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 				return new Coord((int)(a.getMaxLat() - t * (a.getMaxLat()-a.getMinLat())), a.getMinLong());
 
 			default:
-				throw new ExitException("illegal state");
+				throw new MapFailedException("illegal state");
 			}
 		}
 

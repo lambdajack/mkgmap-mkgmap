@@ -23,7 +23,7 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import uk.me.parabola.imgfmt.ExitException;
+import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
 import uk.me.parabola.imgfmt.app.Label;
 import uk.me.parabola.imgfmt.app.lbl.City;
@@ -52,7 +52,7 @@ import uk.me.parabola.log.Logger;
  * @author Robert Vollmert
  */
 
-public class RoadDef implements Comparable {
+public class RoadDef implements Comparable<RoadDef> {
 	private static final Logger log = Logger.getLogger(RoadDef.class);
 
 	// the offset in Nod2 of our Nod2 record
@@ -114,7 +114,7 @@ public class RoadDef implements Comparable {
 	private City city;
 	private Zip zip;
 	private boolean paved = true;
-	private boolean ferry = false;
+	private boolean ferry;
 	private boolean roundabout;
 	private boolean linkRoad;
 	private boolean synthesised;
@@ -237,10 +237,6 @@ public class RoadDef implements Comparable {
 			log.warn(this.toString() + " discarding extra label (already have " + MAX_LABELS + ")");
 	}
 
-	public int getNumLabels() {
-		return numlabels;
-	}
-
 	public Label[] getLabels() {
 		return labels;
 	}
@@ -336,7 +332,9 @@ public class RoadDef implements Comparable {
 	 */
 	void writeRgnOffsets(ImgFileWriter rgn) {
 		if (offsetNet1 >= 0x400000)
-			throw new ExitException("Overflow of the NET1. The tile (" + log.threadTag() + ") must be split so that there are fewer roads in it");
+			throw new MapFailedException("Overflow of the NET1. The tile ("
+							+ log.threadTag()
+							+ ") must be split so that there are fewer roads in it");
 
 		for (Offset off : rgnOffsets) {
 			rgn.position(off.getPosition());
@@ -569,15 +567,14 @@ public class RoadDef implements Comparable {
 		netFlags |= NET_FLAG_ADDRINFO;
 	}
 
-	public int compareTo(Object other) {
+	public int compareTo(RoadDef other) {
 		// sort by city name - this is used to group together
 		// roads that have been split into segments
-		RoadDef o = (RoadDef)other;
-		if(o == this)
+		if(other == this)
 			return 0;
-		if(city != null && o.city != null)
-			return city.compareTo(o.city);
-		return hashCode() - o.hashCode();
+		if(city != null && other.city != null)
+			return city.compareTo(other.city);
+		return hashCode() - other.hashCode();
 	}
 
 	public City getCity() {
@@ -641,10 +638,9 @@ public class RoadDef implements Comparable {
 	}
 
 	public boolean messagePreviouslyIssued(String key) {
-		boolean previouslyIssued;
 		if(messageIssued == null)
 			messageIssued = new HashSet<String>();
-		previouslyIssued = messageIssued.contains(key);
+		boolean previouslyIssued = messageIssued.contains(key);
 		messageIssued.add(key);
 		return previouslyIssued;
 	}
