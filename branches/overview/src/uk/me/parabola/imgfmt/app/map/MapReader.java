@@ -21,6 +21,7 @@ import java.util.Deque;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.Utils;
+import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.lbl.City;
 import uk.me.parabola.imgfmt.app.lbl.Country;
 import uk.me.parabola.imgfmt.app.lbl.LBLFileReader;
@@ -47,7 +48,6 @@ public class MapReader implements Closeable {
 	private final TREFileReader treFile;
 	private final RGNFileReader rgnFile;
 	private final LBLFileReader lblFile;
-	private final NETFileReader netFile;
 
 	private final Deque<Closeable> toClose = new ArrayDeque<Closeable>();
 
@@ -90,9 +90,8 @@ public class MapReader implements Closeable {
 		} catch (FileNotFoundException e) {
 			nr = null;
 		}
-		netFile = nr;
 
-		rgnFile.setNetFile(netFile);
+		rgnFile.setNetFile(nr);
 		rgnFile.setLblFile(lblFile);
 	}
 
@@ -156,5 +155,9 @@ public class MapReader implements Closeable {
 
 	public List<Region> getRegions() {
 		return lblFile.getRegions();
+	}
+
+	public Area getBounds() {
+		return treFile.getBounds();
 	}
 }

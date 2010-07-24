@@ -16,7 +16,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import uk.me.parabola.imgfmt.Utils;
+import uk.me.parabola.imgfmt.app.BitReader;
 import uk.me.parabola.imgfmt.app.BufferedImgFileReader;
+import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.ImgFileReader;
 import uk.me.parabola.imgfmt.app.ImgReader;
 import uk.me.parabola.imgfmt.app.Label;
@@ -24,6 +27,7 @@ import uk.me.parabola.imgfmt.app.lbl.LBLFileReader;
 import uk.me.parabola.imgfmt.app.lbl.POIRecord;
 import uk.me.parabola.imgfmt.app.net.NETFileReader;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.util.EnhancedProperties;
 
 /**
@@ -39,6 +43,7 @@ import uk.me.parabola.util.EnhancedProperties;
  * @author Steve Ratcliffe
  */
 public class RGNFileReader extends ImgReader {
+	private static final Logger log = Logger.getLogger(RGNFileReader.class);
 
 	private final RGNHeader rgnHeader;
 	private LBLFileReader lblFile;
@@ -157,6 +162,9 @@ public class RGNFileReader extends ImgReader {
 			}
 			line.setLabel(label);
 
+			// Extra bit (for bit stream)
+			boolean extra = (labelOffset & 0x400000) != 0;
+
 			line.setDeltaLong((short)reader.getChar());
 			line.setDeltaLat((short)reader.getChar());
 
@@ -166,14 +174,99 @@ public class RGNFileReader extends ImgReader {
 			else
 				len = reader.getChar();
 
-			reader.get(len + 1);
+			int base = reader.get();
 
-			//System.out.println("add line " + line);
+			byte[] bitstream = reader.get(len);
+			BitReader br = new BitReader(bitstream);
+
+			readBitStream(br, div, line, extra, len, base);
+
 			list.add(line);
 		}
 
 		return list;
 	}
+
+	private boolean readBitStream(BitReader br, Subdivision div, Polyline line, boolean extra, int len, int base) {
+		int currLat = line.getLat();
+		int currLon = line.getLong();
+
+		log.debug(String.format("Start point %.5f,%.5f",
+				Utils.toDegrees(currLat),
+				Utils.toDegrees(currLon)));
+
+		int xbase = 2;
+		int n = base & 0xf;
+		if (n <= 9)
+			xbase += n;
+		else
+			xbase += (2 * n) - 9;
+
+		n = (base >>> 4) & 0xf;
+		int ybase = 2;
+		if (n <= 9)
+			ybase += n;
+		else
+			ybase += (2 * n) - 9;
+
+		if (len == 0) {
+			return true;
+		}
+
+		boolean xneg = false;
+		boolean xsame = br.get1();
+		if (xsame) {
+			xneg = br.get1();
+		} else
+			xbase++;
+
+		boolean ysame = br.get1();
+		boolean yneg = false;
+		if (ysame) {
+			yneg = br.get1();
+		} else
+			ybase++;
+
+		if (extra) {
+			boolean firstextra = br.get1();
+			log.debug("the first extra bit is", firstextra);
+		}
+
+		while (br.getBitPosition() <= 8* len - ((extra ? 1:0) + xbase + ybase)) {
+			br.getBitPosition();
+
+			int dx;
+			if (xsame) {
+				dx = br.get(xbase);
+				if (xneg)
+					dx = -dx;
+			} else {
+				dx = br.sget2(xbase);
+			}
+
+			int dy;
+			if (ysame) {
+				dy = br.get(ybase);
+				if (yneg)
+					dy = -dy;
+			} else {
+				dy = br.sget2(ybase);
+			}
+
+			if (extra) {
+				boolean isnode = br.get1();
+			}
+
+			currLat += dy << (24 - div.getResolution());
+			currLon += dx << (24 - div.getResolution());
+			Coord coord = new Coord(currLat, currLon);
+
+			log.debug("line point", coord);
+			line.addCoord(coord);
+		}
+		return false;
+	}
+
 	/**
 	 * Get the offsets to the points, lines etc in RGN for the given subdiv.
 	 * @param sd The subdivision is needed to work out the starting points.

@@ -20,6 +20,7 @@ import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.FileExistsException;
 import uk.me.parabola.imgfmt.FileNotWritableException;
 import uk.me.parabola.imgfmt.FileSystemParam;
+import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.map.Map;
@@ -29,6 +30,7 @@ import uk.me.parabola.imgfmt.app.trergn.Zoom;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.CommandArgs;
 import uk.me.parabola.mkgmap.build.MapBuilder;
+import uk.me.parabola.mkgmap.general.MapLine;
 import uk.me.parabola.mkgmap.general.MapShape;
 
 /**
@@ -57,21 +59,10 @@ public class OverviewBuilder implements Combiner {
 	}
 
 	public void onMapEnd(FileInfo finfo) {
-		addToOverviewMap(finfo);
-		String filename = finfo.getFilename();
 		try {
-			MapReader reader = new MapReader(filename);
-			Zoom[] levels = reader.getLevels();
-
-			// The first level is always empty, so operate on the next one if
-			// present.  We could search for the first level with actual contents.
-			if (levels.length > 2) {
-				Zoom zoom = levels[1];
-				List<Polyline> list = reader.linesForLevel(zoom.getLevel());
-			}
+			readFileIntoOverview(finfo);
 		} catch (FileNotFoundException e) {
-			// File no longer present or can't be opened
-			log.warn("cannot open file " + filename);
+			throw new MapFailedException("Could not read detail map " + finfo.getFilename(), e);
 		}
 	}
 
@@ -106,48 +97,71 @@ public class OverviewBuilder implements Combiner {
 	 *
 	 * @param finfo Information about an individual map.
 	 */
-	private void addToOverviewMap(FileInfo finfo) {
+	private void readFileIntoOverview(FileInfo finfo) throws FileNotFoundException {
+		addMapCoverageArea(finfo);
+
+		MapReader mapReader = new MapReader(finfo.getFilename());
+
+		Zoom[] levels = mapReader.getLevels();
+		int min = levels[1].getLevel();
+		//List<Point> pointList = mapReader.pointsForLevel(min);
+		//for (Point p : pointList) {
+		//	//MapPoint mp = new MapPoint();
+		//	//mp.setLocation(p.);
+		//	//
+		//	//overviewSource.addPoint(mp);
+		//}
+
+		log.debug("min is", min);
+		List<Polyline> lineList = mapReader.linesForLevel(min);
+		for (Polyline line : lineList) {
+			log.debug("got line", line);
+			MapLine ml = new MapLine();
+
+			List<Coord> list = line.getPoints();
+			log.debug("line point list", list);
+			if (list.size() < 2)
+				continue;
+
+			ml.setPoints(list);
+			ml.setName(line.getLabel().getText());
+			ml.setMaxResolution(24);
+			ml.setMinResolution(5);
+			System.out.println("ml is " + ml);
+
+			overviewSource.addLine(ml);
+		}
+	}
+
+	/**
+	 * Add an area that shows the area covered by a detailed map.  This can
+	 * be an arbitary shape, although at the current time we only support
+	 * rectangles.
+	 *
+	 * @param finfo Information about a detail map.
+	 */
+	private void addMapCoverageArea(FileInfo finfo) {
 		Area bounds = finfo.getBounds();
 
-		//System.out.printf("overview shift %d\n", overviewSource.getShift());
 		int overviewMask = ((1 << overviewSource.getShift()) - 1);
-		//System.out.printf("mask %x\n", overviewMask);
-		//System.out.println("overviewSource.getShift() = " + overviewSource.getShift());
 
 		int maxLon = roundDown(bounds.getMaxLong(), overviewMask);
 		int maxLat = roundUp(bounds.getMaxLat(), overviewMask);
 		int minLat = roundUp(bounds.getMinLat(), overviewMask);
 		int minLon = roundDown(bounds.getMinLong(), overviewMask);
 
-		//System.out.printf("maxLat 0x%x, modified=0x%x\n", bounds.getMaxLat(), maxLat);
-		//System.out.printf("maxLat %f, modified=%f\n", Utils.toDegrees(bounds.getMaxLat()), Utils.toDegrees(maxLat));
-		//System.out.printf("minLat 0x%x, modified=0x%x\n", bounds.getMinLat(), minLat);
-		//System.out.printf("minLat %f, modified=%f\n", Utils.toDegrees(bounds.getMinLat()), Utils.toDegrees(minLat));
-		//System.out.printf("maxLon 0x%x, modified=0x%x\n", bounds.getMaxLong(), maxLon);
-		//System.out.printf("maxLon %f, modified=%f\n", Utils.toDegrees(bounds.getMaxLong()), Utils.toDegrees(maxLon));
-		//System.out.printf("minLon 0x%x, modified=0x%x\n", bounds.getMinLong(), minLon);
-		//System.out.printf("minLon %f, modified=%f\n", Utils.toDegrees(bounds.getMinLong()), Utils.toDegrees(minLon));
-
 		// Add a background polygon for this map.
 		List<Coord> points = new ArrayList<Coord>();
 
-		Coord start = new Coord(minLat, minLon);
-		points.add(start);
-		overviewSource.addToBounds(start);
+		Coord[] bgcoords = {new Coord(minLat, minLon), new Coord(maxLat, minLon),
+				new Coord(maxLat, maxLon), new Coord(minLat, maxLon)};
+		for (Coord co : bgcoords) {
+			points.add(co);
+			overviewSource.addToBounds(co);
+		}
 
-		Coord co = new Coord(maxLat, minLon);
-		points.add(co);
-		overviewSource.addToBounds(co);
-
-		co = new Coord(maxLat, maxLon);
-		points.add(co);
-		overviewSource.addToBounds(co);
-
-		co = new Coord(minLat, maxLon);
-		points.add(co);
-		overviewSource.addToBounds(co);
-
-		points.add(start);
+		// join back to the first point.
+		points.add(bgcoords[0]);
 
 		// Create the background rectangle
 		MapShape bg = new MapShape();

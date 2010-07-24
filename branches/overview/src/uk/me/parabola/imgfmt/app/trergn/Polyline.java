@@ -221,7 +221,7 @@ public class Polyline extends MapObject {
 		points.add(co);
 	}
 
-	List<Coord> getPoints() {
+	public List<Coord> getPoints() {
 		return points;
 	}
 
@@ -262,5 +262,13 @@ public class Polyline extends MapObject {
 		}
 
 		return false;
+	}
+
+	public int getLat() {
+		return getSubdiv().getLatitude() + (getDeltaLat() << getSubdiv().getShift());
+	}
+
+	public int getLong() {
+		return getSubdiv().getLongitude() + (getDeltaLong() << getSubdiv().getShift());
 	}
 }
