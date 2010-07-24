@@ -179,6 +179,7 @@ public class RGNFileReader extends ImgReader {
 			byte[] bitstream = reader.get(len);
 			BitReader br = new BitReader(bitstream);
 
+			// This reads the bit stream and adds all the points found
 			readBitStream(br, div, line, extra, len, base);
 
 			list.add(line);
@@ -187,7 +188,16 @@ public class RGNFileReader extends ImgReader {
 		return list;
 	}
 
-	private boolean readBitStream(BitReader br, Subdivision div, Polyline line, boolean extra, int len, int base) {
+	/**
+	 * Read the bit stream for a single line in the file.
+	 * @param br The bit stream reader.
+	 * @param div The subdivision that the line is in.
+	 * @param line The line itself.
+	 * @param extra True if there is an 'extra' bit in the stream. Used for nodes.
+	 * @param len The length of the stream.
+	 * @param base The base size of the deltas.
+	 */
+	private void readBitStream(BitReader br, Subdivision div, Polyline line, boolean extra, int len, int base) {
 		int currLat = line.getLat();
 		int currLon = line.getLong();
 
@@ -209,9 +219,8 @@ public class RGNFileReader extends ImgReader {
 		else
 			ybase += (2 * n) - 9;
 
-		if (len == 0) {
-			return true;
-		}
+		if (len == 0)
+			return;
 
 		boolean xneg = false;
 		boolean xsame = br.get1();
@@ -232,6 +241,8 @@ public class RGNFileReader extends ImgReader {
 			log.debug("the first extra bit is", firstextra);
 		}
 
+		// All is now prepared, read the actual deltas and decode them into
+		// proper lat/long coords.
 		while (br.getBitPosition() <= 8* len - ((extra ? 1:0) + xbase + ybase)) {
 			br.getBitPosition();
 
@@ -264,7 +275,6 @@ public class RGNFileReader extends ImgReader {
 			log.debug("line point", coord);
 			line.addCoord(coord);
 		}
-		return false;
 	}
 
 	/**

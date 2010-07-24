@@ -47,6 +47,7 @@ public class OverviewBuilder implements Combiner {
 	private String areaName;
 	private String overviewMapname;
 	private String overviewMapnumber;
+	private Zoom[] levels;
 
 	public OverviewBuilder(OverviewMap overviewSource) {
 		this.overviewSource = overviewSource;
@@ -102,17 +103,21 @@ public class OverviewBuilder implements Combiner {
 
 		MapReader mapReader = new MapReader(finfo.getFilename());
 
-		Zoom[] levels = mapReader.getLevels();
-		int min = levels[1].getLevel();
-		//List<Point> pointList = mapReader.pointsForLevel(min);
-		//for (Point p : pointList) {
-		//	//MapPoint mp = new MapPoint();
-		//	//mp.setLocation(p.);
-		//	//
-		//	//overviewSource.addPoint(mp);
-		//}
+		levels = mapReader.getLevels();
 
-		log.debug("min is", min);
+		readLines(mapReader);
+	}
+
+	/**
+	 * Read the lines from the .img file and add them to the overview map.
+	 * We read from the least detailed level (apart from the empty one).
+	 *
+	 * TODO: further filter what is seen
+	 *
+	 * @param mapReader Map reader on the detailed .img file.
+	 */
+	private void readLines(MapReader mapReader) {
+		int min = levels[1].getLevel();
 		List<Polyline> lineList = mapReader.linesForLevel(min);
 		for (Polyline line : lineList) {
 			log.debug("got line", line);
@@ -123,11 +128,11 @@ public class OverviewBuilder implements Combiner {
 			if (list.size() < 2)
 				continue;
 
-			ml.setPoints(list);
+			ml.setType(line.getType());
 			ml.setName(line.getLabel().getText());
-			ml.setMaxResolution(24);
-			ml.setMinResolution(5);
-			System.out.println("ml is " + ml);
+			ml.setMaxResolution(24); // TODO
+			ml.setMinResolution(5);  // TODO
+			ml.setPoints(list);
 
 			overviewSource.addLine(ml);
 		}
