@@ -142,23 +142,21 @@ public class OverviewBuilder implements Combiner {
 
 	private void readShapes(MapReader mapReader) {
 		int min = levels[1].getLevel();
-		List<Polygon> lineList = mapReader.shapesForLevel(min);
-		for (Polyline line : lineList) {
-			log.debug("got line", line);
-			MapLine ml = new MapLine();
+		List<Polygon> list = mapReader.shapesForLevel(min);
+		for (Polygon shape : list) {
+			MapShape ms = new MapShape();
 
-			List<Coord> list = line.getPoints();
-			log.debug("line point list", list);
-			if (list.size() < 2)
+			List<Coord> points = shape.getPoints();
+			if (points.size() < 2)
 				continue;
 
-			ml.setType(line.getType());
-			ml.setName(line.getLabel().getText());
-			ml.setMaxResolution(24); // TODO
-			ml.setMinResolution(5);  // TODO
-			ml.setPoints(list);
+			ms.setType(shape.getType());
+			ms.setName(shape.getLabel().getText());
+			ms.setMaxResolution(24); // TODO
+			ms.setMinResolution(5);  // TODO
+			ms.setPoints(points);
 
-			overviewSource.addLine(ml);
+			overviewSource.addShape(ms);
 		}
 	}
 
