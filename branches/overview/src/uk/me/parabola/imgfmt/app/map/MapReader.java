@@ -28,6 +28,7 @@ import uk.me.parabola.imgfmt.app.lbl.LBLFileReader;
 import uk.me.parabola.imgfmt.app.lbl.Region;
 import uk.me.parabola.imgfmt.app.net.NETFileReader;
 import uk.me.parabola.imgfmt.app.trergn.Point;
+import uk.me.parabola.imgfmt.app.trergn.Polygon;
 import uk.me.parabola.imgfmt.app.trergn.Polyline;
 import uk.me.parabola.imgfmt.app.trergn.RGNFileReader;
 import uk.me.parabola.imgfmt.app.trergn.Subdivision;
@@ -131,6 +132,19 @@ public class MapReader implements Closeable {
 		return points;
 	}
 
+
+	public List<Polygon> shapesForLevel(int level) {
+		ArrayList<Polygon> points = new ArrayList<Polygon>();
+
+		Subdivision[] subdivisions = treFile.subdivForLevel(level);
+		for (Subdivision div : subdivisions) {
+			List<Polygon> subdivPoints = rgnFile.shapesForSubdiv(div);
+			points.addAll(subdivPoints);
+		}
+
+		return points;
+	}
+
 	public void close() throws IOException {
 		for (Closeable c : toClose)
 			Utils.closeFile(c);
@@ -160,4 +174,5 @@ public class MapReader implements Closeable {
 	public Area getBounds() {
 		return treFile.getBounds();
 	}
+
 }

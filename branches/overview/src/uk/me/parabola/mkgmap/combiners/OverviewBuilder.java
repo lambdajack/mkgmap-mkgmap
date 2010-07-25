@@ -25,6 +25,7 @@ import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.map.Map;
 import uk.me.parabola.imgfmt.app.map.MapReader;
+import uk.me.parabola.imgfmt.app.trergn.Polygon;
 import uk.me.parabola.imgfmt.app.trergn.Polyline;
 import uk.me.parabola.imgfmt.app.trergn.Zoom;
 import uk.me.parabola.log.Logger;
@@ -106,6 +107,7 @@ public class OverviewBuilder implements Combiner {
 		levels = mapReader.getLevels();
 
 		readLines(mapReader);
+		readShapes(mapReader);
 	}
 
 	/**
@@ -119,6 +121,28 @@ public class OverviewBuilder implements Combiner {
 	private void readLines(MapReader mapReader) {
 		int min = levels[1].getLevel();
 		List<Polyline> lineList = mapReader.linesForLevel(min);
+		for (Polyline line : lineList) {
+			log.debug("got line", line);
+			MapLine ml = new MapLine();
+
+			List<Coord> list = line.getPoints();
+			log.debug("line point list", list);
+			if (list.size() < 2)
+				continue;
+
+			ml.setType(line.getType());
+			ml.setName(line.getLabel().getText());
+			ml.setMaxResolution(24); // TODO
+			ml.setMinResolution(5);  // TODO
+			ml.setPoints(list);
+
+			overviewSource.addLine(ml);
+		}
+	}
+
+	private void readShapes(MapReader mapReader) {
+		int min = levels[1].getLevel();
+		List<Polygon> lineList = mapReader.shapesForLevel(min);
 		for (Polyline line : lineList) {
 			log.debug("got line", line);
 			MapLine ml = new MapLine();

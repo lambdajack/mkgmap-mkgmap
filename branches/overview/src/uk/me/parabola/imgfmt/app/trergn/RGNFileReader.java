@@ -20,6 +20,7 @@ import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.BitReader;
 import uk.me.parabola.imgfmt.app.BufferedImgFileReader;
 import uk.me.parabola.imgfmt.app.Coord;
+import uk.me.parabola.imgfmt.app.CoordNode;
 import uk.me.parabola.imgfmt.app.ImgFileReader;
 import uk.me.parabola.imgfmt.app.ImgReader;
 import uk.me.parabola.imgfmt.app.Label;
@@ -135,6 +136,11 @@ public class RGNFileReader extends ImgReader {
 		}
 	}
 
+	/**
+	 * Get all the lines for a given subdivision.
+	 * @param div The subdivision we want the line from.
+	 * @return A list of lines.
+	 */
 	public List<Polyline> linesForSubdiv(Subdivision div) {
 		if (!div.hasPolylines())
 			return Collections.emptyList();
@@ -149,44 +155,80 @@ public class RGNFileReader extends ImgReader {
 		ImgFileReader reader = getReader();
 		while (position() < end) {
 			Polyline line = new Polyline(div);
-			byte type = reader.get();
-			line.setType(type & 0x3f);
-
-			int labelOffset = reader.getu3();
-			Label label;
-			if ((labelOffset & 0x800000) == 0) {
-				label = lblFile.fetchLabel(labelOffset & 0x7fffff);
-			} else {
-				labelOffset = netFile.getLabelOffset(labelOffset & 0x3fffff);
-				label = lblFile.fetchLabel(labelOffset);
-			}
-			line.setLabel(label);
-
-			// Extra bit (for bit stream)
-			boolean extra = (labelOffset & 0x400000) != 0;
-
-			line.setDeltaLong((short)reader.getChar());
-			line.setDeltaLat((short)reader.getChar());
-
-			int len;
-			if ((type & 0x80) == 0)
-				len = reader.get() & 0xff;
-			else
-				len = reader.getChar();
-
-			int base = reader.get();
-
-			byte[] bitstream = reader.get(len);
-			BitReader br = new BitReader(bitstream);
-
-			// This reads the bit stream and adds all the points found
-			readBitStream(br, div, line, extra, len, base);
-
+			readLineCommon(reader, div, line);
 			list.add(line);
 		}
 
 		return list;
 	}
+
+	/**
+	 * Get all the polygons for a given subdivision.
+	 */
+	public List<Polygon> shapesForSubdiv(Subdivision div) {
+		if (!div.hasPolygons())
+			return Collections.emptyList();
+
+		RgnOffsets rgnOffsets = getOffsets(div);
+		ArrayList<Polygon> list = new ArrayList<Polygon>();
+
+		int start = rgnOffsets.getPolygonStart();
+		int end = rgnOffsets.getPolygonEnd();
+
+		position(start);
+		ImgFileReader reader = getReader();
+		while (position() < end) {
+			Polygon line = new Polygon(div);
+			readLineCommon(reader, div, line);
+			list.add(line);
+		}
+
+		return list;
+	}
+
+	/**
+	 * Since polygons are pretty much like polylines in the img format the
+	 * reading code can be shared.
+	 *
+	 * @param reader The reader for the img file.
+	 * @param div The subdivision.
+	 * @param line The line or shape that is to be populated.
+	 */
+	private void readLineCommon(ImgFileReader reader, Subdivision div, Polyline line) {
+		byte type = reader.get();
+		line.setType(type & 0x3f);
+
+		int labelOffset = reader.getu3();
+		Label label;
+		if ((labelOffset & 0x800000) == 0) {
+			label = lblFile.fetchLabel(labelOffset & 0x7fffff);
+		} else {
+			labelOffset = netFile.getLabelOffset(labelOffset & 0x3fffff);
+			label = lblFile.fetchLabel(labelOffset);
+		}
+		line.setLabel(label);
+
+		// Extra bit (for bit stream)
+		boolean extra = (labelOffset & 0x400000) != 0;
+
+		line.setDeltaLong((short)reader.getChar());
+		line.setDeltaLat((short)reader.getChar());
+
+		int len;
+		if ((type & 0x80) == 0)
+			len = reader.get() & 0xff;
+		else
+			len = reader.getChar();
+
+		int base = reader.get();
+
+		byte[] bitstream = reader.get(len);
+		BitReader br = new BitReader(bitstream);
+
+		// This reads the bit stream and adds all the points found
+		readBitStream(br, div, line, extra, len, base);
+	}
+
 
 	/**
 	 * Read the bit stream for a single line in the file.
@@ -264,13 +306,17 @@ public class RGNFileReader extends ImgReader {
 				dy = br.sget2(ybase);
 			}
 
-			if (extra) {
-				boolean isnode = br.get1();
-			}
+			boolean isnode = false;
+			if (extra)
+				isnode = br.get1();
 
 			currLat += dy << (24 - div.getResolution());
 			currLon += dx << (24 - div.getResolution());
-			Coord coord = new Coord(currLat, currLon);
+			Coord coord;
+			if (isnode)
+				coord = new CoordNode(currLat, currLon, 0/* XXX */, false);
+			else
+				coord = new Coord(currLat, currLon);
 
 			log.debug("line point", coord);
 			line.addCoord(coord);
@@ -404,6 +450,14 @@ public class RGNFileReader extends ImgReader {
 
 		public int getLineEnd() {
 			return start + lineEnd;
+		}
+
+		public int getPolygonStart() {
+			return polygonOffset == 0? start + headerLen: start + polygonOffset;
+		}
+
+		public int getPolygonEnd() {
+			return start + polygonEnd;
 		}
 	}
 }
