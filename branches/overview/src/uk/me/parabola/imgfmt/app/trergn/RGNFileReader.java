@@ -177,6 +177,7 @@ public class RGNFileReader extends ImgReader {
 
 		position(start);
 		ImgFileReader reader = getReader();
+
 		while (position() < end) {
 			Polygon line = new Polygon(div);
 			readLineCommon(reader, div, line);
@@ -201,10 +202,10 @@ public class RGNFileReader extends ImgReader {
 		int labelOffset = reader.getu3();
 		Label label;
 		if ((labelOffset & 0x800000) == 0) {
-			label = lblFile.fetchLabel(labelOffset & 0x7fffff);
+			label = lblFile.fetchLabel(labelOffset & 0x3fffff);
 		} else {
-			labelOffset = netFile.getLabelOffset(labelOffset & 0x3fffff);
-			label = lblFile.fetchLabel(labelOffset);
+			int labelOffsetFromNet = netFile.getLabelOffset(labelOffset & 0x3fffff);
+			label = lblFile.fetchLabel(labelOffsetFromNet);
 		}
 		line.setLabel(label);
 
@@ -318,7 +319,6 @@ public class RGNFileReader extends ImgReader {
 			else
 				coord = new Coord(currLat, currLon);
 
-			log.debug("line point", coord);
 			line.addCoord(coord);
 		}
 	}
