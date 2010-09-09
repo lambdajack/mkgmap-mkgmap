@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -51,9 +50,11 @@ import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
 import uk.me.parabola.mkgmap.reader.osm.GeneralRelation;
 import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
 import uk.me.parabola.mkgmap.reader.osm.Node;
+import uk.me.parabola.mkgmap.reader.osm.OsmCollector;
 import uk.me.parabola.mkgmap.reader.osm.OsmConverter;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
 import uk.me.parabola.mkgmap.reader.osm.RestrictionRelation;
+import uk.me.parabola.mkgmap.reader.osm.SavedElements;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.util.EnhancedProperties;
 
@@ -76,9 +77,11 @@ public class Osm5XmlHandler extends DefaultHandler {
 	private Map<Long, Coord> coordMap = new HashMap<Long, Coord>(50000);
 
 	private Map<Coord, Long> nodeIdMap = new IdentityHashMap<Coord, Long>();
-	private Map<Long, Node> nodeMap;
-	private Map<Long, Way> wayMap;
-	private Map<Long, Relation> relationMap;
+	//private Map<Long, Node> nodeMap;
+	//private Map<Long, Way> wayMap;
+	//private Map<Long, Relation> relationMap;
+	OsmCollector c;
+
 	private final Map<Long, List<Map.Entry<String,Relation>>> deferredRelationMap =
 		new HashMap<Long, List<Map.Entry<String,Relation>>>();
 	private final Map<String, Long> fakeIdMap = new HashMap<String, Long>();
@@ -129,6 +132,8 @@ public class Osm5XmlHandler extends DefaultHandler {
 	private final Map<Long,Set<String>> mpWayRemoveTags = new HashMap<Long,Set<String>>();
 
 	public Osm5XmlHandler(EnhancedProperties props) {
+		this.c = new SavedElements(props);
+
 		if(props.getProperty("make-all-cycleways", false)) {
 			makeOppositeCycleways = makeCycleways = true;
 		}
@@ -185,15 +190,15 @@ public class Osm5XmlHandler extends DefaultHandler {
 		if(deleteTagsFileName != null)
 			readDeleteTagsFile(deleteTagsFileName);
 
-		if (props.getProperty("preserve-element-order", false)) {
-			nodeMap = new LinkedHashMap<Long, Node>(5000);
-			wayMap = new LinkedHashMap<Long, Way>(5000);
-			relationMap = new LinkedHashMap<Long, Relation>();
-		} else {
-			nodeMap = new HashMap<Long, Node>(5000);
-			wayMap = new HashMap<Long, Way>(5000);
-			relationMap = new HashMap<Long, Relation>();
-		}
+		//if (props.getProperty("preserve-element-order", false)) {
+		//	nodeMap = new LinkedHashMap<Long, Node>(5000);
+		//	wayMap = new LinkedHashMap<Long, Way>(5000);
+		//	relationMap = new LinkedHashMap<Long, Relation>();
+		//} else {
+		//	nodeMap = new HashMap<Long, Node>(5000);
+		//	wayMap = new HashMap<Long, Way>(5000);
+		//	relationMap = new HashMap<Long, Relation>();
+		//}
 	}
 
 	private void readDeleteTagsFile(String fileName) {
@@ -326,20 +331,20 @@ public class Osm5XmlHandler extends DefaultHandler {
 			Element el;
 			String type = attributes.getValue("type");
 			if ("way".equals(type)){
-				el = wayMap.get(id);
+				el = c.getWay(id);
 			} else if ("node".equals(type)) {
-				el = nodeMap.get(id);
+				el = c.getNode(id);
 				if(el == null) {
 					// we didn't make a node for this point earlier,
 					// do it now (if it exists)
 					Coord co = coordMap.get(id);
 					if(co != null) {
 						el = new Node(id, co);
-						nodeMap.put(id, (Node)el);
+						c.addNode((Node)el);
 					}
 				}
 			} else if ("relation".equals(type)) {
-				el = relationMap.get(id);
+				el = c.getRelation(id);
 				if (el == null) {
 					// The relation may be defined later in the input.
 					// Defer the lookup.
@@ -404,7 +409,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 				if (currentNode == null) {
 					Coord co = coordMap.get(currentElementId);
 					currentNode = new Node(currentElementId, co);
-					nodeMap.put(currentElementId, currentNode);
+					c.addNode(currentNode);
 				}
 
 				if ((val.equals("motorway_junction") || val.equals("services"))
@@ -485,7 +490,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 						// the original way
 						long cycleWayId = currentWay.getId() + CYCLEWAY_ID_OFFSET;
 						Way cycleWay = new Way(cycleWayId);
-						wayMap.put(cycleWayId, cycleWay);
+						c.addWay(cycleWay);
 						// this reverses the direction of the way but
 						// that isn't really necessary as the cycleway
 						// isn't tagged as oneway
@@ -522,7 +527,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 						// way
 						long cycleWayId = currentWay.getId() + CYCLEWAY_ID_OFFSET;
 						Way cycleWay = new Way(cycleWayId);
-						wayMap.put(cycleWayId, cycleWay);
+						c.addWay(cycleWay);
 						List<Coord> points = currentWay.getPoints();
 						for (Coord point : points)
 							cycleWay.addPoint(point);
@@ -606,7 +611,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 		if (type != null) {
 			if ("multipolygon".equals(type)) {
 				Area mpBbox = (bbox != null ? bbox : ((MapDetails) collector).getBounds());
-				currentRelation = new MultiPolygonRelation(currentRelation, wayMap, mpWayRemoveTags, mpBbox);
+				currentRelation = new MultiPolygonRelation(currentRelation, c.getWays(), mpWayRemoveTags, mpBbox);
 			} else if("restriction".equals(type)) {
 
 				if(ignoreTurnRestrictions)
@@ -618,7 +623,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 		if(currentRelation != null) {
 			long id = currentRelation.getId();
 
-			relationMap.put(id, currentRelation);
+			c.addRelation(currentRelation);
 			if (!processBoundaryRelations &&
 			     currentRelation instanceof MultiPolygonRelation &&
 				 ((MultiPolygonRelation)currentRelation).isBoundaryRelation()) {
@@ -684,7 +689,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 		    generateSeaPolygon(shoreline);
 
 		for (Entry<Long,Set<String>> wayTagsRemove : mpWayRemoveTags.entrySet()) {
-			Way w = wayMap.get(wayTagsRemove.getKey());
+			Way w = c.getWay(wayTagsRemove.getKey());
 			if (w==null) {
 				log.debug("Cannot find way",wayTagsRemove.getKey(),"to remove tags by multipolygon processing.");
 				continue;
@@ -697,27 +702,30 @@ public class Osm5XmlHandler extends DefaultHandler {
 		}
 		mpWayRemoveTags.clear();		
 		
-		for (Relation r : relationMap.values())
-			converter.convertRelation(r);
-
-		for (Node n : nodeMap.values())
-			converter.convertNode(n);
-
-		nodeMap = null;
-
+		//for (Relation r : relationMap.values())
+		//	converter.convertRelation(r);
+		//
+		//for (Node n : nodeMap.values())
+		//	converter.convertNode(n);
+		//
+		//nodeMap = null;
+		//
 		if(minimumArcLength != null)
 			removeShortArcsByMergingNodes(minimumArcLength);
 
 		nodeIdMap = null;
+		//
+		//for (Way w: wayMap.values())
+		//	converter.convertWay(w);
+		//
+		//wayMap = null;
+		//
+		//converter.end();
+		//
+		//relationMap = null;
 
-		for (Way w: wayMap.values())
-			converter.convertWay(w);
-
-		wayMap = null;
-
-		converter.end();
-
-		relationMap = null;
+		// TODO this will be pulled out to the caller
+		c.finish(converter);
 
 		if(bbox != null) {
 			collector.addToBounds(new Coord(bbox.getMinLat(),
@@ -740,7 +748,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 		log.info("Making boundary nodes");
 		int numBoundaryNodesDetected = 0;
 		int numBoundaryNodesAdded = 0;
-		for(Way way : wayMap.values()) {
+		for(Way way : c.getWays().values()) {
 			List<Coord> points = way.getPoints();
 			// clip each segment in the way against the bounding box
 			// to find the positions of the boundary nodes - loop runs
@@ -814,7 +822,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 		Map<Coord, Integer> arcCounts = new IdentityHashMap<Coord, Integer>();
 		log.info("Removing short arcs (min arc length = " + minArcLength + "m)");
 		log.info("Removing short arcs - counting arcs");
-		for(Way w : wayMap.values()) {
+		for(Way w : c.getWays().values()) {
 			List<Coord> points = w.getPoints();
 			int numPoints = points.size();
 			if(numPoints >= 2) {
@@ -845,12 +853,12 @@ public class Osm5XmlHandler extends DefaultHandler {
 		while(anotherPassRequired && pass < 10) {
 			anotherPassRequired = false;
 			log.info("Removing short arcs - PASS " + ++pass);
-			Way[] ways = wayMap.values().toArray(new Way[wayMap.size()]);
+			Way[] ways = c.getWays().values().toArray(new Way[c.getWays().size()]);
 			for (Way way : ways) {
 				List<Coord> points = way.getPoints();
 				if (points.size() < 2) {
 					log.info("  Way " + way.getTag("name") + " (" + way.toBrowseURL() + ") has less than 2 points - deleting it");
-					wayMap.remove(way.getId());
+					c.getWays().remove(way.getId());
 					++numWaysDeleted;
 					continue;
 				}
@@ -1092,7 +1100,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 		try {
 			long id = idVal(sid);
 			currentWay = new Way(id);
-			wayMap.put(id, currentWay);
+			c.addWay(currentWay);
 			currentNodeInWay = null;
 			currentWayStartsWithFIXME = false;
 		} catch (NumberFormatException e) {
@@ -1102,7 +1110,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 
 	private void addNodeToWay(long id) {
 		Coord co = coordMap.get(id);
-		currentNodeInWay = nodeMap.get(id);
+		currentNodeInWay = c.getNode(id);
 		//co.incCount();
 		if (co != null) {
 			if(linkPOIsToWays) {
@@ -1126,7 +1134,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 							// its location
 							Node newNode = new Node(id, cp);
 							newNode.copyTags(currentNodeInWay);
-							nodeMap.put(id, newNode);
+							c.addNode(newNode);
 							// tell the CoordPOI what node it's
 							// associated with
 							cp.setNode(newNode);
@@ -1258,7 +1266,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 				land.addPoint(ne);
 				land.addPoint(nw);
 				land.addTag(landTag[0], landTag[1]);
-				wayMap.put(landId, land);
+				c.addWay(land);
 			}
 			// nothing more to do
 			return;
@@ -1353,7 +1361,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 							w = w1;
 						}
 						w.addTag(landTag[0], landTag[1]);
-						wayMap.put(w.getId(), w);
+						c.addWay(w);
 					}
 				}
 				else if(allowSeaSectors) {
@@ -1364,7 +1372,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 					sea.addPoint(pStart);
 					sea.addTag("natural", "sea");
 					log.info("sea: ", sea);
-					wayMap.put(seaId, sea);
+					c.addWay(sea);
 					if(generateSeaUsingMP)
 						seaRelation.addElement("outer", sea);
 					generateSeaBackground = false;
@@ -1387,7 +1395,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 					// show the coastline even though we can't produce
 					// a polygon for the land
 					w.addTag("natural", "coastline");
-					wayMap.put(w.getId(), w);
+					c.addWay(w);
 				}
 			}
 			else {
@@ -1403,7 +1411,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 		while (!hits.isEmpty()) {
 			long id = FakeIdGenerator.makeFakeId();
 			Way w = new Way(id);
-			wayMap.put(id, w);
+			c.addWay(w);
 
 			EdgeHit hit =  hits.first();
 			EdgeHit hFirst = hit;
@@ -1489,7 +1497,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 				// make it visible above the land)
 				w.addTag("natural", "water");
 				antiIslands.add(w);
-				wayMap.put(w.getId(), w);
+				c.addWay(w);
 			}
 			else {
 				// water on the outside of the poly, it's an island
@@ -1500,7 +1508,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 				else {
 					// tag as land
 					w.addTag(landTag[0], landTag[1]);
-					wayMap.put(w.getId(), w);
+					c.addWay(w);
 				}
 			}
 		}
@@ -1535,7 +1543,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 					if(generateSeaUsingMP) {
 						// create a "inner" way for the island
 						seaRelation.addElement("inner", ai);
-						wayMap.remove(ai.getId());
+						c.getWays().remove(ai.getId());
 					}
 					else
 						ai.addTag(landTag[0], landTag[1]);
@@ -1570,7 +1578,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 			}
 			sea.addTag("natural", "sea");
 			log.info("sea: ", sea);
-			wayMap.put(seaId, sea);
+			c.addWay(sea);
 			if(generateSeaUsingMP)
 				seaRelation.addElement("outer", sea);
 		}
@@ -1588,14 +1596,14 @@ public class Osm5XmlHandler extends DefaultHandler {
 				land.addPoint(ne);
 				land.addPoint(nw);
 				land.addTag(landTag[0], landTag[1]);
-				wayMap.put(landId, land);
+				c.addWay(land);
 			}
 		}
 
 		if(generateSeaUsingMP) {
 			Area mpBbox = (bbox != null ? bbox : ((MapDetails) collector).getBounds());
-			seaRelation = new MultiPolygonRelation(seaRelation, wayMap, mpWayRemoveTags, mpBbox);
-			relationMap.put(multiId, seaRelation);
+			seaRelation = new MultiPolygonRelation(seaRelation, c.getWays(), mpWayRemoveTags, mpBbox);
+			c.addRelation(seaRelation);
 			seaRelation.processElements();
 		}
 	}
@@ -1828,7 +1836,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 						w.addTag("natural", "mkgmap:coastline-gap");
 						w.addPoint(w1e);
 						w.addPoint(w2s);
-						wayMap.put(w.getId(), w);
+						c.addWay(w);
 						changed = true;
 						break;
 					}
