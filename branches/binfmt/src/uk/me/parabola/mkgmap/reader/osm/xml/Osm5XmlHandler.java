@@ -16,16 +16,9 @@
  */
 package uk.me.parabola.mkgmap.reader.osm.xml;
 
-import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -67,6 +60,11 @@ import org.xml.sax.helpers.DefaultHandler;
 /**
  * Reads and parses the OSM XML format.
  *
+ * Creates the nodes/ways and relations that are read from the file and passes
+ * them to the OsmCollector.
+ *
+ * It should not examine tags, or do anything else.
+ *
  * @author Steve Ratcliffe
  */
 public class Osm5XmlHandler extends DefaultHandler {
@@ -77,10 +75,8 @@ public class Osm5XmlHandler extends DefaultHandler {
 	private Map<Long, Coord> coordMap = new HashMap<Long, Coord>(50000);
 
 	private Map<Coord, Long> nodeIdMap = new IdentityHashMap<Coord, Long>();
-	//private Map<Long, Node> nodeMap;
-	//private Map<Long, Way> wayMap;
-	//private Map<Long, Relation> relationMap;
-	OsmCollector c;
+
+	private final OsmCollector c; // TODO rename and move
 
 	private final Map<Long, List<Map.Entry<String,Relation>>> deferredRelationMap =
 		new HashMap<Long, List<Map.Entry<String,Relation>>>();
@@ -104,10 +100,11 @@ public class Osm5XmlHandler extends DefaultHandler {
 	private Relation currentRelation;
 	private long currentElementId;
 
+	@Deprecated
 	private OsmConverter converter;
-	private MapCollector collector;
+	@Deprecated private MapCollector collector;
 	private Area bbox;
-	private Runnable endTask;
+	@Deprecated private Runnable endTask;
 
 	private final boolean reportUndefinedNodes;
 	private final boolean makeOppositeCycleways;
@@ -126,7 +123,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 	private final Double minimumArcLength;
 	private final String frigRoundabouts;
 
-	private HashMap<String,Set<String>> deletedTags;
+	private Map<String,Set<String>> deletedTags;
 	private Map<String, String> usedTags;
 	
 	private final Map<Long,Set<String>> mpWayRemoveTags = new HashMap<Long,Set<String>>();
@@ -186,60 +183,10 @@ public class Osm5XmlHandler extends DefaultHandler {
 		ignoreTurnRestrictions = props.getProperty("ignore-turn-restrictions", false);
 		processBoundaryRelations = props.getProperty("process-boundary-relations", false);
 		reportUndefinedNodes = props.getProperty("report-undefined-nodes", false);
-		String deleteTagsFileName = props.getProperty("delete-tags-file");
-		if(deleteTagsFileName != null)
-			readDeleteTagsFile(deleteTagsFileName);
-
-		//if (props.getProperty("preserve-element-order", false)) {
-		//	nodeMap = new LinkedHashMap<Long, Node>(5000);
-		//	wayMap = new LinkedHashMap<Long, Way>(5000);
-		//	relationMap = new LinkedHashMap<Long, Relation>();
-		//} else {
-		//	nodeMap = new HashMap<Long, Node>(5000);
-		//	wayMap = new HashMap<Long, Way>(5000);
-		//	relationMap = new HashMap<Long, Relation>();
-		//}
 	}
 
-	private void readDeleteTagsFile(String fileName) {
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(fileName))));
-			deletedTags = new HashMap<String,Set<String>>();
-			String line;
-			while((line = br.readLine()) != null) {
-				line = line.trim();
-				if(line.length() > 0 && 
-				   !line.startsWith("#") &&
-				   !line.startsWith(";")) {
-					String[] parts = line.split("=");
-					if (parts.length == 2) {
-						parts[0] = parts[0].trim();
-						parts[1] = parts[1].trim();
-						if ("*".equals(parts[1])) {
-							deletedTags.put(parts[0], new HashSet<String>());
-						} else {
-							Set<String> vals = deletedTags.get(parts[0]);
-							if (vals == null)
-								vals = new HashSet<String>();
-							vals.add(parts[1]);
-							deletedTags.put(parts[0], vals);
-						}
-					} else {
-						log.error("Ignoring bad line in deleted tags file: " + line);
-					}
-				}
-			}
-			br.close();
-		}
-		catch(FileNotFoundException e) {
-			log.error("Could not open delete tags file " + fileName);
-		}
-		catch(IOException e) {
-			log.error("Error reading delete tags file " + fileName);
-		}
-
-		if(deletedTags != null && deletedTags.isEmpty())
-			deletedTags = null;
+	public void setDeletedTags(Map<String, Set<String>> deletedTags) {
+		this.deletedTags = deletedTags;
 	}
 
 	private String keepTag(String key, String val) {
@@ -349,11 +296,9 @@ public class Osm5XmlHandler extends DefaultHandler {
 					// The relation may be defined later in the input.
 					// Defer the lookup.
 					Map.Entry<String,Relation> entry =
-						new AbstractMap.SimpleEntry<String,Relation>
-						(attributes.getValue("role"), currentRelation);
+						new AbstractMap.SimpleEntry<String,Relation>(attributes.getValue("role"), currentRelation);
 
-					List<Map.Entry<String,Relation>> entries =
-						deferredRelationMap.get(id);
+					List<Map.Entry<String,Relation>> entries = deferredRelationMap.get(id);
 					if (entries == null) {
 						entries = new ArrayList<Map.Entry<String,Relation>>();
 						deferredRelationMap.put(id, entries);
@@ -392,7 +337,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 			String key = attributes.getValue("k");
 			String val = attributes.getValue("v");
 
-			if("mkgmap:on-boundary".equals(key)) {
+			if("mkgmap:on-boundary".equals(key)) { // FIXME checking tag value
 				if("1".equals(val) || "true".equals(val) || "yes".equals(val)) {
 					Coord co = coordMap.get(currentElementId);
 					co.setOnBoundary(true);
@@ -402,16 +347,17 @@ public class Osm5XmlHandler extends DefaultHandler {
 			}
 
 			// We only want to create a full node for nodes that are POI's
-			// and not just point of a way.  Only create if it has tags that
+			// and not just one point of a way.  Only create if it has tags that
 			// could be used in a POI.
 			key = keepTag(key, val);
 			if (key != null) {
 				if (currentNode == null) {
 					Coord co = coordMap.get(currentElementId);
 					currentNode = new Node(currentElementId, co);
-					c.addNode(currentNode);
+					c.addNode(currentNode);// TODO call on end tag
 				}
 
+				// FIXME checking tag values
 				if ((val.equals("motorway_junction") || val.equals("services"))
 						&& key.equals("highway")) {
 					exits.add(currentNode);
@@ -448,141 +394,12 @@ public class Osm5XmlHandler extends DefaultHandler {
 		} else if (mode == MODE_WAY) {
 			if (qName.equals("way")) {
 				mode = 0;
-				String highway = currentWay.getTag("highway");
-				if(highway != null ||
-				   "ferry".equals(currentWay.getTag("route"))) {
-					boolean oneway = currentWay.isBoolTag("oneway");
-					// if the first or last Node of the Way has a
-					// FIXME attribute, disable dead-end-check for
-					// oneways
-					if (oneway &&
-						currentWayStartsWithFIXME ||
-						(currentNodeInWay != null &&
-						 (currentNodeInWay.getTag("FIXME") != null ||
-						  currentNodeInWay.getTag("fixme") != null))) {
-						currentWay.addTag("mkgmap:dead-end-check", "false");
-					}
-
-					// if the way is a roundabout but isn't already
-					// flagged as "oneway", flag it here
-					if("roundabout".equals(currentWay.getTag("junction"))) {
-						if(currentWay.getTag("oneway") == null) {
-							currentWay.addTag("oneway", "yes");
-						}
-						if(currentWay.getTag("mkgmap:frig_roundabout") == null) {
-							if(frigRoundabouts != null)
-								currentWay.addTag("mkgmap:frig_roundabout", frigRoundabouts);
-						}
-					}
-					String cycleway = currentWay.getTag("cycleway");
-					if(makeOppositeCycleways &&
-					   cycleway != null &&
-					   !"cycleway".equals(highway) &&
-					   oneway &&
-					   ("opposite".equals(cycleway) ||
-						"opposite_lane".equals(cycleway) ||
-						"opposite_track".equals(cycleway))) {
-						// what we have here is a oneway street
-						// that allows bicycle traffic in both
-						// directions -- to enable bicycle routing
-						// in the reverse direction, we synthesise
-						// a cycleway that has the same points as
-						// the original way
-						long cycleWayId = currentWay.getId() + CYCLEWAY_ID_OFFSET;
-						Way cycleWay = new Way(cycleWayId);
-						c.addWay(cycleWay);
-						// this reverses the direction of the way but
-						// that isn't really necessary as the cycleway
-						// isn't tagged as oneway
-						List<Coord> points = currentWay.getPoints();
-						for(int i = points.size() - 1; i >= 0; --i)
-							cycleWay.addPoint(points.get(i));
-						cycleWay.copyTags(currentWay);
-						//cycleWay.addTag("highway", "cycleway");
-						String name = currentWay.getTag("name");
-						if(name != null)
-							name += " (cycleway)";
-						else
-							name = "cycleway";
-						cycleWay.addTag("name", name);
-						cycleWay.addTag("oneway", "no");
-						cycleWay.addTag("access", "no");
-						cycleWay.addTag("bicycle", "yes");
-						cycleWay.addTag("foot", "no");
-						cycleWay.addTag("mkgmap:synthesised", "yes");
-						log.info("Making " + cycleway + " cycleway '" + cycleWay.getTag("name") + "'");
-					}
-					else if(makeCycleways &&
-							cycleway != null &&
-							!"cycleway".equals(highway) &&
-							("track".equals(cycleway) ||
-							 "lane".equals(cycleway) ||
-							 "both".equals(cycleway) ||
-							 "left".equals(cycleway) ||
-							 "right".equals(cycleway))) {
-						// what we have here is a highway with a
-						// separate track for cycles -- to enable
-						// bicycle routing, we synthesise a cycleway
-						// that has the same points as the original
-						// way
-						long cycleWayId = currentWay.getId() + CYCLEWAY_ID_OFFSET;
-						Way cycleWay = new Way(cycleWayId);
-						c.addWay(cycleWay);
-						List<Coord> points = currentWay.getPoints();
-						for (Coord point : points)
-							cycleWay.addPoint(point);
-						cycleWay.copyTags(currentWay);
-						if(currentWay.getTag("bicycle") == null)
-							currentWay.addTag("bicycle", "no");
-						//cycleWay.addTag("highway", "cycleway");
-						String name = currentWay.getTag("name");
-						if(name != null)
-							name += " (cycleway)";
-						else
-							name = "cycleway";
-						cycleWay.addTag("name", name);
-						cycleWay.addTag("access", "no");
-						cycleWay.addTag("bicycle", "yes");
-						cycleWay.addTag("foot", "no");
-						cycleWay.addTag("mkgmap:synthesised", "yes");
-						log.info("Making " + cycleway + " cycleway '" + cycleWay.getTag("name") + "'");
-					}
-				}
-				if("motorway".equals(highway) ||
-				   "trunk".equals(highway))
-					motorways.add(currentWay);
-				if(generateSea) {
-					String natural = currentWay.getTag("natural");
-					if(natural != null) {
-						if("coastline".equals(natural)) {
-							currentWay.deleteTag("natural");
-							shoreline.add(currentWay);
-						}
-						else if(natural.contains(";")) {
-							// cope with compound tag value
-							String others = null;
-							boolean foundCoastline = false;
-							for(String n : natural.split(";")) {
-								if("coastline".equals(n.trim()))
-									foundCoastline = true;
-								else if(others == null)
-									others = n;
-								else
-									others += ";" + n;
-							}
-							if(foundCoastline) {
-								currentWay.deleteTag("natural");
-								if(others != null)
-									currentWay.addTag("natural", others);
-								shoreline.add(currentWay);
-							}
-						}
-					}
-				}
+				addWayHighway(currentWay);
+				addWaySea(currentWay);
 				currentNodeInWay = null;
 				currentWayStartsWithFIXME = false;
 				currentWay = null;
-				// ways are processed at the end of the document,
+				// ways are processed at the end of the document, as they
 				// may be changed by a Relation class
 			}
 		} else if (mode == MODE_BOUND) {
@@ -595,6 +412,140 @@ public class Osm5XmlHandler extends DefaultHandler {
 			if (qName.equals("relation")) {
 				mode = 0;
 				endRelation();
+			}
+		}
+	}
+
+	private void addWayHighway(Way currentWay) {
+		String highway = currentWay.getTag("highway");
+		if(highway != null || "ferry".equals(currentWay.getTag("route"))) {
+			boolean oneway = currentWay.isBoolTag("oneway");
+			// if the first or last Node of the Way has a
+			// FIXME attribute, disable dead-end-check for
+			// oneways
+			if (oneway &&
+				currentWayStartsWithFIXME ||
+				(currentNodeInWay != null &&
+				 (currentNodeInWay.getTag("FIXME") != null ||
+				  currentNodeInWay.getTag("fixme") != null))) {
+				currentWay.addTag("mkgmap:dead-end-check", "false");
+			}
+
+			// if the way is a roundabout but isn't already
+			// flagged as "oneway", flag it here
+			if("roundabout".equals(currentWay.getTag("junction"))) {
+				if(currentWay.getTag("oneway") == null) {
+					currentWay.addTag("oneway", "yes");
+				}
+				if(currentWay.getTag("mkgmap:frig_roundabout") == null) {
+					if(frigRoundabouts != null)
+						currentWay.addTag("mkgmap:frig_roundabout", frigRoundabouts);
+				}
+			}
+
+			String cycleway = currentWay.getTag("cycleway");
+			if(makeOppositeCycleways && cycleway != null && !"cycleway".equals(highway) && oneway &&
+			   ("opposite".equals(cycleway) ||
+				"opposite_lane".equals(cycleway) ||
+				"opposite_track".equals(cycleway)))
+			{
+				// what we have here is a oneway street
+				// that allows bicycle traffic in both
+				// directions -- to enable bicycle routing
+				// in the reverse direction, we synthesise
+				// a cycleway that has the same points as
+				// the original way
+				long cycleWayId = currentWay.getId() + CYCLEWAY_ID_OFFSET;
+				Way cycleWay = new Way(cycleWayId);
+				c.addWay(cycleWay);
+				// this reverses the direction of the way but
+				// that isn't really necessary as the cycleway
+				// isn't tagged as oneway
+				List<Coord> points = currentWay.getPoints();
+				for(int i = points.size() - 1; i >= 0; --i)
+					cycleWay.addPoint(points.get(i));
+				cycleWay.copyTags(currentWay);
+				//cycleWay.addTag("highway", "cycleway");
+				String name = currentWay.getTag("name");
+				if(name != null)
+					name += " (cycleway)";
+				else
+					name = "cycleway";
+				cycleWay.addTag("name", name);
+				cycleWay.addTag("oneway", "no");
+				cycleWay.addTag("access", "no");
+				cycleWay.addTag("bicycle", "yes");
+				cycleWay.addTag("foot", "no");
+				cycleWay.addTag("mkgmap:synthesised", "yes");
+				log.info("Making " + cycleway + " cycleway '" + cycleWay.getTag("name") + "'");
+
+			} else if(makeCycleways && cycleway != null && !"cycleway".equals(highway) &&
+					("track".equals(cycleway) ||
+					 "lane".equals(cycleway) ||
+					 "both".equals(cycleway) ||
+					 "left".equals(cycleway) ||
+					 "right".equals(cycleway)))
+			{
+				// what we have here is a highway with a
+				// separate track for cycles -- to enable
+				// bicycle routing, we synthesise a cycleway
+				// that has the same points as the original
+				// way
+				long cycleWayId = currentWay.getId() + CYCLEWAY_ID_OFFSET;
+				Way cycleWay = new Way(cycleWayId);
+				c.addWay(cycleWay);
+				List<Coord> points = currentWay.getPoints();
+				for (Coord point : points)
+					cycleWay.addPoint(point);
+				cycleWay.copyTags(currentWay);
+				if(currentWay.getTag("bicycle") == null)
+					currentWay.addTag("bicycle", "no");
+				//cycleWay.addTag("highway", "cycleway");
+				String name = currentWay.getTag("name");
+				if(name != null)
+					name += " (cycleway)";
+				else
+					name = "cycleway";
+				cycleWay.addTag("name", name);
+				cycleWay.addTag("access", "no");
+				cycleWay.addTag("bicycle", "yes");
+				cycleWay.addTag("foot", "no");
+				cycleWay.addTag("mkgmap:synthesised", "yes");
+				log.info("Making " + cycleway + " cycleway '" + cycleWay.getTag("name") + "'");
+			}
+		}
+
+		if("motorway".equals(highway) || "trunk".equals(highway))
+			motorways.add(currentWay);
+	}
+
+	private void addWaySea(Way currentWay) {
+		if(generateSea) {
+			String natural = currentWay.getTag("natural");
+			if(natural != null) {
+				if("coastline".equals(natural)) {
+					currentWay.deleteTag("natural");
+					shoreline.add(currentWay);
+				} else if(natural.contains(";")) {
+					// cope with compound tag value
+					String others = null;
+					boolean foundCoastline = false;
+					for(String n : natural.split(";")) {
+						if("coastline".equals(n.trim()))
+							foundCoastline = true;
+						else if(others == null)
+							others = n;
+						else
+							others += ";" + n;
+					}
+
+					if(foundCoastline) {
+						currentWay.deleteTag("natural");
+						if(others != null)
+							currentWay.addTag("natural", others);
+						shoreline.add(currentWay);
+					}
+				}
 			}
 		}
 	}
@@ -652,7 +603,60 @@ public class Osm5XmlHandler extends DefaultHandler {
 	 * another exception.
 	 */
 	public void endDocument() throws SAXException {
+
+		finishExits();
+
+		coordMap = null;
+
+		if(bbox != null && (generateSea || minimumArcLength != null))
+			makeBoundaryNodes();
+
+		if (generateSea)
+		    generateSeaPolygon(shoreline);
+
+		finishMultiPolygons();
 		
+		if(minimumArcLength != null)
+			removeShortArcsByMergingNodes(minimumArcLength);
+
+		nodeIdMap = null;
+
+		// TODO this will be pulled out to the caller
+		c.finish(converter);
+
+		if(bbox != null) {
+			collector.addToBounds(new Coord(bbox.getMinLat(),
+						     bbox.getMinLong()));
+			collector.addToBounds(new Coord(bbox.getMinLat(),
+						     bbox.getMaxLong()));
+			collector.addToBounds(new Coord(bbox.getMaxLat(),
+						     bbox.getMinLong()));
+			collector.addToBounds(new Coord(bbox.getMaxLat(),
+						     bbox.getMaxLong()));
+		}
+
+		// Run a finishing task.
+		endTask.run();
+	}
+
+	private void finishMultiPolygons() {
+		for (Entry<Long,Set<String>> wayTagsRemove : mpWayRemoveTags.entrySet()) {
+			Way w = c.getWay(wayTagsRemove.getKey());
+			if (w == null) {
+				log.debug("Cannot find way",wayTagsRemove.getKey(), "to remove tags by multipolygon processing.");
+				continue;
+			}
+
+			log.debug("Remove tags",wayTagsRemove.getValue(),"from way",w.getId(), w.toTagString());
+			for (String tagname : wayTagsRemove.getValue()) {
+				w.deleteTag(tagname);
+			}
+			log.debug("After removal",w.getId(), w.toTagString());
+		}
+		mpWayRemoveTags.clear();
+	}
+
+	private void finishExits() {
 		for (Node e : exits) {
 			String refTag = Exit.TAG_ROAD_REF;
 			if(e.getTag(refTag) == null) {
@@ -679,67 +683,6 @@ public class Osm5XmlHandler extends DefaultHandler {
 				}
 			}
 		}
-
-		coordMap = null;
-
-		if(bbox != null && (generateSea || minimumArcLength != null))
-			makeBoundaryNodes();
-
-		if (generateSea)
-		    generateSeaPolygon(shoreline);
-
-		for (Entry<Long,Set<String>> wayTagsRemove : mpWayRemoveTags.entrySet()) {
-			Way w = c.getWay(wayTagsRemove.getKey());
-			if (w==null) {
-				log.debug("Cannot find way",wayTagsRemove.getKey(),"to remove tags by multipolygon processing.");
-				continue;
-			}
-			log.debug("Remove tags",wayTagsRemove.getValue(),"from way",w.getId(), w.toTagString());
-			for (String tagname : wayTagsRemove.getValue()) {
-				w.deleteTag(tagname);
-			}
-			log.debug("After removal",w.getId(), w.toTagString());
-		}
-		mpWayRemoveTags.clear();		
-		
-		//for (Relation r : relationMap.values())
-		//	converter.convertRelation(r);
-		//
-		//for (Node n : nodeMap.values())
-		//	converter.convertNode(n);
-		//
-		//nodeMap = null;
-		//
-		if(minimumArcLength != null)
-			removeShortArcsByMergingNodes(minimumArcLength);
-
-		nodeIdMap = null;
-		//
-		//for (Way w: wayMap.values())
-		//	converter.convertWay(w);
-		//
-		//wayMap = null;
-		//
-		//converter.end();
-		//
-		//relationMap = null;
-
-		// TODO this will be pulled out to the caller
-		c.finish(converter);
-
-		if(bbox != null) {
-			collector.addToBounds(new Coord(bbox.getMinLat(),
-						     bbox.getMinLong()));
-			collector.addToBounds(new Coord(bbox.getMinLat(),
-						     bbox.getMaxLong()));
-			collector.addToBounds(new Coord(bbox.getMaxLat(),
-						     bbox.getMinLong()));
-			collector.addToBounds(new Coord(bbox.getMaxLat(),
-						     bbox.getMaxLong()));
-		}
-
-		// Run a finishing task.
-		endTask.run();
 	}
 
 	// "soft clip" each way that crosses a boundary by adding a point

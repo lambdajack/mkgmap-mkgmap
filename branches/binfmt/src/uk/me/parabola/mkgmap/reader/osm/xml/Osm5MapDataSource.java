@@ -16,9 +16,16 @@
  */
 package uk.me.parabola.mkgmap.reader.osm.xml;
 
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
@@ -29,6 +36,7 @@ import javax.xml.parsers.SAXParserFactory;
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.imgfmt.Utils;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.osmstyle.StyleImpl;
 import uk.me.parabola.mkgmap.osmstyle.StyledConverter;
 import uk.me.parabola.mkgmap.osmstyle.eval.SyntaxException;
@@ -48,6 +56,7 @@ import org.xml.sax.SAXException;
  * @author Steve Ratcliffe
  */
 public class Osm5MapDataSource extends OsmMapDataSource {
+	private static final Logger log = Logger.getLogger(Osm5MapDataSource.class);
 
 	public boolean isFileSupported(String name) {
 		// This is the default format so say supported if we get this far,
@@ -81,6 +90,13 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 				Osm5MapDataSource.ConverterStuff stuff = createConverter();
 				handler.setConverter(stuff.getConverter());
 				handler.setUsedTags(stuff.getUsedTags());
+
+				String deleteTagsFileName = getConfig().getProperty("delete-tags-file");
+				if(deleteTagsFileName != null) {
+					Map<String, Set<String>> deltags = readDeleteTagsFile(deleteTagsFileName);
+					handler.setDeletedTags(deltags);
+				}
+				
 				parser.parse(is, handler);
 			} catch (IOException e) {
 				throw new FormatException("Error reading file", e);
@@ -90,6 +106,49 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 		} catch (ParserConfigurationException e) {
 			throw new FormatException("Internal error configuring xml parser", e);
 		}
+	}
+
+	private Map<String, Set<String>> readDeleteTagsFile(String fileName) {
+		Map<String, Set<String>> deletedTags = new HashMap<String,Set<String>>();
+		try {
+			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(fileName))));
+			String line;
+			while((line = br.readLine()) != null) {
+				line = line.trim();
+				if(line.length() > 0 &&
+				   !line.startsWith("#") &&
+				   !line.startsWith(";")) {
+					String[] parts = line.split("=");
+					if (parts.length == 2) {
+						parts[0] = parts[0].trim();
+						parts[1] = parts[1].trim();
+						if ("*".equals(parts[1])) {
+							deletedTags.put(parts[0], new HashSet<String>());
+						} else {
+							Set<String> vals = deletedTags.get(parts[0]);
+							if (vals == null)
+								vals = new HashSet<String>();
+							vals.add(parts[1]);
+							deletedTags.put(parts[0], vals);
+						}
+					} else {
+						log.error("Ignoring bad line in deleted tags file: " + line);
+					}
+				}
+			}
+			br.close();
+		}
+		catch(FileNotFoundException e) {
+			log.error("Could not open delete tags file " + fileName);
+		}
+		catch(IOException e) {
+			log.error("Error reading delete tags file " + fileName);
+		}
+
+		if(deletedTags.isEmpty())
+			deletedTags = null;
+
+		return deletedTags;
 	}
 
 	/**

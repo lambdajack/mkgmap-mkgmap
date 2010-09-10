@@ -31,20 +31,25 @@ import java.util.Map;
 public interface OsmCollector {
 
 	/**
-	 * Add the given node and save it.
+	 * Add the given node and save it. The node must be completely formed
+	 * with all its tags. If it was read from an XML file, then you would
+	 * only call this routine on the closing tags.
+	 *
 	 * @param node The osm node.
 	 */
 	public void addNode(Node node);
 
 	/**
-	 * Add the given way.
+	 * Add the given way. The way must be complete, call after the end tag
+	 * is seen for the XML format.
 	 *
 	 * @param way The osm way.
 	 */
 	public void addWay(Way way);
 
 	/**
-	 * Add the given relation.
+	 * Add the given relation. The relation must be complete, call after the
+	 * end tag is seen for the XML format.
 	 *
 	 * @param rel The osm relation.
 	 */
@@ -59,5 +64,5 @@ public interface OsmCollector {
 	public void finish(OsmConverter converter);
 
 	/** TEMPORARY, will be removed. */
-	Map<Long, Way> getWays();
+	@Deprecated Map<Long, Way> getWays();
 }
