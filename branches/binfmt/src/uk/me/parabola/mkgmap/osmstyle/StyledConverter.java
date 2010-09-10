@@ -382,6 +382,10 @@ public class StyledConverter implements OsmConverter {
 	public void setBoundingBox(Area bbox) {
 		this.clipper = new AreaClipper(bbox);
 		this.bbox = bbox;
+
+		// we calculate our own bounding box, now let the collector know about it.
+		collector.addToBounds(new Coord(bbox.getMinLat(), bbox.getMinLong()));
+		collector.addToBounds(new Coord(bbox.getMaxLat(), bbox.getMaxLong()));
 	}
 
 	public void end() {

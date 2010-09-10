@@ -17,12 +17,10 @@
 package uk.me.parabola.mkgmap.reader.osm.xml;
 
 import java.io.BufferedReader;
-import java.io.DataInputStream;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -41,6 +39,7 @@ import uk.me.parabola.mkgmap.osmstyle.StyleImpl;
 import uk.me.parabola.mkgmap.osmstyle.StyledConverter;
 import uk.me.parabola.mkgmap.osmstyle.eval.SyntaxException;
 import uk.me.parabola.mkgmap.reader.osm.OsmConverter;
+import uk.me.parabola.mkgmap.reader.osm.SavedElements;
 import uk.me.parabola.mkgmap.reader.osm.Style;
 
 import org.xml.sax.SAXException;
@@ -80,16 +79,13 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 
 			try {
 				Osm5XmlHandler handler = new Osm5XmlHandler(getConfig());
-				handler.setCollector(mapper);
-				Runnable task = new Runnable() {
-					public void run() {
-						addBackground();
-					}
-				};
-				handler.setEndTask(task);
-				Osm5MapDataSource.ConverterStuff stuff = createConverter();
-				handler.setConverter(stuff.getConverter());
-				handler.setUsedTags(stuff.getUsedTags());
+
+				SavedElements collector = new SavedElements(getConfig());
+				handler.setOsmCollector(collector);
+
+				ConverterData converterData = createConverter();
+
+				handler.setUsedTags(converterData.getUsedTags());
 
 				String deleteTagsFileName = getConfig().getProperty("delete-tags-file");
 				if(deleteTagsFileName != null) {
@@ -98,6 +94,13 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 				}
 				
 				parser.parse(is, handler);
+
+				OsmConverter converter = converterData.getConverter();
+				converter.setBoundingBox(collector.getBoundingBox());
+				
+				collector.finish(converter);
+				addBackground();
+
 			} catch (IOException e) {
 				throw new FormatException("Error reading file", e);
 			}
@@ -111,13 +114,11 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 	private Map<String, Set<String>> readDeleteTagsFile(String fileName) {
 		Map<String, Set<String>> deletedTags = new HashMap<String,Set<String>>();
 		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(new DataInputStream(new FileInputStream(fileName))));
+			BufferedReader br = new BufferedReader(new FileReader(fileName));
 			String line;
 			while((line = br.readLine()) != null) {
 				line = line.trim();
-				if(line.length() > 0 &&
-				   !line.startsWith("#") &&
-				   !line.startsWith(";")) {
+				if(line.length() > 0 && !line.startsWith("#") && !line.startsWith(";")) {
 					String[] parts = line.split("=");
 					if (parts.length == 2) {
 						parts[0] = parts[0].trim();
@@ -165,7 +166,7 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 	 *
 	 * @return An OsmConverter based on the command line options passed in.
 	 */
-	private ConverterStuff createConverter() {
+	private ConverterData createConverter() {
 
 		Properties props = getConfig();
 		String loc = props.getProperty("style-file");
@@ -193,14 +194,14 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 			throw new ExitException("Could not open style " + name1);
 		}
 
-		return new ConverterStuff(converter, tags);
+		return new ConverterData(converter, tags);
 	}
 
-	public class ConverterStuff {
+	public class ConverterData {
 		private final OsmConverter converter;
 		private final Set<String> usedTags;
 
-		public ConverterStuff(OsmConverter converter, Set<String> usedTags) {
+		public ConverterData(OsmConverter converter, Set<String> usedTags) {
 			this.converter = converter;
 			this.usedTags = usedTags;
 		}

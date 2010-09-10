@@ -16,7 +16,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import uk.me.parabola.mkgmap.CommandArgs;
+import uk.me.parabola.imgfmt.Utils;
+import uk.me.parabola.imgfmt.app.Area;
+import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.util.EnhancedProperties;
 
 /**
@@ -33,6 +35,16 @@ public class SavedElements implements OsmCollector {
 	private Map<Long, Way> wayMap;
 	private Map<Long, Relation> relationMap;
 
+	// This is an explicitly given bounding box from the input file command line etc.
+	private Area boundingBox;
+
+	// This is a calculated bounding box, which is only available if there is
+	// no given bounding box.
+	private int minLat = Utils.toMapUnit(180.0);
+	private int minLon = Utils.toMapUnit(180.0);
+	private int maxLat = Utils.toMapUnit(-180.0);
+	private int maxLon = Utils.toMapUnit(-180.0);
+
 	public SavedElements(EnhancedProperties args) {
 		if (args.getProperty("preserve-element-order", false)) {
 			nodeMap = new LinkedHashMap<Long, Node>(5000);
@@ -42,6 +54,29 @@ public class SavedElements implements OsmCollector {
 			nodeMap = new HashMap<Long, Node>();
 			wayMap = new HashMap<Long, Way>();
 			relationMap = new HashMap<Long, Relation>();
+		}
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * We use this to calculate a bounding box in the situation where none is
+	 * given.  In the usual case where there is a bounding box, then nothing
+	 * is done.
+	 *
+	 * @param co The point.
+	 */
+	public void addPoint(Coord co) {
+		if (boundingBox == null) {
+			if (co.getLatitude() < minLat)
+				minLat = co.getLatitude();
+			if (co.getLatitude() > maxLat)
+				maxLat = co.getLatitude();
+
+			if (co.getLongitude() < minLon)
+				minLon = co.getLongitude();
+			if (co.getLongitude() > maxLon)
+				maxLon = co.getLongitude();
 		}
 	}
 
@@ -105,5 +140,20 @@ public class SavedElements implements OsmCollector {
 
 	public Map<Long, Way> getWays() {
 		return wayMap;
+	}
+
+	public void setBoundingBox(Area bbox) {
+		boundingBox = bbox;
+	}
+
+	/** will probably go away.
+	 * @deprecated the bbox will not need to be publicly accessable. */
+	@Deprecated
+	public Area getBoundingBox() {
+		if (boundingBox != null) {
+			return boundingBox;
+		} else {
+			return new Area(minLat, minLon, maxLat, maxLon);
+		}
 	}
 }

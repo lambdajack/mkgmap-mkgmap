@@ -14,6 +14,9 @@ package uk.me.parabola.mkgmap.reader.osm;
 
 import java.util.Map;
 
+import uk.me.parabola.imgfmt.app.Area;
+import uk.me.parabola.imgfmt.app.Coord;
+
 /**
  * Collects the map elements in their OSM form, that is: with osm nodes and
  * ways with tags.
@@ -31,9 +34,18 @@ import java.util.Map;
 public interface OsmCollector {
 
 	/**
+	 * Add a new coordinate point to the map. Called for every point in the
+	 * map including nodes that have no tags and are only used within ways.
+	 * @param co The point.
+	 */
+	public void addPoint(Coord co);
+
+	/**
 	 * Add the given node and save it. The node must be completely formed
 	 * with all its tags. If it was read from an XML file, then you would
 	 * only call this routine on the closing tags.
+	 *
+	 * All nodes that are passed to this routine will have some tags.
 	 *
 	 * @param node The osm node.
 	 */
@@ -65,4 +77,7 @@ public interface OsmCollector {
 
 	/** TEMPORARY, will be removed. */
 	@Deprecated Map<Long, Way> getWays();
+
+	public void setBoundingBox(Area bbox);
+
 }
