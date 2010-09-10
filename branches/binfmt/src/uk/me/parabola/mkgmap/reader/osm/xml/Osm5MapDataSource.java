@@ -98,7 +98,7 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 				OsmConverter converter = converterData.getConverter();
 				converter.setBoundingBox(collector.getBoundingBox());
 				
-				collector.finish(converter);
+				collector.convert(converter);
 				addBackground();
 
 			} catch (IOException e) {

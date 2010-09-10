@@ -67,6 +67,7 @@ import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.OsmConverter;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
 import uk.me.parabola.mkgmap.reader.osm.Rule;
+import uk.me.parabola.mkgmap.reader.osm.SavedElements;
 import uk.me.parabola.mkgmap.reader.osm.Style;
 import uk.me.parabola.mkgmap.reader.osm.TypeResult;
 import uk.me.parabola.mkgmap.reader.osm.WatchableTypeResult;
@@ -191,14 +192,12 @@ public class StyleTester implements OsmConverter {
 			try {
 				EnhancedProperties props = new EnhancedProperties();
 				props.put("preserve-element-order", "1");
+				SavedElements osmCollector = new SavedElements(props);
 				Osm5XmlHandler handler = new Osm5XmlHandler(props);
-				handler.setCollector(collector);
-				handler.setConverter(normal);
-				handler.setEndTask(new Runnable() {
-					public void run() {
-					}
-				});
+				handler.setOsmCollector(osmCollector);
 				parser.parse(is, handler);
+				osmCollector.convert(normal);
+
 				System.err.println("Conversion time " + (System.currentTimeMillis() - collector.getStart()) + "ms");
 			} catch (IOException e) {
 				throw new FormatException("Error reading file", e);

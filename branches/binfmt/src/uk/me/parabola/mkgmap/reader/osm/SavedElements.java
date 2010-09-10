@@ -119,7 +119,7 @@ public class SavedElements implements OsmCollector {
 		return relationMap.get(id);
 	}
 
-	public void finish(OsmConverter converter) {
+	public void convert(OsmConverter converter) {
 		for (Relation r : relationMap.values())
 			converter.convertRelation(r);
 

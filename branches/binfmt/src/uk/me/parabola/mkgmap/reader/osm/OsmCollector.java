@@ -73,7 +73,7 @@ public interface OsmCollector {
 
 	public Relation getRelation(long id);
 
-	public void finish(OsmConverter converter);
+	public void convert(OsmConverter converter);
 
 	/** TEMPORARY, will be removed. */
 	@Deprecated Map<Long, Way> getWays();
