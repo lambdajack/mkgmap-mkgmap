@@ -28,9 +28,19 @@ import uk.me.parabola.util.EnhancedProperties;
  *
  * Both the XML format and the binary format use this.
  *
+ * In the early days of mkgmap, the nodes and ways were converted as soon
+ * as they were encounted in the input file.  After relations that is not
+ * possible, you have to save up all the nodes and ways as they might be
+ * needed for relations.
+ *
+ * We also want access to the other ways/nodes to generate sea polygons,
+ * prepare for routing etc.
+ *
  * @author Steve Ratcliffe
  */
-public class SavedElements implements OsmCollector {
+public class ElementSaver {
+	private Map<Long, Coord> coordMap = new HashMap<Long, Coord>(50000);
+
 	private Map<Long, Node> nodeMap;
 	private Map<Long, Way> wayMap;
 	private Map<Long, Relation> relationMap;
@@ -45,7 +55,7 @@ public class SavedElements implements OsmCollector {
 	private int maxLat = Utils.toMapUnit(-180.0);
 	private int maxLon = Utils.toMapUnit(-180.0);
 
-	public SavedElements(EnhancedProperties args) {
+	public ElementSaver(EnhancedProperties args) {
 		if (args.getProperty("preserve-element-order", false)) {
 			nodeMap = new LinkedHashMap<Long, Node>(5000);
 			wayMap = new LinkedHashMap<Long, Way>(5000);
@@ -66,7 +76,8 @@ public class SavedElements implements OsmCollector {
 	 *
 	 * @param co The point.
 	 */
-	public void addPoint(Coord co) {
+	public void addPoint(long id, Coord co) {
+		coordMap.put(id, co);
 		if (boundingBox == null) {
 			if (co.getLatitude() < minLat)
 				minLat = co.getLatitude();
@@ -107,12 +118,20 @@ public class SavedElements implements OsmCollector {
 		relationMap.put(rel.getId(), rel);
 	}
 
-	public Way getWay(long id) {
-		return wayMap.get(id);
+	public void setBoundingBox(Area bbox) {
+		boundingBox = bbox;
+	}
+
+	public Coord getCoord(long id) {
+		return coordMap.get(id);
 	}
 
 	public Node getNode(long id) {
 		return nodeMap.get(id);
+	}
+
+	public Way getWay(long id) {
+		return wayMap.get(id);
 	}
 
 	public Relation getRelation(long id) {
@@ -120,6 +139,9 @@ public class SavedElements implements OsmCollector {
 	}
 
 	public void convert(OsmConverter converter) {
+		converter.setBoundingBox(boundingBox);
+		coordMap = null;
+
 		for (Relation r : relationMap.values())
 			converter.convertRelation(r);
 
@@ -142,13 +164,10 @@ public class SavedElements implements OsmCollector {
 		return wayMap;
 	}
 
-	public void setBoundingBox(Area bbox) {
-		boundingBox = bbox;
-	}
-
-	/** will probably go away.
-	 * @deprecated the bbox will not need to be publicly accessable. */
-	@Deprecated
+	/**
+	 * Get the bounding box.  This is either the one that was explicitly included in the input
+	 * file, or if none was given, the calcualted one.
+	 */
 	public Area getBoundingBox() {
 		if (boundingBox != null) {
 			return boundingBox;

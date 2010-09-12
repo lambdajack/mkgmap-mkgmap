@@ -62,12 +62,12 @@ import uk.me.parabola.mkgmap.osmstyle.eval.ExpressionReader;
 import uk.me.parabola.mkgmap.osmstyle.eval.Op;
 import uk.me.parabola.mkgmap.osmstyle.eval.SyntaxException;
 import uk.me.parabola.mkgmap.reader.osm.Element;
+import uk.me.parabola.mkgmap.reader.osm.ElementSaver;
 import uk.me.parabola.mkgmap.reader.osm.GType;
 import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.OsmConverter;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
 import uk.me.parabola.mkgmap.reader.osm.Rule;
-import uk.me.parabola.mkgmap.reader.osm.SavedElements;
 import uk.me.parabola.mkgmap.reader.osm.Style;
 import uk.me.parabola.mkgmap.reader.osm.TypeResult;
 import uk.me.parabola.mkgmap.reader.osm.WatchableTypeResult;
@@ -192,11 +192,11 @@ public class StyleTester implements OsmConverter {
 			try {
 				EnhancedProperties props = new EnhancedProperties();
 				props.put("preserve-element-order", "1");
-				SavedElements osmCollector = new SavedElements(props);
+				ElementSaver saver = new ElementSaver(props);
 				Osm5XmlHandler handler = new Osm5XmlHandler(props);
-				handler.setOsmCollector(osmCollector);
+				handler.setOsmCollector(saver);
 				parser.parse(is, handler);
-				osmCollector.convert(normal);
+				saver.convert(normal);
 
 				System.err.println("Conversion time " + (System.currentTimeMillis() - collector.getStart()) + "ms");
 			} catch (IOException e) {

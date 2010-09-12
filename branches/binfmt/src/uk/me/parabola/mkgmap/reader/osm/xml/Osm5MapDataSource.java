@@ -21,8 +21,10 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -38,9 +40,13 @@ import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.osmstyle.StyleImpl;
 import uk.me.parabola.mkgmap.osmstyle.StyledConverter;
 import uk.me.parabola.mkgmap.osmstyle.eval.SyntaxException;
+import uk.me.parabola.mkgmap.reader.osm.ElementSaver;
 import uk.me.parabola.mkgmap.reader.osm.OsmConverter;
-import uk.me.parabola.mkgmap.reader.osm.SavedElements;
+import uk.me.parabola.mkgmap.reader.osm.OsmReadingHooks;
+import uk.me.parabola.mkgmap.reader.osm.OsmReadingHooksAdaptor;
+import uk.me.parabola.mkgmap.reader.osm.OsmReadingHooksChain;
 import uk.me.parabola.mkgmap.reader.osm.Style;
+import uk.me.parabola.util.EnhancedProperties;
 
 import org.xml.sax.SAXException;
 
@@ -56,6 +62,11 @@ import org.xml.sax.SAXException;
  */
 public class Osm5MapDataSource extends OsmMapDataSource {
 	private static final Logger log = Logger.getLogger(Osm5MapDataSource.class);
+	
+	private final OsmReadingHooks[] POSSIBLE_HOOKS = {
+			//new SeaGenerator(),
+			//new HighwayPreConvert()
+	};
 
 	public boolean isFileSupported(String name) {
 		// This is the default format so say supported if we get this far,
@@ -80,8 +91,11 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 			try {
 				Osm5XmlHandler handler = new Osm5XmlHandler(getConfig());
 
-				SavedElements collector = new SavedElements(getConfig());
-				handler.setOsmCollector(collector);
+				ElementSaver saver = new ElementSaver(getConfig());
+				OsmReadingHooks plugin = pluginChain(saver, getConfig());
+
+				handler.setElementSaver(saver);
+				handler.setHooks(plugin);
 
 				ConverterData converterData = createConverter();
 
@@ -96,9 +110,9 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 				parser.parse(is, handler);
 
 				OsmConverter converter = converterData.getConverter();
-				converter.setBoundingBox(collector.getBoundingBox());
-				
-				collector.convert(converter);
+
+				plugin.end();
+				saver.convert(converter);
 				addBackground();
 
 			} catch (IOException e) {
@@ -108,6 +122,29 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 			throw new FormatException("Error parsing file", e);
 		} catch (ParserConfigurationException e) {
 			throw new FormatException("Internal error configuring xml parser", e);
+		}
+	}
+
+
+	private OsmReadingHooks pluginChain(ElementSaver saver, EnhancedProperties props) {
+		List<OsmReadingHooks> plugins = new ArrayList<OsmReadingHooks>();
+
+		for (OsmReadingHooks p : this.POSSIBLE_HOOKS) {
+			if (p.init(saver, props))
+				plugins.add(p);
+		}
+
+		switch (plugins.size()) {
+		case 0:
+			return new OsmReadingHooksAdaptor();
+		case 1:
+			return plugins.get(0);
+		default:
+			OsmReadingHooksChain chain = new OsmReadingHooksChain();
+			for (OsmReadingHooks p : plugins) {
+				chain.add(p);
+			}
+			return chain;
 		}
 	}
 
