@@ -12,6 +12,8 @@
  */
 package uk.me.parabola.mkgmap.reader.osm;
 
+import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,6 +53,8 @@ public class ElementSaver {
 	private Map<Long, Relation> relationMap;
 
 	private final Map<Long, Set<String>> mpWayRemoveTags = new HashMap<Long,Set<String>>();
+
+	private final Map<Long, List<Map.Entry<String,Relation>>> deferredRelationMap = new HashMap<Long, List<Map.Entry<String,Relation>>>();
 
 	// This is an explicitly given bounding box from the input file command line etc.
 	private Area boundingBox;
@@ -132,9 +136,7 @@ public class ElementSaver {
 		String type = rel.getTag("type");
 		if (type != null) {
 			if ("multipolygon".equals(type)) {
-				// TODO FIXME. if there is no given bounding box, then it is too early to get the calculated
-				// one, unless all the relations are at the end of the file (which admittedly is the usual, but
-				// not the necessary case).
+				
 				Area mpBbox = getBoundingBox();
 				rel = new MultiPolygonRelation(rel, getWays(), mpWayRemoveTags, mpBbox);
 			} else if("restriction".equals(type)) {
@@ -158,8 +160,7 @@ public class ElementSaver {
 				rel.processElements();
 			}
 
-			List<Map.Entry<String,Relation>> entries =       null;//XXX
-				//deferredRelationMap.remove(id); TODO deal with this
+			List<Map.Entry<String,Relation>> entries = deferredRelationMap.remove(id);
 			if (entries != null)
 				for (Map.Entry<String,Relation> entry : entries)
 					entry.getValue().addElement(entry.getKey(), rel);
@@ -242,5 +243,20 @@ public class ElementSaver {
 		} else {
 			return new Area(minLat, minLon, maxLat, maxLon);
 		}
+	}
+
+	public void deferRelation(long id, Relation rel, String role) {
+		// The relation may be defined later in the input.
+		// Defer the lookup.
+		Map.Entry<String,Relation> entry =
+				new AbstractMap.SimpleEntry<String,Relation>(role, rel);
+
+		List<Map.Entry<String,Relation>> entries = deferredRelationMap.get(id);
+		if (entries == null) {
+			entries = new ArrayList<Map.Entry<String,Relation>>();
+			deferredRelationMap.put(id, entries);
+		}
+
+		entries.add(entry);
 	}
 }

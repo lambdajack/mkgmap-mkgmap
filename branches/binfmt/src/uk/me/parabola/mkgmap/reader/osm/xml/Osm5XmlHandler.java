@@ -16,7 +16,6 @@
  */
 package uk.me.parabola.mkgmap.reader.osm.xml;
 
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -31,7 +30,6 @@ import java.util.TreeMap;
 import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
-import uk.me.parabola.imgfmt.app.Exit;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.LineClipper;
 import uk.me.parabola.mkgmap.reader.osm.CoordPOI;
@@ -69,11 +67,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 	private ElementSaver saver;
 	private OsmReadingHooks hooks;
 
-	private final Map<Long, List<Map.Entry<String,Relation>>> deferredRelationMap =
-		new HashMap<Long, List<Map.Entry<String,Relation>>>();
 	private final Map<String, Long> fakeIdMap = new HashMap<String, Long>();
-	private final List<Node> exits = new ArrayList<Node>();
-	private final List<Way> motorways = new ArrayList<Way>();
 	private final List<Way> shoreline = new ArrayList<Way>();
 
 	private static final int MODE_NODE = 1;
@@ -82,22 +76,16 @@ public class Osm5XmlHandler extends DefaultHandler {
 	private static final int MODE_RELATION = 4;
 	private static final int MODE_BOUNDS = 5;
 
-	private static final long CYCLEWAY_ID_OFFSET = 0x10000000;
-
 	private Node currentNode;
 	private Way currentWay;
-	private Node currentNodeInWay;
-	private boolean currentWayStartsWithFIXME;
 	private Relation currentRelation;
 	private long currentElementId;
 
 	private Area bbox;
 
 	private final boolean reportUndefinedNodes;
-	private final boolean makeOppositeCycleways;
-	private final boolean makeCycleways;
+
 	private final boolean ignoreBounds;
-	private final boolean linkPOIsToWays;
 	private final boolean generateSea;
 	private boolean generateSeaUsingMP = true;
 	private boolean allowSeaSectors = true;
@@ -106,7 +94,6 @@ public class Osm5XmlHandler extends DefaultHandler {
 	private int maxCoastlineGap;
 	private String[] landTag = { "natural", "land" };
 	private final Double minimumArcLength;
-	private final String frigRoundabouts;
 
 	private Map<String,Set<String>> deletedTags;
 	private Map<String, String> usedTags;
@@ -114,14 +101,6 @@ public class Osm5XmlHandler extends DefaultHandler {
 
 	public Osm5XmlHandler(EnhancedProperties props) {
 
-		if(props.getProperty("make-all-cycleways", false)) {
-			makeOppositeCycleways = makeCycleways = true;
-		}
-		else {
-			makeOppositeCycleways = props.getProperty("make-opposite-cycleways", false);
-			makeCycleways = props.getProperty("make-cycleways", false);
-		}
-		linkPOIsToWays = props.getProperty("link-pois-to-ways", false);
 		ignoreBounds = props.getProperty("ignore-osm-bounds", false);
 		String gs = props.getProperty("generate-sea", null);
 		generateSea = gs != null;
@@ -162,7 +141,6 @@ public class Osm5XmlHandler extends DefaultHandler {
 			minimumArcLength = (rsa.length() > 0)? Double.parseDouble(rsa) : 0.0;
 		else
 			minimumArcLength = null;
-		frigRoundabouts = props.getProperty("frig-roundabouts");
 		reportUndefinedNodes = props.getProperty("report-undefined-nodes", false);
 	}
 
@@ -276,13 +254,6 @@ public class Osm5XmlHandler extends DefaultHandler {
 					saver.addNode(currentNode);// TODO call on end tag
 				}
 
-				// FIXME checking tag values
-				if ((val.equals("motorway_junction") || val.equals("services"))
-						&& key.equals("highway")) {
-					exits.add(currentNode);
-					currentNode.addTag("osm:id", "" + currentElementId);
-				}
-
 				currentNode.addTag(key, val);
 			}
 		}
@@ -322,18 +293,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 			} else if ("relation".equals(type)) {
 				el = saver.getRelation(id);
 				if (el == null) {
-					// The relation may be defined later in the input.
-					// Defer the lookup.
-					Map.Entry<String,Relation> entry =
-							new AbstractMap.SimpleEntry<String,Relation>(attributes.getValue("role"), currentRelation);
-
-					List<Map.Entry<String,Relation>> entries = deferredRelationMap.get(id);
-					if (entries == null) {
-						entries = new ArrayList<Map.Entry<String,Relation>>();
-						deferredRelationMap.put(id, entries);
-					}
-
-					entries.add(entry);
+					saver.deferRelation(id, currentRelation, attributes.getValue("role"));
 				}
 			} else
 				el = null;
@@ -392,108 +352,6 @@ public class Osm5XmlHandler extends DefaultHandler {
 		}
 	}
 
-	private void addWayHighway(Way currentWay) {
-		String highway = currentWay.getTag("highway");
-		if(highway != null || "ferry".equals(currentWay.getTag("route"))) {
-			boolean oneway = currentWay.isBoolTag("oneway");
-			// if the first or last Node of the Way has a
-			// FIXME attribute, disable dead-end-check for
-			// oneways
-			if (oneway &&
-				currentWayStartsWithFIXME ||
-				(currentNodeInWay != null &&
-				 (currentNodeInWay.getTag("FIXME") != null ||
-				  currentNodeInWay.getTag("fixme") != null))) {
-				currentWay.addTag("mkgmap:dead-end-check", "false");
-			}
-
-			// if the way is a roundabout but isn't already
-			// flagged as "oneway", flag it here
-			if("roundabout".equals(currentWay.getTag("junction"))) {
-				if(currentWay.getTag("oneway") == null) {
-					currentWay.addTag("oneway", "yes");
-				}
-				if(currentWay.getTag("mkgmap:frig_roundabout") == null) {
-					if(frigRoundabouts != null)
-						currentWay.addTag("mkgmap:frig_roundabout", frigRoundabouts);
-				}
-			}
-
-			String cycleway = currentWay.getTag("cycleway");
-			if(makeOppositeCycleways && cycleway != null && !"cycleway".equals(highway) && oneway &&
-			   ("opposite".equals(cycleway) ||
-				"opposite_lane".equals(cycleway) ||
-				"opposite_track".equals(cycleway)))
-			{
-				// what we have here is a oneway street
-				// that allows bicycle traffic in both
-				// directions -- to enable bicycle routing
-				// in the reverse direction, we synthesise
-				// a cycleway that has the same points as
-				// the original way
-				long cycleWayId = currentWay.getId() + CYCLEWAY_ID_OFFSET;
-				Way cycleWay = new Way(cycleWayId);
-				saver.addWay(cycleWay);
-				// this reverses the direction of the way but
-				// that isn't really necessary as the cycleway
-				// isn't tagged as oneway
-				List<Coord> points = currentWay.getPoints();
-				for(int i = points.size() - 1; i >= 0; --i)
-					cycleWay.addPoint(points.get(i));
-				cycleWay.copyTags(currentWay);
-				//cycleWay.addTag("highway", "cycleway");
-				String name = currentWay.getTag("name");
-				if(name != null)
-					name += " (cycleway)";
-				else
-					name = "cycleway";
-				cycleWay.addTag("name", name);
-				cycleWay.addTag("oneway", "no");
-				cycleWay.addTag("access", "no");
-				cycleWay.addTag("bicycle", "yes");
-				cycleWay.addTag("foot", "no");
-				cycleWay.addTag("mkgmap:synthesised", "yes");
-				log.info("Making " + cycleway + " cycleway '" + cycleWay.getTag("name") + "'");
-
-			} else if(makeCycleways && cycleway != null && !"cycleway".equals(highway) &&
-					("track".equals(cycleway) ||
-					 "lane".equals(cycleway) ||
-					 "both".equals(cycleway) ||
-					 "left".equals(cycleway) ||
-					 "right".equals(cycleway)))
-			{
-				// what we have here is a highway with a
-				// separate track for cycles -- to enable
-				// bicycle routing, we synthesise a cycleway
-				// that has the same points as the original
-				// way
-				long cycleWayId = currentWay.getId() + CYCLEWAY_ID_OFFSET;
-				Way cycleWay = new Way(cycleWayId);
-				saver.addWay(cycleWay);
-				List<Coord> points = currentWay.getPoints();
-				for (Coord point : points)
-					cycleWay.addPoint(point);
-				cycleWay.copyTags(currentWay);
-				if(currentWay.getTag("bicycle") == null)
-					currentWay.addTag("bicycle", "no");
-				//cycleWay.addTag("highway", "cycleway");
-				String name = currentWay.getTag("name");
-				if(name != null)
-					name += " (cycleway)";
-				else
-					name = "cycleway";
-				cycleWay.addTag("name", name);
-				cycleWay.addTag("access", "no");
-				cycleWay.addTag("bicycle", "yes");
-				cycleWay.addTag("foot", "no");
-				cycleWay.addTag("mkgmap:synthesised", "yes");
-				log.info("Making " + cycleway + " cycleway '" + cycleWay.getTag("name") + "'");
-			}
-		}
-
-		if("motorway".equals(highway) || "trunk".equals(highway))
-			motorways.add(currentWay);
-	}
 
 	private void addWaySea(Way currentWay) {
 		if(generateSea) {
@@ -538,51 +396,12 @@ public class Osm5XmlHandler extends DefaultHandler {
 	private void endWay() {
 		saver.addWay(currentWay);
 		hooks.addWay(currentWay);
-		addWayHighway(currentWay);
 		addWaySea(currentWay);
-		currentNodeInWay = null;
-		currentWayStartsWithFIXME = false;
 		currentWay = null;
 	}
 
 	private void endRelation() {
 		saver.addRelation(currentRelation);
-		//String type = currentRelation.getTag("type");
-		//if (type != null) {
-		//	if ("multipolygon".equals(type)) {
-		//		// TODO FIXME. if there is no given bounding box, then it is too early to get the calculated
-		//		// one, unless all the relations are at the end of the file (which admittedly is the usual, but
-		//		// not the necessary case).
-		//		Area mpBbox = (bbox != null ? bbox : saver.getBoundingBox());
-		//		currentRelation = new MultiPolygonRelation(currentRelation, saver.getWays(), mpWayRemoveTags, mpBbox);
-		//	} else if("restriction".equals(type)) {
-
-		//		if(ignoreTurnRestrictions)
-		//			currentRelation = null;
-		//		else
-		//			currentRelation = new RestrictionRelation(currentRelation);
-		//	}
-		//}
-		//if(currentRelation != null) {
-		//	long id = currentRelation.getId();
-
-		//	saver.addRelation(currentRelation);
-		//	if (!processBoundaryRelations &&
-		//	     currentRelation instanceof MultiPolygonRelation &&
-		//		 ((MultiPolygonRelation)currentRelation).isBoundaryRelation()) {
-		//		log.info("Ignore boundary multipolygon "+currentRelation.toBrowseURL());
-		//	} else {
-		//		currentRelation.processElements();
-		//	}
-
-		//	List<Map.Entry<String,Relation>> entries =
-		//		deferredRelationMap.remove(id);
-		//	if (entries != null)
-		//		for (Map.Entry<String,Relation> entry : entries)
-		//			entry.getValue().addElement(entry.getKey(), currentRelation);
-
-		//	currentRelation = null;
-		//}
 	}
 
 	/**
@@ -596,49 +415,14 @@ public class Osm5XmlHandler extends DefaultHandler {
 	 */
 	public void endDocument() throws SAXException {
 
-		finishExits();
-
 		if (bbox != null && (generateSea || minimumArcLength != null))
 			makeBoundaryNodes();
 
 		if (generateSea)
 			generateSeaPolygon(shoreline);
 
-		//finishMultiPolygons();
-		
 		if(minimumArcLength != null)
 			removeShortArcsByMergingNodes(minimumArcLength);
-	}
-
-
-
-	private void finishExits() {
-		for (Node e : exits) {
-			String refTag = Exit.TAG_ROAD_REF;
-			if(e.getTag(refTag) == null) {
-				String exitName = e.getTag("name");
-				if(exitName == null)
-					exitName = e.getTag("ref");
-
-				String ref = null;
-				Way motorway = null;
-				for (Way w : motorways) {
-					if (w.getPoints().contains(e.getLocation())) {
-						motorway = w;
-						ref = w.getTag("ref");
-						if(ref != null)
-						    break;
-					}
-				}
-				if(ref != null) {
-					log.info("Adding " + refTag + "=" + ref + " to exit " + exitName);
-					e.addTag(refTag, ref);
-				}
-				else if(motorway != null) {
-					log.warn("Motorway exit " + exitName + " is positioned on a motorway that doesn't have a 'ref' tag (" + e.getLocation().toOSMURL() + ")");
-				}
-			}
-		}
 	}
 
 	// "soft clip" each way that crosses a boundary by adding a point
@@ -649,6 +433,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 		int numBoundaryNodesAdded = 0;
 		for(Way way : saver.getWays().values()) {
 			List<Coord> points = way.getPoints();
+
 			// clip each segment in the way against the bounding box
 			// to find the positions of the boundary nodes - loop runs
 			// backwards so we can safely insert points into way
@@ -657,10 +442,10 @@ public class Osm5XmlHandler extends DefaultHandler {
 				Coord[] clippedPair = LineClipper.clip(bbox, pair);
 				// we're only interested in segments that touch the
 				// boundary
-				if(clippedPair != null) {
+				if (clippedPair != null) {
 					// the segment touches the boundary or is
 					// completely inside the bounding box
-					if(clippedPair[1] != points.get(i)) {
+					if (clippedPair[1] != points.get(i)) {
 						// the second point in the segment is outside
 						// of the boundary
 						assert clippedPair[1].getOnBoundary();
@@ -672,17 +457,16 @@ public class Osm5XmlHandler extends DefaultHandler {
 						++numBoundaryNodesAdded;
 						if(!roadsReachBoundary && way.getTag("highway") != null)
 							roadsReachBoundary = true;
-					}
-					else if(clippedPair[1].getOnBoundary())
+					} else if(clippedPair[1].getOnBoundary())
 						++numBoundaryNodesDetected;
 
-					if(clippedPair[1].getOnBoundary()) {
+					if (clippedPair[1].getOnBoundary()) {
 						// the point is on the boundary so make sure
 						// it becomes a node
 						clippedPair[1].incHighwayCount();
 					}
 
-					if(clippedPair[0] != points.get(i - 1)) {
+					if (clippedPair[0] != points.get(i - 1)) {
 						// the first point in the segment is outside
 						// of the boundary
 						assert clippedPair[0].getOnBoundary();
@@ -694,11 +478,10 @@ public class Osm5XmlHandler extends DefaultHandler {
 						++numBoundaryNodesAdded;
 						if(!roadsReachBoundary && way.getTag("highway") != null)
 							roadsReachBoundary = true;
-					}
-					else if(clippedPair[0].getOnBoundary())
+					} else if (clippedPair[0].getOnBoundary())
 						++numBoundaryNodesDetected;
 
-					if(clippedPair[0].getOnBoundary()) {
+					if (clippedPair[0].getOnBoundary()) {
 						// the point is on the boundary so make sure
 						// it becomes a node
 						clippedPair[0].incHighwayCount();
@@ -706,6 +489,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 				}
 			}
 		}
+
 		log.info("Making boundary nodes - finished (" + numBoundaryNodesAdded + " added, " + numBoundaryNodesDetected + " detected)");
 	}
 
@@ -741,6 +525,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 				}
 			}
 		}
+
 		// replacements maps those nodes that have been replaced to
 		// the node that replaces them
 		Map<Coord, Coord> replacements = new IdentityHashMap<Coord, Coord>();
@@ -749,6 +534,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 		int pass = 0;
 		int numWaysDeleted = 0;
 		int numNodesMerged = 0;
+
 		while (anotherPassRequired && pass < 10) {
 			anotherPassRequired = false;
 			log.info("Removing short arcs - PASS " + ++pass);
@@ -769,6 +555,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 				double arcLength = 0;
 				for (int i = 0; i < points.size(); ++i) {
 					Coord p = points.get(i);
+
 					// check if this point is to be replaced because
 					// it was previously merged into another point
 					Coord replacement = null;
@@ -776,6 +563,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 					while ((r = replacements.get(r)) != null) {
 						replacement = r;
 					}
+
 					if (replacement != null) {
 						assert !p.getOnBoundary() : "Boundary node replaced";
 						p = replacement;
@@ -785,6 +573,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 							previousPoint = p;
 						anotherPassRequired = true;
 					}
+
 					if (i == 0) {
 						// first point in way is a node so preserve it
 						// to ensure it won't be filtered out later
@@ -864,7 +653,7 @@ public class Osm5XmlHandler extends DefaultHandler {
 					}
 
 					if (previousNode.getOnBoundary() && p.getOnBoundary()) {
-						if(p.equals(previousNode)) {
+						if (p.equals(previousNode)) {
 							// the previous node has identical
 							// coordinates to the current node so it
 							// can be replaced but to avoid the
@@ -987,8 +776,6 @@ public class Osm5XmlHandler extends DefaultHandler {
 			long id = idVal(sid);
 			currentWay = new Way(id);
 			saver.addWay(currentWay);
-			currentNodeInWay = null;
-			currentWayStartsWithFIXME = false;
 		} catch (NumberFormatException e) {
 			// ignore bad numeric data.
 		}
@@ -999,67 +786,13 @@ public class Osm5XmlHandler extends DefaultHandler {
 
 		if (co != null) {
 			hooks.nodeAddedToWay(currentWay, id, co);
-			nodeAdded(id, co);
+			currentWay.addPoint(co);
+
+			// nodes (way joins) will have highwayCount > 1
+			co.incHighwayCount();
 		} else if(reportUndefinedNodes && currentWay != null) {
-			log.warn("Way " + currentWay.toBrowseURL() + " references undefined node " + id);
+			log.warn("Way", currentWay.toBrowseURL(), "references undefined node", id);
 		}
-	}
-
-	private void nodeAdded(long id, Coord co) {
-		currentNodeInWay = saver.getNode(id);
-
-		if(linkPOIsToWays) {
-			// if this Coord is also a POI, replace it with an
-			// equivalent CoordPOI that contains a reference to
-			// the POI's Node so we can access the POI's tags
-			if(!(co instanceof CoordPOI) && currentNodeInWay != null) {
-				// for now, only do this for nodes that have
-				// certain tags otherwise we will end up creating
-				// a CoordPOI for every node in the way
-				final String[] coordPOITags = { "access", "barrier", "highway" };
-				for(String cpt : coordPOITags) {
-					if(currentNodeInWay.getTag(cpt) != null) {
-						// the POI has one of the approved tags so
-						// replace the Coord with a CoordPOI
-						CoordPOI cp = new CoordPOI(co.getLatitude(), co.getLongitude());
-						saver.addPoint(id, cp);
-						// we also have to jump through hoops to
-						// make a new version of Node because we
-						// can't replace the Coord that defines
-						// its location
-						Node newNode = new Node(id, cp);
-						newNode.copyTags(currentNodeInWay);
-						saver.addNode(newNode);
-						// tell the CoordPOI what node it's
-						// associated with
-						cp.setNode(newNode);
-						co = cp;
-						// if original node is in exits, replace it
-						if(exits.remove(currentNodeInWay))
-							exits.add(newNode);
-						currentNodeInWay = newNode;
-						break;
-					}
-				}
-			}
-
-			if(co instanceof CoordPOI) {
-				// flag this Way as having a CoordPOI so it
-				// will be processed later
-				currentWay.addTag("mkgmap:way-has-pois", "true");
-				log.info("Linking POI " + currentNodeInWay.toBrowseURL() + " to way at " + co.toOSMURL());
-			}
-		}
-
-		// See if the first Node of the Way has a FIXME attribute
-		if (currentWay.getPoints().isEmpty()) {
-			currentWayStartsWithFIXME = (currentNodeInWay != null &&
-										 (currentNodeInWay.getTag("FIXME") != null ||
-										  currentNodeInWay.getTag("fixme") != null));
-		}
-
-		currentWay.addPoint(co);
-		co.incHighwayCount(); // nodes (way joins) will have highwayCount > 1
 	}
 
 	public void fatalError(SAXParseException e) throws SAXException {

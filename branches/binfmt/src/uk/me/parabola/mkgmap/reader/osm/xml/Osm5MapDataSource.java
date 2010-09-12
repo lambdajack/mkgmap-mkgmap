@@ -41,6 +41,7 @@ import uk.me.parabola.mkgmap.osmstyle.StyleImpl;
 import uk.me.parabola.mkgmap.osmstyle.StyledConverter;
 import uk.me.parabola.mkgmap.osmstyle.eval.SyntaxException;
 import uk.me.parabola.mkgmap.reader.osm.ElementSaver;
+import uk.me.parabola.mkgmap.reader.osm.HighwayHooks;
 import uk.me.parabola.mkgmap.reader.osm.OsmConverter;
 import uk.me.parabola.mkgmap.reader.osm.OsmReadingHooks;
 import uk.me.parabola.mkgmap.reader.osm.OsmReadingHooksAdaptor;
@@ -66,6 +67,7 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 	private final OsmReadingHooks[] POSSIBLE_HOOKS = {
 			//new SeaGenerator(),
 			//new HighwayPreConvert()
+			new HighwayHooks(),
 	};
 
 	public boolean isFileSupported(String name) {
@@ -92,10 +94,10 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 				Osm5XmlHandler handler = new Osm5XmlHandler(getConfig());
 
 				ElementSaver saver = new ElementSaver(getConfig());
-				OsmReadingHooks plugin = pluginChain(saver, getConfig());
+				OsmReadingHooks hooks = pluginChain(saver, getConfig());
 
 				handler.setElementSaver(saver);
-				handler.setHooks(plugin);
+				handler.setHooks(hooks);
 
 				ConverterData converterData = createConverter();
 
@@ -108,10 +110,9 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 				}
 				
 				parser.parse(is, handler);
+				hooks.end();
 
 				OsmConverter converter = converterData.getConverter();
-
-				plugin.end();
 				saver.convert(converter);
 				addBackground();
 
