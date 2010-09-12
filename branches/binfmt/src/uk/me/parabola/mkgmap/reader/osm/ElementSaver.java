@@ -14,11 +14,14 @@ package uk.me.parabola.mkgmap.reader.osm;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.util.EnhancedProperties;
 
 /**
@@ -39,11 +42,15 @@ import uk.me.parabola.util.EnhancedProperties;
  * @author Steve Ratcliffe
  */
 public class ElementSaver {
+	private static final Logger log = Logger.getLogger(ElementSaver.class);
+
 	private Map<Long, Coord> coordMap = new HashMap<Long, Coord>(50000);
 
 	private Map<Long, Node> nodeMap;
 	private Map<Long, Way> wayMap;
 	private Map<Long, Relation> relationMap;
+
+	private final Map<Long, Set<String>> mpWayRemoveTags = new HashMap<Long,Set<String>>();
 
 	// This is an explicitly given bounding box from the input file command line etc.
 	private Area boundingBox;
@@ -55,6 +62,9 @@ public class ElementSaver {
 	private int maxLat = Utils.toMapUnit(-180.0);
 	private int maxLon = Utils.toMapUnit(-180.0);
 
+	private final boolean ignoreTurnRestrictions;
+	private final boolean processBoundaryRelations;
+
 	public ElementSaver(EnhancedProperties args) {
 		if (args.getProperty("preserve-element-order", false)) {
 			nodeMap = new LinkedHashMap<Long, Node>(5000);
@@ -65,6 +75,10 @@ public class ElementSaver {
 			wayMap = new HashMap<Long, Way>();
 			relationMap = new HashMap<Long, Relation>();
 		}
+
+		ignoreTurnRestrictions = args.getProperty("ignore-turn-restrictions", false);
+		processBoundaryRelations = args.getProperty("process-boundary-relations", false);
+
 	}
 
 	/**
@@ -115,7 +129,41 @@ public class ElementSaver {
 	 * @param rel The osm relation.
 	 */
 	public void addRelation(Relation rel) {
-		relationMap.put(rel.getId(), rel);
+		String type = rel.getTag("type");
+		if (type != null) {
+			if ("multipolygon".equals(type)) {
+				// TODO FIXME. if there is no given bounding box, then it is too early to get the calculated
+				// one, unless all the relations are at the end of the file (which admittedly is the usual, but
+				// not the necessary case).
+				Area mpBbox = getBoundingBox();
+				rel = new MultiPolygonRelation(rel, getWays(), mpWayRemoveTags, mpBbox);
+			} else if("restriction".equals(type)) {
+
+				if (ignoreTurnRestrictions)
+					rel = null;
+				else
+					rel = new RestrictionRelation(rel);
+			}
+		}
+
+		if(rel != null) {
+			long id = rel.getId();
+			relationMap.put(rel.getId(), rel);
+
+			if (!processBoundaryRelations &&
+			     rel instanceof MultiPolygonRelation &&
+				 ((MultiPolygonRelation)rel).isBoundaryRelation()) {
+				log.info("Ignore boundary multipolygon "+rel.toBrowseURL());
+			} else {
+				rel.processElements();
+			}
+
+			List<Map.Entry<String,Relation>> entries =       null;//XXX
+				//deferredRelationMap.remove(id); TODO deal with this
+			if (entries != null)
+				for (Map.Entry<String,Relation> entry : entries)
+					entry.getValue().addElement(entry.getKey(), rel);
+		}
 	}
 
 	public void setBoundingBox(Area bbox) {
@@ -139,6 +187,8 @@ public class ElementSaver {
 	}
 
 	public void convert(OsmConverter converter) {
+		finishMultiPolygons();
+
 		converter.setBoundingBox(boundingBox);
 		coordMap = null;
 
@@ -160,13 +210,31 @@ public class ElementSaver {
 		relationMap = null;
 	}
 
+
+	private void finishMultiPolygons() {
+		for (Map.Entry<Long,Set<String>> wayTagsRemove : mpWayRemoveTags.entrySet()) {
+			Way w = getWay(wayTagsRemove.getKey());
+			if (w == null) {
+				log.debug("Cannot find way",wayTagsRemove.getKey(), "to remove tags by multipolygon processing.");
+				continue;
+			}
+
+			log.debug("Remove tags",wayTagsRemove.getValue(),"from way",w.getId(), w.toTagString());
+			for (String tagname : wayTagsRemove.getValue()) {
+				w.deleteTag(tagname);
+			}
+			log.debug("After removal",w.getId(), w.toTagString());
+		}
+		mpWayRemoveTags.clear();
+	}
+
 	public Map<Long, Way> getWays() {
 		return wayMap;
 	}
 
 	/**
 	 * Get the bounding box.  This is either the one that was explicitly included in the input
-	 * file, or if none was given, the calcualted one.
+	 * file, or if none was given, the calculated one.
 	 */
 	public Area getBoundingBox() {
 		if (boundingBox != null) {

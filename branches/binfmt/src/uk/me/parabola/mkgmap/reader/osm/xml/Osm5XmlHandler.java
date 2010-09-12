@@ -23,7 +23,6 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.SortedMap;
@@ -40,11 +39,9 @@ import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.ElementSaver;
 import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
 import uk.me.parabola.mkgmap.reader.osm.GeneralRelation;
-import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
 import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.OsmReadingHooks;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
-import uk.me.parabola.mkgmap.reader.osm.RestrictionRelation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.util.EnhancedProperties;
 
@@ -100,8 +97,6 @@ public class Osm5XmlHandler extends DefaultHandler {
 	private final boolean makeOppositeCycleways;
 	private final boolean makeCycleways;
 	private final boolean ignoreBounds;
-	private final boolean processBoundaryRelations;
-	private final boolean ignoreTurnRestrictions;
 	private final boolean linkPOIsToWays;
 	private final boolean generateSea;
 	private boolean generateSeaUsingMP = true;
@@ -116,7 +111,6 @@ public class Osm5XmlHandler extends DefaultHandler {
 	private Map<String,Set<String>> deletedTags;
 	private Map<String, String> usedTags;
 	
-	private final Map<Long,Set<String>> mpWayRemoveTags = new HashMap<Long,Set<String>>();
 
 	public Osm5XmlHandler(EnhancedProperties props) {
 
@@ -169,8 +163,6 @@ public class Osm5XmlHandler extends DefaultHandler {
 		else
 			minimumArcLength = null;
 		frigRoundabouts = props.getProperty("frig-roundabouts");
-		ignoreTurnRestrictions = props.getProperty("ignore-turn-restrictions", false);
-		processBoundaryRelations = props.getProperty("process-boundary-relations", false);
 		reportUndefinedNodes = props.getProperty("report-undefined-nodes", false);
 	}
 
@@ -554,42 +546,43 @@ public class Osm5XmlHandler extends DefaultHandler {
 	}
 
 	private void endRelation() {
-		String type = currentRelation.getTag("type");
-		if (type != null) {
-			if ("multipolygon".equals(type)) {
-				// TODO FIXME. if there is no given bounding box, then it is too early to get the calculated
-				// one, unless all the relations are at the end of the file (which admittedly is the usual, but
-				// not the necessary case).
-				Area mpBbox = (bbox != null ? bbox : saver.getBoundingBox());
-				currentRelation = new MultiPolygonRelation(currentRelation, saver.getWays(), mpWayRemoveTags, mpBbox);
-			} else if("restriction".equals(type)) {
+		saver.addRelation(currentRelation);
+		//String type = currentRelation.getTag("type");
+		//if (type != null) {
+		//	if ("multipolygon".equals(type)) {
+		//		// TODO FIXME. if there is no given bounding box, then it is too early to get the calculated
+		//		// one, unless all the relations are at the end of the file (which admittedly is the usual, but
+		//		// not the necessary case).
+		//		Area mpBbox = (bbox != null ? bbox : saver.getBoundingBox());
+		//		currentRelation = new MultiPolygonRelation(currentRelation, saver.getWays(), mpWayRemoveTags, mpBbox);
+		//	} else if("restriction".equals(type)) {
 
-				if(ignoreTurnRestrictions)
-					currentRelation = null;
-				else
-					currentRelation = new RestrictionRelation(currentRelation);
-			}
-		}
-		if(currentRelation != null) {
-			long id = currentRelation.getId();
+		//		if(ignoreTurnRestrictions)
+		//			currentRelation = null;
+		//		else
+		//			currentRelation = new RestrictionRelation(currentRelation);
+		//	}
+		//}
+		//if(currentRelation != null) {
+		//	long id = currentRelation.getId();
 
-			saver.addRelation(currentRelation);
-			if (!processBoundaryRelations &&
-			     currentRelation instanceof MultiPolygonRelation &&
-				 ((MultiPolygonRelation)currentRelation).isBoundaryRelation()) {
-				log.info("Ignore boundary multipolygon "+currentRelation.toBrowseURL());
-			} else {
-				currentRelation.processElements();
-			}
+		//	saver.addRelation(currentRelation);
+		//	if (!processBoundaryRelations &&
+		//	     currentRelation instanceof MultiPolygonRelation &&
+		//		 ((MultiPolygonRelation)currentRelation).isBoundaryRelation()) {
+		//		log.info("Ignore boundary multipolygon "+currentRelation.toBrowseURL());
+		//	} else {
+		//		currentRelation.processElements();
+		//	}
 
-			List<Map.Entry<String,Relation>> entries =
-				deferredRelationMap.remove(id);
-			if (entries != null)
-				for (Map.Entry<String,Relation> entry : entries)
-					entry.getValue().addElement(entry.getKey(), currentRelation);
+		//	List<Map.Entry<String,Relation>> entries =
+		//		deferredRelationMap.remove(id);
+		//	if (entries != null)
+		//		for (Map.Entry<String,Relation> entry : entries)
+		//			entry.getValue().addElement(entry.getKey(), currentRelation);
 
-			currentRelation = null;
-		}
+		//	currentRelation = null;
+		//}
 	}
 
 	/**
@@ -611,28 +604,13 @@ public class Osm5XmlHandler extends DefaultHandler {
 		if (generateSea)
 			generateSeaPolygon(shoreline);
 
-		finishMultiPolygons();
+		//finishMultiPolygons();
 		
 		if(minimumArcLength != null)
 			removeShortArcsByMergingNodes(minimumArcLength);
 	}
 
-	private void finishMultiPolygons() {
-		for (Entry<Long,Set<String>> wayTagsRemove : mpWayRemoveTags.entrySet()) {
-			Way w = saver.getWay(wayTagsRemove.getKey());
-			if (w == null) {
-				log.debug("Cannot find way",wayTagsRemove.getKey(), "to remove tags by multipolygon processing.");
-				continue;
-			}
 
-			log.debug("Remove tags",wayTagsRemove.getValue(),"from way",w.getId(), w.toTagString());
-			for (String tagname : wayTagsRemove.getValue()) {
-				w.deleteTag(tagname);
-			}
-			log.debug("After removal",w.getId(), w.toTagString());
-		}
-		mpWayRemoveTags.clear();
-	}
 
 	private void finishExits() {
 		for (Node e : exits) {
@@ -1482,10 +1460,12 @@ public class Osm5XmlHandler extends DefaultHandler {
 		}
 
 		if (generateSeaUsingMP) {
-			Area mpBbox = bbox != null ? bbox : saver.getBoundingBox();
-			seaRelation = new MultiPolygonRelation(seaRelation, saver.getWays(), mpWayRemoveTags, mpBbox);
-			saver.addRelation(seaRelation);
-			seaRelation.processElements();
+			//Area mpBbox = bbox != null ? bbox : saver.getBoundingBox();
+			//seaRelation = new MultiPolygonRelation(seaRelation, saver.getWays(), mpWayRemoveTags, mpBbox);
+			//saver.addRelation(seaRelation);
+			//seaRelation.processElements();
+			assert false : "todo";
+			// todo mpwayremovetags
 		}
 	}
 
