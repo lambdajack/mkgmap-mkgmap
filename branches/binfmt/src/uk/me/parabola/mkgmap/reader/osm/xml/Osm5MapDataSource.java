@@ -46,6 +46,7 @@ import uk.me.parabola.mkgmap.reader.osm.OsmConverter;
 import uk.me.parabola.mkgmap.reader.osm.OsmReadingHooks;
 import uk.me.parabola.mkgmap.reader.osm.OsmReadingHooksAdaptor;
 import uk.me.parabola.mkgmap.reader.osm.OsmReadingHooksChain;
+import uk.me.parabola.mkgmap.reader.osm.SeaGenerator;
 import uk.me.parabola.mkgmap.reader.osm.Style;
 import uk.me.parabola.util.EnhancedProperties;
 
@@ -65,8 +66,7 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 	private static final Logger log = Logger.getLogger(Osm5MapDataSource.class);
 	
 	private final OsmReadingHooks[] POSSIBLE_HOOKS = {
-			//new SeaGenerator(),
-			//new HighwayPreConvert()
+			new SeaGenerator(),
 			new HighwayHooks(),
 	};
 
