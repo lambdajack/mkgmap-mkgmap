@@ -223,7 +223,6 @@ public class Osm5XmlHandler extends OsmHandler {
 				if (currentNode == null) {
 					Coord co = saver.getCoord(currentElementId);
 					currentNode = new Node(currentElementId, co);
-					saver.addNode(currentNode);// TODO call on end tag
 				}
 
 				currentNode.addTag(key, val);
@@ -342,7 +341,6 @@ public class Osm5XmlHandler extends OsmHandler {
 			Coord co = new Coord(Double.parseDouble(slat), Double.parseDouble(slon));
 			saver.addPoint(id, co);
 			currentElementId = id;
-			saver.addPoint(id, co);
 		} catch (NumberFormatException e) {
 			// ignore bad numeric data. The coord will be discarded
 		}
@@ -356,7 +354,6 @@ public class Osm5XmlHandler extends OsmHandler {
 		try {
 			long id = idVal(sid);
 			currentWay = new Way(id);
-			saver.addWay(currentWay); // TODO
 		} catch (NumberFormatException e) {
 			// ignore bad numeric data. The way will be discarded
 		}

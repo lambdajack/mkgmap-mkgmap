@@ -48,7 +48,13 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 
 	private final List<Way> shoreline = new ArrayList<Way>();
 	private boolean roadsReachBoundary; // todo needs setting somehow
+	private boolean generateSeaBackground = true;
 
+	/**
+	 * Sort out options from the command line.
+	 * Returns true only if the option to generate the sea is active, so that
+	 * the whole thing is ommited if not used.
+	 */
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
 		this.saver = saver;
 		String gs = props.getProperty("generate-sea", null);
@@ -88,12 +94,17 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 		return generateSea;
 	}
 
-	public void addWay(Way currentWay) {
-		String natural = currentWay.getTag("natural");
+	/**
+	 * Test to see if the way is part of the shoreline and if it is
+	 * we save it.
+	 * @param way The way to test.
+	 */
+	public void addWay(Way way) {
+		String natural = way.getTag("natural");
 		if(natural != null) {
 			if("coastline".equals(natural)) {
-				currentWay.deleteTag("natural");
-				shoreline.add(currentWay);
+				way.deleteTag("natural");
+				shoreline.add(way);
 			} else if(natural.contains(";")) {
 				// cope with compound tag value
 				String others = null;
@@ -108,43 +119,23 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 				}
 
 				if(foundCoastline) {
-					currentWay.deleteTag("natural");
+					way.deleteTag("natural");
 					if(others != null)
-						currentWay.addTag("natural", others);
-					shoreline.add(currentWay);
+						way.addTag("natural", others);
+					shoreline.add(way);
 				}
 			}
 		}
 	}
 
+	/**
+	 * All done, process the saved shoreline information and construct the polygons.
+	 */
 	public void end() {
-		generateSeaPolygon(shoreline);
-	}
-
-	private void generateSeaPolygon(List<Way> shoreline) {
-
 		Area seaBounds = saver.getBoundingBox();
 
 		// clip all shoreline segments
-		List<Way> toBeRemoved = new ArrayList<Way>();
-		List<Way> toBeAdded = new ArrayList<Way>();
-		for (Way segment : shoreline) {
-			List<Coord> points = segment.getPoints();
-			List<List<Coord>> clipped = LineClipper.clip(seaBounds, points);
-			if (clipped != null) {
-				log.info("clipping " + segment);
-				toBeRemoved.add(segment);
-				for (List<Coord> pts : clipped) {
-					long id = FakeIdGenerator.makeFakeId();
-					Way shore = new Way(id, pts);
-					toBeAdded.add(shore);
-				}
-			}
-		}
-
-		log.info("clipping: adding ", toBeAdded.size(), ", removing ", toBeRemoved.size());
-		shoreline.removeAll(toBeRemoved);
-		shoreline.addAll(toBeAdded);
+		clipShorlineSegments(shoreline, seaBounds);
 
 		log.info("generating sea, seaBounds=", seaBounds);
 		int minLat = seaBounds.getMinLat();
@@ -188,7 +179,152 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 
 		List<Way> islands = new ArrayList<Way>();
 
-		// handle islands (closes shoreline components) first (they're easy)
+		// handle islands (closed shoreline components) first (they're easy)
+		handleIslands(shoreline, seaBounds, islands);
+
+		// the remaining shoreline segments should intersect the boundary
+		// find the intersection points and store them in a SortedMap
+		SortedMap<EdgeHit, Way> hitMap = findIntesectionPoints(shoreline, seaBounds, seaRelation);
+
+		// now construct inner ways from these segments
+		boolean shorelineReachesBoundary = createInnerWays(seaBounds, islands, hitMap);
+
+		if(!shorelineReachesBoundary && roadsReachBoundary) {
+			// try to avoid tiles being flooded by anti-lakes or other
+			// bogus uses of natural=coastline
+			generateSeaBackground = false;
+		}
+
+		List<Way> antiIslands = removeAntiIslands(seaRelation, islands);
+		if (islands.isEmpty()) {
+			// the tile doesn't contain any islands so we can assume
+			// that it's showing a land mass that contains some
+			// enclosed sea areas - in which case, we don't want a sea
+			// coloured background
+			generateSeaBackground = false;
+		}
+
+		if (generateSeaBackground) {
+			// the background is sea so all anti-islands should be
+			// contained by land otherwise they won't be visible
+
+			for (Way ai : antiIslands) {
+				boolean containedByLand = false;
+				for(Way i : islands) {
+					if(i.containsPointsOf(ai)) {
+						containedByLand = true;
+						break;
+					}
+				}
+
+				if (!containedByLand) {
+					// found an anti-island that is not contained by
+					// land so convert it back into an island
+					ai.deleteTag("natural");
+					if (generateSeaUsingMP) {
+						// create a "inner" way for the island
+						assert seaRelation != null;
+						seaRelation.addElement("inner", ai);
+						saver.getWays().remove(ai.getId());
+					} else
+						ai.addTag(landTag[0], landTag[1]);
+					log.warn("Converting anti-island starting at " + ai.getPoints().get(0).toOSMURL() + " into an island as it is surrounded by water");
+				}
+			}
+
+			long seaId = FakeIdGenerator.makeFakeId();
+			Way sea = new Way(seaId);
+			if (generateSeaUsingMP) {
+				// the sea background area must be a little bigger than all
+				// inner land areas. this is a workaround for a mp shortcoming:
+				// mp is not able to combine outer and inner if they intersect
+				// or have overlaying lines
+				// the added area will be clipped later by the style generator
+				sea.addPoint(new Coord(nw.getLatitude() - 1,
+						nw.getLongitude() - 1));
+				sea.addPoint(new Coord(sw.getLatitude() + 1,
+						sw.getLongitude() - 1));
+				sea.addPoint(new Coord(se.getLatitude() + 1,
+						se.getLongitude() + 1));
+				sea.addPoint(new Coord(ne.getLatitude() - 1,
+						ne.getLongitude() + 1));
+				sea.addPoint(new Coord(nw.getLatitude() - 1,
+						nw.getLongitude() - 1));
+			} else {
+				sea.addPoint(nw);
+				sea.addPoint(sw);
+				sea.addPoint(se);
+				sea.addPoint(ne);
+				sea.addPoint(nw);
+			}
+			sea.addTag("natural", "sea");
+			log.info("sea: ", sea);
+			saver.addWay(sea);
+			if(generateSeaUsingMP) {
+				assert seaRelation != null;
+				seaRelation.addElement("outer", sea);
+			}
+		} else {
+			// background is land
+			if (!generateSeaUsingMP) {
+				// generate a land polygon so that the tile's
+				// background colour will match the land colour on the
+				// tiles that do contain some sea
+				long landId = FakeIdGenerator.makeFakeId();
+				Way land = new Way(landId);
+				land.addPoint(nw);
+				land.addPoint(sw);
+				land.addPoint(se);
+				land.addPoint(ne);
+				land.addPoint(nw);
+				land.addTag(landTag[0], landTag[1]);
+				saver.addWay(land);
+			}
+		}
+
+		if (generateSeaUsingMP) {
+			seaRelation = saver.createMultiPolyRelation(seaRelation);
+			saver.addRelation(seaRelation);
+			seaRelation.processElements();
+		}
+	}
+
+	/**
+	 * Clip the shoreline ways to the bounding box of the map.
+	 * @param shoreline All the the ways making up the coast.
+	 * @param bounds The map bounds.
+	 */
+	private void clipShorlineSegments(List<Way> shoreline, Area bounds) {
+		List<Way> toBeRemoved = new ArrayList<Way>();
+		List<Way> toBeAdded = new ArrayList<Way>();
+		for (Way segment : shoreline) {
+			List<Coord> points = segment.getPoints();
+			List<List<Coord>> clipped = LineClipper.clip(bounds, points);
+			if (clipped != null) {
+				log.info("clipping " + segment);
+				toBeRemoved.add(segment);
+				for (List<Coord> pts : clipped) {
+					long id = FakeIdGenerator.makeFakeId();
+					Way shore = new Way(id, pts);
+					toBeAdded.add(shore);
+				}
+			}
+		}
+
+		log.info("clipping: adding ", toBeAdded.size(), ", removing ", toBeRemoved.size());
+		shoreline.removeAll(toBeRemoved);
+		shoreline.addAll(toBeAdded);
+	}
+
+	/**
+	 * Pick out the islands and save them for later. They are removed from the
+	 * shore line list and added to the island list.
+	 *
+	 * @param shoreline The collected shore line ways.
+	 * @param seaBounds The map boundary.
+	 * @param islands The islands are saved to this list.
+	 */
+	private void handleIslands(List<Way> shoreline, Area seaBounds, List<Way> islands) {
 		Iterator<Way> it = shoreline.iterator();
 		while (it.hasNext()) {
 			Way w = it.next();
@@ -198,6 +334,7 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 				it.remove();
 			}
 		}
+
 		concatenateWays(shoreline, seaBounds);
 		// there may be more islands now
 		it = shoreline.iterator();
@@ -209,99 +346,9 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 				it.remove();
 			}
 		}
+	}
 
-		boolean generateSeaBackground = true;
-
-		// the remaining shoreline segments should intersect the boundary
-		// find the intersection points and store them in a SortedMap
-		SortedMap<EdgeHit, Way> hitMap = new TreeMap<EdgeHit, Way>();
-		long seaId;
-		Way sea;
-		for (Way w : shoreline) {
-			List<Coord> points = w.getPoints();
-			Coord pStart = points.get(0);
-			Coord pEnd = points.get(points.size()-1);
-
-			EdgeHit hStart = getEdgeHit(seaBounds, pStart);
-			EdgeHit hEnd = getEdgeHit(seaBounds, pEnd);
-			if (hStart == null || hEnd == null) {
-
-				/*
-				 * This problem occurs usually when the shoreline is cut by osmosis (e.g. country-extracts from geofabrik)
-				 * There are two possibilities to solve this problem:
-				 * 1. Close the way and treat it as an island. This is sometimes the best solution (Germany: Usedom at the
-				 *    border to Poland)
-				 * 2. Create a "sea sector" only for this shoreline segment. This may also be the best solution
-				 *    (see German border to the Netherlands where the shoreline continues in the Netherlands)
-				 * The first choice may lead to "flooded" areas, the second may lead to "triangles".
-				 *
-				 * Usually, the first choice is appropriate if the segment is "nearly" closed.
-				 */
-				double length = 0;
-				Coord p0 = pStart;
-				for (Coord p1 : points.subList(1, points.size()-1)) {
-					length += p0.distance(p1);
-					p0 = p1;
-				}
-				boolean nearlyClosed = pStart.distance(pEnd) < 0.1 * length;
-
-				if (nearlyClosed) {
-					// close the way
-					points.add(pStart);
-					if(generateSeaUsingMP)
-						seaRelation.addElement("inner", w);
-					else {
-						if(!FakeIdGenerator.isFakeId(w.getId())) {
-							Way w1 = new Way(FakeIdGenerator.makeFakeId());
-							w1.getPoints().addAll(w.getPoints());
-							// only copy the name tags
-							for(String tag : w)
-								if(tag.equals("name") || tag.endsWith(":name"))
-									w1.addTag(tag, w.getTag(tag));
-							w = w1;
-						}
-						w.addTag(landTag[0], landTag[1]);
-						saver.addWay(w);
-					}
-				} else if(allowSeaSectors) {
-					seaId = FakeIdGenerator.makeFakeId();
-					sea = new Way(seaId);
-					sea.getPoints().addAll(points);
-					sea.addPoint(new Coord(pEnd.getLatitude(), pStart.getLongitude()));
-					sea.addPoint(pStart);
-					sea.addTag("natural", "sea");
-					log.info("sea: ", sea);
-					saver.addWay(sea);
-					if(generateSeaUsingMP)
-						seaRelation.addElement("outer", sea);
-					generateSeaBackground = false;
-				} else if (extendSeaSectors) {
-					// create additional points at next border to prevent triangles from point 2
-					if (null == hStart) {
-						hStart = getNextEdgeHit(seaBounds, pStart);
-						w.getPoints().add(0, hStart.getPoint(seaBounds));
-					}
-					if (null == hEnd) {
-						hEnd = getNextEdgeHit(seaBounds, pEnd);
-						w.getPoints().add(hEnd.getPoint(seaBounds));
-					}
-					log.debug("hits (second try): ", hStart, hEnd);
-					hitMap.put(hStart, w);
-					hitMap.put(hEnd, null);
-				} else {
-					// show the coastline even though we can't produce
-					// a polygon for the land
-					w.addTag("natural", "coastline");
-					saver.addWay(w);
-				}
-			} else {
-				log.debug("hits: ", hStart, hEnd);
-				hitMap.put(hStart, w);
-				hitMap.put(hEnd, null);
-			}
-		}
-
-		// now construct inner ways from these segments
+	private boolean createInnerWays(Area seaBounds, List<Way> islands, SortedMap<EdgeHit, Way> hitMap) {
 		NavigableSet<EdgeHit> hits = (NavigableSet<EdgeHit>) hitMap.keySet();
 		boolean shorelineReachesBoundary = false;
 		while (!hits.isEmpty()) {
@@ -363,15 +410,19 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 			islands.add(w);
 			shorelineReachesBoundary = true;
 		}
+		return shorelineReachesBoundary;
+	}
 
-		if(!shorelineReachesBoundary && roadsReachBoundary) {
-			// try to avoid tiles being flooded by anti-lakes or other
-			// bogus uses of natural=coastline
-			generateSeaBackground = false;
-		}
-
+	/**
+	 * An 'anti-island' is something that has been detected as an island, but the water
+	 * is on the inside.  I think you would call this a lake.
+	 * @param seaRelation The relation holding the sea.  Only set if we are using multi-polys for
+	 * the sea.
+	 * @param islands The island list that was found earlier.
+	 * @return The so-called anti-islands.
+	 */
+	private List<Way> removeAntiIslands(Relation seaRelation, List<Way> islands) {
 		List<Way> antiIslands = new ArrayList<Way>();
-
 		for (Way w : islands) {
 
 			if (!FakeIdGenerator.isFakeId(w.getId())) {
@@ -406,98 +457,106 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 		}
 
 		islands.removeAll(antiIslands);
+		return antiIslands;
+	}
 
-		if (islands.isEmpty()) {
-			// the tile doesn't contain any islands so we can assume
-			// that it's showing a land mass that contains some
-			// enclosed sea areas - in which case, we don't want a sea
-			// coloured background
-			generateSeaBackground = false;
-		}
+	/**
+	 * Find the points where the remaining shore line segments intersect with the
+	 * map boundary.
+	 *
+	 * @param shoreline The remaining shore line segements.
+	 * @param seaBounds The map boundary.
+	 * @param seaRelation If we are using a multi-polygon, this is it. Otherwise it will be null.
+	 * @return A map of the 'hits' where the shore line intersects the boundary.
+	 */
+	private SortedMap<EdgeHit, Way> findIntesectionPoints(List<Way> shoreline, Area seaBounds, Relation seaRelation) {
+		assert !generateSeaUsingMP || seaRelation != null;
 
-		if (generateSeaBackground) {
+		SortedMap<EdgeHit, Way> hitMap = new TreeMap<EdgeHit, Way>();
+		for (Way w : shoreline) {
+			List<Coord> points = w.getPoints();
+			Coord pStart = points.get(0);
+			Coord pEnd = points.get(points.size()-1);
 
-			// the background is sea so all anti-islands should be
-			// contained by land otherwise they won't be visible
+			EdgeHit hStart = getEdgeHit(seaBounds, pStart);
+			EdgeHit hEnd = getEdgeHit(seaBounds, pEnd);
+			if (hStart == null || hEnd == null) {
 
-			for(Way ai : antiIslands) {
-				boolean containedByLand = false;
-				for(Way i : islands) {
-					if(i.containsPointsOf(ai)) {
-						containedByLand = true;
-						break;
+				/*
+				 * This problem occurs usually when the shoreline is cut by osmosis (e.g. country-extracts from geofabrik)
+				 * There are two possibilities to solve this problem:
+				 * 1. Close the way and treat it as an island. This is sometimes the best solution (Germany: Usedom at the
+				 *    border to Poland)
+				 * 2. Create a "sea sector" only for this shoreline segment. This may also be the best solution
+				 *    (see German border to the Netherlands where the shoreline continues in the Netherlands)
+				 * The first choice may lead to "flooded" areas, the second may lead to "triangles".
+				 *
+				 * Usually, the first choice is appropriate if the segment is "nearly" closed.
+				 */
+				double length = 0;
+				Coord p0 = pStart;
+				for (Coord p1 : points.subList(1, points.size()-1)) {
+					length += p0.distance(p1);
+					p0 = p1;
+				}
+				boolean nearlyClosed = pStart.distance(pEnd) < 0.1 * length;
+
+				if (nearlyClosed) {
+					// close the way
+					points.add(pStart);
+					if(generateSeaUsingMP)
+						seaRelation.addElement("inner", w);
+					else {
+						if(!FakeIdGenerator.isFakeId(w.getId())) {
+							Way w1 = new Way(FakeIdGenerator.makeFakeId());
+							w1.getPoints().addAll(w.getPoints());
+							// only copy the name tags
+							for(String tag : w)
+								if(tag.equals("name") || tag.endsWith(":name"))
+									w1.addTag(tag, w.getTag(tag));
+							w = w1;
+						}
+						w.addTag(landTag[0], landTag[1]);
+						saver.addWay(w);
 					}
+				} else if(allowSeaSectors) {
+					long seaId = FakeIdGenerator.makeFakeId();
+					Way sea = new Way(seaId);
+					sea.getPoints().addAll(points);
+					sea.addPoint(new Coord(pEnd.getLatitude(), pStart.getLongitude()));
+					sea.addPoint(pStart);
+					sea.addTag("natural", "sea");
+					log.info("sea: ", sea);
+					saver.addWay(sea);
+					if(generateSeaUsingMP)
+						seaRelation.addElement("outer", sea);
+					generateSeaBackground = false;
+				} else if (extendSeaSectors) {
+					// create additional points at next border to prevent triangles from point 2
+					if (null == hStart) {
+						hStart = getNextEdgeHit(seaBounds, pStart);
+						w.getPoints().add(0, hStart.getPoint(seaBounds));
+					}
+					if (null == hEnd) {
+						hEnd = getNextEdgeHit(seaBounds, pEnd);
+						w.getPoints().add(hEnd.getPoint(seaBounds));
+					}
+					log.debug("hits (second try): ", hStart, hEnd);
+					hitMap.put(hStart, w);
+					hitMap.put(hEnd, null);
+				} else {
+					// show the coastline even though we can't produce
+					// a polygon for the land
+					w.addTag("natural", "coastline");
+					saver.addWay(w);
 				}
-				if (!containedByLand) {
-					// found an anti-island that is not contained by
-					// land so convert it back into an island
-					ai.deleteTag("natural");
-					if(generateSeaUsingMP) {
-						// create a "inner" way for the island
-						seaRelation.addElement("inner", ai);
-						saver.getWays().remove(ai.getId());
-					} else
-						ai.addTag(landTag[0], landTag[1]);
-					log.warn("Converting anti-island starting at " + ai.getPoints().get(0).toOSMURL() + " into an island as it is surrounded by water");
-				}
-			}
-
-			seaId = FakeIdGenerator.makeFakeId();
-			sea = new Way(seaId);
-			if (generateSeaUsingMP) {
-				// the sea background area must be a little bigger than all
-				// inner land areas. this is a workaround for a mp shortcoming:
-				// mp is not able to combine outer and inner if they intersect
-				// or have overlaying lines
-				// the added area will be clipped later by the style generator
-				sea.addPoint(new Coord(nw.getLatitude() - 1,
-						nw.getLongitude() - 1));
-				sea.addPoint(new Coord(sw.getLatitude() + 1,
-						sw.getLongitude() - 1));
-				sea.addPoint(new Coord(se.getLatitude() + 1,
-						se.getLongitude() + 1));
-				sea.addPoint(new Coord(ne.getLatitude() - 1,
-						ne.getLongitude() + 1));
-				sea.addPoint(new Coord(nw.getLatitude() - 1,
-						nw.getLongitude() - 1));
 			} else {
-				sea.addPoint(nw);
-				sea.addPoint(sw);
-				sea.addPoint(se);
-				sea.addPoint(ne);
-				sea.addPoint(nw);
-			}
-			sea.addTag("natural", "sea");
-			log.info("sea: ", sea);
-			saver.addWay(sea);
-			if(generateSeaUsingMP)
-				seaRelation.addElement("outer", sea);
-		} else {
-			// background is land
-			if (!generateSeaUsingMP) {
-				// generate a land polygon so that the tile's
-				// background colour will match the land colour on the
-				// tiles that do contain some sea
-				long landId = FakeIdGenerator.makeFakeId();
-				Way land = new Way(landId);
-				land.addPoint(nw);
-				land.addPoint(sw);
-				land.addPoint(se);
-				land.addPoint(ne);
-				land.addPoint(nw);
-				land.addTag(landTag[0], landTag[1]);
-				saver.addWay(land);
+				log.debug("hits: ", hStart, hEnd);
+				hitMap.put(hStart, w);
+				hitMap.put(hEnd, null);
 			}
 		}
-
-		if (generateSeaUsingMP) {
-			//Area mpBbox = bbox != null ? bbox : saver.getBoundingBox();
-			//seaRelation = new MultiPolygonRelation(seaRelation, saver.getWays(), mpWayRemoveTags, mpBbox);
-			//saver.addRelation(seaRelation);
-			//seaRelation.processElements();
-			assert false : "todo";
-			// todo mpwayremovetags
-		}
+		return hitMap;
 	}
 
 	/**

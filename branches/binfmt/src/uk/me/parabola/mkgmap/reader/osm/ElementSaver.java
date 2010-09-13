@@ -178,6 +178,16 @@ public class ElementSaver {
 		}
 	}
 
+	/**
+	 * Create a multipolygon relation.  Has to be here as they use shared maps.
+	 * Would like to change how the constructor works so that was not needed.
+	 * @param rel The original relation, that the result will replace.
+	 * @return A new multi polygon relation, based on the input relation.
+	 */
+	public Relation createMultiPolyRelation(Relation rel) {
+		return new MultiPolygonRelation(rel, wayMap, mpWayRemoveTags, getBoundingBox());
+	}
+
 	public void setBoundingBox(Area bbox) {
 		boundingBox = bbox;
 	}
@@ -198,12 +208,18 @@ public class ElementSaver {
 		return relationMap.get(id);
 	}
 
+	/**
+	 * After the input file is read, this is called to convert the saved information
+	 * into the general intermediate format.
+	 *
+	 * @param converter The Converter to use.
+	 */
 	public void convert(OsmConverter converter) {
 		finishMultiPolygons();
 
 		// We only do this if an explicit bounding box was given.
 		if (boundingBox != null && minimumArcLength != null)
-			makeBoundaryNodes(); // TODO only on explicit bounding box
+			makeBoundaryNodes();
 
 		if(minimumArcLength != null)
 			removeShortArcsByMergingNodes(minimumArcLength);
