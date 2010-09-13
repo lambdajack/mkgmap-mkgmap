@@ -33,7 +33,7 @@ public class OsmReadingHooksAdaptor implements OsmReadingHooks {
 	public void addWay(Way way) {
 	}
 
-	public void nodeAddedToWay(Way way, long coordId, Coord co) {
+	public void coordAddedToWay(Way way, long coordId, Coord co) {
 	}
 
 	public void end() {

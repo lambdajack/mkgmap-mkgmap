@@ -77,7 +77,7 @@ public interface OsmReadingHooks {
 	 * @param coordId The coordinate id of the node that is being added.
 	 * @param co The coordinate.
 	 */
-	public void nodeAddedToWay(Way way, long coordId, Coord co);
+	public void coordAddedToWay(Way way, long coordId, Coord co);
 
 	/**
 	 * Called after the file has been read.  Can be used to add more elements to the saver

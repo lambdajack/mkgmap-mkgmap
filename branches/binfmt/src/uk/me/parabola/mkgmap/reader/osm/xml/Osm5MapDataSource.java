@@ -92,6 +92,7 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 
 			try {
 				Osm5XmlHandler handler = new Osm5XmlHandler(getConfig());
+				Osm5XmlHandler.SaxHandler saxHandler = handler.new SaxHandler();
 
 				ElementSaver saver = new ElementSaver(getConfig());
 				OsmReadingHooks hooks = pluginChain(saver, getConfig());
@@ -106,10 +107,10 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 				String deleteTagsFileName = getConfig().getProperty("delete-tags-file");
 				if(deleteTagsFileName != null) {
 					Map<String, Set<String>> deltags = readDeleteTagsFile(deleteTagsFileName);
-					handler.setDeletedTags(deltags);
+					handler.setTagsToDelete(deltags);
 				}
 				
-				parser.parse(is, handler);
+				parser.parse(is, saxHandler);
 				hooks.end();
 
 				OsmConverter converter = converterData.getConverter();

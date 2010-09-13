@@ -63,7 +63,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 		}
 	}
 
-	public void nodeAddedToWay(Way way, long id, Coord co) {
+	public void coordAddedToWay(Way way, long id, Coord co) {
 		Node currentNodeInWay = saver.getNode(id);
 
 		if (linkPOIsToWays) {
