@@ -12,6 +12,7 @@
  */
 package uk.me.parabola.mkgmap.reader.osm;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -28,14 +29,16 @@ import uk.me.parabola.util.EnhancedProperties;
  */ 
 public class OsmReadingHooksChain implements OsmReadingHooks {
 
-	private OsmReadingHooks[] readingHooks;
+	private static final OsmReadingHooks[] NO_HOOKS = new OsmReadingHooks[0];
+	
+	private OsmReadingHooks[] readingHooks = NO_HOOKS;
 
 	/**
 	 * Add a new set of hooks.
 	 * @param hooks The reading hooks.
 	 */
 	public void add(OsmReadingHooks hooks) {
-		List<OsmReadingHooks> readingHooksList = Arrays.asList(readingHooks);
+		List<OsmReadingHooks> readingHooksList = new ArrayList<OsmReadingHooks>(Arrays.asList(readingHooks));
 		readingHooksList.add(hooks);
 		readingHooks = readingHooksList.toArray(new OsmReadingHooks[readingHooksList.size()]);
 	}

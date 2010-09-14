@@ -285,7 +285,6 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 		if (generateSeaUsingMP) {
 			seaRelation = saver.createMultiPolyRelation(seaRelation);
 			saver.addRelation(seaRelation);
-			seaRelation.processElements();
 		}
 	}
 
