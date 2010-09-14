@@ -17,6 +17,8 @@ import java.util.List;
 import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.reader.osm.Element;
+import uk.me.parabola.mkgmap.reader.osm.GeneralRelation;
 import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.OsmHandler;
 import uk.me.parabola.mkgmap.reader.osm.Way;
@@ -63,16 +65,20 @@ public class OsmBinHandler extends OsmHandler {
 		}
 
 		protected void parseNodes(List<Osmformat.Node> nodes) {
-			for (Osmformat.Node bnode : nodes) {
-				Coord co = new Coord(parseLat(bnode.getLat()), parseLon(bnode.getLon()));
-				long id = bnode.getId();
+			for (Osmformat.Node binNode : nodes) {
+				Coord co = new Coord(parseLat(binNode.getLat()), parseLon(binNode.getLon()));
+				long id = binNode.getId();
 				saver.addPoint(id, co);
 
-				int tagCount = bnode.getKeysCount();
+				int tagCount = binNode.getKeysCount();
 				if (tagCount > 0) {
 					Node node = new Node(id, co);
 					for (int tid = 0; tid < tagCount; tid++) {
-						node.addTag(getStringById(bnode.getKeys(tid)), getStringById(bnode.getVals(tid)));
+						String key = getStringById(binNode.getKeys(tid));
+						String val = getStringById(binNode.getVals(tid));
+						key = keepTag(key, val);
+						if (key != null)
+							node.addTag(key, val);
 					}
 
 					saver.addNode(node);
@@ -82,10 +88,9 @@ public class OsmBinHandler extends OsmHandler {
 		}
 
 		protected final void parseDense(Osmformat.DenseNodes nodes) {
-			//System.out.println("Dense " + nodes);
 			long lastId = 0, lastLat = 0, lastLon = 0;
 
-			int kvid = 0; // Index into the keysvals array.
+			int kvid = 0; // Index into the key val array.
 
 			for (int nid = 0; nid < nodes.getIdCount(); nid++) {
 				long lat = nodes.getLat(nid) + lastLat;
@@ -100,7 +105,7 @@ public class OsmBinHandler extends OsmHandler {
 
 				if (nodes.getKeysValsCount() > 0) {
 					// If there are tags, then we create a proper node for it.
-					Node osmnode = new Node(id, co);
+					Node node = new Node(id, co);
 					while (nodes.getKeysVals(kvid) != 0) {
 						int keyid = nodes.getKeysVals(kvid++);
 						int valid = nodes.getKeysVals(kvid++);
@@ -108,30 +113,30 @@ public class OsmBinHandler extends OsmHandler {
 						String val = getStringById(valid);
 						key = keepTag(key, val);
 						if (key != null)
-							osmnode.addTag(key, val);
+							node.addTag(key, val);
 					}
 					kvid++; // Skip over the '0' delimiter.
-					saver.addNode(osmnode);
-					hooks.addNode(osmnode);
+					saver.addNode(node);
+					hooks.addNode(node);
 				}
 			}
 		}
 
 		protected void parseWays(List<Osmformat.Way> ways) {
-			for (Osmformat.Way bway : ways) {
-				Way way = new Way(bway.getId());
+			for (Osmformat.Way binWay : ways) {
+				Way way = new Way(binWay.getId());
 
-				for (int j = 0; j < bway.getKeysCount(); j++) {
+				for (int j = 0; j < binWay.getKeysCount(); j++) {
 
-					String key = getStringById(bway.getKeys(j));
-					String val = getStringById(bway.getVals(j));
+					String key = getStringById(binWay.getKeys(j));
+					String val = getStringById(binWay.getVals(j));
 					key = keepTag(key, val);
 					if (key != null)
 						way.addTag(key, val);
 				}
 
 				long nid = 0;
-				for (long idDelta : bway.getRefsList()) {
+				for (long idDelta : binWay.getRefsList()) {
 					nid += idDelta;
 					Coord co = saver.getCoord(nid);
 					if (co != null) {
@@ -151,6 +156,52 @@ public class OsmBinHandler extends OsmHandler {
 		}
 
 		protected void parseRelations(List<Osmformat.Relation> rels) {
+
+			for (Osmformat.Relation binRel : rels) {
+				long id = binRel.getId();
+				GeneralRelation rel = new GeneralRelation(id);
+
+				for (int j = 0; j < binRel.getKeysCount(); j++) {
+					String key = getStringById(binRel.getKeys(j));
+					String val = getStringById(binRel.getVals(j));
+					key = keepTag(key, val);
+					if (key != null)
+						rel.addTag(key, val);
+				}
+
+
+				long lastMid = 0;
+
+				for (int j = 0; j < binRel.getMemidsCount(); j++) {
+					long mid = lastMid + binRel.getMemids(j);
+					lastMid = mid;
+					String role = getStringById(binRel.getRolesSid(j));
+					Element el = null;
+
+					if (binRel.getTypes(j) == Osmformat.Relation.MemberType.NODE) {
+						el = saver.getNode(mid);
+						if(el == null) {
+							// we didn't make a node for this point earlier,
+							// do it now (if it exists)
+							Coord co = saver.getCoord(id);
+							if(co != null) {
+								el = new Node(id, co);
+								saver.addNode((Node)el);
+							}
+						}
+					} else if (binRel.getTypes(j) == Osmformat.Relation.MemberType.WAY) {
+						el = saver.getWay(mid);
+					} else if (binRel.getTypes(j) == Osmformat.Relation.MemberType.RELATION) {
+						el = saver.getRelation(mid);
+					} else {
+						assert false;
+					}
+
+					if (el != null) // ignore non existing ways caused by splitting files
+						rel.addElement(role, el);
+				}
+				saver.addRelation(rel);
+			}
 		}
 
 		/**
