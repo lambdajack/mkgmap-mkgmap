@@ -121,7 +121,7 @@ public class ElementSaver {
 	}
 
 	/**
-	 * Add the given node and save it.
+	 * Add the given node and save it. The node should have tags.
 	 *
 	 * @param node The osm node.
 	 */
