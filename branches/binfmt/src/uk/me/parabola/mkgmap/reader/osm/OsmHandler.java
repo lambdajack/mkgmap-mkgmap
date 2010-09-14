@@ -19,12 +19,15 @@ import java.util.Set;
 import uk.me.parabola.imgfmt.app.Area;
 
 /**
+ * Base class for OSM file handlers.
+ * 
  * @author Steve Ratcliffe
  */
 public class OsmHandler {
 	// Elements that are read are saved/further processed by these two classes.
 	protected ElementSaver saver;
 	protected OsmReadingHooks hooks;
+
 	private final Map<String, Long> fakeIdMap = new HashMap<String, Long>();
 	private Map<String,Set<String>> deletedTags;
 	private Map<String, String> usedTags;

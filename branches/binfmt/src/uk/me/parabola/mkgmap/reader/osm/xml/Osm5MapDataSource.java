@@ -26,7 +26,6 @@ import javax.xml.parsers.SAXParserFactory;
 
 import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.imgfmt.Utils;
-import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.OsmMapDataSource;
 
 import org.xml.sax.SAXException;
@@ -42,7 +41,7 @@ import org.xml.sax.SAXException;
  * @author Steve Ratcliffe
  */
 public class Osm5MapDataSource extends OsmMapDataSource {
-	private static final Logger log = Logger.getLogger(Osm5MapDataSource.class);
+	//private static final Logger log = Logger.getLogger(Osm5MapDataSource.class);
 
 	public boolean isFileSupported(String name) {
 		// This is the default format so say supported if we get this far,
@@ -71,7 +70,9 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 				setupHandler(handler);
 
 				// parse the xml file
+				//long start = System.currentTimeMillis();
 				parser.parse(is, saxHandler);
+				//System.out.println("xml: " + (System.currentTimeMillis() - start) + "ms");
 				osmReadingHooks.end();
 
 				// now convert the saved elements

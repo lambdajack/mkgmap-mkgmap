@@ -66,9 +66,13 @@ public class MapReader {
 				// try the next one.
 			} catch (IllegalAccessException e) {
 				// try the next one.
+			} catch (NoClassDefFoundError e) {
+				// try the next one
 			}
 		}
 
+		// Give up and assume it is in the XML format. If it isn't we will get an
+		// error soon enough anyway.
 		if (src == null)
 			src = new Osm5MapDataSource();
 

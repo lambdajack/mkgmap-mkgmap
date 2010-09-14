@@ -55,7 +55,11 @@ public class OsmBinMapDataSource extends OsmMapDataSource {
 		try {
 			BinParser reader = handler.new BinParser();
 			BlockInputStream stream = new BlockInputStream(is, reader);
+			//long start = System.currentTimeMillis();
 			stream.process();
+			//System.out.println("bin: " + (System.currentTimeMillis() - start) + "ms");
+		} catch (NoClassDefFoundError e) {
+			throw new FormatException("Failed to read binary file, probably missing protobuf.jar");
 		} catch (IOException e) {
 			throw new FormatException("Failed to read binary file " + name);
 		}
