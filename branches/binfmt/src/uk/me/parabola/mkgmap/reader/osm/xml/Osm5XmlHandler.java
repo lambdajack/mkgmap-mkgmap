@@ -368,6 +368,7 @@ public class Osm5XmlHandler extends OsmHandler {
 
 		if (co != null) {
 			hooks.coordAddedToWay(currentWay, id, co);
+			co = saver.getCoord(id);
 			currentWay.addPoint(co);
 
 			// nodes (way joins) will have highwayCount > 1

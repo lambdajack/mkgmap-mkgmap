@@ -156,7 +156,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 				// the original way
 				long cycleWayId = way.getId() + CYCLEWAY_ID_OFFSET;
 				Way cycleWay = new Way(cycleWayId);
-				addWay(cycleWay);
+				saver.addWay(cycleWay);
 				// this reverses the direction of the way but
 				// that isn't really necessary as the cycleway
 				// isn't tagged as oneway
@@ -192,7 +192,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 				// way
 				long cycleWayId = way.getId() + CYCLEWAY_ID_OFFSET;
 				Way cycleWay = new Way(cycleWayId);
-				addWay(cycleWay);
+				saver.addWay(cycleWay);
 				List<Coord> points = way.getPoints();
 				for (Coord point : points)
 					cycleWay.addPoint(point);
