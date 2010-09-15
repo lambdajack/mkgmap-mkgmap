@@ -82,7 +82,7 @@ public class OsmBinHandler extends OsmHandler {
 					}
 
 					saver.addNode(node);
-					hooks.addNode(node);
+					hooks.onAddNode(node);
 				}
 			}
 		}
@@ -117,7 +117,7 @@ public class OsmBinHandler extends OsmHandler {
 					}
 					kvid++; // Skip over the '0' delimiter.
 					saver.addNode(node);
-					hooks.addNode(node);
+					hooks.onAddNode(node);
 				}
 			}
 		}
@@ -140,7 +140,7 @@ public class OsmBinHandler extends OsmHandler {
 					nid += idDelta;
 					Coord co = saver.getCoord(nid);
 					if (co != null) {
-						hooks.coordAddedToWay(way, nid, co);
+						hooks.onCoordAddedToWay(way, nid, co);
 						way.addPoint(co);
 
 						// nodes (way joins) will have highwayCount > 1
@@ -151,7 +151,7 @@ public class OsmBinHandler extends OsmHandler {
 				}
 
 				saver.addWay(way);
-				hooks.addWay(way);
+				hooks.onAddWay(way);
 			}
 		}
 

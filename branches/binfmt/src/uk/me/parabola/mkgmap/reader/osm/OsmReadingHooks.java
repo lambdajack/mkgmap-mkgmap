@@ -25,7 +25,7 @@ import uk.me.parabola.util.EnhancedProperties;
  *
  * This is the stage before conversion from the node/way/tag format to the
  * general intermediate format. Most operations should be done during that
- * conversion process, which is accessable from the style file language.
+ * conversion process, which is accessible from the style file language.
  *
  * We also want access to the other ways/nodes to generate sea polygons,
  * cycle lanes and so on.
@@ -58,7 +58,7 @@ public interface OsmReadingHooks {
 	 *
 	 * @param node The node to be added.
 	 */
-	void addNode(Node node);
+	void onAddNode(Node node);
 
 	/**
 	 * Add the given way. The way must be complete, call after the end tag
@@ -66,7 +66,7 @@ public interface OsmReadingHooks {
 	 *
 	 * @param way The osm way.
 	 */
-	public void addWay(Way way);
+	public void onAddWay(Way way);
 
 	/**
 	 * This is called whenever a node is added to a way.  A node is something with tags, not just a Coord.
@@ -77,7 +77,7 @@ public interface OsmReadingHooks {
 	 * @param coordId The coordinate id of the node that is being added.
 	 * @param co The coordinate.
 	 */
-	public void coordAddedToWay(Way way, long coordId, Coord co);
+	public void onCoordAddedToWay(Way way, long coordId, Coord co);
 
 	/**
 	 * Called after the file has been read.  Can be used to add more elements to the saver

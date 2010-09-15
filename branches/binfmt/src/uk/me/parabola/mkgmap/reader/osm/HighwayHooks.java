@@ -55,7 +55,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 		return true;
 	}
 
-	public void addNode(Node node) {
+	public void onAddNode(Node node) {
 		String val = node.getTag("highway");
 		if (val != null && (val.equals("motorway_junction") || val.equals("services"))) {
 			exits.add(node);
@@ -63,7 +63,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 		}
 	}
 
-	public void coordAddedToWay(Way way, long id, Coord co) {
+	public void onCoordAddedToWay(Way way, long id, Coord co) {
 		Node currentNodeInWay = saver.getNode(id);
 
 		if (linkPOIsToWays) {
@@ -118,7 +118,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 		}
 	}
 
-	public void addWay(Way way) {
+	public void onAddWay(Way way) {
 		String highway = way.getTag("highway");
 		if(highway != null || "ferry".equals(way.getTag("route"))) {
 			boolean oneway = way.isBoolTag("oneway");

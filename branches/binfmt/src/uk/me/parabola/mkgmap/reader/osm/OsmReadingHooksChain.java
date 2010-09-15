@@ -49,19 +49,19 @@ public class OsmReadingHooksChain implements OsmReadingHooks {
 		return true;
 	}
 
-	public void addNode(Node node) {
+	public void onAddNode(Node node) {
 		for (int i = 0; i < readingHooks.length; i++)
-			readingHooks[i].addNode(node);
+			readingHooks[i].onAddNode(node);
 	}
 
-	public void coordAddedToWay(Way way, long coordId, Coord co) {
+	public void onCoordAddedToWay(Way way, long coordId, Coord co) {
 		for (int i = 0; i < readingHooks.length; i++)
-			readingHooks[i].coordAddedToWay(way, coordId, co);
+			readingHooks[i].onCoordAddedToWay(way, coordId, co);
 	}
 
-	public void addWay(Way way) {
+	public void onAddWay(Way way) {
 		for (int i = 0; i < readingHooks.length; i++)
-			readingHooks[i].addWay(way);
+			readingHooks[i].onAddWay(way);
 	}
 
 	public void end() {

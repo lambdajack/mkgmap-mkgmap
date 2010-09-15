@@ -27,13 +27,13 @@ public class OsmReadingHooksAdaptor implements OsmReadingHooks {
 		return true;
 	}
 
-	public void addNode(Node node) {
+	public void onAddNode(Node node) {
 	}
 
-	public void addWay(Way way) {
+	public void onAddWay(Way way) {
 	}
 
-	public void coordAddedToWay(Way way, long coordId, Coord co) {
+	public void onCoordAddedToWay(Way way, long coordId, Coord co) {
 	}
 
 	public void end() {

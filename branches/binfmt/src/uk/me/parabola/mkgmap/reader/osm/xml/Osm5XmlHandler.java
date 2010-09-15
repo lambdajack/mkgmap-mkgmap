@@ -154,7 +154,7 @@ public class Osm5XmlHandler extends OsmHandler {
 					mode = 0;
 					if (currentNode != null) {
 						saver.addNode(currentNode);
-						hooks.addNode(currentNode);
+						hooks.onAddNode(currentNode);
 					}
 					currentElementId = 0;
 					currentNode = null;
@@ -164,7 +164,7 @@ public class Osm5XmlHandler extends OsmHandler {
 				if (qName.equals("way")) {
 					mode = 0;
 					saver.addWay(currentWay);
-					hooks.addWay(currentWay);
+					hooks.onAddWay(currentWay);
 					currentWay = null;
 				}
 
@@ -367,7 +367,7 @@ public class Osm5XmlHandler extends OsmHandler {
 		Coord co = saver.getCoord(id);
 
 		if (co != null) {
-			hooks.coordAddedToWay(currentWay, id, co);
+			hooks.onCoordAddedToWay(currentWay, id, co);
 			co = saver.getCoord(id);
 			currentWay.addPoint(co);
 

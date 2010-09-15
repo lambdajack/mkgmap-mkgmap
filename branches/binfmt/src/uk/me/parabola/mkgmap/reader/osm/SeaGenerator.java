@@ -99,7 +99,7 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 	 * we save it.
 	 * @param way The way to test.
 	 */
-	public void addWay(Way way) {
+	public void onAddWay(Way way) {
 		String natural = way.getTag("natural");
 		if(natural != null) {
 			if("coastline".equals(natural)) {
