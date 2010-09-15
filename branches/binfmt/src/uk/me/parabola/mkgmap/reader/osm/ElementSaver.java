@@ -70,7 +70,6 @@ public class ElementSaver {
 
 	// Options
 	private final boolean ignoreTurnRestrictions;
-	private final boolean processBoundaryRelations;
 	private final Double minimumArcLength;
 
 	private boolean roadsReachBoundary;
@@ -93,7 +92,6 @@ public class ElementSaver {
 			minimumArcLength = null;
 
 		ignoreTurnRestrictions = args.getProperty("ignore-turn-restrictions", false);
-		processBoundaryRelations = args.getProperty("process-boundary-relations", false);
 	}
 
 	/**
@@ -162,14 +160,8 @@ public class ElementSaver {
 		if(rel != null) {
 			long id = rel.getId();
 			relationMap.put(rel.getId(), rel);
-
-			if (!processBoundaryRelations &&
-			     rel instanceof MultiPolygonRelation &&
-				 ((MultiPolygonRelation)rel).isBoundaryRelation()) {
-				log.info("Ignore boundary multipolygon "+rel.toBrowseURL());
-			} else {
-				rel.processElements();
-			}
+			
+			rel.processElements();
 
 			List<Map.Entry<String,Relation>> entries = deferredRelationMap.remove(id);
 			if (entries != null)

@@ -76,6 +76,11 @@
                     <value>
                       <list>
                         <SvnBranchItem>
+                          <option name="creationDateMillis" value="1284552830089" />
+                          <option name="revision" value="1693" />
+                          <option name="url" value="https://svn.mkgmap.org.uk/svn/mkgmap/branches/binfmt" />
+                        </SvnBranchItem>
+                        <SvnBranchItem>
                           <option name="creationDateMillis" value="1280572276930" />
                           <option name="revision" value="1666" />
                           <option name="url" value="https://svn.mkgmap.org.uk/svn/mkgmap/branches/overview" />
