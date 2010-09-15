@@ -70,9 +70,7 @@ public class Osm5MapDataSource extends OsmMapDataSource {
 				setupHandler(handler);
 
 				// parse the xml file
-				//long start = System.currentTimeMillis();
 				parser.parse(is, saxHandler);
-				//System.out.println("xml: " + (System.currentTimeMillis() - start) + "ms");
 				osmReadingHooks.end();
 
 				// now convert the saved elements

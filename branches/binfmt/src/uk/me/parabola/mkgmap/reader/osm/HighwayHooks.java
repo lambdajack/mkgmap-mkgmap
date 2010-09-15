@@ -70,13 +70,13 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 			// if this Coord is also a POI, replace it with an
 			// equivalent CoordPOI that contains a reference to
 			// the POI's Node so we can access the POI's tags
-			if(!(co instanceof CoordPOI) && currentNodeInWay != null) {
+			if (!(co instanceof CoordPOI) && currentNodeInWay != null) {
 				// for now, only do this for nodes that have
 				// certain tags otherwise we will end up creating
 				// a CoordPOI for every node in the way
 				final String[] coordPOITags = { "access", "barrier", "highway" };
-				for(String cpt : coordPOITags) {
-					if(currentNodeInWay.getTag(cpt) != null) {
+				for (String cpt : coordPOITags) {
+					if (currentNodeInWay.getTag(cpt) != null) {
 						// the POI has one of the approved tags so
 						// replace the Coord with a CoordPOI
 						CoordPOI cp = new CoordPOI(co.getLatitude(), co.getLongitude());
@@ -94,7 +94,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 						cp.setNode(newNode);
 						co = cp;
 						// if original node is in exits, replace it
-						if(exits.remove(currentNodeInWay))
+						if (exits.remove(currentNodeInWay))
 							exits.add(newNode);
 						currentNodeInWay = newNode;
 						break;
@@ -102,7 +102,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 				}
 			}
 
-			if(co instanceof CoordPOI) {
+			if (co instanceof CoordPOI) {
 				// flag this Way as having a CoordPOI so it
 				// will be processed later
 				way.addTag("mkgmap:way-has-pois", "true");
@@ -120,7 +120,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 
 	public void onAddWay(Way way) {
 		String highway = way.getTag("highway");
-		if(highway != null || "ferry".equals(way.getTag("route"))) {
+		if (highway != null || "ferry".equals(way.getTag("route"))) {
 			boolean oneway = way.isBoolTag("oneway");
 			// if the first or last Node of the Way has a
 			// FIXME attribute, disable dead-end-check for
@@ -132,18 +132,19 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 
 			// if the way is a roundabout but isn't already
 			// flagged as "oneway", flag it here
-			if("roundabout".equals(way.getTag("junction"))) {
-				if(way.getTag("oneway") == null) {
+			if ("roundabout".equals(way.getTag("junction"))) {
+				if (way.getTag("oneway") == null) {
 					way.addTag("oneway", "yes");
 				}
-				if(way.getTag("mkgmap:frig_roundabout") == null) {
+
+				if (way.getTag("mkgmap:frig_roundabout") == null) {
 					if(frigRoundabouts != null)
 						way.addTag("mkgmap:frig_roundabout", frigRoundabouts);
 				}
 			}
 
 			String cycleway = way.getTag("cycleway");
-			if(makeOppositeCycleways && cycleway != null && !"cycleway".equals(highway) && oneway &&
+			if (makeOppositeCycleways && cycleway != null && !"cycleway".equals(highway) && oneway &&
 			   ("opposite".equals(cycleway) ||
 				"opposite_lane".equals(cycleway) ||
 				"opposite_track".equals(cycleway)))
@@ -154,31 +155,10 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 				// in the reverse direction, we synthesise
 				// a cycleway that has the same points as
 				// the original way
-				long cycleWayId = way.getId() + CYCLEWAY_ID_OFFSET;
-				Way cycleWay = new Way(cycleWayId);
-				saver.addWay(cycleWay);
-				// this reverses the direction of the way but
-				// that isn't really necessary as the cycleway
-				// isn't tagged as oneway
-				List<Coord> points = way.getPoints();
-				for(int i = points.size() - 1; i >= 0; --i)
-					cycleWay.addPoint(points.get(i));
-				cycleWay.copyTags(way);
-				//cycleWay.addTag("highway", "cycleway");
-				String name = way.getTag("name");
-				if(name != null)
-					name += " (cycleway)";
-				else
-					name = "cycleway";
-				cycleWay.addTag("name", name);
+				Way cycleWay = makeCycleWay(way);
 				cycleWay.addTag("oneway", "no");
-				cycleWay.addTag("access", "no");
-				cycleWay.addTag("bicycle", "yes");
-				cycleWay.addTag("foot", "no");
-				cycleWay.addTag("mkgmap:synthesised", "yes");
-				log.info("Making " + cycleway + " cycleway '" + cycleWay.getTag("name") + "'");
 
-			} else if(makeCycleways && cycleway != null && !"cycleway".equals(highway) &&
+			} else if (makeCycleways && cycleway != null && !"cycleway".equals(highway) &&
 					("track".equals(cycleway) ||
 					 "lane".equals(cycleway) ||
 					 "both".equals(cycleway) ||
@@ -190,32 +170,50 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 				// bicycle routing, we synthesise a cycleway
 				// that has the same points as the original
 				// way
-				long cycleWayId = way.getId() + CYCLEWAY_ID_OFFSET;
-				Way cycleWay = new Way(cycleWayId);
-				saver.addWay(cycleWay);
-				List<Coord> points = way.getPoints();
-				for (Coord point : points)
-					cycleWay.addPoint(point);
-				cycleWay.copyTags(way);
-				if(way.getTag("bicycle") == null)
+				makeCycleWay(way);
+				if (way.getTag("bicycle") == null)
 					way.addTag("bicycle", "no");
-				//cycleWay.addTag("highway", "cycleway");
-				String name = way.getTag("name");
-				if(name != null)
-					name += " (cycleway)";
-				else
-					name = "cycleway";
-				cycleWay.addTag("name", name);
-				cycleWay.addTag("access", "no");
-				cycleWay.addTag("bicycle", "yes");
-				cycleWay.addTag("foot", "no");
-				cycleWay.addTag("mkgmap:synthesised", "yes");
-				log.info("Making " + cycleway + " cycleway '" + cycleWay.getTag("name") + "'");
 			}
 		}
 
 		if("motorway".equals(highway) || "trunk".equals(highway))
 			motorways.add(way);
+	}
+
+	/**
+	 * Construct a cycleway that has the same points as an existing way.  Used for separate
+	 * cycle lanes.
+	 * @param way The original way.
+	 * @return The new way, which will have the same points and have suitable cycle tags.
+	 */
+	private Way makeCycleWay(Way way) {
+		long cycleWayId = way.getId() + CYCLEWAY_ID_OFFSET;
+		Way cycleWay = new Way(cycleWayId);
+		saver.addWay(cycleWay);
+
+		// this reverses the direction of the way but
+		// that isn't really necessary as the cycleway
+		// isn't tagged as oneway
+		List<Coord> points = way.getPoints();
+		//for (int i = points.size() - 1; i >= 0; --i)
+		//	cycleWay.addPoint(points.get(i));
+		for (Coord point : points)
+			cycleWay.addPoint(point);
+		
+		cycleWay.copyTags(way);
+
+		String name = way.getTag("name");
+		if(name != null)
+			name += " (cycleway)";
+		else
+			name = "cycleway";
+		cycleWay.addTag("name", name);
+		cycleWay.addTag("access", "no");
+		cycleWay.addTag("bicycle", "yes");
+		cycleWay.addTag("foot", "no");
+		cycleWay.addTag("mkgmap:synthesised", "yes");
+
+		return cycleWay;
 	}
 
 	public void end() {
@@ -225,9 +223,9 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 	private void finishExits() {
 		for (Node e : exits) {
 			String refTag = Exit.TAG_ROAD_REF;
-			if(e.getTag(refTag) == null) {
+			if (e.getTag(refTag) == null) {
 				String exitName = e.getTag("name");
-				if(exitName == null)
+				if (exitName == null)
 					exitName = e.getTag("ref");
 
 				String ref = null;
@@ -240,6 +238,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 						    break;
 					}
 				}
+				
 				if (ref != null) {
 					log.info("Adding " + refTag + "=" + ref + " to exit " + exitName);
 					e.addTag(refTag, ref);

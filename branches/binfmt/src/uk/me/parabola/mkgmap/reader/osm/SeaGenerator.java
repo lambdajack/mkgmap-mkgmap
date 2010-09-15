@@ -53,7 +53,7 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 	/**
 	 * Sort out options from the command line.
 	 * Returns true only if the option to generate the sea is active, so that
-	 * the whole thing is ommited if not used.
+	 * the whole thing is omitted if not used.
 	 */
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
 		this.saver = saver;
@@ -415,7 +415,7 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 	/**
 	 * An 'anti-island' is something that has been detected as an island, but the water
 	 * is on the inside.  I think you would call this a lake.
-	 * @param seaRelation The relation holding the sea.  Only set if we are using multi-polys for
+	 * @param seaRelation The relation holding the sea.  Only set if we are using multipolygons for
 	 * the sea.
 	 * @param islands The island list that was found earlier.
 	 * @return The so-called anti-islands.
@@ -463,7 +463,7 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 	 * Find the points where the remaining shore line segments intersect with the
 	 * map boundary.
 	 *
-	 * @param shoreline The remaining shore line segements.
+	 * @param shoreline The remaining shore line segments.
 	 * @param seaBounds The map boundary.
 	 * @param seaRelation If we are using a multi-polygon, this is it. Otherwise it will be null.
 	 * @return A map of the 'hits' where the shore line intersects the boundary.

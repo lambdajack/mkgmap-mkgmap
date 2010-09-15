@@ -70,7 +70,7 @@ public abstract class OsmMapDataSource extends MapperBasedMapDataSource
 	 * is turned off for maps following that option.
 	 *
 	 * <li>In the style options file.  This works just like the command line
-	 * option, but it applies whenever the given style is used and not overriden
+	 * option, but it applies whenever the given style is used and not overridden
 	 * on the command line.
 	 *
 	 * <li>A default setting.

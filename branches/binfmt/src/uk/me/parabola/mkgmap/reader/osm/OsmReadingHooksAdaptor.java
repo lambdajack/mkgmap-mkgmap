@@ -17,7 +17,7 @@ import uk.me.parabola.util.EnhancedProperties;
 
 /**
  * Provides empty implementation of all methods so that subclass that only
- * need a few can just implemnt the ones they want.
+ * need a few can just implement the ones they want.
  * 
  * @author Steve Ratcliffe
  */
