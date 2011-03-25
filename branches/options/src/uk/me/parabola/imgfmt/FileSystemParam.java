@@ -1,18 +1,14 @@
 /*
- * Copyright (C) 2006 Steve Ratcliffe
- * 
+ * Copyright (C) 2006, 2011 Steve Ratcliffe
+ *
  *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License version 2 as
- *  published by the Free Software Foundation.
- * 
+ *  it under the terms of the GNU General Public License version 3 or
+ *  version 2 as published by the Free Software Foundation.
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- * 
- * 
- * Author: Steve Ratcliffe
- * Create date: 02-Dec-2006
  */
 package uk.me.parabola.imgfmt;
 
@@ -34,6 +30,8 @@ public class FileSystemParam {
 
 	public void setMapDescription(String mapDescription) {
 		this.mapDescription = mapDescription;
+		if (this.mapDescription == null)
+			this.mapDescription = "";
 	}
 
 	public int getBlockSize() {

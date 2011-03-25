@@ -85,7 +85,7 @@ public class CommandArgsTest {
 		String SETNAME1 = "11110000";
 		String SETNAME2 = "22220000";
 
-		carg.readArgs(new String[] {
+		carg.readArgs(new String[]{
 				"--mapname=" + SETNAME1, FILE1,
 				"--mapname=" + SETNAME2, FILE2
 		});
@@ -156,17 +156,6 @@ public class CommandArgsTest {
 		assertEquals("description", "OSM-AU New South Wales", arg.getProperty("description"));
 	}
 
-	private void createFile(String name, String content) throws IOException {
-		TestUtils.registerFile(name);
-		Writer w = null;
-		try {
-			w = new FileWriter(name);
-			w.append(content);
-		} finally {
-			Utils.closeFile(w);
-		}
-	}
-
 	/**
 	 * Combinations of all mapname possibilities.
 	 */
@@ -191,6 +180,38 @@ public class CommandArgsTest {
 	}
 
 	/**
+	 * Options can be switched off by prefixing them with 'no-'.
+	 */
+	@Test
+	public void testArgReset() {
+		carg.readArgs(new String[] {
+				"--latin1",
+				FILE1,
+				"--no-latin1",
+				FILE2,
+				"--latin1",
+				FILE3,
+		});
+		
+		assertEquals("first file has latin1", "", proc.getProperty(0, "latin1"));
+		assertEquals("second file does not have latin1", null, proc.getProperty(1, "latin1"));
+		assertEquals("third file does has latin1", "", proc.getProperty(2, "latin1"));
+		assertEquals("any option that was not present is null", null, proc.getProperty(1,
+				"invalid-option-does-not-exist"));
+	}
+
+	private void createFile(String name, String content) throws IOException {
+		TestUtils.registerFile(name);
+		Writer w = null;
+		try {
+			w = new FileWriter(name);
+			w.append(content);
+		} finally {
+			Utils.closeFile(w);
+		}
+	}
+
+	/**
 	 * Argument processor that saves the filenames and the values of
 	 * the arguments that are in scope for each argument.
 	 */
@@ -211,6 +232,9 @@ public class CommandArgsTest {
 		private final List<FileArgs> files = new ArrayList<FileArgs>();
 
 		public void processOption(String opt, String val) {
+		}
+
+		public void removeOption(String opt) {
 		}
 
 		public void processFilename(CommandArgs args, String filename) {

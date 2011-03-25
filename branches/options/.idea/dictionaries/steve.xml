@@ -45,6 +45,7 @@
       <w>mapname</w>
       <w>mapsource</w>
       <w>maxspeed</w>
+      <w>mkgmap</w>
       <w>moveto</w>
       <w>multi</w>
       <w>multimap</w>
@@ -84,6 +85,7 @@
       <w>tagname</w>
       <w>tagval</w>
       <w>taskdef</w>
+      <w>tdbfile</w>
       <w>topo</w>
       <w>tweeze</w>
       <w>unshifted</w>
