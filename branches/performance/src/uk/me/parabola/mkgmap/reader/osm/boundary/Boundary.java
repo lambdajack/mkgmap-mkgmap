@@ -13,9 +13,7 @@
 package uk.me.parabola.mkgmap.reader.osm.boundary;
 
 import java.awt.geom.Area;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 
 import uk.me.parabola.mkgmap.reader.osm.Tags;
@@ -27,7 +25,13 @@ public class Boundary  {
 	private transient Area area;
 	private transient uk.me.parabola.imgfmt.app.Area bbox;
 	private transient List<BoundaryElement> bList;
+	// for location hook
+	private Tags locTags;  // tags that are used in LocationHook (including the data from enclosing boundaries)
+	private String id;	// the id of the OSM relation (was kept in tag "mkgmap:boundaryid")
+	private String name; 
+	private String zip;	
 
+	/*
 	public Boundary(List<BoundaryElement> mulitpolygon, Iterable<Entry<String, String>> tags) {
 		bList = mulitpolygon;
 		this.tags = new Tags();
@@ -41,19 +45,13 @@ public class Boundary  {
 		this.bList = mulitpolygon;
 	}
 
-	
 	public Boundary(Area area, Map<String, String> tags) {
 		this(area, tags.entrySet());
 	}
-
+	 */
 	public Boundary(Area area, Tags tags) {
 		this.area = new Area(area);
-		this.tags = new Tags();
-		Iterator<Entry<String, String>> tagsIter = tags.entryIterator();
-		while (tagsIter.hasNext()) {
-			Entry<String, String> tag = tagsIter.next();
-			this.tags.put(tag.getKey(), tag.getValue());
-		}
+		this.tags = tags.copy();
 	}
 
 	public Boundary(Area area, Iterable<Entry<String, String>> tags) {
@@ -62,6 +60,38 @@ public class Boundary  {
 		for (Entry<String, String> tag : tags) {
 			this.tags.put(tag.getKey(), tag.getValue());
 		}
+	}
+
+	public Tags getLocTags() {
+		return locTags;
+	}
+
+	public void setLocTags(Tags locTags) {
+		this.locTags = locTags;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public String getZip() {
+		return zip;
+	}
+
+	public void setZip(String zip) {
+		this.zip = zip;
 	}
 
 	public Tags getTags() {
