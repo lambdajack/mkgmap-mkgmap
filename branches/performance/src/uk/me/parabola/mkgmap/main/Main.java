@@ -24,6 +24,7 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -95,7 +96,8 @@ public class Main implements ArgumentProcessor {
 	 * @param args The command line arguments.
 	 */
 	public static void main(String[] args) {
-
+		long start = System.currentTimeMillis();
+		System.out.println("Time started: " + new Date());
 		// We need at least one argument.
 		if (args.length < 1) {
 			System.err.println("Usage: mkgmap [options...] <file.osm>");
@@ -115,6 +117,8 @@ public class Main implements ArgumentProcessor {
 		} catch (ExitException e) {
 			System.err.println(e.getMessage());
 		}
+		System.out.println("Time finished: " + new Date());
+		System.out.println("Total time taken: " + (System.currentTimeMillis() - start) + "ms"); 
 	}
 
 	/**

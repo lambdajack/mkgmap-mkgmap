@@ -145,6 +145,8 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 		return true;
 	}
 	
+	private static long sumLocHook = 0;
+	
 	public void end() {
 		long t1 = System.currentTimeMillis();
 		log.info("Starting with location hook");
@@ -156,14 +158,19 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 		}
 	
 		long dt = (System.currentTimeMillis() - t1);
+		sumLocHook += dt;
 		log.info("Location hook finished in "+
 				dt+ " ms");
+		log.info("Overall Location hook time "+
+				sumLocHook+ " ms");
 		System.out.println("======= Stats =====");             
 		System.out.println("QuadTree searches    : "  + cntQTSearch);             
 		System.out.println("unsuccesfull         : "  + cntNotFnd);             
 		System.out.println("unsuccesfull for ways: "  + cntwayNotFnd);             
 		System.out.println("Location hook finished in "+
 				dt+ " ms");
+		System.out.println("Overall Location hook time "+
+				sumLocHook+ " ms");
 
 	}
 
@@ -201,7 +208,8 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 		// add all nodes that might be converted to a garmin node (tagcount > 0)
 		for (Node node : saver.getNodes().values()) {
 			if (node.getTagCount() > 0) {
-				System.out.println("N " + node.getId() + " " + calcLocationTagsMask(node));
+				System.out.println("N " + node.getId() + " " + calcLocationTagsMask(node) 
+						+ " " + tagsToString(node));
 			}
 		}
 
@@ -209,7 +217,8 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 		// and save all polygons that contains location information
 		for (Way way : saver.getWays().values()) {
 			if (way.getTagCount() > 0) {
-				System.out.println("W " + way.getId() + " " + calcLocationTagsMask(way));
+				System.out.println("W " + way.getId() + " " + calcLocationTagsMask(way)
+						+ " " + tagsToString(way));
 			}
 		}
 	}
@@ -227,6 +236,22 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 				res |= (1 << i);
 		}
 		return res;
+	}
+
+	/**
+	 * Create a string with location relevant tags ordered by admin_level
+	 * @param elem
+	 * @return A new String object
+	 */
+	private String tagsToString(Element elem){
+		StringBuilder res = new StringBuilder();
+		for (int i = mkgmapTagsArray.length-1; i >= 0; --i){
+			String tagVal = elem.getTag(mkgmapTagsArray[i] );
+			if (tagVal != null)
+				res.append(tagVal);
+				res.append(";");
+		}
+		return res.toString();
 	}
 	
 	/**
@@ -309,11 +334,18 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 		else if (elem instanceof Way){
 			Way way = (Way) elem;
 
-			for (Coord co: way.getPoints()){
-				tags = boundaryQuadTree.get(co);
-				++cntQTSearch;
-				if (tags != null) 
-					break;
+			int middle = way.getPoints().size() / 2;
+			Coord coMiddle = way.getPoints().get(middle);
+			
+			tags = boundaryQuadTree.get(coMiddle);
+			++cntQTSearch;
+			if (tags == null){
+				for (Coord co: way.getPoints()){
+					tags = boundaryQuadTree.get(co);
+					++cntQTSearch;
+					if (tags != null) 
+						break;
+				}
 			}
 			if (tags == null)
 				++cntwayNotFnd;
@@ -343,6 +375,10 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 		buildQuadTree(boundaries);
 		processLocationRelevantElements();
 		boundaryQuadTree.stats();
+		
+		// clear the data structures 
+		boundaryQuadTree = null;
+		boundaryById = null;
 	}
 
 	private void buildQuadTree(List<Boundary> boundaries){
@@ -379,7 +415,7 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 			
 			// this boundary should be processed in this level
 			
-			levelBoundaryList.add(boundary);
+				levelBoundaryList.add(boundary);
 			
 		}
 		System.out.println("building boundary list took " + (System.currentTimeMillis() - t1) + " ms");
@@ -390,9 +426,9 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 		
 	}
 	
-	/**
-	 * Parse the lies_in tag and fill related data structures of the boundary
-	 * @param boundary
+/**
+ * Parse the lies_in tag and fill related data structures of the boundary
+ * @param boundary
 	 */
 	private void parseLiesInTag(Boundary boundary){
 		// check in which other boundaries this boundary lies in
