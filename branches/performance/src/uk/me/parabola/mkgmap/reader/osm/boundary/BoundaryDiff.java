@@ -11,17 +11,15 @@
  * General Public License for more details.
  */
 package uk.me.parabola.mkgmap.reader.osm.boundary;
-
 import java.awt.geom.Area;
+import java.awt.geom.Path2D;
 import java.io.File;
-import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.concurrent.ExecutionException;
@@ -31,49 +29,42 @@ import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
 import uk.me.parabola.imgfmt.app.Coord;
+import uk.me.parabola.mkgmap.reader.osm.Tags;
 import uk.me.parabola.mkgmap.reader.osm.Way;
-import uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryUtil.BoundaryFileFilter;
 import uk.me.parabola.util.GpxCreator;
 import uk.me.parabola.util.Java2DConverter;
 
 public class BoundaryDiff {
-	private final File boundaryDir1;
-	private final File boundaryDir2;
+	private final String inputName1;
+	private final String inputName2;
 
-	public BoundaryDiff(File boundaryDir1, File boundaryDir2) {
-		this.boundaryDir1 = boundaryDir1;
-		this.boundaryDir2 = boundaryDir2;
+	public BoundaryDiff(String boundaryDirName1, String boundaryDirName2) {
+		this.inputName1 = boundaryDirName1;
+		this.inputName2 = boundaryDirName2;
+		
 	}
 
-	private List<File> getBoundsFiles(File boundaryDir) {
-		List<File> boundaryFiles = new ArrayList<File>();
-		System.out.println(boundaryDir.getName());
-		if (boundaryDir.isFile() && boundaryDir.getName().endsWith(".bnd")) {
-			boundaryFiles.add(boundaryDir);
+	private List<String> getBoundsFiles(String dirName) {
+		File dir = new File(dirName);
+		System.out.println(dirName);
+		if (dir.isFile() && dir.getName().endsWith(".bnd")) {
+			List<String> boundaryFiles = new ArrayList<String>();
+			boundaryFiles.add(dirName);
+			return boundaryFiles;
 		} else {
-			File[] bFiles = boundaryDir.listFiles(new BoundaryFileFilter());
-			boundaryFiles.addAll(Arrays.asList(bFiles));
+			return BoundaryUtil.getBoundaryDirContent(dirName);
 		}
-		return boundaryFiles;
 	}
 
 	public void compare(String tag, String value) {
-		List<File> b1 = getBoundsFiles(boundaryDir1);
-		List<File> b2 = getBoundsFiles(boundaryDir2);
+		List<String> b1 = getBoundsFiles(inputName1);
+		List<String> b2 = getBoundsFiles(inputName2);
 
-		Comparator<File> nameComp = new Comparator<File>() {
+		Collections.sort(b1);
+		Collections.sort(b2);
 
-			public int compare(File o1, File o2) {
-				String n1 = o1.getName();
-				String n2 = o2.getName();
-				return n1.compareTo(n2);
-			}
-		};
-		Collections.sort(b1, nameComp);
-		Collections.sort(b2, nameComp);
-
-		Queue<File> bounds1 = new LinkedList<File>(b1);
-		Queue<File> bounds2 = new LinkedList<File>(b2);
+		Queue<String> bounds1 = new LinkedList<String>(b1);
+		Queue<String> bounds2 = new LinkedList<String>(b2);
 		b1 = null;
 		b2 = null;
 
@@ -84,36 +75,44 @@ public class BoundaryDiff {
 		long tProgress = System.currentTimeMillis();
 
 		while (bounds1.isEmpty() == false || bounds2.isEmpty() == false) {
-			File f1 = bounds1.peek();
-			File f2 = bounds2.peek();
+			String f1 = bounds1.peek();
+			String f2 = bounds2.peek();
 
 			if (f1 == null) {
-				only2.add(loadArea(f2, tag, value));
+				only2.add(loadArea(inputName2, f2, tag, value));
 				bounds2.poll();
 			} else if (f2 == null) {
-				only1.add(loadArea(f1, tag, value));
+				only1.add(loadArea(inputName1, f1, tag, value));
 				bounds1.poll();
 			} else {
-				int cmp = nameComp.compare(f1, f2);
+				int cmp = f1.compareTo(f2);
 				if (cmp == 0) {
-					Area a1 = loadArea(f1, tag, value);
-					Area a2 = loadArea(f2, tag, value);
+					Area a1 = loadArea(inputName1, f1, tag, value);
+					Area a2 = loadArea(inputName2, f2, tag, value);
+					if (a1.isEmpty() == false|| a2.isEmpty() == false){
+						Area o1 = new Area(a1);
+						o1.subtract(a2);
+						if (o1.isEmpty() == false){
+							Path2D.Float path = new Path2D.Float(o1);
+							o1 = new Area(path);
+							if (o1.isEmpty()){
+								long x = 4;
+							}
+							only1.add(o1);
+						}
 
-					Area o1 = new Area(a1);
-					o1.subtract(a2);
-					only1.add(o1);
-
-					Area o2 = new Area(a2);
-					o2.subtract(a1);
-					only2.add(o2);
-
+						Area o2 = new Area(a2);
+						o2.subtract(a1);
+						if (o2.isEmpty() == false)
+							only2.add(o2);
+					}
 					bounds1.poll();
 					bounds2.poll();
 				} else if (cmp < 0) {
-					only1.add(loadArea(f1, tag, value));
+					only1.add(loadArea(inputName1, f1, tag, value));
 					bounds1.poll();
 				} else {
-					only2.add(loadArea(f2, tag, value));
+					only2.add(loadArea(inputName2, f2, tag, value));
 					bounds2.poll();
 				}
 			}
@@ -131,20 +130,24 @@ public class BoundaryDiff {
 
 	}
 
-	private Area loadArea(File f, String tag, String value) {
-		try {
-			List<Boundary> boundaries = BoundaryUtil.loadBoundaryFile(f, null);
-			Area a = new Area();
-			for (Boundary b : boundaries) {
-				if (value.equals(b.getTags().get(tag))) {
-					a.add(b.getArea());
+	private Area loadArea(String dirName, String fileName, String tag, String value) {
+		BoundaryQuadTree bqt = BoundaryUtil.loadQuadTree(dirName, fileName);
+		if (tag.equals("admin_level"))
+			return (bqt.getCoveredArea(Integer.valueOf(value)));
+		Map<String, Tags> bTags = bqt.getTagsMap();
+		Map<String, List<Area>> areas = bqt.getAreas();
+		Area a = new Area();
+		Path2D.Float path = new Path2D.Float();
+		for (Entry<String, Tags> entry: bTags.entrySet()){
+			if (value.equals(entry.getValue().get(tag))){
+				List<Area> aList = areas.get(entry.getKey());
+				for (Area area : aList){
+					BoundaryUtil.addToPath(path, area);
 				}
 			}
-			return a;
-		} catch (IOException exp) {
-			exp.printStackTrace();
 		}
-		return null;
+		a = new Area(path);
+		return a;
 	}
 
 	private void saveArea(Area a, String subDirName, String tagKey, String tagValue) {
@@ -170,9 +173,13 @@ public class BoundaryDiff {
 					.println("java -cp mkgmap.jar uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryDiff <boundsdir1> <boundsdir2> [<tag=value> [<tag=value>]]");
 			System.err.println(" <boundsdir1> ");
 			System.err
-					.println(" <boundsdir2>: defines two directory containing boundsfiles to be compared ");
+					.println(" <boundsdir2>: defines two directories or zip files containing boundsfiles to be compared ");
 			System.err
-					.println(" <tag=value>: defines a tag/value combination for which the diff is created");
+			.println(" <tag=value>: defines a tag/value combination for which the diff is created");
+			System.err
+			.println(" sample:");
+			System.err
+			.println(" java -cp mkgmap.jar uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryDiff world_20120113.zip bounds admin_level=2");
 
 			System.exit(-1);
 		}
@@ -201,8 +208,7 @@ public class BoundaryDiff {
 		for (final Entry<String, String> tag : tags) {
 			executor.submit(new Runnable() {
 				public void run() {
-					BoundaryDiff bd = new BoundaryDiff(new File(args[0]),
-							new File(args[1]));
+					BoundaryDiff bd = new BoundaryDiff(args[0],args[1]);
 					bd.compare(tag.getKey(), tag.getValue());
 				}
 			}, tag.getKey() + "=" + tag.getValue());

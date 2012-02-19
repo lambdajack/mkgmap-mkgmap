@@ -45,7 +45,7 @@ public class BoundaryElement  {
 	}
 	
 	public String toString() {
-		return isOuter() ? "outer" : "inner";
+		return (isOuter() ? "outer" : "inner") + " " + points ;
 	}
 
 }

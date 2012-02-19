@@ -14,6 +14,8 @@ package uk.me.parabola.mkgmap.reader.osm.boundary;
 
 import java.awt.Rectangle;
 import java.awt.geom.Area;
+import java.awt.geom.Path2D;
+import java.awt.geom.PathIterator;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -26,19 +28,25 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
-import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.Version;
+import uk.me.parabola.util.Java2DConverter;
 
 public class BoundarySaver {
 	private static final Logger log = Logger.getLogger(BoundarySaver.class);
 
+	public static final String LEGACY_DATA_FORMAT = ""; // legacy code just wrote the svn release or "svn"
+	public static final String RAW_DATA_FORMAT = "raw";
+	public static final String QUADTREE_DATA_FORMAT = "quadtree";
+
 	private final File boundaryDir;
+	private final String dataFormat;
 	private uk.me.parabola.imgfmt.app.Area bbox;
 
 	private int minLat = Integer.MAX_VALUE;
@@ -78,45 +86,63 @@ public class BoundarySaver {
 	private final Map<String, StreamInfo> streams;
 	private boolean createEmptyFiles = false;
 
-	public BoundarySaver(File boundaryDir) {
+	public BoundarySaver(File boundaryDir, String mode) {
 		this.boundaryDir = boundaryDir;
+		if (boundaryDir.exists() && boundaryDir.isDirectory() == false){
+			log.error("output target exists and is not a directory");
+			System.exit(-1);
+		}
+		this.dataFormat = mode;
 		this.streams = new HashMap<String, StreamInfo>();
 	}
 
 	/**
-	 * Saves the given boundaries to the given file without splitting them
-	 * into the grid.
-	 * @param boundaryList boundaries
-	 * @param boundsFile the file
+	 * Saves the given boundaries to the given file without splitting them into
+	 * the grid.
+	 * 
+	 * @param boundaryList
+	 *            boundaries
+	 * @param boundsFile
+	 *            the file
 	 */
-	public void saveBoundaries(List<Boundary> boundaryList, File boundsFile) {
-		String fName = boundsFile.getName();
-		String[] parts = fName.split("[_"+Pattern.quote(".")+"]");
-		String key = fName;
+	public void saveQuadTree(BoundaryQuadTree tree, String boundsFileName) {
+		String[] parts = boundsFileName.split("[_" + Pattern.quote(".") + "]");
+		String key = boundsFileName;
 		if (parts.length >= 3) {
 			key = parts[1] + "_" + parts[2];
 		}
-		for (Boundary b : boundaryList) {
-			saveToFile(key, b);
+
+		try {
+			StreamInfo streamInfo = getStream(key);
+			if (streamInfo != null && streamInfo.isOpen()) {
+				tree.save(streamInfo.stream);
+			}
+		} catch (Exception exp) {
+			log.error("Cannot write boundary: " + exp, exp);
 		}
+
+		tidyStreams();
+
 	}
 
+	/*
 	public void addBoundaries(List<Boundary> boundaryList) {
 		for (Boundary b : boundaryList) {
 			addBoundary(b);
 		}
 	}
-
+	 */
 	public void addBoundary(Boundary boundary) {
 		Map<String, Area> splitBounds = splitArea(boundary.getArea());
 		for (Entry<String, Area> split : splitBounds.entrySet()) {
 			saveToFile(split.getKey(),
-					new Boundary(split.getValue(), boundary.getTags()));
+					new Boundary(split.getValue(), boundary.getTags(), boundary
+							.getId()));
 		}
 	}
 
 	public void end() {
-		if (getBbox() != null && isCreateEmptyFiles()) {
+		if (isCreateEmptyFiles() && getBbox() != null) {
 			// a bounding box is set => fill the gaps with empty files
 			for (int latSplit = BoundaryUtil.getSplitBegin(getBbox()
 					.getMinLat()); latSplit <= BoundaryUtil
@@ -174,23 +200,25 @@ public class BoundarySaver {
 		log.debug("Remaining", openStreams.size(), "open streams.");
 	}
 
-	private Area getSplitArea(int lat, int lon) {
-		Rectangle splitRect = new Rectangle(lon, lat, BoundaryUtil.RASTER,
-				BoundaryUtil.RASTER);
-		return new Area(splitRect);
-	}
-
 	private Map<String, Area> splitArea(Area areaToSplit) {
 		Map<String, Area> splittedAreas = new HashMap<String, Area>();
-
 		Rectangle areaBounds = areaToSplit.getBounds();
 
 		for (int latSplit = BoundaryUtil.getSplitBegin(areaBounds.y); latSplit <= BoundaryUtil
 				.getSplitBegin(areaBounds.y + areaBounds.height); latSplit += BoundaryUtil.RASTER) {
 			for (int lonSplit = BoundaryUtil.getSplitBegin(areaBounds.x); lonSplit <= BoundaryUtil
 					.getSplitBegin(areaBounds.x + areaBounds.width); lonSplit += BoundaryUtil.RASTER) {
-				Area tileCover = getSplitArea(latSplit, lonSplit);
-				tileCover.intersect(areaToSplit);
+				Rectangle splitRect = new Rectangle(lonSplit, latSplit,
+						BoundaryUtil.RASTER, BoundaryUtil.RASTER);
+				Area tileCover;
+				// avoid costly intersect() call when area fits into split
+				// rectangle
+				if (splitRect.contains(areaToSplit.getBounds()))
+					tileCover = new Area(areaToSplit);
+				else {
+					tileCover = new Area(splitRect);
+					tileCover.intersect(areaToSplit);
+				}
 				if (tileCover.isEmpty() == false) {
 					splittedAreas.put(BoundaryUtil.getKey(latSplit, lonSplit),
 							tileCover);
@@ -274,7 +302,7 @@ public class BoundarySaver {
 
 	private void writeDefaultInfos(OutputStream stream) throws IOException {
 		DataOutputStream dos = new DataOutputStream(stream);
-		dos.writeUTF(Version.VERSION);
+		dos.writeUTF(Version.VERSION + "_" + dataFormat);
 		dos.writeLong(System.currentTimeMillis());
 		dos.flush();
 	}
@@ -282,8 +310,9 @@ public class BoundarySaver {
 	private void saveToFile(String filekey, Boundary boundary) {
 		try {
 			StreamInfo streamInfo = getStream(filekey);
-			if (streamInfo != null && streamInfo.isOpen())
-				write(streamInfo.stream, boundary);
+			if (streamInfo != null && streamInfo.isOpen()) {
+				writeRawFormat(streamInfo.stream, boundary);
+			}
 		} catch (Exception exp) {
 			log.error("Cannot write boundary: " + exp, exp);
 		}
@@ -291,14 +320,21 @@ public class BoundarySaver {
 		tidyStreams();
 	}
 
-	private void write(OutputStream stream, Boundary boundary) {
+	private void writeRawFormat(OutputStream stream, Boundary boundary) {
 		ByteArrayOutputStream oneItemStream = new ByteArrayOutputStream();
 		DataOutputStream dos = new DataOutputStream(oneItemStream);
+		if (dataFormat == QUADTREE_DATA_FORMAT) {
+			log.error("wrong format for write, must use BoundaryQuadTree.save() ");
+			System.exit(1);
+		}
 		try {
 
 			// write the tags
 			int noOfTags = boundary.getTags().size();
-			dos.writeInt(noOfTags);
+			dos.writeInt(noOfTags+1);
+			dos.writeUTF("mkgmap:boundaryid");
+			dos.writeUTF(boundary.getId());
+
 			Iterator<Entry<String, String>> tagIter = boundary.getTags()
 					.entryIterator();
 			while (tagIter.hasNext()) {
@@ -311,28 +347,8 @@ public class BoundarySaver {
 					+ boundary.getTags().size() + " "
 					+ boundary.getTags().toString();
 
-			// write the number of boundary elements to create the multipolygon
-			List<BoundaryElement> boundaryElements = boundary
-					.getBoundaryElements();
-			dos.writeInt(boundaryElements.size());
-
-			// now write each element
-			for (BoundaryElement bElem : boundaryElements) {
-				// is it an outer element?
-				dos.writeBoolean(bElem.isOuter());
-				// number of coords
-				int eSize = bElem.getPoints().size();
-				assert eSize > 0 : "eSize not greater 0 "
-						+ bElem.getPoints().size();
-				dos.writeInt(eSize);
-				for (Coord c : bElem.getPoints()) {
-					dos.writeInt(c.getLatitude());
-					dos.writeInt(c.getLongitude());
-				}
-			}
-
-			// all items of the boundary element have been written
-			dos.flush();
+			writeArea(dos,boundary.getArea());
+			//writeArea(dos,area);
 			dos.close();
 
 			// now start to write into the real stream
@@ -340,7 +356,8 @@ public class BoundarySaver {
 			// first write the bounding box so that is possible to skip the
 			// complete
 			// entry
-			uk.me.parabola.imgfmt.app.Area bbox = boundary.getBbox();
+			uk.me.parabola.imgfmt.app.Area bbox = Java2DConverter
+					.createBbox(boundary.getArea());
 			DataOutputStream dOutStream = new DataOutputStream(stream);
 			dOutStream.writeInt(bbox.getMinLat());
 			dOutStream.writeInt(bbox.getMinLong());
@@ -363,6 +380,68 @@ public class BoundarySaver {
 
 	}
 
+	/**
+	 * Write area to stream. 
+	 * @param dos the already open DataOutputStream 
+	 * @param area the area (can be non-singular)
+	 * @throws IOException
+	 */
+	public static void writeArea(DataOutputStream dos, Area area) throws IOException{
+		float[] res = new float[6];
+
+		List<Integer> pairs = new LinkedList<Integer>();
+		// step 1: count parts
+		PathIterator pit = area.getPathIterator(null);
+		int prevType = -1;
+		int len = 0;
+		while (!pit.isDone()) {
+			int type = pit.currentSegment(res);
+			if (type != PathIterator.SEG_LINETO && prevType == PathIterator.SEG_LINETO){
+				pairs.add(len);
+				len = 0;
+			}
+			if (type == PathIterator.SEG_LINETO)
+				len++;
+			prevType = type;
+			pit.next();
+		}
+		
+		// 2nd pass: write the data
+		pit = area.getPathIterator(null);
+		prevType = -1;
+		
+		dos.writeInt(pit.getWindingRule());
+		while (!pit.isDone()) {
+			int type = pit.currentSegment(res);
+			if (type != prevType)
+				dos.writeInt(type);
+			switch (type) {
+			case PathIterator.SEG_LINETO:
+				if (prevType != type){
+					len = pairs.remove(0);
+					dos.writeInt(len);
+				}
+			case PathIterator.SEG_MOVETO: 
+				len--;
+				dos.writeFloat(res[0]);
+				dos.writeFloat(res[1]);
+				break;
+			case PathIterator.SEG_CLOSE:
+				break;
+			default:
+				log.error("Unsupported path iterator type " + type
+						+ ". This is an mkgmap error.");
+			}
+
+			prevType = type;
+			pit.next();
+		}
+		if (len != 0){
+			log.error("len not zero " + len);
+		}
+		dos.writeInt(-1); // isDone flag
+	}
+	
 	public uk.me.parabola.imgfmt.app.Area getBbox() {
 		if (bbox == null) {
 			bbox = new uk.me.parabola.imgfmt.app.Area(minLat, minLong, maxLat,

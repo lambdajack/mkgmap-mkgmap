@@ -53,9 +53,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 			if (outerResultArea == null) {
 				return null;
 			}
-			boundary = new Boundary(outerResultArea, this.getEntryIteratable());
-			
-			boundary.getTags().put("mkgmap:boundaryid", "r"+this.getId());
+			boundary = new Boundary(outerResultArea, this.getEntryIteratable(),"r"+this.getId());
 			outerResultArea = null;
 		}
 		return boundary;
