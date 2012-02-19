@@ -53,7 +53,6 @@ public class BoundaryMerger {
 	}
 	
 	public void merge(File dir1, File dir2, File targetDir) throws IOException {
-		
 		List<String> fl1 = BoundaryUtil.getBoundaryDirContent(dir1.getAbsolutePath());
 		List<String> fl2 = BoundaryUtil.getBoundaryDirContent(dir2.getAbsolutePath());
 		
@@ -88,8 +87,17 @@ public class BoundaryMerger {
 					copy.add(new File(dir2,f2));
 					fl1Iter.previous();
 				} else {
-					BoundaryQuadTree bqt1 = BoundaryUtil.loadQuadTree(dir1.getName(), f1);
-					BoundaryQuadTree bqt2 = BoundaryUtil.loadQuadTree(dir2.getName(), f2);
+					BoundaryQuadTree bqt1 = BoundaryUtil.loadQuadTree(dir1.getAbsolutePath(), f1);
+					if (bqt1 == null){
+						System.err.println("Failed to load quadtree for " + dir1.getAbsolutePath() + f1);
+						System.exit(-1);
+					}
+					BoundaryQuadTree bqt2 = BoundaryUtil.loadQuadTree(dir2.getAbsolutePath(), f2);
+					if (bqt2 == null){
+						System.err.println("Failed to load quadtree for " + dir2.getAbsolutePath() + f2);
+						System.exit(-1);
+					}
+					
 					bqt1.merge(bqt2);
 					bSave.saveQuadTree(bqt1, f1);
 					processed += 2;

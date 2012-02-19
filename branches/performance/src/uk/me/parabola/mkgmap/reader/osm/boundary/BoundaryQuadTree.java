@@ -181,7 +181,7 @@ public class BoundaryQuadTree {
 	 */
 	public void merge(BoundaryQuadTree other){
 		if (bbox.equals(other.bbox) == false){
-			log.error("Cannot merge tree with different boundaing box");
+			log.error("Cannot merge tree with different bounding box");
 			return;
 		}
 		for (Entry <String, BoundaryLocationInfo> entry : other.preparedLocationInfo.entrySet()){
