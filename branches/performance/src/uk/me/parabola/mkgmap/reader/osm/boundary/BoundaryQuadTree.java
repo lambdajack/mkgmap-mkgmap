@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Tags;
+import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.util.EnhancedProperties;
 import uk.me.parabola.util.GpxCreator;
 import uk.me.parabola.util.Java2DConverter;
@@ -112,16 +113,24 @@ public class BoundaryQuadTree {
 		srcWasQuadTree = false;
 		this.bbox = givenBbox;
 		root = new Node(this.bbox);
-		List<Boundary>preparedList = preparer.prepareBoundaryList(boundaries);
-		preparedLocationInfo = preparer.getPreparedLocationInfo(preparedList);
+		// extract the location relevant tags
+		preparedLocationInfo = preparer.getPreparedLocationInfo(boundaries);
 		if (boundaries == null || boundaries.size() == 0)
 			return;
 		
 		assert givenBbox != null: "parameter givenBbox must not be null";
-		for (Boundary b: preparedList){
+
+		HashMap<String,Boundary> bMap = new HashMap<String,Boundary>();
+		for (Boundary b: boundaries){
+			bMap.put(b.getId(), b);
 			boundaryTags.put(b.getId(), b.getTags());
-			root.add (b.getArea(), b.getId());
 		}
+		sortBoundaryTagsMap();
+		// add the boundaries in a specific order
+		for (String id: boundaryTags.keySet()){
+			root.add (bMap.get(id).getArea(), id);
+		}
+		bMap = null;
 		root.split("_");
 	}
 
@@ -195,7 +204,16 @@ public class BoundaryQuadTree {
 				this.boundaryTags.put(entry.getKey(),entry.getValue());
 			}
 		}
-		// make sure that the merged LinkedHashMap is sorted as mergeBoundaries needs it
+		sortBoundaryTagsMap();
+		root.mergeNodes(other.root, "_");
+	}
+	
+	/**
+	 * Sort the boundary-Tags-Map so that zip-code-only boundaries appear first, followed by
+	 * adminlevel-10,9,...2
+	 */
+	public void sortBoundaryTagsMap(){
+		// make sure that the merged LinkedHashMap is sorted as mergeBoundaries() needs it
 		ArrayList<String> ids = new ArrayList<String>(boundaryTags.keySet());
 		Collections.sort(ids, new AdminLevelCollator());
 		Collections.reverse(ids);
@@ -204,9 +222,8 @@ public class BoundaryQuadTree {
 		for (String id: ids){
 			boundaryTags.put(id,tmp.get(id));
 		}
-		root.mergeNodes(other.root, "_");
 	}
-	
+
 	public Area getCoveredArea (Integer admLevel){
 		return root.getCoveredArea(admLevel, "_");
 	}
@@ -347,12 +364,6 @@ public class BoundaryQuadTree {
 	}
 	*/
 	
-	private boolean isUsableArea (java.awt.geom.Area area, String id){
-		if (area == null || area.isEmpty())
-			return false;
-		return true;
-	}
-
 	/**
 	 * Parse the special tag that contains info about other referenced boundaries 
 	 * Problem: If the tree is created by  BoundaryPreparer, we do not know how to calculate 
@@ -593,14 +604,7 @@ public class BoundaryQuadTree {
 				if (errMsg != null){
 					log.error(errMsg + treePath + " " + lat + " " + lon);
 					for (NodeElem nodeElem: nodes){
-						List<Area> alist = Java2DConverter.areaToSingularAreas(nodeElem.area);
-						int cntArea = 0;
-						for (Area a:alist){
-							cntArea++;
-							List <Coord> coList = Java2DConverter.singularAreaToPoints(a);
-							String fname = ".\\bnd_gpx_notOk\\" +  treePath + "_" + nodeElem.boundaryId + "_" + cntArea;
-							GpxCreator.createGpx(fname, coList);
-						}
+						saveGPX(nodeElem, "notOK",treePath);
 					}			
 					return;
 				}
@@ -619,14 +623,7 @@ public class BoundaryQuadTree {
 				// TODO: remove debug code
 				if (DEBUG){
 					if (treePath.equals(DEBUG_TREEPATH)){
-						List<Area> alist = Java2DConverter.areaToSingularAreas(nodeElem.area);
-						int cntArea = 0;
-						for (Area a:alist){
-							cntArea++;
-							List <Coord> coList = Java2DConverter.singularAreaToPoints(a);
-							String fname = ".\\bnd_gpx\\" + prefix + "_" + treePath + "_" + n + "_" + cntArea;
-							GpxCreator.createGpx(fname, coList);
-						}
+						saveGPX(nodeElem, prefix,treePath);
 					}
 				}
 				String res = new String();
@@ -653,28 +650,31 @@ public class BoundaryQuadTree {
 				for (int j=i+1; j < nodes.size(); j++){
 					Area a = new Area (nodes.get(i).area);
 					a.intersect(nodes.get(j).area);
-					if (a.isEmpty() == false){
-						Path2D.Float path = new Path2D.Float(a);
-						a = new Area(path);
-					}
-					if (isUsableArea(a, nodes.get(i).boundaryId)){
-						ok = false;
-						log.error("boundaries still intersect " + i + " " + j);
-					}
+					
+					if (a.isEmpty())
+						continue;
+					Path2D.Float path = new Path2D.Float(a);
+					a = new Area(path);
+					if (a.isEmpty())
+						continue;
+					
+					if (a.getBounds2D().getHeight() < 0.1d && a.getBounds2D().getWidth() < 0.1d)
+						continue;
+					ok = false;
+					log.error("boundaries still intersect in tree path "
+							+ treePath + " " + nodes.get(i).boundaryId + " "
+							+ nodes.get(j).boundaryId + " bbox: " + a.getBounds2D());
+					NodeElem tmpNodeElem = new NodeElem(nodes.get(i).boundaryId+"_"+nodes.get(j).boundaryId);
+					tmpNodeElem.area = new Area(a.getBounds2D()); 
+					saveGPX(tmpNodeElem,"intersection_rect",treePath);
 				}
 			}
 			if (DEBUG){
 				if (!ok){
 					for (NodeElem nodeElem: nodes){
-						List<Area> alist = Java2DConverter.areaToSingularAreas(nodeElem.area);
-						int cntArea = 0;
-						for (Area a:alist){
-							cntArea++;
-							List <Coord> coList = Java2DConverter.singularAreaToPoints(a);
-							String fname = ".\\bnd_gpx_not_distinct\\" +  treePath + "_" + nodeElem.boundaryId + "_" + cntArea;
-							GpxCreator.createGpx(fname, coList);
-						}
+						saveGPX(nodeElem, "not_distinct",treePath);
 					}				
+					System.exit(-1); // TODO: remove exit
 				}
 			}
 			return ok;
@@ -718,9 +718,6 @@ public class BoundaryQuadTree {
 				nodeElem.area = area;
 				nodeElem.locTags = calcLocTags(boundaryId, refs);
 				nodeElem.tagMask = calcLocationTagsMask(nodeElem.locTags);
-				if (!this.bbox.intersects(area.getBounds2D())){
-					long x = 4;
-				}
 				assert this.bbox.intersects(area.getBounds2D()) : "boundary bbox doesn't fit into quadtree "
 						+ bbox + " " + area.getBounds2D(); 
 				
@@ -783,26 +780,34 @@ public class BoundaryQuadTree {
 				// (sub) tree is different, rebuild it as combination of 
 				// both trees.
 				HashMap<String,List<Area>> areas = new HashMap<String, List<Area>>();
-				other.combine(areas, treePath,null);
 				this.combine(areas, treePath,null);
+				other.combine(areas, treePath,null);
 				isLeaf = true;
 				nodes = null;
 				childs = null;
 				
 				for (String id: boundaryTags.keySet()){
 					List<Area> aList = areas.get(id);
-					if (aList != null){
-						for (Area area: aList){
-							add(area, id);
-						}
+					if (aList == null)
+						continue;
+					// XXX Maybe it is not needed to add the areas here
+					Path2D.Float path = new Path2D.Float();
+					for (Area area : aList){
+						BoundaryUtil.addToPath(path, area);
 					}
+					add(new Area(path), id);
 				}
 				split(treePath);
 			}
 		}
 		
+		/**
+		 * Calculate the area that is covered by boundaries of a given adminlevel
+		 * @param admLevel the admin_level, a value from 2 to 11 (including)
+		 * @param treePath A string that helps to identify the position in the quadtree 
+		 * @return
+		 */
 		private Area getCoveredArea(Integer admLevel, String treePath){
-			long t1 = System.currentTimeMillis();
 			HashMap<String,List<Area>> areas = new HashMap<String, List<Area>>();
 			this.combine(areas, treePath, admLevel);
 			Path2D.Float path = new Path2D.Float();
@@ -892,38 +897,23 @@ public class BoundaryQuadTree {
 				NodeElem toAdd = nodes.get(i);
 				if (DEBUG){
 					if (treePath.equals(DEBUG_TREEPATH)){
-						int cntNode  = 0;
 						for (NodeElem nodeElem: reworked){
-							++cntNode;
-							List<Area> alist = Java2DConverter.areaToSingularAreas(nodeElem.area);
-							int cntArea = 0;
-							for (Area a:alist){
-								cntArea++;
-								List <Coord> coList = Java2DConverter.singularAreaToPoints(a);
-								String fname = ".\\bnd_gpx_debug" + treePath + "_"+i+"\\" +  treePath + "_" + nodeElem.boundaryId + "_" + cntNode + "_" + cntArea;
-								GpxCreator.createGpx(fname, coList);
-							}
+							saveGPX(nodeElem, "debug"+i,treePath);
 						}			
 					}
 				}
 				for (int j=0; j < reworked.size(); j++){
-					if (toAdd.mustVerify && isUsableArea(toAdd.area, toAdd.boundaryId) == false)
+					if (toAdd.area.isEmpty())
 						break;
-					toAdd.mustVerify = false;
 					NodeElem currElem = reworked.get(j);
-					if (currElem.srcPos == i)
+					if (currElem.srcPos == i || currElem.area.isEmpty())
 						continue;
-					if (currElem.mustVerify && isUsableArea(currElem.area, currElem.boundaryId) == false)
-						continue;
-					currElem.mustVerify = false;
-					// srcElem might add info to toAdd element
 
 					Rectangle2D rCurr = currElem.area.getBounds2D();
 					++cntBboxIntersects;
 
 					Rectangle2D rAdd = rCurr.createIntersection(toAdd.area.getBounds2D());
 					if (rAdd.isEmpty()){
-						//case a) 
 						continue; 
 					}
 					// the bounding boxes intersect, so we have to find out if the areas also intersect
@@ -931,8 +921,8 @@ public class BoundaryQuadTree {
 					++cntIntersect;
 					toAddxCurr.intersect(toAdd.area);
 					
-					if (! isUsableArea(toAddxCurr, currElem.boundaryId)){
-						// no usable intersection: nothing to do
+					if (toAddxCurr.isEmpty()){
+						// empty intersection: nothing to do
 						continue;
 					}
 
@@ -942,13 +932,12 @@ public class BoundaryQuadTree {
 					Area toAddMinusCurr = new Area(toAdd.area);
 					++cntSubtract;
 					toAddMinusCurr.subtract(currElem.area);
-					if (! isUsableArea(toAddMinusCurr, toAdd.boundaryId)){
-						toAddMinusCurr.reset();
+					if (toAddMinusCurr.isEmpty()){
 						// toadd is fully covered by curr
 						if (toAdd.tagMask == BoundaryLocationPreparer.POSTCODE_ONLY){
 							// if we get here, toAdd has only zip code that is already known 
 							// in larger or equal area of currElem
-							toAdd.area = toAddMinusCurr; // ignore this
+							toAdd.area.reset(); // ignore this
 							break;
 						}
 					}
@@ -956,17 +945,21 @@ public class BoundaryQuadTree {
 					Area currMinusToAdd = new Area(currElem.area);
 					++cntSubtract;
 					currMinusToAdd.subtract(toAdd.area);
-					if (! isUsableArea(currMinusToAdd, currElem.boundaryId)){
+					if (currMinusToAdd.isEmpty()){
 					    // curr is fully covered by toAdd 
 						if (DEBUG){
 							if (chkMsg != null){
-								createGPX(toAdd, "toAdd",treePath);
-								createGPX(currElem, "curr",treePath);
+								// save debug GPX for areas that wiil 
+								// appear in warning message below 
+								saveGPX(toAdd, "warn_toAdd",treePath);
+								saveGPX(currElem, "warn_curr",treePath);
 							}
 						}
+						// remove intersection part from toAdd
 						toAdd.area = toAddMinusCurr;
-						toAdd.mustVerify = true;
+						
 						if (chkMsg != null){
+							// warning: intersection of areas with equal levels   
 							log.warn(chkMsg);
 							continue;
 						}
@@ -986,22 +979,19 @@ public class BoundaryQuadTree {
 						// if we get here we have  a partial overlapping of two 
 						// boundaries that have the same level
 						if (DEBUG){
-							createGPX(toAdd, "toAdd", treePath);
-							createGPX(currElem, "curr", treePath);
-							createGPX(intersect, "inter", treePath);
+							saveGPX(toAdd, "warn_toAdd", treePath);
+							saveGPX(currElem, "warn_curr", treePath);
+							saveGPX(intersect, "warn_inter", treePath);
 						}
 						log.warn(chkMsg);
 						// just remove overlap from toAdd 
 						toAdd.area = toAddMinusCurr;
-						toAdd.mustVerify = true;
 						continue;
 					}
 
 					// remove intersection part from the source areas
 					currElem.area = currMinusToAdd;
-					currElem.mustVerify = true;
 					toAdd.area = toAddMinusCurr;
-					toAdd.mustVerify = true;
 					
 					if (toAdd.tagMask != BoundaryLocationPreparer.POSTCODE_ONLY){
 						// combine tag info in intersection
@@ -1009,7 +999,6 @@ public class BoundaryQuadTree {
 						addMissingTags(intersect.locTags, toAdd.locTags);
 						intersect.tagMask = (short) (currElem.tagMask | toAdd.tagMask);
 						intersect.srcPos = i;
-						intersect.mustVerify = false;
 						intersect.locationDataSrc = currElem.locationDataSrc;
 						intersect.addLocationDataString(toAdd);
 						reworked.add(intersect);
@@ -1045,7 +1034,7 @@ public class BoundaryQuadTree {
 		private void mergeEqualIds(){
 			int start = nodes.size()-1;
 			for (int i = start; i > 0; i--){
-				if (nodes.get(i).boundaryId == nodes.get(i-1).boundaryId){
+				if (nodes.get(i).boundaryId.equals(nodes.get(i-1).boundaryId)){
 					nodes.get(i-1).area.add(nodes.get(i).area);
 					nodes.remove(i);
 				}
@@ -1083,16 +1072,19 @@ public class BoundaryQuadTree {
 			} while (!done);
 		}
 
-		private void createGPX(NodeElem nodeElem, String desc, String treePath){
+		private void saveGPX(NodeElem nodeElem, String desc, String treePath){
 			if (DEBUG){
-				List<Area> alist = Java2DConverter.areaToSingularAreas(nodeElem.area);
-				int cntArea = 0;
-				for (Area a:alist){
-					cntArea++;
-					List <Coord> coList = Java2DConverter.singularAreaToPoints(a);
-					String fname = ".\\bnd_is\\" +  nodeElem.area.getBounds().x + "_" + nodeElem.area.getBounds().y + "_" + nodeElem.boundaryId+ "_" + cntArea + "_" + desc + "_" + treePath;
-					GpxCreator.createGpx(fname, coList);
+				List<List<Coord>> singlePolys = Java2DConverter.areaToShapes(nodeElem.area);
+				Collections.reverse(singlePolys);
+
+				int cntPoly = 0;
+				for (List<Coord> polyPart : singlePolys) {
+					String attr = new Way(0, polyPart).clockwise() ? "o" : "i";
+					String fname = "gpx/" + treePath+ "/" +  desc + "_" + nodeElem.area.getBounds().x + "_" + nodeElem.area.getBounds().y + "_" + nodeElem.boundaryId+ "_" + cntPoly + "_"+attr;
+					GpxCreator.createGpx(fname, polyPart);
+					++cntPoly;
 				}
+				
 			}
 		}
 		/**
@@ -1100,7 +1092,7 @@ public class BoundaryQuadTree {
 		 * Special case: zip-code boundaries with same zip code. 
 		 * @param newElem 
 		 * @param oldElem
-		 * @return null if no error, else a String with a error message
+		 * @return null if no error, else a String with an error message
 		 */
 		private String checkTags(NodeElem newElem, NodeElem oldElem){
 			String errMsg = null;
@@ -1143,10 +1135,10 @@ public class BoundaryQuadTree {
 					removeThis = true;
 				else if (chkRemove.area.isEmpty())
 					removeThis = true;
-				else if (chkRemove.mustVerify){
+				else {
 					Path2D.Float path = new Path2D.Float(chkRemove.area);
-					Area tmpArea = new Area(path);
-					if (tmpArea.isEmpty())
+					chkRemove.area = new Area(path);
+					if (chkRemove.area.isEmpty())
 						removeThis = true;
 				}
 				if (removeThis){
@@ -1240,13 +1232,11 @@ public class BoundaryQuadTree {
 		// data for the intersects_with tag
 		String locationDataSrc;
 		int srcPos;
-		boolean mustVerify;
 
 		NodeElem (String boundaryId){
 			srcPos = -1;
 			locationDataSrc = null;
 			this.boundaryId = boundaryId;
-			this.mustVerify = true;
 		}
 
 		private void addLocationDataString (NodeElem toAdd){
@@ -1268,7 +1258,7 @@ public class BoundaryQuadTree {
 	public class AdminLevelCollator implements Comparator<String> {
 
 		public int compare(String o1, String o2) {
-			if (o1 == o2) {
+			if (o1.equals(o2)) {
 				return 0;
 			}
 
@@ -1301,13 +1291,12 @@ public class BoundaryQuadTree {
 			}
 			boolean post1set = i1.getZip() != null;
 			boolean post2set = i2.getZip() != null;
+			if (post1set && !post2set)
+				return 1;
+			if (!post1set && post2set)
+				return -1;
 			
-			if (post1set) {
-				return (post2set ? 0 : 1);
-			} else {
-				return (post2set ? -1 : 0);
-			}
-			
+			return o1.compareTo(o2);
 		}
 	}
 }

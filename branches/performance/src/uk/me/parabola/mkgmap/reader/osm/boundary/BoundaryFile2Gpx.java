@@ -15,10 +15,7 @@ package uk.me.parabola.mkgmap.reader.osm.boundary;
 import java.awt.geom.Area;
 import java.awt.geom.Path2D;
 import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -33,10 +30,8 @@ import uk.me.parabola.util.Java2DConverter;
 
 public class BoundaryFile2Gpx {
 	private final String boundaryFileName;
-	private final String boundaryDirName;
 	private final BoundaryQuadTree bqt; 
 	public BoundaryFile2Gpx(String boundaryDirName, String boundaryFileName) {
-		this.boundaryDirName = boundaryDirName;
 		this.boundaryFileName = boundaryFileName;
 		bqt = BoundaryUtil.loadQuadTree(boundaryDirName, boundaryFileName);
 	}

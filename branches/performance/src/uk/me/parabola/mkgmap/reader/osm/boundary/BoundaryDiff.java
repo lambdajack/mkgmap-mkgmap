@@ -92,15 +92,8 @@ public class BoundaryDiff {
 					if (a1.isEmpty() == false|| a2.isEmpty() == false){
 						Area o1 = new Area(a1);
 						o1.subtract(a2);
-						if (o1.isEmpty() == false){
-							Path2D.Float path = new Path2D.Float(o1);
-							o1 = new Area(path);
-							if (o1.isEmpty()){
-								long x = 4;
-							}
+						if (o1.isEmpty() == false)
 							only1.add(o1);
-						}
-
 						Area o2 = new Area(a2);
 						o2.subtract(a1);
 						if (o2.isEmpty() == false)

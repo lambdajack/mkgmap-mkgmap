@@ -169,7 +169,8 @@ public class BoundaryPreparer extends Thread {
 		else
 			out = in;
 		long t1 = System.currentTimeMillis();
-		BoundaryPreparer p = new BoundaryPreparer(in, out, 1);
+		
+		BoundaryPreparer p = new BoundaryPreparer(in, out, Runtime.getRuntime().availableProcessors());
 		p.workoutBoundaryRelations(p.inDir, p.outDir, p.maxJobs);
 		System.out.println("Bnd files converted in " + (System.currentTimeMillis()-t1) + " ms");
 	}
