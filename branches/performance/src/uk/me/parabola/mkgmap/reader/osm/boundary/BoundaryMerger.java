@@ -121,6 +121,9 @@ public class BoundaryMerger {
 	public static void main(String[] args) throws IOException {
 		if (args.length != 3) {
 			System.err.println("java uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryMerger <bounds1> <bounds2> <merge>");
+			System.err.println("<bounds1> <bounds2> : directories with *.bnd files to merge");
+			System.err.println("<merge> target directory, is created if it doesn't exist");
+			
 			return;
 		}
 

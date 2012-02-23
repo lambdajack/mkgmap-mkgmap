@@ -19,7 +19,8 @@ import uk.me.parabola.mkgmap.reader.osm.Tags;
 import uk.me.parabola.util.EnhancedProperties;
 
 /**
- * A simple tree that stores pre-compiled boundary information
+ * A simple grid that stores the BoundaryQuadTrees that intersect with the grid.
+ * Each element of the grid is related to one *.bnd file.
  * 
  * @author GerdP
  * 
@@ -60,6 +61,12 @@ public class BoundaryGrid {
 		init(boundaryDirName);
 	}
 
+	/**
+	 * Returns the location relevant tags for a given point 
+	 * @param co the coords of the point
+	 * @return null if not found, else a reference to the Tags 
+	 * object saved in a BoundaryQuadTree
+	 */
 	public Tags get(Coord co) {
 		if (!searchBbox.contains(co))
 			return null;
@@ -71,41 +78,23 @@ public class BoundaryGrid {
 			return grid[gridLat][gridLon].get(co);
 	}
 
-	public BoundaryQuadTree getTree(int lat, int lon){
-		if (grid.length < lat || grid[0].length < lon){
-			return grid[lat][lon];
-		}
-		log.error("grid doesn't contain tree at " + lat + "/" + lon);
-		return null;
-	}
 	/**
-	 * Fill the grid. Determine the bnd files that must be loaded and try to
-	 * load them
+	 * Fill the grid. Calculate the names of the *.bnd files that 
+	 * must be loaded. For each file, try to create a BoundaryQuadTree.
+	 * Save each tree to its place in the grid. 
 	 * 
 	 * @param boundaryDir
-	 *            Directory with bnd files
+	 *            Directory or a *.zip file with bnd files
 	 */
 	private void init(String boundaryDirName){
 		List<String> requiredFileNames = BoundaryUtil.getRequiredBoundaryFileNames(searchBbox);
 		for (String boundaryFileName : requiredFileNames) {
-			System.out.println("loading boundary file: " + boundaryFileName);
+			log.info("loading boundary file: " + boundaryFileName);
 			BoundaryQuadTree bqt = BoundaryUtil.loadQuadTree(boundaryDirName, boundaryFileName, searchBbox, props);
-			addToGrid(bqt, BoundaryUtil.getBbox(boundaryFileName));
+			uk.me.parabola.imgfmt.app.Area fileBbox = BoundaryUtil.getBbox(boundaryFileName);
+			int gridLat = (fileBbox.getMinLat() - minLat) / BoundaryUtil.RASTER;
+			int gridLon = (fileBbox.getMinLong() - minLon) / BoundaryUtil.RASTER;
+			grid[gridLat][gridLon] = bqt;
 		}
 	}
-	
-	/**
-	 * Build the QuadTree for a given grid segment
-	 * 
-	 * @param bqt 
-	 * @param fileBbox
-	 */
-	private void addToGrid(BoundaryQuadTree bqt, uk.me.parabola.imgfmt.app.Area fileBbox) {
-		int gridLat = (fileBbox.getMinLat() - minLat) / BoundaryUtil.RASTER;
-		int gridLon = (fileBbox.getMinLong() - minLon) / BoundaryUtil.RASTER;
-		grid[gridLat][gridLon] = bqt;
-
-	}
-
-
 }

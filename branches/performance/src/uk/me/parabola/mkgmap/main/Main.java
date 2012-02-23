@@ -34,9 +34,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -74,7 +76,7 @@ import uk.me.parabola.mkgmap.srt.SrtTextReader;
 public class Main implements ArgumentProcessor {
 	private static final Logger log = Logger.getLogger(Main.class);
 
-	private final List<Thread> preparers = new ArrayList<Thread>();
+	private final List<Preparer> preparers = new ArrayList<Preparer>();
 	
 	// Final .img file combiners.
 	private final List<Combiner> combiners = new ArrayList<Combiner>();
@@ -321,27 +323,44 @@ public class Main implements ArgumentProcessor {
 		combiners.add(combiner);
 	}
 	
-	private void addPreparer(Thread preparer) {
+	private void addPreparer(Preparer preparer) {
 		this.preparers.add(preparer);
 	}
 
 	public void endOptions(CommandArgs args) {
 		fileOptions(args);
 
-		if (args.exists("createboundsfile")) {
-			addPreparer(new BoundaryPreparer(args.getProperties()));
-		}
-
-		log.info("Start preparers");
-		for (Thread preparer : preparers) {
-			preparer.run();
-		}
+		addPreparer(new BoundaryPreparer());
 
 		log.info("Start tile processors");
 		if (threadPool == null) {
 			log.info("Creating thread pool with " + maxJobs + " threads");
 			threadPool = Executors.newFixedThreadPool(maxJobs);
 		}
+		ExecutorCompletionService<Object> cmplService = new ExecutorCompletionService<Object>(threadPool);
+		
+		log.info("Start preparers");
+		for (Preparer preparer : preparers) {
+
+			boolean usePreparer = preparer.init(args.getProperties(),
+					(maxJobs > 1 ? cmplService : null));
+			if (usePreparer == false) {
+				continue;
+			}
+
+			// start the preparer
+			cmplService.submit(preparer, new Object());
+
+			do {
+				try {
+					cmplService.take();
+				} catch (InterruptedException exp) {
+				}
+			} while (((ThreadPoolExecutor) threadPool).getActiveCount() > 0);
+		}
+
+		preparers.clear();
+
 		for (FilenameTask task : futures) {
 			threadPool.execute(task);
 		}

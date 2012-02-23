@@ -49,7 +49,7 @@ public class BoundaryDiff {
 		System.out.println(dirName);
 		if (dir.isFile() && dir.getName().endsWith(".bnd")) {
 			List<String> boundaryFiles = new ArrayList<String>();
-			boundaryFiles.add(dirName);
+			boundaryFiles.add(dir.getName());
 			return boundaryFiles;
 		} else {
 			return BoundaryUtil.getBoundaryDirContent(dirName);
@@ -60,6 +60,9 @@ public class BoundaryDiff {
 		List<String> b1 = getBoundsFiles(inputName1);
 		List<String> b2 = getBoundsFiles(inputName2);
 
+		if (b1.size() == 0 && b2.size() == 0)
+			return;
+		
 		Collections.sort(b1);
 		Collections.sort(b2);
 
@@ -123,8 +126,27 @@ public class BoundaryDiff {
 
 	}
 
+	/**
+	 * Calculate the area that is covered by a given tag /value pair, e.g. admin_level=2 
+	 * @param dirName the name of a directory or *.zip file containing *.bnd files, or a single *.bnd file
+	 * @param fileName the name of the *.bnd file that should be read
+	 * @param tag the tag key
+	 * @param value the tag value
+	 * @return a new Area (which might be empty) 
+	 */
 	private Area loadArea(String dirName, String fileName, String tag, String value) {
-		BoundaryQuadTree bqt = BoundaryUtil.loadQuadTree(dirName, fileName);
+		String dir = dirName;
+		String bndFileName = fileName;
+		if (dir.endsWith(".bnd")){
+			File f = new File(dir);
+			if (f.isFile()){
+				dir = f.getParent();
+				bndFileName = f.getName();
+			}
+			if (dir == null)
+				dir = "."; // the local directory
+		}
+		BoundaryQuadTree bqt = BoundaryUtil.loadQuadTree(dir, bndFileName);
 		if (tag.equals("admin_level"))
 			return (bqt.getCoveredArea(Integer.valueOf(value)));
 		Map<String, Tags> bTags = bqt.getTagsMap();
@@ -159,22 +181,36 @@ public class BoundaryDiff {
 		}
 	}
 
-	public static void main(final String[] args) {
-		if (args.length < 2) {
-			System.err.println("Usage:");
-			System.err
-					.println("java -cp mkgmap.jar uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryDiff <boundsdir1> <boundsdir2> [<tag=value> [<tag=value>]]");
-			System.err.println(" <boundsdir1> ");
-			System.err
-					.println(" <boundsdir2>: defines two directories or zip files containing boundsfiles to be compared ");
-			System.err
-			.println(" <tag=value>: defines a tag/value combination for which the diff is created");
-			System.err
-			.println(" sample:");
-			System.err
-			.println(" java -cp mkgmap.jar uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryDiff world_20120113.zip bounds admin_level=2");
+	
+	private static void printUsage(){
+		System.err.println("Usage:");
+		System.err
+				.println("java -cp mkgmap.jar uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryDiff <boundsdir1> <boundsdir2> [<tag=value> [<tag=value>]]");
+		System.err.println(" <boundsdir1> ");
+		System.err
+				.println(" <boundsdir2>: defines two directories or zip files containing boundsfiles to be compared ");
+		System.err
+		.println(" <tag=value>: defines a tag/value combination for which the diff is created");
+		System.err
+		.println(" sample:");
+		System.err
+		.println(" java -cp mkgmap.jar uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryDiff world_20120113.zip bounds admin_level=2");
 
-			System.exit(-1);
+		System.exit(-1);
+	}
+
+	public static void main(final String[] args) {
+		if (args.length < 2) 
+			printUsage();
+		File f1 = new File(args[0]);
+		if (f1.exists() == false){
+			System.err.println(args[0] + " does not exist");
+			printUsage();
+		}
+		File f2 = new File(args[1]);
+		if (f2.exists() == false){
+			System.err.println(args[1] + " does not exist");
+			printUsage();
 		}
 
 		List<Entry<String,String>> tags = new ArrayList<Entry<String,String>>();
@@ -192,6 +228,7 @@ public class BoundaryDiff {
 			}
 		}
  		
+			
 		int processors = Runtime.getRuntime().availableProcessors();
 		ExecutorService excSvc = Executors.newFixedThreadPool(processors);
 		ExecutorCompletionService<String> executor = new ExecutorCompletionService<String>(

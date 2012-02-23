@@ -12,6 +12,12 @@
  */
 package uk.me.parabola.mkgmap.reader.osm.boundary;
 
+/**
+ * Stores location relevant information that was extracted 
+ * from the tags of a boundary.
+ * @author GerdP
+ *
+ */
 public class BoundaryLocationInfo  {
 
 	private final String zip;

@@ -147,8 +147,11 @@ public class BoundaryFile2Gpx {
 		File boundaryDir = new File(boundaryDirName);
 		List<String> boundaryFileNames;
 		if (boundaryDir.isFile() && boundaryDir.getName().endsWith(".bnd")) {
+			boundaryDirName = boundaryDir.getParent();
+			if (boundaryDirName == null)
+				boundaryDirName = ".";
 			boundaryFileNames = new ArrayList<String>();
-			boundaryFileNames.add(boundaryDirName);
+			boundaryFileNames.add(boundaryDir.getName());
 		} else {
 			boundaryFileNames = BoundaryUtil.getBoundaryDirContent(boundaryDirName);
 		}

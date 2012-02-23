@@ -24,6 +24,14 @@ import uk.me.parabola.mkgmap.reader.osm.Tags;
 import uk.me.parabola.mkgmap.reader.osm.boundary.Boundary;
 import uk.me.parabola.util.EnhancedProperties;
 
+/**
+ * Allows to extract boundary tags into BoundaryLocationInfo.  
+ * Uses a locator if possible, else defaults. 
+ * The locator is only needed when used with the LocationHook, utilities like the 
+ * BoundaryPreparer will work without it.
+ * @author GerdP
+ *
+ */
 public class BoundaryLocationPreparer {
 	private static final Logger log = Logger.getLogger(BoundaryLocationPreparer.class);
 
@@ -32,11 +40,10 @@ public class BoundaryLocationPreparer {
 	// tag keys for name resolution
 	private final List<String> nameList;
 	
-	public final static short POSTCODE_ONLY = 1 << 11; 
 
 	/**
 	 * Create a preparer. 
-	 * @param props
+	 * @param props The program properties or null. 
 	 */
 	public BoundaryLocationPreparer(EnhancedProperties props) {
 		if (props == null){
@@ -58,10 +65,8 @@ public class BoundaryLocationPreparer {
 	 * @return a new BoundaryLocationInfo instance 
 	 */
 	public BoundaryLocationInfo parseTags(Tags tags){
-		String zip = null;
-		if (tags.get("postal_code") != null || "postal_code".equals(tags.get("boundary")))
-			zip = getZip(tags);
-		int admLevel = getAdminLevel(tags.get("admin_level"));
+		String zip = getZip(tags);
+		int admLevel = getAdminLevel(tags);
 		boolean isISO = false;
 		String name = getName(tags);
 		if (locator != null){
@@ -101,6 +106,11 @@ public class BoundaryLocationPreparer {
 	 */
 	private static final String[] LEVEL2_NAMES = new String[]{"name","name:en","int_name"};
 	
+	/**
+	 * Try to extract the name of the boundary. 
+	 * @param tags the boundary tags
+	 * @return a name or null if no usable name tag was found
+	 */
 	private String getName(Tags tags) {
 		if ("2".equals(tags.get("admin_level"))) {
 			for (String enNameTag : LEVEL2_NAMES)
@@ -134,25 +144,39 @@ public class BoundaryLocationPreparer {
 		return null;
 	}
 
+	/**
+	 * Try to extract a zip code from the the tags of a boundary. 
+	 * @param tags the boundary tags
+	 * @return null if no zip code was found, else a String that should be a zip code. 
+	 */
 	private String getZip(Tags tags) {
 		String zip = tags.get("postal_code");
 		if (zip == null) {
-			String name = tags.get("name"); 
-			if (name == null) {
-				name = getName(tags);
-			}
-			if (name != null) {
-				String[] nameParts = name.split(Pattern.quote(" "));
-				if (nameParts.length > 0) {
-					zip = nameParts[0].trim();
+			if ("postal_code".equals(tags.get("boundary"))){
+				String name = tags.get("name"); 
+				if (name == null) {
+					name = getName(tags);
+				}
+				if (name != null) {
+					String[] nameParts = name.split(Pattern.quote(" "));
+					if (nameParts.length > 0) {
+						zip = nameParts[0].trim();
+					}
 				}
 			}
 		}
 		return zip;
 	}
 
-	public static final int UNSET_ADMIN_LEVEL = 100; // must be higher than real levels 
-	private int getAdminLevel(String level) {
+	public static final int UNSET_ADMIN_LEVEL = 100; // must be higher than real levels
+	/**
+	 * translate the admin_level tag to an integer. 
+	 * @param tags the boundary tags
+	 * @return the admin_level value. The value is UNSET_ADMIN_LEVEL if 
+	 * the conversion failed. 
+	 */
+	private int getAdminLevel(Tags tags) {
+		String level = tags.get("admin_level");
 		if (level == null) {
 			return UNSET_ADMIN_LEVEL;
 		}

@@ -16,18 +16,18 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.main.Preparer;
 import uk.me.parabola.util.EnhancedProperties;
 
-public class BoundaryPreparer extends Thread {
-	private final int maxJobs;
-	private final String[] STOP_MSG = {"","",""};
-	private final BlockingQueue<String[]> toProcess;
-
+public class BoundaryPreparer extends Preparer {
 	private static final Logger log = Logger.getLogger(BoundaryPreparer.class);
 	private static final List<Class<? extends LoadableBoundaryDataSource>> loaders;
 	static {
@@ -82,38 +82,34 @@ public class BoundaryPreparer extends Thread {
 		return new Osm5BoundaryDataSource();
 	}
 
-	private final String boundaryFilename;
-	private final String inDir;
-	private final String outDir;
+	private boolean onePass = true;
+	private String boundaryFilename;
+	private String inDir;
+	private String outDir;
 
-	public BoundaryPreparer(EnhancedProperties properties) {
-		this.boundaryFilename = properties
-				.getProperty("createboundsfile", null);
-		this.inDir = properties.getProperty("bounds", "bounds");
-		this.outDir = properties.getProperty("bounds", "bounds");
-		String jobs = properties.getProperty("max-jobs", "1");
-		if (jobs.isEmpty())
-			this.maxJobs = Runtime.getRuntime().availableProcessors();
-		else
-			this.maxJobs = properties.getProperty("max-jobs", 1);
-		toProcess = new ArrayBlockingQueue<String[]>(maxJobs);
+	public BoundaryPreparer() {
+		
 	}
-	
-	public BoundaryPreparer(String in, String out, int maxJobs) {
-		this.maxJobs = maxJobs;
-		toProcess = new ArrayBlockingQueue<String[]>(maxJobs);
-		this.boundaryFilename = null;
-		this.inDir = in;
-		this.outDir = out;
+
+	public boolean init(EnhancedProperties props,
+			ExecutorCompletionService<Object> additionalThreadPool) {
+		super.init(props, additionalThreadPool);
+		
+		this.boundaryFilename = props
+				.getProperty("createboundsfile", null);
+		this.inDir = props.getProperty("bounds", "bounds");
+		this.outDir = props.getProperty("preparer-out-dir", null);
+		if (this.outDir == null)
+			this.outDir = this.inDir;
+		this.onePass = props.getProperty("preparer-one-pass", false);
+		return boundaryFilename != null;
 	}
 
 	/* (non-Javadoc)
 	 * @see java.lang.Thread#run()
 	 */
 	public void run() {
-		if (boundaryFilename == null) {
-			return;
-		}
+		if (onePass == false && boundaryFilename != null) {
 		long t1 = System.currentTimeMillis();
 		boolean prepOK = createRawData();
 		long t2 = System.currentTimeMillis();
@@ -122,9 +118,11 @@ public class BoundaryPreparer extends Thread {
 		if (!prepOK){
 			return;
 		}
-		workoutBoundaryRelations(inDir, outDir, maxJobs);
+		}
 		long t3 = System.currentTimeMillis();
-		log.error("BoundaryPreparer workoutBoundaryRelations() took " + (t3-t2) + " ms");
+		workoutBoundaryRelations(inDir, outDir);
+		long t4 = System.currentTimeMillis();
+		log.error("BoundaryPreparer workoutBoundaryRelations() took " + (t4-t3) + " ms");
 	}
 
 	private boolean createRawData(){
@@ -147,6 +145,8 @@ public class BoundaryPreparer extends Thread {
 		saver.end();
 		return true;
 	}
+	
+	
 	public static void main(String[] args) {
 		if (args[0].equals("--help")) {
 			System.err.println("Usage:");
@@ -170,8 +170,29 @@ public class BoundaryPreparer extends Thread {
 			out = in;
 		long t1 = System.currentTimeMillis();
 		
-		BoundaryPreparer p = new BoundaryPreparer(in, out, Runtime.getRuntime().availableProcessors());
-		p.workoutBoundaryRelations(p.inDir, p.outDir, p.maxJobs);
+		int maxJobs = Runtime.getRuntime().availableProcessors();
+		ExecutorService threadPool = Executors.newFixedThreadPool(maxJobs);
+		ExecutorCompletionService<Object> cmplSvc = new ExecutorCompletionService<Object>(threadPool);
+		EnhancedProperties props = new EnhancedProperties();
+		props.setProperty("bounds", in);
+		props.setProperty("preparer-out-dir", out);
+		props.setProperty("preparer-one-pass", "true");
+		// is the separate out parameter required?
+		
+		BoundaryPreparer p = new BoundaryPreparer();
+		p.init(props, (maxJobs > 1 ? cmplSvc : null));
+		cmplSvc.submit(p, new Object());
+		do {
+			try {
+				cmplSvc.take();
+			} catch (InterruptedException exp) {
+			}
+		} while (((ThreadPoolExecutor) threadPool).getActiveCount() > 0);
+
+		if (threadPool != null) {
+			threadPool.shutdown();
+		}
+		
 		System.out.println("Bnd files converted in " + (System.currentTimeMillis()-t1) + " ms");
 	}
 
@@ -190,72 +211,34 @@ public class BoundaryPreparer extends Thread {
 	 * @param boundsDirectory
 	 *            the directory of the bounds files
 	 */
-	public void workoutBoundaryRelations(String inputDirName, String outputDirName, int maxJobs) {
+	public void workoutBoundaryRelations(String inputDirName, String outputDirName) {
 		List<String> boundsFileNames = BoundaryUtil.getBoundaryDirContent(inputDirName);
 				
-		
-		ArrayList<Thread> workerThreads = new ArrayList<Thread>(maxJobs);
-		for (int i = 0; i < maxJobs; i++) {
-			Thread worker = new Thread(new QuadTreeWorker());
-			worker.setName("qtworker-" + i);
-			workerThreads.add(worker);
-			worker.start();
-		}
-		
 		for (String boundsFileName : boundsFileNames) {
-			try {
-				toProcess.put(new String []{inputDirName,outputDirName,boundsFileName});
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-		try {
-			toProcess.put(STOP_MSG);// Magic flag used to indicate that all data is done.
-		} catch (InterruptedException e1) {
-			e1.printStackTrace();
-		}
-
-		for (Thread workerThread : workerThreads) {
-			try {
-				workerThread.join();
-			} catch (InterruptedException e) {
-				throw new RuntimeException("Failed to join for thread "
-						+ workerThread.getName(), e);
-			}
+			// start workers that rework the boundary files and add the 
+			// quadtree information
+			addWorker(new QuadTreeWorker(inputDirName, outputDirName, boundsFileName));
 		}
 	}
 
-	class QuadTreeWorker implements Runnable {
+	class QuadTreeWorker implements Callable<String> {
+		private final String inputDirName;
+		private final String outputDirName;
+		private final String boundsFileName;
+		
+		public QuadTreeWorker(String inputDirName, String outputDirName, String boundsFileName) {
+			this.inputDirName = inputDirName;
+			this.outputDirName = outputDirName;
+			this.boundsFileName = boundsFileName;
+		}
+		
 		@Override
-		public void run(){
-			boolean finished = false;
-			while (!finished) {
-				String[] workingSet = null;
-				try {
-					workingSet = toProcess.take();
-				} catch (InterruptedException e1) {
-					e1.printStackTrace();
-					continue;
-				}
-				if (workingSet == STOP_MSG) {
-					try {
-						toProcess.put(STOP_MSG); // Re-inject it so that other
-													// threads know that we're
-													// exiting.
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-					finished = true;
-				} else {
-					String inputDirName = workingSet[0];
-					String outputDirName = workingSet[1];
-					String boundsFileName = workingSet[2];
+		public String call() throws Exception {
 					log.info("Workout boundary relations in ", inputDirName + " " + boundsFileName);
-					System.out.println("splitting " + boundsFileName + " with quadtree");
 					long t1 = System.currentTimeMillis();
 					BoundaryQuadTree bqt = BoundaryUtil.loadQuadTree(inputDirName, boundsFileName);
 					long t2 = System.currentTimeMillis() - t1;
-					System.out.println("splitting " + boundsFileName + " with quadtree took " + t2 + " ms");
+					log.info("splitting " + boundsFileName + " took " + t2 + " ms");
 					if (bqt != null){
 						File outDir = new File(outputDirName);
 						BoundarySaver saver = new BoundarySaver(outDir, BoundarySaver.QUADTREE_DATA_FORMAT);
@@ -264,10 +247,10 @@ public class BoundaryPreparer extends Thread {
 						saver.saveQuadTree(bqt, boundsFileName); 		
 						saver.end();
 					}
-				}
-			}
-
+					return boundsFileName;
 		}
+
 	}
+
 }
 
