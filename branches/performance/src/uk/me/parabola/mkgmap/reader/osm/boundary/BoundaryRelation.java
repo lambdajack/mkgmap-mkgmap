@@ -271,7 +271,11 @@ public class BoundaryRelation extends MultiPolygonRelation {
 			}
 			
 			if (currentPolygon.outer) {
-				outerResultArea.add(Java2DConverter.createArea(currentPolygon.polygon.getPoints()));
+				java.awt.geom.Area toAdd = Java2DConverter.createArea(currentPolygon.polygon.getPoints());
+				if (outerResultArea.isEmpty())
+					outerResultArea = toAdd;
+				else
+					outerResultArea.add(toAdd);
 
 				for (Way outerWay : currentPolygon.polygon.getOriginalWays()) {
 					if (outmostPolygonProcessing) {
