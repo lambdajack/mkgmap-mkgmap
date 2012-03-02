@@ -340,6 +340,7 @@ public class Main implements ArgumentProcessor {
 		ExecutorCompletionService<Object> cmplService = new ExecutorCompletionService<Object>(threadPool);
 		
 		log.info("Start preparers");
+		long t1 = System.currentTimeMillis();
 		for (Preparer preparer : preparers) {
 
 			boolean usePreparer = preparer.init(args.getProperties(),
@@ -355,11 +356,14 @@ public class Main implements ArgumentProcessor {
 				try {
 					cmplService.take();
 				} catch (InterruptedException exp) {
+					System.err.println(exp.getMessage());
 				}
 			} while (((ThreadPoolExecutor) threadPool).getActiveCount() > 0);
 		}
 
 		preparers.clear();
+		long t2 = System.currentTimeMillis();
+		log.info("All preparers finished after " + (t2-t1) + " ms");
 
 		for (FilenameTask task : futures) {
 			threadPool.execute(task);

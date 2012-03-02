@@ -15,6 +15,7 @@ package uk.me.parabola.mkgmap.reader.osm.boundary;
 import java.awt.Rectangle;
 import java.awt.geom.Area;
 import java.awt.geom.PathIterator;
+import java.awt.geom.Rectangle2D;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -193,38 +194,61 @@ public class BoundarySaver {
 		log.debug("Remaining", openStreams.size(), "open streams.");
 	}
 
-	/**
-	 * Split a given area into the raster tiles
-	 * @param areaToSplit
-	 * @return
-	 */
 	private Map<String, Area> splitArea(Area areaToSplit) {
-		Map<String, Area> splittedAreas = new HashMap<String, Area>();
-		Rectangle areaBounds = areaToSplit.getBounds();
+		return splitArea(areaToSplit, new HashMap<String, Area>());
+	}
+	
+	/**
+	 * Split a given area into the raster tiles. 
+	 * @param areaToSplit the area
+	 * @param splits a map the splitted tiles are added to
+	 * @return the map with the splitted tiles
+	 */
+	private Map<String, Area> splitArea(Area areaToSplit, Map<String, Area> splits) {
+		if (areaToSplit.isEmpty())
+			return splits;
+		
+		// use high precision bounds with later rounding to avoid some little rounding
+		// errors (49999.99999999 instead of 50000.0)
+		Rectangle2D areaBounds = areaToSplit.getBounds2D();
+		int sMinLong = BoundaryUtil.getSplitBegin((int)Math.round(areaBounds.getMinX()));
+		int sMinLat = BoundaryUtil.getSplitBegin((int)Math.round(areaBounds.getMinY()));
+		int sMaxLong = BoundaryUtil.getSplitEnd((int)Math.round(areaBounds.getMaxX()));
+		int sMaxLat = BoundaryUtil.getSplitEnd((int)Math.round(areaBounds.getMaxY()));
 
-		for (int latSplit = BoundaryUtil.getSplitBegin(areaBounds.y); latSplit <= BoundaryUtil
-				.getSplitBegin(areaBounds.y + areaBounds.height); latSplit += BoundaryUtil.RASTER) {
-			for (int lonSplit = BoundaryUtil.getSplitBegin(areaBounds.x); lonSplit <= BoundaryUtil
-					.getSplitBegin(areaBounds.x + areaBounds.width); lonSplit += BoundaryUtil.RASTER) {
-				Rectangle splitRect = new Rectangle(lonSplit, latSplit,
-						BoundaryUtil.RASTER, BoundaryUtil.RASTER);
-				Area tileCover;
-				// avoid costly intersect() call when area fits into split
-				// rectangle
-				if (splitRect.contains(areaToSplit.getBounds()))
-					tileCover = new Area(areaToSplit);
-				else {
-					tileCover = new Area(splitRect);
-					tileCover.intersect(areaToSplit);
-				}
-				if (tileCover.isEmpty() == false) {
-					splittedAreas.put(BoundaryUtil.getKey(latSplit, lonSplit),
-							tileCover);
-				}
+		int dLon = sMaxLong- sMinLong;
+		int dLat = sMaxLat - sMinLat;
+		if (dLon > BoundaryUtil.RASTER || dLat > BoundaryUtil.RASTER) {
+			// split into two halves
+			Area a1;
+			Area a2;
+			if (dLon > dLat) {
+				int midLon = BoundaryUtil.getSplitEnd(sMinLong+dLon/2);
+				a1 = new Area(new Rectangle(sMinLong, sMinLat, midLon-sMinLong, dLat));
+				a2 = new Area(new Rectangle(midLon, sMinLat, sMaxLong-midLon, dLat));
+			} else {
+				int midLat = BoundaryUtil.getSplitEnd(sMinLat+dLat/2);
+				a1 = new Area(new Rectangle(sMinLong, sMinLat, dLon, midLat-sMinLat));
+				a2 = new Area(new Rectangle(sMinLong, midLat, dLon, sMaxLat-midLat));
 			}
-		}
 
-		return splittedAreas;
+			// intersect with the both halves
+			// and split both halves recursively
+
+			a1.intersect(areaToSplit);
+			splitArea(a1, splits);
+			// a1 is no longer needed => GC
+			a1 = null;
+			
+			a2.intersect(areaToSplit);
+			splitArea(a2, splits);
+			
+		} else {
+			// the area fully fits into one raster tile
+			splits.put(BoundaryUtil.getKey(sMinLat, sMinLong), areaToSplit);
+		}
+		return splits;
+
 	}
 
 	private void openStream(StreamInfo streamInfo, boolean newFile) {

@@ -105,24 +105,18 @@ public class BoundaryPreparer extends Preparer {
 		return boundaryFilename != null;
 	}
 
-	/* (non-Javadoc)
-	 * @see java.lang.Thread#run()
-	 */
 	public void run() {
 		if (onePass == false && boundaryFilename != null) {
-		long t1 = System.currentTimeMillis();
-		boolean prepOK = createRawData();
-		long t2 = System.currentTimeMillis();
-		log.error("BoundaryPreparer pass 1 took " + (t2-t1) + " ms");
+			long t1 = System.currentTimeMillis();
+			boolean prepOK = createRawData();
+			long t2 = System.currentTimeMillis();
+			log.info("BoundaryPreparer pass 1 took " + (t2-t1) + " ms");
 
-		if (!prepOK){
-			return;
+			if (!prepOK){
+				return;
+			}
 		}
-		}
-		long t3 = System.currentTimeMillis();
 		workoutBoundaryRelations(inDir, outDir);
-		long t4 = System.currentTimeMillis();
-		log.error("BoundaryPreparer workoutBoundaryRelations() took " + (t4-t3) + " ms");
 	}
 
 	private boolean createRawData(){
