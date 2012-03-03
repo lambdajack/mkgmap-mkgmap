@@ -39,6 +39,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -354,9 +355,9 @@ public class Main implements ArgumentProcessor {
 
 			do {
 				try {
-					cmplService.take();
+					cmplService.poll(1000, TimeUnit.MILLISECONDS);
 				} catch (InterruptedException exp) {
-					System.err.println(exp.getMessage());
+					exp.printStackTrace();
 				}
 			} while (((ThreadPoolExecutor) threadPool).getActiveCount() > 0);
 		}
