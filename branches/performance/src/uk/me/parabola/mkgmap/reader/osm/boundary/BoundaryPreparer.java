@@ -17,10 +17,9 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.log.Logger;
@@ -92,7 +91,7 @@ public class BoundaryPreparer extends Preparer {
 	}
 
 	public boolean init(EnhancedProperties props,
-			ExecutorCompletionService<Object> additionalThreadPool) {
+			ExecutorService additionalThreadPool) {
 		super.init(props, additionalThreadPool);
 		
 		this.boundaryFilename = props
@@ -166,7 +165,7 @@ public class BoundaryPreparer extends Preparer {
 		
 		int maxJobs = Runtime.getRuntime().availableProcessors();
 		ExecutorService threadPool = Executors.newFixedThreadPool(maxJobs);
-		ExecutorCompletionService<Object> cmplSvc = new ExecutorCompletionService<Object>(threadPool);
+
 		EnhancedProperties props = new EnhancedProperties();
 		props.setProperty("bounds", in);
 		props.setProperty("preparer-out-dir", out);
@@ -174,18 +173,17 @@ public class BoundaryPreparer extends Preparer {
 		// is the separate out parameter required?
 		
 		BoundaryPreparer p = new BoundaryPreparer();
-		p.init(props, (maxJobs > 1 ? cmplSvc : null));
-		cmplSvc.submit(p, new Object());
-		do {
-			try {
-				cmplSvc.take();
-			} catch (InterruptedException exp) {
-			}
-		} while (((ThreadPoolExecutor) threadPool).getActiveCount() > 0);
-
-		if (threadPool != null) {
-			threadPool.shutdown();
+		p.init(props, threadPool);
+		try {
+			p.runPreparer();
+		} catch (InterruptedException exp) {
+			exp.printStackTrace();
+		} catch (ExecutionException exp) {
+			System.err.println(exp);
+			exp.printStackTrace();
 		}
+		
+		threadPool.shutdown();
 		
 		System.out.println("Bnd files converted in " + (System.currentTimeMillis()-t1) + " ms");
 	}

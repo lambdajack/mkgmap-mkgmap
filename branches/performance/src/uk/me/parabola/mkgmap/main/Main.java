@@ -34,12 +34,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -338,34 +335,32 @@ public class Main implements ArgumentProcessor {
 			log.info("Creating thread pool with " + maxJobs + " threads");
 			threadPool = Executors.newFixedThreadPool(maxJobs);
 		}
-		ExecutorCompletionService<Object> cmplService = new ExecutorCompletionService<Object>(threadPool);
-		
+
 		log.info("Start preparers");
-		long t1 = System.currentTimeMillis();
+		long pt1 = System.currentTimeMillis();
 		for (Preparer preparer : preparers) {
 
-			boolean usePreparer = preparer.init(args.getProperties(),
-					(maxJobs > 1 ? cmplService : null));
+			boolean usePreparer = preparer.init(args.getProperties(), threadPool);
 			if (usePreparer == false) {
 				continue;
 			}
 
-			// start the preparer
-			cmplService.submit(preparer, new Object());
-
-			do {
-				try {
-					cmplService.poll(1000, TimeUnit.MILLISECONDS);
-				} catch (InterruptedException exp) {
-					exp.printStackTrace();
+			try {
+				preparer.runPreparer();
+			} catch (Throwable t) {
+				t.printStackTrace();
+				if (!args.getProperties().getProperty("keep-going", false)) {
+					throw new ExitException(
+							"Exiting - if you want to carry on regardless, use the --keep-going option");
 				}
-			} while (((ThreadPoolExecutor) threadPool).getActiveCount() > 0);
+			}
 		}
 
 		preparers.clear();
-		long t2 = System.currentTimeMillis();
-		log.info("All preparers finished after " + (t2-t1) + " ms");
+		long pt2 = System.currentTimeMillis();
+		log.info("All preparers finished after " + (pt2-pt1) + " ms");
 
+		// process all input files
 		for (FilenameTask task : futures) {
 			threadPool.execute(task);
 		}
