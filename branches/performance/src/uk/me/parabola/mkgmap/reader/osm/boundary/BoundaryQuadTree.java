@@ -1,3 +1,15 @@
+/*
+ * Copyright (C) 2012.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3 or
+ * version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ */
 package uk.me.parabola.mkgmap.reader.osm.boundary;
 
 import java.awt.Rectangle;
@@ -31,25 +43,30 @@ import uk.me.parabola.util.Java2DConverter;
 
 /**
  * A quadtree implementation to handle areas formed by boundaries.
- * @author GerdP
+ * Each node of the Quadtree stores a list of NodeElems. A NodeElem 
+ * stores one area and the related location relevant tags. 
+ * @author GerdP 
  *
  */
 public class BoundaryQuadTree {
 	private static final Logger log = Logger.getLogger(BoundaryQuadTree.class);
 	private static final boolean DEBUG = false;
+	// debugging  aid 
 	private static final String DEBUG_TREEPATH = "?";
 	private static final boolean DO_ALL_TESTS = false;
 
-	// the "normal" tags of the boundaries that are saved in this tree
+	// maps the "normal" tags of the boundaries that are saved in this tree to
+	// the boundaryId
 	private final HashMap<String, Tags> boundaryTags = new LinkedHashMap<String,Tags>();
-	// the location relevant info 
+	// maps the location relevant info to the boundaryId 
 	private final HashMap<String, BoundaryLocationInfo> preparedLocationInfo;
 	// property controlled preparer
 	private final BoundaryLocationPreparer preparer;
 	
 	private final Node root;
-	// the bounding box of the tree
+	// the bounding box of the quadtree
 	private final Rectangle bbox;
+	private final String bbox_key; 
 
 	// tags that can be returned in the get method
 	public final static String[] mkgmapTagsArray =  {
@@ -66,7 +83,8 @@ public class BoundaryQuadTree {
 		"mkgmap:admin_level11",
 		"mkgmap:postcode"
 	};
-	public final static short POSTCODE_ONLY = 1 << 11;  // 11: the position of "mkgmap:postcode" in the above aray 
+	// 11: the position of "mkgmap:postcode" in the above array
+	public final static short POSTCODE_ONLY = 1 << 11;   
 	
 	/**
 	 * Create a quadtree with the data in an open stream. 
@@ -81,35 +99,39 @@ public class BoundaryQuadTree {
 			throws IOException {
 		preparedLocationInfo = new LinkedHashMap<String, BoundaryLocationInfo> ();
 		preparer = new BoundaryLocationPreparer(props);
+		assert fileBbox != null: "parameter fileBbox must not be null";
 		this.bbox = new Rectangle(fileBbox.getMinLong(), fileBbox.getMinLat(),
 				fileBbox.getMaxLong() - fileBbox.getMinLong(), fileBbox.getMaxLat()
 				- fileBbox.getMinLat());
-
+		this.bbox_key = BoundaryUtil.getKey(this.bbox.y, this.bbox.x);
 		root = new Node(this.bbox);
 		
-		assert fileBbox != null: "parameter fileBbox must not be null";
 		readStreamQuadTreeFormat(inpStream,searchBbox);
 	}
 	
 	
 	/**
 	 * Create a quadtree for a given bounding box and a list of boundaries.
+	 * Involves costly calculations to split the areas.
 	 * @param givenBbox	The bounding box for the quadTree, only data within this box is used 
 	 * @param boundaries A list of boundaries. For better performance, the list should be sorted so that small areas come first.
 	 * @param props if not null, use it to set location names
 	 */
-	public BoundaryQuadTree (uk.me.parabola.imgfmt.app.Area givenBbox, List<Boundary> boundaries, EnhancedProperties props){
+	public BoundaryQuadTree(uk.me.parabola.imgfmt.app.Area givenBbox,
+			List<Boundary> boundaries, EnhancedProperties props) {
 		preparer = new BoundaryLocationPreparer(props);
+		assert givenBbox != null: "parameter givenBbox must not be null";
 		this.bbox = new Rectangle(givenBbox.getMinLong(), givenBbox.getMinLat(),
 				givenBbox.getMaxLong() - givenBbox.getMinLong(), 
 				givenBbox.getMaxLat() - givenBbox.getMinLat());
+		this.bbox_key = BoundaryUtil.getKey(this.bbox.y, this.bbox.x);
+		
 		root = new Node(this.bbox);
 		// extract the location relevant tags
 		preparedLocationInfo = preparer.getPreparedLocationInfo(boundaries);
 		if (boundaries == null || boundaries.size() == 0)
 			return;
 		
-		assert givenBbox != null: "parameter givenBbox must not be null";
 
 		HashMap<String,Boundary> bMap = new HashMap<String,Boundary>();
 		for (Boundary b: boundaries){
@@ -132,7 +154,7 @@ public class BoundaryQuadTree {
 	 * The returned Tags must not be modified by the caller.   
 	 */
 	public Tags get(Coord co){
-		Tags res = root.get(co, "_");
+		Tags res = root.get(co/*, "_"*/);
 		if (res == null && bbox.contains(co.getLongitude(),co.getLatitude())){
 			// we did not find the point, probably it lies on a boundary and
 			// the clauses regarding insideness of areas make it "invisible"
@@ -141,13 +163,13 @@ public class BoundaryQuadTree {
 			Coord neighbour2 = new Coord(co.getLatitude()  , co.getLongitude()-1);
 			Coord neighbour3 = new Coord(co.getLatitude()+1, co.getLongitude());
 			Coord neighbour4 = new Coord(co.getLatitude()  , co.getLongitude()+1);
-			res = root.get(neighbour1, "_");
+			res = root.get(neighbour1/*, "_"*/);
 			if (res == null)
-				res = root.get(neighbour2, "_");
+				res = root.get(neighbour2/*, "_"*/);
 			if (res == null)
-				res = root.get(neighbour3, "_");
+				res = root.get(neighbour3/*, "_"*/);
 			if (res == null)
-				res = root.get(neighbour4, "_");
+				res = root.get(neighbour4/*, "_"*/);
 		}
 		return res;
 	}
@@ -162,11 +184,12 @@ public class BoundaryQuadTree {
 	}
 	
 	/**
-	 * Create a map with boundary Ids and the area parts that are in the tree.
-	 * When the parts are added, they normally give the original boundary. 
+	 * Create a map with boundary Ids and the related area parts that 
+	 * are stored in the tree. When the parts are added, they normally 
+	 * give the original boundary (clipped by the bounding box of the quadtree). 
 	 * Exception: For overlapping boundaries with equal admin_levels only one
 	 * boundary will contain the complete area information.   
-	 * @return
+	 * @return A HashMap mapping BoundaryIds to a List with all area parts  
 	 */
 	public Map<String, List<Area>> getAreas(){
 		Map<String, List<Area>> areas = new HashMap<String, List<Area>>();
@@ -200,7 +223,7 @@ public class BoundaryQuadTree {
 	
 	/**
 	 * Return the area that is covered by a given admin level
-	 * @param admLevel
+	 * @param admLevel reasonable values are 2 .. 11 (inclusive)
 	 * @return
 	 */
 	public Area getCoveredArea (Integer admLevel){
@@ -211,7 +234,7 @@ public class BoundaryQuadTree {
 	 * Return boundary names relevant for the point defined by Coord 
 	 * @param co the point
 	 * @return A string with a boundary Id, optionally followed by pairs of admlevel:boundary Id.
-	 * Sample  
+	 * Sample: r1184826;6:r62579;4:r62372;2:r51477  
 	 */
 	public String getBoundaryNames(Coord co){
 		return root.getBoundaryNames(co);
@@ -250,10 +273,13 @@ public class BoundaryQuadTree {
 
 
 	/**
-	 * Write the TAGS sections. 
-	 * @param stream
-	 * @param tags
-	 * @param id
+	 * Write the TAGS sections of the QUADTREE_DATA_FORMAT. Each
+	 * section starts with the "TAGS" eye catcher followed by the
+	 * boundary id, the number of tags and the tags as 
+	 * key/value pairs.
+	 * @param stream an already opened OutputStream
+	 * @param tags the boundary tags
+	 * @param id the boundaryId
 	 * @throws IOException
 	 */
 	private void writeBoundaryTags(OutputStream stream, Tags tags, String id) throws IOException{
@@ -281,8 +307,9 @@ public class BoundaryQuadTree {
 
 	/**
 	 * Read a stream in QUADTREE_DATA_FORMAT 
-	 * @param inpStream
-	 * @param bbox
+	 * @param inpStream the already opened DataInputStream
+	 * @param bbox a bounding box. Areas not intersecting the bbox are 
+	 * ignored. 
 	 * @throws IOException
 	 */
 	private void readStreamQuadTreeFormat(DataInputStream inpStream,
@@ -344,7 +371,7 @@ public class BoundaryQuadTree {
 	}
 
 	/**
-	 * Fill the map preparedLocationInfo with data from the boundary tags
+	 * Fill the map preparedLocationInfo with data from the boundary tags.
 	 */
 	private void prepareLocationInfo() {
 		for (Entry<String, Tags> entry : boundaryTags.entrySet()) {
@@ -422,7 +449,7 @@ public class BoundaryQuadTree {
 		 * Return boundary names relevant for the point defined by Coord 
 		 * @param co the point
 		 * @return A string with a boundary Id, optionally followed by pairs of admlevel:boundary Id.
-		 * Sample  
+		 * Sample: r1184826;6:r62579;4:r62372;2:r51477  
 		 */
 		private String getBoundaryNames(Coord co) {
 			if (this.bounds.contains(co) == false)
@@ -459,7 +486,7 @@ public class BoundaryQuadTree {
 		 * @return a reference to the internal Tags or null if the point was not found. 
 		 * The returned Tags must not be modified by the caller.   
 		 */
-		private Tags get(Coord co, String treePath){
+		private Tags get(Coord co/*, String treePath*/){
 			if (this.bounds.contains(co) == false)
 				return null;
 			if (isLeaf){
@@ -477,7 +504,7 @@ public class BoundaryQuadTree {
 			}
 			else {
 				for (int i = 0; i < 4; i++){
-					Tags res = childs[i].get(co, treePath+i);
+					Tags res = childs[i].get(co/*, treePath+i*/);
 					if (res != null) 
 						return res; 
 				}
@@ -510,9 +537,9 @@ public class BoundaryQuadTree {
 
 		/**
 		 * Test if all areas in one node are distinct areas. This is wanted, but not 
-		 * absolutely needed.
+		 * absolutely needed. 
 		 * @param treePath Position in the quadtree. Used for GPX.
-		 * @return false if any area intersects with another and the 
+		 * @return false if any area intersects with another area and the 
 		 * intersection has a dimension.
 		 */
 		private boolean testIfDistinct(String treePath){
@@ -654,7 +681,7 @@ public class BoundaryQuadTree {
 		 * Calculate the area that is covered by boundaries of a given adminlevel
 		 * @param admLevel the admin_level, a value from 2 to 11 (including)
 		 * @param treePath A string that helps to identify the position in the quadtree 
-		 * @return
+		 * @return a new Area instance (might be empty)
 		 */
 		private Area getCoveredArea(Integer admLevel, String treePath){
 			HashMap<String,List<Area>> areas = new HashMap<String, List<Area>>();
@@ -670,7 +697,7 @@ public class BoundaryQuadTree {
 		}
 		
 		/**
-		 * See BoundaryQuadTree.getAreas()
+		 * See BoundaryQuadTree {@link #BoundaryQuadTree.getAreas()}
 		 * @param areas
 		 * @param treePath
 		 * @param admLevel
@@ -730,6 +757,7 @@ public class BoundaryQuadTree {
 		 * For intersections, create new areas with the merged 
 		 * location tags, and subtract the parts from the source 
 		 * areas. The result should be a reduced number of distinct areas.
+		 * @param treePath Identifies the position in the tree
 		 */
 		private void makeDistinct(String treePath){
 			if (isLeaf == false || nodes == null || nodes.size() <= 1)
@@ -854,9 +882,9 @@ public class BoundaryQuadTree {
 			// free memory for nodes with empty or too small areas
 			removeEmptyAreas(treePath);
 
-			long t2 = System.currentTimeMillis()-t1;
-			if (t2  > 1000)
-				System.out.println("merge required long time: " + t2 + " ms");
+			long dt = System.currentTimeMillis()-t1;
+			if (dt  > 1000)
+				log.info(bbox_key, ": merge required long time:", dt, "ms");
 			if (DEBUG)
 				printNodes("end", treePath);
 
@@ -881,8 +909,10 @@ public class BoundaryQuadTree {
 			}
 		}
 		/**
+		 * Optimization:
 		 * The last nodes are likely to fully cover the quadtree bbox. 
-		 * Merge the tag information for them. 
+		 * Merge the tag information for them to avoid some splitting
+		 * and later merging.
 		 */
 		private void mergeLastRectangles(){
 			boolean done;
@@ -908,7 +938,8 @@ public class BoundaryQuadTree {
 
 		/**
 		 * The mergeBoundaries() algorithm can create almost empty
-		 * areas. These are removed here.
+		 * areas (points, lines, or extremely small intersections). 
+		 * These are removed here.
 		 * @param treePath
 		 */
 		private void removeEmptyAreas(String treePath){
@@ -929,6 +960,10 @@ public class BoundaryQuadTree {
 			}			
 		}
 
+		/**
+		 * allocate 4 childs with bounding boxes that have 1/4 of the 
+		 * size of the parent.  
+		 */
  		private void allocChilds(){
 			childs = new Node[4];
 			Coord center = bounds.getCenter();
@@ -948,7 +983,8 @@ public class BoundaryQuadTree {
 		}
 
 		/**
-		 * Split the tree into 4 equally sized parts.
+		 * Split the tree into 4 equally sized parts and
+		 * distribute the data.
 		 */
 		private void split(String treePath){
 			if (isLeaf == true){
@@ -992,7 +1028,13 @@ public class BoundaryQuadTree {
 		private String locationDataSrc;
 		private int srcPos;
 
-		
+		/**
+		 * Create a node elem. 
+		 * @param boundaryId The boundary Id
+		 * @param area the (part of the) boundary area stored in this node
+		 * @param refs A string containing boundaryIds and admin-level infos
+		 * of all boundaries with lower admin levels that share the same area. 
+		 */
 		NodeElem (String boundaryId, Area area, String refs){
 			srcPos = -1;
 			this.boundaryId = boundaryId;
@@ -1001,6 +1043,14 @@ public class BoundaryQuadTree {
 			calcLocTags();
 		}
 
+		/**
+		 * Create a new node elem as a partly copy of an existing 
+		 * NodeElem and a new area. 
+		 * @param other the existing NodeElem instance
+		 * @param area the new area 
+		 * @param srcPos identifies the position of other in the 
+		 * nodes list of the Node.
+		 */
 		NodeElem (NodeElem other, Area area, int srcPos){
 			this.area = area;
 			this.srcPos = srcPos;
@@ -1010,6 +1060,11 @@ public class BoundaryQuadTree {
 			this.locTags = other.locTags.copy();
 		}
 
+		/**
+		 * check if a NodeElem contains usable info.
+		 * @return false if either the area is not usable or 
+		 * the tags should be ignored.
+		 */
 		private boolean isValid(){
 			if (tagMask == 0 || area == null || area.isEmpty())
 				return false;
@@ -1034,7 +1089,12 @@ public class BoundaryQuadTree {
 		 */
 		private void calcLocTags(){
 			locTags = new Tags();
+			tagMask = 0;
 			BoundaryLocationInfo bInfo  = preparedLocationInfo.get(boundaryId);
+			if (bInfo == null){
+				log.error("unknown boundaryId " + boundaryId);
+				return;
+			}
 			if (bInfo.getZip() != null){
 				locTags.put("mkgmap:postcode",bInfo.getZip());
 			}
@@ -1054,7 +1114,7 @@ public class BoundaryQuadTree {
 					}
 					BoundaryLocationInfo addInfo = preparedLocationInfo.get(relParts[1]);
 					if (addInfo == null) {
-						log.warn("Referenced boundary not known: " + relParts[1]);
+						log.warn("Referenced boundary not known:", relParts[1]);
 						continue;
 					}
 
@@ -1078,6 +1138,11 @@ public class BoundaryQuadTree {
 			tagMask = calcLocationTagsMask();
 		}
 		
+		/**
+		 * Merge the locationDataSrc of two NodeElems.
+		 * The caller has to make sure that the merge makes sense.
+		 * @param toAdd The other NodeElem
+		 */
 		private void addLocationDataString (NodeElem toAdd){
 			BoundaryLocationInfo info = preparedLocationInfo.get(toAdd.boundaryId);
 			assert info.getAdmLevel() > 0 : "cannot use admLevel";
@@ -1093,9 +1158,8 @@ public class BoundaryQuadTree {
 		}
 		/**
 		 * Write a nodeElem an AREA segment of the QUADTREE_DATA_FORMAT. 
-		 * @param stream
-		 * @param nodeElem
-		 * @param treePath
+		 * @param stream the already opened OutputStream
+		 * @param treePath identifies the position within the tree
 		 * @throws IOException
 		 */
 		private void save(OutputStream stream, String treePath) throws IOException{
@@ -1136,7 +1200,6 @@ public class BoundaryQuadTree {
 		
 		/**
 		 * calculate a handy short value that represents the available location tags
-		 * @param tags 
 		 * @return a bit mask, a bit with value 1 means the corresponding entry in {@link locationTagNames } 
 		 * is available
 		 */
@@ -1151,7 +1214,7 @@ public class BoundaryQuadTree {
 		
 		/**
 		 * For debugging: Save the area in gpx format
-		 * @param desc
+		 * @param desc used as directory name  
 		 * @param treePath
 		 */
 		private void saveGPX(String desc, String treePath){
@@ -1176,7 +1239,9 @@ public class BoundaryQuadTree {
 		/**
 		 * Handle errors in OSM data. Two boundaries with equal levels should not intersect.
 		 * Special case: zip-code-only boundaries with same zip code 
-		 * @param other 
+		 * @param other the other NodeElem
+		 * @param bounds a bounding box for the intersection of the two areas. Used 
+		 * to create the error message.
 		 * @return null if no error, else a String with an error message
 		 */
 		private String checkAddTags(NodeElem other, uk.me.parabola.imgfmt.app.Area bounds){
@@ -1215,8 +1280,7 @@ public class BoundaryQuadTree {
 
 		/**
 		 * Add tags from src to locTags if they are missing 
-		 * @param dest
-		 * @param src
+		 * @param src the Tags to be added 
 		 */
 		private void addMissingTags(Tags src){
 			Iterator<Entry<String,String>> tagIter = src.entryIterator();
@@ -1229,6 +1293,11 @@ public class BoundaryQuadTree {
 		}
 	}
 
+	/***
+	 * Used to sort BoundaryLocationInfo. Input are boundaryIds.
+	 * @author gerd
+	 *
+	 */
 	public class AdminLevelCollator implements Comparator<String> {
 
 		public int compare(String o1, String o2) {
@@ -1269,7 +1338,7 @@ public class BoundaryQuadTree {
 				return 1;
 			if (!post1set && post2set)
 				return -1;
-			
+			// if all is equal, prefer the lower boundaryId
 			return o1.compareTo(o2);
 		}
 	}

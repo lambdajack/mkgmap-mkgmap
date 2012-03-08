@@ -36,6 +36,11 @@ public class BoundaryFile2Gpx {
 		bqt = BoundaryUtil.loadQuadTree(boundaryDirName, boundaryFileName);
 	}
 
+	/**
+	 * Create gpx files for areas which contain no information for a given
+	 * admin level.  
+	 * @param admLevel reasonable values are 2..11
+	 */
 	public void saveEmptyAreas(int admLevel) {
 		Area tileArea = Java2DConverter.createBoundsArea(BoundaryUtil
 				.getBbox(boundaryFileName));
@@ -68,6 +73,9 @@ public class BoundaryFile2Gpx {
 		}
 	}
 
+	/**
+	 * create gpx files for all boundaries contained in one *.bnd file
+	 */
 	public void saveAsGpx() {
 		System.out.println("Start converting " + boundaryFileName);
 

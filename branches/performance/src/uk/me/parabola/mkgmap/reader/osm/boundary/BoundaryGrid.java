@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2011.
+ * Copyright (C) 2012.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 3 or
@@ -89,7 +89,7 @@ public class BoundaryGrid {
 	private void init(String boundaryDirName){
 		List<String> requiredFileNames = BoundaryUtil.getRequiredBoundaryFileNames(searchBbox);
 		for (String boundaryFileName : requiredFileNames) {
-			log.info("loading boundary file: " + boundaryFileName);
+			log.info("loading boundary file:", boundaryFileName);
 			BoundaryQuadTree bqt = BoundaryUtil.loadQuadTree(boundaryDirName, boundaryFileName, searchBbox, props);
 			uk.me.parabola.imgfmt.app.Area fileBbox = BoundaryUtil.getBbox(boundaryFileName);
 			int gridLat = (fileBbox.getMinLat() - minLat) / BoundaryUtil.RASTER;

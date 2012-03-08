@@ -19,7 +19,6 @@ import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,19 +37,18 @@ import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Tags;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.util.EnhancedProperties;
-import uk.me.parabola.util.GpxCreator;
 import uk.me.parabola.util.Java2DConverter;
 
 public class BoundaryUtil {
 	private static final Logger log = Logger.getLogger(BoundaryUtil.class);
 
 	
-	public static class BoundaryFileFilter implements FileFilter {
-		public boolean accept(File pathname) {
-			return pathname.isFile() && pathname.getName().endsWith(".bnd");
-		}
-	}
-	
+	/**
+	 * Calculate the polygons that describe the area.
+	 * @param area the Area instance
+	 * @param id an id that is used to create meaningful messages, typically a boundary Id
+	 * @return A list of BoundaryElements (can be empty)
+	 */
 	public static List<BoundaryElement> splitToElements(Area area, String id) {
 		if (area.isEmpty()) {
 			return Collections.emptyList();
@@ -98,10 +96,10 @@ public class BoundaryUtil {
 			if (tryAgain == false){
 				// cannot convert this area
 				log.error(" first element is not outer. "+ bElements.get(0));
-				// TODO: remove debug code
-				createJavaCodeSnippet(area);
-				String fname = "bnd_gpx/first_not_outer" + id ;
-				GpxCreator.createGpx(fname, bElements.get(0).getPoints());
+				
+				//createJavaCodeSnippet(area);
+				//String fname = "bnd_gpx/first_not_outer" + id ;
+				//GpxCreator.createGpx(fname, bElements.get(0).getPoints());
 				return Collections.emptyList();
 			}
 			// try converting the area with rounded float values
@@ -111,26 +109,28 @@ public class BoundaryUtil {
 		}
 	}
 
-	/*
-	public static Area convertToArea(List<BoundaryElement> list) {
-		Area area = new Area();
-
-		for (BoundaryElement elem : list) {
-			if (elem.isOuter()) {
-				area.add(elem.getArea());
-			} else {
-				area.subtract(elem.getArea());
-			}
-		}
-		return area;
-	}
+	/**
+	 * Wrapper for {@link #loadQuadTree(String, String, uk.me.parabola.imgfmt.app.Area, EnhancedProperties)}
+	 * @param boundaryDirName a directory name or zip file containing the *.bnd file
+	 * @param boundaryFileName the *.bnd file name
+	 * @return
 	 */
-	
 	public static BoundaryQuadTree loadQuadTree (String boundaryDirName, 
 			String boundaryFileName){ 
 		return (loadQuadTree (boundaryDirName, boundaryFileName, null, null));
 	}
 	
+	/**
+	 * create a BoundaryQuadTree with the data in the given file. 
+	 * The routine opens the file and reads only the header 
+	 * to decide what format was used to write it
+	 * and calls the appropriate method to read the rest.
+	 * @param boundaryDirName a directory name or zip file containing the *.bnd file
+	 * @param boundaryFileName the *.bnd file name
+	 * @param searchBbox null or a bounding box. Data outside of this box is ignored.
+	 * @param props null or the properties to be used for the locator
+	 * @return
+	 */
 	public static BoundaryQuadTree loadQuadTree (String boundaryDirName, 
 			String boundaryFileName, 
 			uk.me.parabola.imgfmt.app.Area searchBbox, EnhancedProperties props){
@@ -175,7 +175,7 @@ public class BoundaryUtil {
 	 * read path iterator info from stream and create Area. 
 	 * Data is stored with float precision.  
 	 * @param inpStream the already opened DataInputStream 
-	 * @return a new Area object
+	 * @return a new Area object or null if not successful 
 	 * @throws IOException
 	 */
 	public static Area readArea(DataInputStream inpStream) throws IOException{
@@ -221,58 +221,28 @@ public class BoundaryUtil {
 	}
 	
 	/**
-	 * Common code to read the area info from a stream
-	 * @param inpStream
-	 * @param tags
+	 * Read boundary info saved in RAW_DATA_FORMAT. 
+	 * @param inpStream the already opened DataInputStream
+	 * @param fname the related file name of the *.bnd file
+	 * @param bbox a bounding box. Data outside of this box is ignored.
 	 * @return
 	 * @throws IOException
 	 */
-	public static Area readArea(DataInputStream inpStream, String id) throws IOException{
-		int noBElems = inpStream.readInt();
-	
-		// the first area is always an outer area and will be assigned to the variable
-		Area area = null;
-	
-		for (int i = 0; i < noBElems; i++) {
-			boolean outer = inpStream.readBoolean();
-			int noCoords = inpStream.readInt();
-			log.debug("No of coords",noCoords);
-			List<Coord> points = new ArrayList<Coord>(noCoords);
-			for (int c = 0; c < noCoords; c++) {
-				int lat = inpStream.readInt();
-				int lon = inpStream.readInt();
-				points.add(new Coord(lat, lon));
-			}
-	
-			Area elemArea = Java2DConverter.createArea(points);
-			if (outer) {
-				if (area == null) {
-					area = elemArea;
-				} else {
-					area.add(elemArea);
-				}
-			} else {
-				if (area == null) {
-					log.warn("Boundary: " + id);
-					log.warn("Outer way is tagged incosistently as inner way. Ignoring it.");
-					log.warn("Points: "+points);
-				} else {
-					area.subtract(elemArea);
-				}
-			}
-		}
-		if (area == null)
-			area = new Area();
-		return area;
-	}
-
 	private static List<Boundary> readStreamRawFormat(
 			DataInputStream inpStream, String fname,
-			uk.me.parabola.imgfmt.app.Area bbox, String rel) throws IOException			{
+			uk.me.parabola.imgfmt.app.Area bbox) throws IOException			{
 		List<Boundary> boundaryList = new ArrayList<Boundary>();
 
 
 		try {
+			// 1st read the mkgmap release the boundary file is created by
+			String mkgmapRel = inpStream.readUTF();
+			long createTime = inpStream.readLong();
+			
+			if (log.isDebugEnabled()) {
+				log.debug("File created by mkgmap release",mkgmapRel,"at",new Date(createTime));
+			}
+			
 			while (true) {
 				int minLat = inpStream.readInt();
 				int minLong = inpStream.readInt();
@@ -284,27 +254,58 @@ public class BoundaryUtil {
 				int bSize = inpStream.readInt();
 				log.debug("Size:",bSize);
 
-				if ( bbox == null || bbox.intersects(rBbox)) {
+				if (bbox == null || bbox.intersects(rBbox)) {
 					log.debug("Bbox intersects. Load the boundary");
 					Tags tags = new Tags();
 					int noOfTags = inpStream.readInt();
-					String id = "?";
+					String id = "?"; 
 					for (int i = 0; i < noOfTags; i++) {
 						String name = inpStream.readUTF();
 						String value = inpStream.readUTF();
 						// boundary.id was always saved together with the other tags
 						if (name.equals("mkgmap:boundaryid")){  
 						    id = value;								
-						    continue;
-            }
+						    continue; 
+						}
 						if (name.equals("mkgmap:lies_in") == false) // ignore info from older preparer version 
-							tags.put(name, value.intern());
+							tags.put(name, value.intern()); 					
 					}
+
+					int noBElems = inpStream.readInt();
+					assert noBElems > 0;
+					
+					// the first area is always an outer area and will be assigned to the variable
 					Area area = null;
-					if (rel.endsWith(BoundarySaver.RAW_DATA_FORMAT))
-						area = readArea(inpStream);
-					else // area info was saved in legacy format 
-						area = readArea(inpStream, id);
+					
+					for (int i = 0; i < noBElems; i++) {
+						boolean outer = inpStream.readBoolean();
+						int noCoords = inpStream.readInt();
+						log.debug("No of coords",noCoords);
+						List<Coord> points = new ArrayList<Coord>(noCoords);
+						for (int c = 0; c < noCoords; c++) {
+							int lat = inpStream.readInt();
+							int lon = inpStream.readInt();
+							points.add(new Coord(lat, lon));
+						}
+
+						Area elemArea = Java2DConverter.createArea(points);
+						if (outer) {
+							if (area == null) {
+								area = elemArea;
+							} else {
+								area.add(elemArea);
+							}
+						} else {
+							if (area == null) {
+								log.warn("Boundary: "+tags);
+								log.warn("Outer way is tagged incosistently as inner way. Ignoring it.");
+								log.warn("Points: "+points);
+							} else {
+								area.subtract(elemArea);
+							}
+						}
+					}
+
 					if (area != null) {
 						Boundary boundary = new Boundary(area, tags,id);
 						boundaryList.add(boundary);
@@ -319,8 +320,8 @@ public class BoundaryUtil {
 			}
 		} catch (EOFException exp) {
 			// it's always thrown at the end of the file
-			//				log.error("Got EOF at the end of the file");
-		} 
+			// log.error("Got EOF at the end of the file");
+		}  		
 		return boundaryList;
 	}
 
@@ -380,61 +381,6 @@ public class BoundaryUtil {
 		return names;
 	}
 	
-	/*
-	private static List<Boundary> mergeBoundaries(List<Boundary> boundaryList) {
-		int noIdBoundaries = 0;
-		Map<String, Boundary> mergeMap = new HashMap<String, Boundary>();
-		for (Boundary toMerge : boundaryList) {
-			String bId = toMerge.getId();
-			if (bId == null) {
-				noIdBoundaries++;
-				mergeMap.put("n" + noIdBoundaries, toMerge);
-			} else {
-				Boundary existingBoundary = mergeMap.get(bId);
-				if (existingBoundary == null) {
-					mergeMap.put(bId, toMerge);
-				} else {
-					if (log.isInfoEnabled())
-						log.info("Merge boundaries", existingBoundary.getTags(), "with", toMerge.getTags());
-					existingBoundary.getArea().add(toMerge.getArea());
-					
-					// Merge the mkgmap:lies_in tag
-					// They should be the same but better to check that...
-					String liesInTagExist = existingBoundary.getTags().get("mkgmap:lies_in");
-					String liesInTagMerge = toMerge.getTags().get("mkgmap:lies_in");
-					if (liesInTagExist != null && liesInTagExist.equals(liesInTagMerge)==false) {
-						if (liesInTagMerge == null) {
-							existingBoundary.getTags().remove("mkgmap:lies_in");
-						} else {
-							// there is a difference in the lies_in tag => keep the equal ids
-							Set<String> existIds = new HashSet<String>(Arrays.asList(liesInTagExist.split(";")));
-							Set<String> mergeIds = new HashSet<String>(Arrays.asList(liesInTagMerge.split(";")));
-							existIds.retainAll(mergeIds);
-							if (existIds.isEmpty()) {
-								existingBoundary.getTags().remove("mkgmap:lies_in");
-							} else {
-								StringBuilder newLiesIn = new StringBuilder();
-								for (String liesInEntry : existIds) {
-									if (newLiesIn.length() > 0) {
-										newLiesIn.append(";");
-									}
-									newLiesIn.append(liesInEntry);
-								}
-								existingBoundary.getTags().put("mkgmap:lies_in", newLiesIn.toString());
-							}
-						}
-					}
-				}
-			}
-		}
-		if (noIdBoundaries > 0) {
-			log.error(noIdBoundaries
-					+ " without boundary id. Could not merge them.");
-		}
-		return new ArrayList<Boundary>(mergeMap.values());
-	}
-	 */
-	
 	public static final int RASTER = 50000;
 
 	public static int getSplitBegin(int value) {
@@ -480,7 +426,17 @@ public class BoundaryUtil {
 		return new uk.me.parabola.imgfmt.app.Area(lat, lon, lat+RASTER, lon+RASTER);
 	}
 
-	
+	/**
+	 * Create and fill a BoundaryQuadTree. Two formats are supported: RAW_DATA_FORMAT and
+	 * QUADTREE_DATA_FORMAT. 
+	 * @param stream an already opened InputStream
+	 * @param fname the file name of the corresponding *.bnd file
+	 * @param searchBbox a bounding box or null. If not null, area info outside of this
+	 * bounding box is ignored. 
+	 * @param props properties to be used or null 
+	 * @return on success it returns a new BoundaryQuadTree, else null 
+	 * @throws IOException
+	 */
 	private static BoundaryQuadTree loadQuadTreeFromStream(InputStream stream, 
 			String fname,
 			uk.me.parabola.imgfmt.app.Area searchBbox, 
@@ -504,7 +460,7 @@ public class BoundaryUtil {
 					
 				}
 				else{
-					List<Boundary> boundaryList = readStreamRawFormat(inpStream, fname,searchBbox, mkgmapRel);
+					List<Boundary> boundaryList = readStreamRawFormat(inpStream, fname, searchBbox);
 					if (boundaryList == null || boundaryList.isEmpty())
 						return null;
 					bqt = new BoundaryQuadTree(qtBbox, boundaryList, props);
@@ -533,7 +489,9 @@ public class BoundaryUtil {
 		}
 	}
 	/**
-	 * Helper to ease the reporting of errors.
+	 * Helper to ease the reporting of errors. Creates a java code snippet 
+	 * that can be compiled to have the same area.
+	 * @param area the area for which the code should be produced
 	 */
 	public static void createJavaCodeSnippet(Area area) {
 		double[] res = new double[6];

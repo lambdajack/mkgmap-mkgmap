@@ -81,7 +81,8 @@ public class BoundaryPreparer extends Preparer {
 		return new Osm5BoundaryDataSource();
 	}
 
-	private boolean onePass = true;
+	
+	private boolean workoutOnly = false;
 	private String boundaryFilename;
 	private String inDir;
 	private String outDir;
@@ -90,26 +91,34 @@ public class BoundaryPreparer extends Preparer {
 		
 	}
 
+	/**
+	 * constructor for stand-alone usage (workout only)
+	 * @param in source directory or zip file 
+	 * @param out target directory
+	 */
+	private BoundaryPreparer(String in, String out){
+		this.inDir = in;
+		this.outDir = out;
+		this.workoutOnly = true;
+	}
+	
 	public boolean init(EnhancedProperties props,
 			ExecutorService additionalThreadPool) {
 		super.init(props, additionalThreadPool);
 		
-		this.boundaryFilename = props
-				.getProperty("createboundsfile", null);
+		if (workoutOnly)
+			return true;
+		this.boundaryFilename = props.getProperty("createboundsfile", null);
 		this.inDir = props.getProperty("bounds", "bounds");
-		this.outDir = props.getProperty("preparer-out-dir", null);
-		if (this.outDir == null)
-			this.outDir = this.inDir;
-		this.onePass = props.getProperty("preparer-one-pass", false);
 		return boundaryFilename != null;
 	}
 
 	public void run() {
-		if (onePass == false && boundaryFilename != null) {
+		if (workoutOnly == false && boundaryFilename != null) {
 			long t1 = System.currentTimeMillis();
 			boolean prepOK = createRawData();
 			long t2 = System.currentTimeMillis();
-			log.info("BoundaryPreparer pass 1 took " + (t2-t1) + " ms");
+			log.info("BoundaryPreparer pass 1 took", (t2-t1), "ms");
 
 			if (!prepOK){
 				return;
@@ -118,6 +127,11 @@ public class BoundaryPreparer extends Preparer {
 		workoutBoundaryRelations(inDir, outDir);
 	}
 
+	/**
+	 * Parse OSM data and create boundaries. Distribute the boundaries on a grid
+	 * with a fixed raster. 
+	 * @return true if data was successfully written, else false
+	 */
 	private boolean createRawData(){
 		File boundsDirectory = new File(outDir);
 		BoundarySaver saver = new BoundarySaver(boundsDirectory, BoundarySaver.RAW_DATA_FORMAT);
@@ -167,12 +181,8 @@ public class BoundaryPreparer extends Preparer {
 		ExecutorService threadPool = Executors.newFixedThreadPool(maxJobs);
 
 		EnhancedProperties props = new EnhancedProperties();
-		props.setProperty("bounds", in);
-		props.setProperty("preparer-out-dir", out);
-		props.setProperty("preparer-one-pass", "true");
-		// is the separate out parameter required?
 		
-		BoundaryPreparer p = new BoundaryPreparer();
+		BoundaryPreparer p = new BoundaryPreparer(in, out);
 		p.init(props, threadPool);
 		try {
 			p.runPreparer();
@@ -185,23 +195,17 @@ public class BoundaryPreparer extends Preparer {
 		
 		threadPool.shutdown();
 		
-		System.out.println("Bnd files converted in " + (System.currentTimeMillis()-t1) + " ms");
+		log.info("Bnd files converted in", (System.currentTimeMillis()-t1), "ms");
 	}
 
 	/**
 	 * Reworks all bounds files of the given directory so that all boundaries
 	 * are applied with the information with which boundary they intersect.<br/>
-	 * This information is added as tag "mkgmap:intersects_with" and contains a semicolon 
-	 * separated list of boundary ids.<br/>
-	 * Example:<br/>
-	 * <code>
-	 *   mkgmap:intersects_with=2:r51477;4:r87782
-	 * </code><br/>
-	 * The boundary tagged in such a way intersects with relation 51477 (admin level 2) 
-	 * and with relation 87782 (admin level 4).
+	 * The files are rewritten in the QUADTREE_DATA_FORMAT which is used in the 
+	 * LocationHook.
 	 * 
-	 * @param boundsDirectory
-	 *            the directory of the bounds files
+	 * @param inputDirName the directory or zip file name that identifies the input
+	 * @param outputDirName a directory name for the rewritten bnd files
 	 */
 	public void workoutBoundaryRelations(String inputDirName, String outputDirName) {
 		List<String> boundsFileNames = BoundaryUtil.getBoundaryDirContent(inputDirName);
@@ -226,20 +230,20 @@ public class BoundaryPreparer extends Preparer {
 		
 		@Override
 		public String call() throws Exception {
-					log.info("Workout boundary relations in ", inputDirName + " " + boundsFileName);
-					long t1 = System.currentTimeMillis();
-					BoundaryQuadTree bqt = BoundaryUtil.loadQuadTree(inputDirName, boundsFileName);
-					long t2 = System.currentTimeMillis() - t1;
-					log.info("splitting " + boundsFileName + " took " + t2 + " ms");
-					if (bqt != null){
-						File outDir = new File(outputDirName);
-						BoundarySaver saver = new BoundarySaver(outDir, BoundarySaver.QUADTREE_DATA_FORMAT);
-						saver.setCreateEmptyFiles(false);
+			log.info("Workout boundary relations in", inputDirName, boundsFileName);
+			long t1 = System.currentTimeMillis();
+			BoundaryQuadTree bqt = BoundaryUtil.loadQuadTree(inputDirName, boundsFileName);
+			long dt = System.currentTimeMillis() - t1;
+			log.info("splitting", boundsFileName, "took", dt, "ms");
+			if (bqt != null){
+				File outDir = new File(outputDirName);
+				BoundarySaver saver = new BoundarySaver(outDir, BoundarySaver.QUADTREE_DATA_FORMAT);
+				saver.setCreateEmptyFiles(false);
 
-						saver.saveQuadTree(bqt, boundsFileName); 		
-						saver.end();
-					}
-					return boundsFileName;
+				saver.saveQuadTree(bqt, boundsFileName); 		
+				saver.end();
+			}
+			return boundsFileName;
 		}
 
 	}

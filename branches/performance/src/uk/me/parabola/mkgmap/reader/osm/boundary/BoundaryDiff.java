@@ -34,6 +34,13 @@ import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.util.GpxCreator;
 import uk.me.parabola.util.Java2DConverter;
 
+/**
+ * Compare two boundary files or two directories with boundary files.
+ * Write differences as gpx files.
+ *  
+ * @author WanMil (initial version), rewritten for BoundaryQuadTree by GerdP
+ *
+ */
 public class BoundaryDiff {
 	private final String inputName1;
 	private final String inputName2;
@@ -41,9 +48,14 @@ public class BoundaryDiff {
 	public BoundaryDiff(String boundaryDirName1, String boundaryDirName2) {
 		this.inputName1 = boundaryDirName1;
 		this.inputName2 = boundaryDirName2;
-		
 	}
 
+	/** 
+	 * Return list of file names
+	 * @param dirName a directory or a zip file containing *.bnd files,
+	 * or a single *.bnd file
+	 * @return
+	 */
 	private List<String> getBoundsFiles(String dirName) {
 		File dir = new File(dirName);
 		System.out.println(dirName);
@@ -56,6 +68,13 @@ public class BoundaryDiff {
 		}
 	}
 
+	/**
+	 * Compare all files in one list with the files in another list.
+	 * Optionally restrict the comparison to boundaries with the
+	 * given tag/value combination.
+	 * @param tag should be admin_level
+	 * @param value any value appropriate for the tag
+	 */
 	public void compare(String tag, String value) {
 		List<String> b1 = getBoundsFiles(inputName1);
 		List<String> b2 = getBoundsFiles(inputName2);
@@ -165,6 +184,13 @@ public class BoundaryDiff {
 		return a;
 	}
 
+	/**
+	 * Create gpx file(s) for a single area. 
+	 * @param a the Area
+	 * @param subDirName target sub-directory
+	 * @param tagKey used to build the gpx file name
+	 * @param tagValue used to build the gpx file name
+	 */
 	private void saveArea(Area a, String subDirName, String tagKey, String tagValue) {
 
 		String gpxBasename = "gpx/diff/" + subDirName + "/"
@@ -181,7 +207,9 @@ public class BoundaryDiff {
 		}
 	}
 
-	
+	/**
+	 * print usage info
+	 */
 	private static void printUsage(){
 		System.err.println("Usage:");
 		System.err

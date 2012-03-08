@@ -26,18 +26,21 @@ import uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryUtil;
 import uk.me.parabola.util.EnhancedProperties;
 
 public class LocationHook extends OsmReadingHooksAdaptor {
-	private static final boolean PRINT_RESULT = false;
 	private static final Logger log = Logger.getLogger(LocationHook.class);
-	long cntQTSearch = 0;
-	long cntNotFnd = 0;
-	long cntwayNotFnd = 0;
+	// the resulting assignments are logged with this extra logger
+	// so that it is possible to log only the results of the location hook
+	private static final Logger resultLog = Logger.getLogger(LocationHook.class.getName()+".results");
+	
+	// counters for stats
+	private long cntQTSearch = 0;
+	private long cntNotFnd = 0;
+	private long cntwayNotFnd = 0;
 	
 	private BoundaryGrid boundaryGrid;
 
 	private ElementSaver saver;
 	private final Set<String> autofillOptions = new HashSet<String>();
 	
-	//private File boundaryDir;
 	private String boundaryDirName;
 
 	
@@ -45,9 +48,11 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 	/** this static object is used to synchronize the check if the bounds directory contains any bounds */
 	private static final Object BOUNDS_CHECK_LOCK = new Object();
 	
-	
+	/** Stores the name of the bounds dir/file that has been checked. Static so that multiple threads can access. */
 	private static String checkedBoundaryDirName;
+	/** stores the result of the bounds dir/file check */
 	private static boolean checkBoundaryDirOk;
+	
 	private EnhancedProperties props;
 
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
@@ -94,8 +99,7 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 					checkBoundaryDirOk = true;
 				}
 			}
-			log.info("Checking bounds dir took "
-					+ (System.currentTimeMillis() - t1) + " ms");
+			log.info("Checking bounds dir took", (System.currentTimeMillis() - t1), "ms");
 		}
 		return true;
 	}
@@ -110,19 +114,16 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 		}
 
 		long dt = (System.currentTimeMillis() - t1);
-		log.info("Location hook finished in "+
-				dt+ " ms");
-		System.out.println("======= Stats =====");             
-		System.out.println("QuadTree searches    : "  + cntQTSearch);             
-		System.out.println("unsuccesfull         : "  + cntNotFnd);             
-		System.out.println("unsuccesfull for ways: "  + cntwayNotFnd);             
-		System.out.println("Location hook finished in "+
-				dt+ " ms");
+		log.info("======= LocationHook Stats =====");             
+		log.info("QuadTree searches    :", cntQTSearch);             
+		log.info("unsuccesfull         :", cntNotFnd);             
+		log.info("unsuccesfull for ways:", cntwayNotFnd);             
+		log.info("Location hook finished in", dt, "ms");
 
 	}
 
 	/**
-	 * Retrieve all elements for which the boundary assignment should be performed.
+	 * Iterate over all elements for which the boundary assignment should be performed.
 	 */
 	private void processLocationRelevantElements() {
 		// process all nodes that might be converted to a garmin node (tagcount > 0)
@@ -130,9 +131,8 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 			if (node.getTagCount() > 0) {
 				if (saver.getBoundingBox().contains(node.getLocation())){
 					processElem(node);
-					if (PRINT_RESULT)
-						System.out.println("N " + node.getId() + " " + calcLocationTagsMask(node) 
-								+ " " + tagsToString(node));
+					if (resultLog.isDebugEnabled())
+						resultLog.debug("N", node.getId(), locationTagsToString(node));
 				}
 			}
 		}
@@ -141,18 +141,16 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 		for (Way way : saver.getWays().values()) {
 			if (way.getTagCount() > 0) {
 				processElem(way);
-				if (PRINT_RESULT)
-					System.out.println("W " + way.getId() + " " + calcLocationTagsMask(way)
-							+ " " + tagsToString(way));
+				if (resultLog.isDebugEnabled())
+					resultLog.debug("W", way.getId(), locationTagsToString(way));
 			}
 		}
 	}
 
 	/**
-	 * For each element in elemList, performs a test against the quadtree. 
-	 * If found, assign the tags and check if the element is done  
-	 * @param elemList the list of elements
-	 * @param currBoundaries a list of boundaries handled in the current level
+	 * Extract the location info and perform a test 
+	 * against the BoundaryGrid. If found, assign the tags.  
+	 * @param elem A way or Node
 	 */
 	private void processElem(Element elem){
 		Tags tags = null;
@@ -218,26 +216,13 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 	}
 			
 	/**
-	 * Calculate a short value that represents the location relevant tags that are set 
-	 * @param elem
-	 * @return the short value. Each bit in the value that is 1 means that the corresponding entry 
-	 * in mkgmapTagsArray is available.
-	 */
-	private short calcLocationTagsMask(Element elem){
-		short res = 0;
-		for (int i = 0; i < BoundaryQuadTree.mkgmapTagsArray.length; i++){
-			if (elem.getTag(BoundaryQuadTree.mkgmapTagsArray[i] ) != null)
-				res |= (1 << i);
-		}
-		return res;
-	}
-
-	/**
-	 * Create a string with location relevant tags ordered by admin_level
-	 * @param elem
+	 * Debugging:
+	 * Create a string with location relevant tags ordered by admin_level.
+	 * Can be used to compare results with tools like diff.
+	 * @param elem the element 
 	 * @return A new String object
 	 */
-	private String tagsToString(Element elem){
+	private String locationTagsToString(Element elem){
 		StringBuilder res = new StringBuilder();
 		for (int i = BoundaryQuadTree.mkgmapTagsArray.length-1; i >= 0; --i){
 			String tagVal = elem.getTag(BoundaryQuadTree.mkgmapTagsArray[i] );
