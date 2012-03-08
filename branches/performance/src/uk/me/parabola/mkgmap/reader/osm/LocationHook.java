@@ -42,6 +42,9 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 
 	
 	public static final String BOUNDS_OPTION = "bounds";
+	/** this static object is used to synchronize the check if the bounds directory contains any bounds */
+	private static final Object BOUNDS_CHECK_LOCK = new Object();
+	
 	
 	private static String checkedBoundaryDirName;
 	private static boolean checkBoundaryDirOk;
@@ -67,7 +70,7 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 			boundaryDirName = props.getProperty("bounds", "bounds");
 			long t1 = System.currentTimeMillis();
 
-			synchronized (BOUNDS_OPTION) {
+			synchronized (BOUNDS_CHECK_LOCK) {
 				// checking of the boundary dir is expensive
 				// check once only and reuse the result
 				if (boundaryDirName.equals(checkedBoundaryDirName)) {
