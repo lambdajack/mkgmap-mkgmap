@@ -145,20 +145,24 @@ public class BoundaryUtil {
 					bqt = BoundaryUtil.loadQuadTreeFromStream(stream, boundaryFileName, searchBbox, props);
 				}
 			} else if (boundaryDirName.endsWith(".zip")) {
-				// a zip file can contain a directory structure, so we 
-				// parse the complete directory until we find a matching entry
-				Enumeration<? extends ZipEntry> entries;
-				ZipFile zipFile;
-				zipFile = new ZipFile(boundaryDirName);
-				entries = zipFile.entries();
-				while (entries.hasMoreElements()) {
-					ZipEntry entry = (ZipEntry) entries
-							.nextElement();
-					if (entry.getName().endsWith(boundaryFileName)) {
-						bqt = BoundaryUtil.loadQuadTreeFromStream(zipFile.getInputStream(entry), 
-								boundaryFileName, searchBbox, props);
-						break;
+				ZipFile zipFile = new ZipFile(boundaryDirName);
+				// try direct access
+				ZipEntry entry = zipFile.getEntry(boundaryFileName);
+				if (entry == null){
+					// a zip file can contain a directory structure, so we 
+					// parse the complete directory until we find a matching entry
+					Enumeration<? extends ZipEntry> entries = zipFile.entries();
+					while (entries.hasMoreElements()) {
+						ZipEntry testEntry = entries.nextElement();
+						if (testEntry.getName().endsWith(boundaryFileName)) {
+							entry = testEntry;
+							break; // found
+						}
 					}
+				}
+				if (entry != null) {
+					bqt = BoundaryUtil.loadQuadTreeFromStream(zipFile.getInputStream(entry), 
+							boundaryFileName, searchBbox, props);
 				}
 				zipFile.close();
 			} else{ 
@@ -361,13 +365,11 @@ public class BoundaryUtil {
 				}
 			}
 			else if (boundaryDir.getName().endsWith(".zip")){
-				Enumeration<? extends ZipEntry> entries;
-				ZipFile zipFile;
 				try {
-					zipFile = new ZipFile(dirName);
-					entries = zipFile.entries();
+					ZipFile zipFile = new ZipFile(dirName);
+					Enumeration<? extends ZipEntry> entries = zipFile.entries();
 					while(entries.hasMoreElements()) {
-						ZipEntry entry = (ZipEntry)entries.nextElement();
+						ZipEntry entry = entries.nextElement();
 						if (entry.getName().endsWith(".bnd"))
 							names.add(entry.getName());
 					}
