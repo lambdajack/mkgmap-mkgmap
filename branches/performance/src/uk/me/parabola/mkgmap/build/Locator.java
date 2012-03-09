@@ -260,7 +260,7 @@ public class Locator {
 			return null;
 
 		Collection<MapPoint> nextCityList = cityMap.get(p.getCity());
-		if (nextCityList == null) {
+		if (nextCityList.isEmpty()) {
 			return null;
 		}
 
@@ -304,7 +304,7 @@ public class Locator {
 			cityCandidate = cityCandidate.trim();
 
 			Collection<MapPoint> candidateCityList = cityMap.get(cityCandidate);
-			if (candidateCityList != null) {
+			if (candidateCityList.isEmpty() == false) {
 				if (nextCityList == null) {
 					nextCityList = new ArrayList<MapPoint>(candidateCityList.size());
 				}
