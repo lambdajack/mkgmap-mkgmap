@@ -110,6 +110,7 @@ public class BoundaryPreparer extends Preparer {
 			return true;
 		this.boundaryFilename = props.getProperty("createboundsfile", null);
 		this.inDir = props.getProperty("bounds", "bounds");
+		this.outDir = props.getProperty("bounds", "bounds");
 		return boundaryFilename != null;
 	}
 
