@@ -38,6 +38,8 @@ public class BoundaryLister {
 		for (String bndFile : bndFileNames) {
 			out.println(bndFile + "****************");
 			BoundaryQuadTree bqt = BoundaryUtil.loadQuadTree(boundsdir, bndFile);
+			if (bqt == null)
+				break;
 			Map<String, Tags> map = bqt.getTagsMap(); 
 			for ( Entry<String, Tags>  entry: map.entrySet()) {
 				TreeMap<String,String> btree = new TreeMap<String, String>();

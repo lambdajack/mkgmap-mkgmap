@@ -43,8 +43,9 @@ public class BoundarySaver {
 	private static final Logger log = Logger.getLogger(BoundarySaver.class);
 
 	public static final String LEGACY_DATA_FORMAT = ""; // legacy code just wrote the svn release or "svn"
-	public static final String RAW_DATA_FORMAT = "raw";
-	public static final String QUADTREE_DATA_FORMAT = "quadtree";
+	public static final String RAW_DATA_FORMAT = "RAW";
+	public static final String QUADTREE_DATA_FORMAT = "QUADTREE";
+	public static final int CURRENT_RECORD_ID = 1;
 
 	private final File boundaryDir;
 	private final String dataFormat;
@@ -324,8 +325,23 @@ public class BoundarySaver {
 
 	private void writeDefaultInfos(OutputStream stream) throws IOException {
 		DataOutputStream dos = new DataOutputStream(stream);
-		dos.writeUTF(Version.VERSION + "_" + dataFormat);
+		dos.writeUTF("BND");
 		dos.writeLong(System.currentTimeMillis());
+		
+		// write the header part 2
+		// write it first to a byte array to be able to calculate the length of the header
+		ByteArrayOutputStream headerStream = new ByteArrayOutputStream();
+		DataOutputStream headerDataStream = new DataOutputStream(headerStream);
+		headerDataStream.writeUTF(dataFormat);
+		headerDataStream.writeInt(CURRENT_RECORD_ID);
+		headerDataStream.writeUTF(Version.VERSION);
+		headerDataStream.close();
+		
+		byte[] header2 = headerStream.toByteArray();
+		// write the length of the header part 2 so that it is possible to add
+		// values in the future
+		dos.writeInt(header2.length);
+		dos.write(header2);
 		dos.flush();
 	}
 
@@ -356,11 +372,11 @@ public class BoundarySaver {
 		}
 		try {
 
+			dos.writeUTF(boundary.getId());
+			
 			// write the tags
 			int noOfTags = boundary.getTags().size();
-			dos.writeInt(noOfTags+1);
-			dos.writeUTF("mkgmap:boundaryid");
-			dos.writeUTF(boundary.getId());
+			dos.writeInt(noOfTags);
 
 			Iterator<Entry<String, String>> tagIter = boundary.getTags()
 					.entryIterator();
@@ -375,14 +391,12 @@ public class BoundarySaver {
 					+ boundary.getTags().toString();
 
 			writeArea(dos,boundary.getArea());
-			//writeArea(dos,area);
 			dos.close();
 
 			// now start to write into the real stream
 
 			// first write the bounding box so that is possible to skip the
-			// complete
-			// entry
+			// complete entry
 			uk.me.parabola.imgfmt.app.Area bbox = Java2DConverter
 					.createBbox(boundary.getArea());
 			DataOutputStream dOutStream = new DataOutputStream(stream);

@@ -351,7 +351,7 @@ public class BoundaryQuadTree {
 						String refs = inpStream.readUTF();
 						if (refs.isEmpty()) 
 							refs = null;
-						Area area = BoundaryUtil.readArea(inpStream);
+						Area area = BoundaryUtil.readAreaAsPath(inpStream);
 						if (area.isEmpty() == false){
 							root.add(area, refs, id, treePath);
 						}

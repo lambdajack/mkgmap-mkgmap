@@ -16,6 +16,7 @@ import java.awt.geom.Area;
 import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.File;
@@ -24,7 +25,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
@@ -32,6 +32,7 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Tags;
@@ -42,6 +43,10 @@ import uk.me.parabola.util.Java2DConverter;
 public class BoundaryUtil {
 	private static final Logger log = Logger.getLogger(BoundaryUtil.class);
 
+	private static final int UNKNOWN_DATA_FORMAT = 0;
+	private static final int LEGACY_DATA_FORMAT = 1;
+	private static final int RAW_DATA_FORMAT_V1 = 2;
+	private static final int QUADTREE_DATA_FORMAT_V1 = 3;
 	
 	/**
 	 * Calculate the polygons that describe the area.
@@ -169,7 +174,7 @@ public class BoundaryUtil {
 				log.error("Cannot read " + boundaryDir);
 			}
 		} catch (IOException exp) {
-			log.warn("Cannot load boundary file", boundaryFileName+ ".", exp);
+			log.error("Cannot load boundary file" + boundaryFileName + "." + exp);
 		}
 		return bqt;
 	}
@@ -182,7 +187,7 @@ public class BoundaryUtil {
 	 * @return a new Area object or null if not successful 
 	 * @throws IOException
 	 */
-	public static Area readArea(DataInputStream inpStream) throws IOException{
+	public static Area readAreaAsPath(DataInputStream inpStream) throws IOException{
 		Path2D.Float path = new Path2D.Float();
 
 		int windingRule = inpStream.readInt();
@@ -225,7 +230,55 @@ public class BoundaryUtil {
 	}
 	
 	/**
-	 * Read boundary info saved in RAW_DATA_FORMAT. 
+	 * code to read the area info from a stream in legacy format 
+	 * @param inpStream the already opened DataInputStream
+	 * @param id  the boundary Id (used for meaningful messages)
+	 * @return the Area (can be empty)
+	 * @throws IOException
+	 */
+	public static Area readAreaLegacyFormat(DataInputStream inpStream, String id) throws IOException{
+		int noBElems = inpStream.readInt();
+	
+		// the first area is always an outer area and will be assigned to the variable
+		Area area = null;
+	
+		for (int i = 0; i < noBElems; i++) {
+			boolean outer = inpStream.readBoolean();
+			int noCoords = inpStream.readInt();
+			log.debug("No of coords",noCoords);
+			List<Coord> points = new ArrayList<Coord>(noCoords);
+			for (int c = 0; c < noCoords; c++) {
+				int lat = inpStream.readInt();
+				int lon = inpStream.readInt();
+				points.add(new Coord(lat, lon));
+			}
+	
+			Area elemArea = Java2DConverter.createArea(points);
+			if (outer) {
+				if (area == null) {
+					area = elemArea;
+				} else {
+					area.add(elemArea);
+				}
+			} else {
+				if (area == null) {
+					log.warn("Boundary: " + id);
+					log.warn("Outer way is tagged incosistently as inner way. Ignoring it.");
+					log.warn("Points: "+points);
+				} else {
+					area.subtract(elemArea);
+				}
+			}
+		}
+		if (area == null)
+			area = new Area();
+		return area;
+	}
+
+	
+	/**
+	 * Read boundary info saved in RAW_DATA_FORMAT 
+	 * (written by 1st pass of preparer)
 	 * @param inpStream the already opened DataInputStream
 	 * @param fname the related file name of the *.bnd file
 	 * @param bbox a bounding box. Data outside of this box is ignored.
@@ -237,16 +290,7 @@ public class BoundaryUtil {
 			uk.me.parabola.imgfmt.app.Area bbox) throws IOException			{
 		List<Boundary> boundaryList = new ArrayList<Boundary>();
 
-
 		try {
-			// 1st read the mkgmap release the boundary file is created by
-			String mkgmapRel = inpStream.readUTF();
-			long createTime = inpStream.readLong();
-			
-			if (log.isDebugEnabled()) {
-				log.debug("File created by mkgmap release",mkgmapRel,"at",new Date(createTime));
-			}
-			
 			while (true) {
 				int minLat = inpStream.readInt();
 				int minLong = inpStream.readInt();
@@ -258,58 +302,79 @@ public class BoundaryUtil {
 				int bSize = inpStream.readInt();
 				log.debug("Size:",bSize);
 
-				if (bbox == null || bbox.intersects(rBbox)) {
+				if ( bbox == null || bbox.intersects(rBbox)) {
+					log.debug("Bbox intersects. Load the boundary");
+					String id = inpStream.readUTF();
+					Tags tags = new Tags();
+					int noOfTags = inpStream.readInt();
+					for (int i = 0; i < noOfTags; i++) {
+						String name = inpStream.readUTF();
+						String value = inpStream.readUTF();
+						tags.put(name, value.intern()); 					
+					}
+					Area area = readAreaAsPath(inpStream);
+					if (area != null) {
+						Boundary boundary = new Boundary(area, tags,id);
+						boundaryList.add(boundary);
+					} else {
+						log.warn("Boundary "+tags+" does not contain any valid area in file " + fname);
+					}
+
+				} else {
+					log.debug("Bbox does not intersect. Skip",bSize);
+					inpStream.skipBytes(bSize);
+				}
+			}
+		} catch (EOFException exp) {
+			// it's always thrown at the end of the file
+			// log.error("Got EOF at the end of the file");
+		}  		
+		return boundaryList;
+	}
+
+	/**
+	 * Read boundary info saved in legacy format. 
+	 * @param inpStream the already opened DataInputStream
+	 * @param fname the related file name of the *.bnd file
+	 * @param bbox a bounding box. Data outside of this box is ignored.
+	 * @return
+	 * @throws IOException
+	 */
+	private static List<Boundary> readStreamLegacyFormat(
+			DataInputStream inpStream, String fname,
+			uk.me.parabola.imgfmt.app.Area bbox) throws IOException			{
+		List<Boundary> boundaryList = new ArrayList<Boundary>();
+
+		try {
+			while (true) {
+				int minLat = inpStream.readInt();
+				int minLong = inpStream.readInt();
+				int maxLat = inpStream.readInt();
+				int maxLong = inpStream.readInt();
+				log.debug("Next boundary. Lat min:",minLat,"max:",maxLat,"Long min:",minLong,"max:",maxLong);
+				uk.me.parabola.imgfmt.app.Area rBbox = new uk.me.parabola.imgfmt.app.Area(
+						minLat, minLong, maxLat, maxLong);
+				int bSize = inpStream.readInt();
+				log.debug("Size:",bSize);
+
+				if ( bbox == null || bbox.intersects(rBbox)) {
 					log.debug("Bbox intersects. Load the boundary");
 					Tags tags = new Tags();
 					int noOfTags = inpStream.readInt();
-					String id = "?"; 
+					String id = "?";
 					for (int i = 0; i < noOfTags; i++) {
 						String name = inpStream.readUTF();
 						String value = inpStream.readUTF();
 						// boundary.id was always saved together with the other tags
 						if (name.equals("mkgmap:boundaryid")){  
-						    id = value;								
-						    continue; 
+							id = value;								
+							continue;
 						}
 						if (name.equals("mkgmap:lies_in") == false) // ignore info from older preparer version 
 							tags.put(name, value.intern()); 					
 					}
-
-					int noBElems = inpStream.readInt();
-					assert noBElems > 0;
-					
-					// the first area is always an outer area and will be assigned to the variable
 					Area area = null;
-					
-					for (int i = 0; i < noBElems; i++) {
-						boolean outer = inpStream.readBoolean();
-						int noCoords = inpStream.readInt();
-						log.debug("No of coords",noCoords);
-						List<Coord> points = new ArrayList<Coord>(noCoords);
-						for (int c = 0; c < noCoords; c++) {
-							int lat = inpStream.readInt();
-							int lon = inpStream.readInt();
-							points.add(new Coord(lat, lon));
-						}
-
-						Area elemArea = Java2DConverter.createArea(points);
-						if (outer) {
-							if (area == null) {
-								area = elemArea;
-							} else {
-								area.add(elemArea);
-							}
-						} else {
-							if (area == null) {
-								log.warn("Boundary: "+tags);
-								log.warn("Outer way is tagged incosistently as inner way. Ignoring it.");
-								log.warn("Points: "+points);
-							} else {
-								area.subtract(elemArea);
-							}
-						}
-					}
-
+					area = readAreaLegacyFormat(inpStream, id);
 					if (area != null) {
 						Boundary boundary = new Boundary(area, tags,id);
 						boundaryList.add(boundary);
@@ -429,8 +494,8 @@ public class BoundaryUtil {
 	}
 
 	/**
-	 * Create and fill a BoundaryQuadTree. Two formats are supported: RAW_DATA_FORMAT and
-	 * QUADTREE_DATA_FORMAT. 
+	 * Create and fill a BoundaryQuadTree. Read the header of the stream to detect
+	 * the proper reading routine for the different supported formats.
 	 * @param stream an already opened InputStream
 	 * @param fname the file name of the corresponding *.bnd file
 	 * @param searchBbox a bounding box or null. If not null, area info outside of this
@@ -451,18 +516,57 @@ public class BoundaryUtil {
 
 			try {
 				// 1st read the mkgmap release the boundary file is created by
-				String mkgmapRel = inpStream.readUTF();
+				String mkgmapRel = "?";
+				String firstId = inpStream.readUTF();
+				int format = UNKNOWN_DATA_FORMAT;
 				long createTime = inpStream.readLong();
+				if ("BND".equals(firstId) == false){
+					if (firstId.endsWith("_raw" ) || firstId.endsWith("_quadtree")){
+						// none-trunk version formats
+					}
+					else
+						format = LEGACY_DATA_FORMAT;
+					mkgmapRel = firstId;
+				}
+				else {
+					int headerLength = inpStream.readInt();
+					byte[] header = new byte[headerLength];
+					int bytesRead = 0;
+					while (bytesRead < headerLength) {
+						int nBytes = inpStream.read(header, bytesRead, headerLength-bytesRead);
+						if (nBytes<0) {
+							throw new IOException("Cannot read header with size "+headerLength);
+						} else {
+							bytesRead += nBytes;
+						}
+					}
+					
+					ByteArrayInputStream rawHeaderStream = new ByteArrayInputStream(header);
+					DataInputStream headerStream =new DataInputStream(rawHeaderStream);
+					String dataFormat = (rawHeaderStream.available() > 0 ? headerStream.readUTF() : "RAW");
+					int recordVersion = (rawHeaderStream.available() > 0 ? headerStream.readInt() : RAW_DATA_FORMAT_V1);
+					mkgmapRel = (rawHeaderStream.available() > 0 ? headerStream.readUTF() : "unknown");
+					if ("RAW".equals(dataFormat) && recordVersion == 1)
+						format = RAW_DATA_FORMAT_V1;
+					else if ("QUADTREE".equals(dataFormat) && recordVersion == 1)
+						format = QUADTREE_DATA_FORMAT_V1;
+				}
+				if (format == UNKNOWN_DATA_FORMAT)
+					throw new FormatException("Unsupported file format ");
 
 				if (log.isDebugEnabled()) {
 					log.debug("File created by mkgmap release",mkgmapRel,"at",new Date(createTime));
 				}
-				if (mkgmapRel.endsWith(BoundarySaver.QUADTREE_DATA_FORMAT)){
+				
+				
+				if (format == QUADTREE_DATA_FORMAT_V1)
 					bqt = new BoundaryQuadTree(inpStream, qtBbox, searchBbox, props);
-					
-				}
-				else{
-					List<Boundary> boundaryList = readStreamRawFormat(inpStream, fname, searchBbox);
+				else{ 
+					List<Boundary> boundaryList;
+					if (format == RAW_DATA_FORMAT_V1)
+						boundaryList = readStreamRawFormat(inpStream, fname,searchBbox);
+					else 
+						boundaryList = readStreamLegacyFormat(inpStream, fname,searchBbox);
 					if (boundaryList == null || boundaryList.isEmpty())
 						return null;
 					bqt = new BoundaryQuadTree(qtBbox, boundaryList, props);
@@ -470,6 +574,9 @@ public class BoundaryUtil {
 			} catch (EOFException exp) {
 				// it's always thrown at the end of the file
 				//				log.error("Got EOF at the end of the file");
+			} 
+			catch (FormatException exp) {
+				log.error("Failed to read boundary file " + fname + " " + exp.getMessage());
 			} 
 			inpStream.close();
 		} finally {
@@ -479,17 +586,7 @@ public class BoundaryUtil {
 		return bqt;
 	}
 	
-	public static class BoundsComparator implements Comparator<Boundary>{
-
-		public int compare(Boundary o1, Boundary o2) {
-			if (o1 == o2) {
-				return 0;
-			}
-			String id1 = o1.getId();
-			String id2 = o2.getId();
-			return id1.compareTo(id2);
-		}
-	}
+	
 	/**
 	 * Helper to ease the reporting of errors. Creates a java code snippet 
 	 * that can be compiled to have the same area.
