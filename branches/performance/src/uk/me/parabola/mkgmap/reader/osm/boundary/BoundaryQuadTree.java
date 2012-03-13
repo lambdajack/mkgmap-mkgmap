@@ -530,7 +530,7 @@ public class BoundaryQuadTree {
 						res += i+1 + "=" + tagVal + ";";
 					}
 				}
-				System.out.println(prefix + " " +  n + ":" + nodeElem.boundaryId + " " + nodeElem.tagMask + " " + res );
+				System.out.println(prefix + " " + treePath + " " +  n + ":" + nodeElem.boundaryId + " " + nodeElem.tagMask + " " + res );
 				++n;
 			}
 		}
@@ -839,13 +839,12 @@ public class BoundaryQuadTree {
 						if (chkMsg != null){
 							// warning: intersection of areas with equal levels   
 							log.warn(chkMsg);
-							continue;
 						}
 
 						if (toAdd.tagMask != POSTCODE_ONLY){
 							currElem.addLocInfo(toAdd);
 						}
-						continue;
+						continue; // no need to create new intersection area
 					}
 
 					NodeElem intersect = new NodeElem(currElem, toAddxCurr, i);
@@ -859,8 +858,8 @@ public class BoundaryQuadTree {
 							intersect.saveGPX("warn_inter", treePath);
 						}
 						log.warn(chkMsg);
-						// just remove overlap from toAdd 
 						toAdd.area = toAddMinusCurr;
+						currElem.addLocInfo(toAdd);
 						continue;
 					}
 

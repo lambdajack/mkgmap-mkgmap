@@ -45,11 +45,11 @@ public class BoundaryCoverageUtil {
 	private static void saveArea(String attribute, Integer level, Area covered) {
 		String gpxBasename = "gpx/summary/"+attribute+"/admin_level=" + level;
 
-		List<List<Coord>> emptyPolys = Java2DConverter
+		List<List<Coord>> coveredPolys = Java2DConverter
 				.areaToShapes(covered);
-		Collections.reverse(emptyPolys);
+		Collections.reverse(coveredPolys);
 		int i = 0;
-		for (List<Coord> emptyPart : emptyPolys) {
+		for (List<Coord> emptyPart : coveredPolys) {
 			Way w = new Way(0, emptyPart);
 			String attr = w.clockwise() ? "o" : "i";
 			GpxCreator.createGpx(gpxBasename + "/" + i + "_" + attr,
