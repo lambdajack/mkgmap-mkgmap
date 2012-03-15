@@ -64,77 +64,68 @@ public class BoundaryCoverageUtil {
 		ExecutorCompletionService<String> executor = new ExecutorCompletionService<String>(
 				excSvc);
 		String workDirName = args[0];
-		System.out.println(workDirName );
-		File boundaryDir = new File(workDirName );
+		System.out.println(workDirName);
+		File boundaryDir = new File(workDirName);
 		List<String> boundaryFileNames;
 		if (boundaryDir.isFile() && boundaryDir.getName().endsWith(".bnd")) {
-			workDirName  = boundaryDir.getParent();
-			if (workDirName  == null)
-				workDirName  = ".";
+			workDirName = boundaryDir.getParent();
+			if (workDirName == null)
+				workDirName = ".";
 			boundaryFileNames = new ArrayList<String>();
 			boundaryFileNames.add(boundaryDir.getName());
 		} else {
 			boundaryFileNames = BoundaryUtil.getBoundaryDirContent(workDirName);
 		}
+		
 		final String boundaryDirName = workDirName;
-		final Map<Integer, BlockingQueue<Area>> coveredAreas = new Hashtable<Integer, BlockingQueue<Area>>();
 		for (int adminlevel = 2; adminlevel < 12; adminlevel++) {
-			BlockingQueue<Area> queue = new LinkedBlockingQueue<Area>();
+			final BlockingQueue<Area> queue = new LinkedBlockingQueue<Area>();
 			for (int i = 0; i < 12; i++) {
 				queue.add(new Area());
 			}
-			coveredAreas.put(adminlevel, queue);
-		}
 
-		
-		for (final String boundaryFileName : boundaryFileNames) {
-			executor.submit(new Runnable() {
-				public void run() {
-					BoundaryCoverageUtil converter = new BoundaryCoverageUtil(
-							boundaryDirName,boundaryFileName);
-					for (int adminLevel = 2; adminLevel < 12; adminLevel++) {
+			final int adminLevel = adminlevel;
+			for (final String boundaryFileName : boundaryFileNames) {
+				executor.submit(new Runnable() {
+					public void run() {
+						BoundaryCoverageUtil converter = new BoundaryCoverageUtil(
+								boundaryDirName, boundaryFileName);
 
 						Area covered = converter.getCoveredArea(adminLevel);
-						
+
 						if (covered != null && covered.isEmpty() == false) {
-							BlockingQueue<Area> qArea = coveredAreas
-									.get(adminLevel);
-							
-							Area aArea = qArea.poll();
+							Area aArea = queue.poll();
 							aArea.add(covered);
-							qArea.add(aArea);
+							queue.add(aArea);
 						}
 					}
-				}
-			}, boundaryFileName);
-		}
-
-		long bCompleted = 0;
-		long bSize = boundaryFileNames.size();
-		for (int bi = 1; bi <= boundaryFileNames.size(); bi++) {
-			try {
-				String fName = executor.take().get();
-				bCompleted ++;
-				System.out.format("%4.2f %% of all files completed. %s%n",
-						(bCompleted * 100.0d / bSize), fName);
-			} catch (InterruptedException exp) {
-				// TODO Auto-generated catch block
-				exp.printStackTrace();
-			} catch (ExecutionException exp) {
-				// TODO Auto-generated catch block
-				exp.printStackTrace();
+				}, boundaryFileName);
 			}
-		}
-		
-		for (int adminLevel = 2; adminLevel < 12; adminLevel++) {
-			System.out.println("Start joining for admin_level " + adminLevel);
-			BlockingQueue<Area> queue = coveredAreas.remove(adminLevel);
+
+			long bCompleted = 0;
+			long bSize = boundaryFileNames.size();
+			for (int bi = 1; bi <= boundaryFileNames.size(); bi++) {
+				try {
+					String fName = executor.take().get();
+					bCompleted++;
+					System.out.format("%4.2f %% of all files completed. %s%n",
+							(bCompleted * 100.0d / bSize), fName);
+				} catch (InterruptedException exp) {
+					// TODO Auto-generated catch block
+					exp.printStackTrace();
+				} catch (ExecutionException exp) {
+					// TODO Auto-generated catch block
+					exp.printStackTrace();
+				}
+			}
+
+			System.out.println("Start joining for admin_level " + adminlevel);
 			Area a = new Area();
 			while (queue.isEmpty() == false) {
 				a.add(queue.poll());
 			}
 			System.out.println("Joining finished. Saving results.");
-			saveArea("covered", adminLevel, a);
+			saveArea("covered", adminlevel, a);
 			// }
 		}
 		excSvc.shutdown();
