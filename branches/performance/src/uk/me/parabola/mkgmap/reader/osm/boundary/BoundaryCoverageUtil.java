@@ -16,15 +16,19 @@ import java.awt.geom.Area;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Hashtable;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
+import java.util.ListIterator;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.mkgmap.reader.osm.Way;
@@ -32,7 +36,7 @@ import uk.me.parabola.util.GpxCreator;
 import uk.me.parabola.util.Java2DConverter;
 
 public class BoundaryCoverageUtil {
-	private final BoundaryQuadTree bqt; 
+	private final BoundaryQuadTree bqt;
 
 	public BoundaryCoverageUtil(String boundaryDirName, String boundaryFileName) {
 		bqt = BoundaryUtil.loadQuadTree(boundaryDirName, boundaryFileName);
@@ -41,91 +45,134 @@ public class BoundaryCoverageUtil {
 	public Area getCoveredArea(int admLevel) {
 		return bqt.getCoveredArea(admLevel);
 	}
-	
-	private static void saveArea(String attribute, Integer level, Area covered) {
-		String gpxBasename = "gpx/summary/"+attribute+"/admin_level=" + level;
 
-		List<List<Coord>> coveredPolys = Java2DConverter
-				.areaToShapes(covered);
+	private static void saveArea(String attribute, Integer level, Area covered) {
+		String gpxBasename = "gpx/summary/" + attribute + "/admin_level="
+				+ level;
+
+		List<List<Coord>> coveredPolys = Java2DConverter.areaToShapes(covered);
 		Collections.reverse(coveredPolys);
 		int i = 0;
-		for (List<Coord> emptyPart : coveredPolys) {
-			Way w = new Way(0, emptyPart);
+		for (List<Coord> coveredPart : coveredPolys) {
+			Way w = new Way(0, coveredPart);
 			String attr = w.clockwise() ? "o" : "i";
-			GpxCreator.createGpx(gpxBasename + "/" + i + "_" + attr,
-					emptyPart);
+			GpxCreator.createGpx(gpxBasename + "/" + i + "_" + attr, coveredPart);
 			i++;
 		}
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 		int processors = Runtime.getRuntime().availableProcessors();
 		ExecutorService excSvc = Executors.newFixedThreadPool(processors);
-		ExecutorCompletionService<String> executor = new ExecutorCompletionService<String>(
+		ExecutorCompletionService<Area> executor = new ExecutorCompletionService<Area>(
 				excSvc);
 		String workDirName = args[0];
 		System.out.println(workDirName);
 		File boundaryDir = new File(workDirName);
-		List<String> boundaryFileNames;
+		final Set<String> boundsFileNames = new HashSet<String>();
 		if (boundaryDir.isFile() && boundaryDir.getName().endsWith(".bnd")) {
 			workDirName = boundaryDir.getParent();
 			if (workDirName == null)
 				workDirName = ".";
-			boundaryFileNames = new ArrayList<String>();
-			boundaryFileNames.add(boundaryDir.getName());
+			boundsFileNames.add(boundaryDir.getName());
 		} else {
-			boundaryFileNames = BoundaryUtil.getBoundaryDirContent(workDirName);
+			boundsFileNames.addAll(BoundaryUtil
+					.getBoundaryDirContent(workDirName));
 		}
-		
+
+		int minLat = Integer.MAX_VALUE;
+		int maxLat = Integer.MIN_VALUE;
+		int minLon = Integer.MAX_VALUE;
+		int maxLon = Integer.MIN_VALUE;
+		for (String fileName : boundsFileNames) {
+			String[] parts = fileName.substring("bounds_".length(),
+					fileName.length() - 4).split("_");
+			int lat = Integer.valueOf(parts[0]);
+			int lon = Integer.valueOf(parts[1]);
+			if (lat < minLat)
+				minLat = lat;
+			if (lat > maxLat)
+				maxLat = lat;
+			if (lon < minLon)
+				minLon = lon;
+			if (lon > maxLon)
+				maxLon = lon;
+		}
+		System.out.format("Covered area: (%d,%d)-(%d,%d)", minLat, minLon,
+				maxLat, maxLon);
+		int maxSteps = 2;
+
 		final String boundaryDirName = workDirName;
 		for (int adminlevel = 2; adminlevel < 12; adminlevel++) {
-			final BlockingQueue<Area> queue = new LinkedBlockingQueue<Area>();
-			for (int i = 0; i < 12; i++) {
-				queue.add(new Area());
-			}
-
+			final Set<String> boundaryFileNames = Collections.synchronizedSet(new HashSet<String>(boundsFileNames));
 			final int adminLevel = adminlevel;
-			for (final String boundaryFileName : boundaryFileNames) {
-				executor.submit(new Runnable() {
-					public void run() {
-						BoundaryCoverageUtil converter = new BoundaryCoverageUtil(
-								boundaryDirName, boundaryFileName);
+			final Queue<Future<Area>> areas = new LinkedBlockingQueue<Future<Area>>();
+			for (int lat = minLat; lat <= maxLat; lat += maxSteps
+					* BoundaryUtil.RASTER) {
+				for (int lon = minLon; lon <= maxLon; lon += maxSteps
+						* BoundaryUtil.RASTER) {
+					for (int latStep = 0; latStep < maxSteps
+							&& lat + latStep * BoundaryUtil.RASTER <= maxLat; latStep++) {
+						for (int lonStep = 0; lonStep < maxSteps
+								&& lon + lonStep * BoundaryUtil.RASTER <= maxLon; lonStep++) {
+							final int fLat = lat + latStep
+									* BoundaryUtil.RASTER;
+							final int fLon = lon + lonStep
+									* BoundaryUtil.RASTER;
 
-						Area covered = converter.getCoveredArea(adminLevel);
-
-						if (covered != null && covered.isEmpty() == false) {
-							Area aArea = queue.poll();
-							aArea.add(covered);
-							queue.add(aArea);
+							areas.add(executor.submit(new Callable<Area>() {
+								public Area call() {
+									String filename = "bounds_" + fLat + "_"
+											+ fLon + ".bnd";
+									if (boundaryFileNames.contains(filename) == false) {
+										return new Area();
+									}
+									BoundaryCoverageUtil converter = new BoundaryCoverageUtil(
+											boundaryDirName, filename);
+									boundaryFileNames.remove(filename);
+									System.out.format("%5d bounds files remaining\n", boundaryFileNames.size());
+									return converter.getCoveredArea(adminLevel);
+								}
+							}));
 						}
 					}
-				}, boundaryFileName);
-			}
-
-			long bCompleted = 0;
-			long bSize = boundaryFileNames.size();
-			for (int bi = 1; bi <= boundaryFileNames.size(); bi++) {
-				try {
-					String fName = executor.take().get();
-					bCompleted++;
-					System.out.format("%4.2f %% of all files completed. %s%n",
-							(bCompleted * 100.0d / bSize), fName);
-				} catch (InterruptedException exp) {
-					// TODO Auto-generated catch block
-					exp.printStackTrace();
-				} catch (ExecutionException exp) {
-					// TODO Auto-generated catch block
-					exp.printStackTrace();
 				}
 			}
 
-			System.out.println("Start joining for admin_level " + adminlevel);
-			Area a = new Area();
-			while (queue.isEmpty() == false) {
-				a.add(queue.poll());
+			final AtomicInteger mergeSteps = new AtomicInteger();
+			while (areas.size() > 1) {
+				final List<Future<Area>> toMerge = new ArrayList<Future<Area>>();
+				for (int i = 0; i < maxSteps * 2 && areas.isEmpty() == false; i++) {
+					toMerge.add(areas.poll());
+				}
+				mergeSteps.incrementAndGet();
+				areas.add(executor.submit(new Callable<Area>() {
+					public Area call() {
+						Area a = new Area();
+						ListIterator<Future<Area>> mergeAreas = toMerge
+								.listIterator();
+						while (mergeAreas.hasNext()) {
+							try {
+								a.add(mergeAreas.next().get());
+							} catch (InterruptedException exp) {
+								System.err.println(exp);
+							} catch (ExecutionException exp) {
+								System.err.println(exp);
+							}
+							mergeAreas.remove();
+						}
+						System.out.format("%5d merges remaining\n",mergeSteps.decrementAndGet());
+						return a;
+					}
+				}));
 			}
-			System.out.println("Joining finished. Saving results.");
-			saveArea("covered", adminlevel, a);
+			try {
+				Area finalArea = areas.poll().get();
+				System.out.println("Joining finished. Saving results.");
+				saveArea("covered", adminlevel, finalArea);
+			} catch (Exception exp) {
+				System.err.println(exp);
+			}
 			// }
 		}
 		excSvc.shutdown();
