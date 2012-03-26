@@ -551,7 +551,7 @@ public class BoundaryQuadTree {
 					
 					if (a.isEmpty())
 						continue;
-					Path2D.Float path = new Path2D.Float(a);
+					Path2D.Double path = new Path2D.Double(a);
 					a = new Area(path);
 					if (a.isEmpty())
 						continue;
@@ -805,9 +805,11 @@ public class BoundaryQuadTree {
 						// empty intersection: nothing to do
 						continue;
 					}
+					Path2D.Float path = new Path2D.Float(toAddxCurr);
+					Area testArea = new Area(path);
+					if (testArea.isEmpty())
+						continue;  // intersection would not be written to *.bnd file
 
-					// test if toAdd contains usable tag(s)
-					String chkMsg = currElem.checkAddTags(toAdd, bounds);
 					
 					Area toAddMinusCurr = new Area(toAdd.area);
 					toAddMinusCurr.subtract(currElem.area);
@@ -821,26 +823,25 @@ public class BoundaryQuadTree {
 						}
 					}
 
+					// test if toAdd contains usable tag(s)
+					String chkMsg = currElem.checkAddTags(toAdd, bounds);
+					// warning: intersection of areas with equal levels   
+					if (chkMsg != null){
+						if (DEBUG){
+							// save debug GPX for areas that wiil 
+							// appear in warning message below 
+							toAdd.saveGPX("warn_toAdd",treePath);
+							currElem.saveGPX("warn_curr",treePath);
+						}
+						log.warn(chkMsg);
+					}
+					
 					Area currMinusToAdd = new Area(currElem.area);
 					currMinusToAdd.subtract(toAdd.area);
+					// remove intersection part from toAdd
+					toAdd.area = toAddMinusCurr;
 					if (currMinusToAdd.isEmpty()){
 					    // curr is fully covered by toAdd 
-						if (DEBUG){
-							if (chkMsg != null){
-								// save debug GPX for areas that wiil 
-								// appear in warning message below 
-								toAdd.saveGPX("warn_toAdd",treePath);
-								currElem.saveGPX("warn_curr",treePath);
-							}
-						}
-						// remove intersection part from toAdd
-						toAdd.area = toAddMinusCurr;
-						
-						if (chkMsg != null){
-							// warning: intersection of areas with equal levels   
-							log.warn(chkMsg);
-						}
-
 						if (toAdd.tagMask != POSTCODE_ONLY){
 							currElem.addLocInfo(toAdd);
 						}
@@ -848,24 +849,14 @@ public class BoundaryQuadTree {
 					}
 
 					NodeElem intersect = new NodeElem(currElem, toAddxCurr, i);
-
-					if (chkMsg != null){
-						// if we get here we have  a partial overlapping of two 
-						// boundaries that have the same level
-						if (DEBUG){
-							toAdd.saveGPX("warn_toAdd", treePath);
-							currElem.saveGPX("warn_curr", treePath);
+					
+					if (DEBUG){
+						if (chkMsg != null)
 							intersect.saveGPX("warn_inter", treePath);
-						}
-						log.warn(chkMsg);
-						toAdd.area = toAddMinusCurr;
-						currElem.addLocInfo(toAdd);
-						continue;
 					}
 
-					// remove intersection part from the source areas
+					// remove intersection part also from curr 
 					currElem.area = currMinusToAdd;
-					toAdd.area = toAddMinusCurr;
 					
 					if (toAdd.tagMask != POSTCODE_ONLY){
 						// combine tag info in intersection
@@ -949,8 +940,8 @@ public class BoundaryQuadTree {
 					removeThis = true;
 				else {
 					Path2D.Float path = new Path2D.Float(chkRemove.area);
-					chkRemove.area = new Area(path);
-					if (chkRemove.area.isEmpty())
+					Area testArea = new Area(path);
+					if (testArea.isEmpty())
 						removeThis = true;
 				}
 				if (removeThis){
