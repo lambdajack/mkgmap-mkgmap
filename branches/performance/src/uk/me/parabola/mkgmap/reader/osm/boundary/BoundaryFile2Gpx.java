@@ -122,7 +122,7 @@ public class BoundaryFile2Gpx {
 						+ "/covered/admin_level=" + admLevel + "/" + admLevel + "_" + bId
 						+ "_";
 
-				Path2D.Float path = new Path2D.Float();
+				Path2D.Double path = new Path2D.Double();
 				List<Area> aList = areas.get(bId);
 				for (Area area : aList){
 					BoundaryUtil.addToPath(path, area);

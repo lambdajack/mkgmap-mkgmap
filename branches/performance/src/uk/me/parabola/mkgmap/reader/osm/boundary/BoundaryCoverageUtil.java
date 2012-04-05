@@ -98,7 +98,7 @@ public class BoundaryCoverageUtil {
 			if (lon > maxLon)
 				maxLon = lon;
 		}
-		System.out.format("Covered area: (%d,%d)-(%d,%d)", minLat, minLon,
+		System.out.format("Covered area: (%d,%d)-(%d,%d)\n", minLat, minLon,
 				maxLat, maxLon);
 		int maxSteps = 2;
 

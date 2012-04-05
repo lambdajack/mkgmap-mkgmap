@@ -629,7 +629,7 @@ public class BoundaryQuadTree {
 				a = new Area(area);
 				Area bboxArea = new Area(this.bbox);
 				// check if area lies entirely in quadtree bbox
-				if (bboxArea.contains(area.getBounds()) == false){
+				if (bboxArea.contains(area.getBounds2D()) == false){
 					// worst case: area and bbox partly intersect
 					a.intersect(bboxArea); 
 				}
@@ -667,7 +667,7 @@ public class BoundaryQuadTree {
 					List<Area> aList = areas.get(id);
 					if (aList == null)
 						continue;
-					Path2D.Float path = new Path2D.Float();
+					Path2D.Double path = new Path2D.Double();
 					for (Area area : aList){
 						BoundaryUtil.addToPath(path, area);
 					}
@@ -686,7 +686,7 @@ public class BoundaryQuadTree {
 		private Area getCoveredArea(Integer admLevel, String treePath){
 			HashMap<String,List<Area>> areas = new HashMap<String, List<Area>>();
 			this.getAreas(areas, treePath, admLevel);
-			Path2D.Float path = new Path2D.Float();
+			Path2D.Double path = new Path2D.Double();
 			for (Entry <String, List<Area>> entry : areas.entrySet()){
 				for (Area area: entry.getValue()){
 					BoundaryUtil.addToPath(path,area);
@@ -762,13 +762,13 @@ public class BoundaryQuadTree {
 		private void makeDistinct(String treePath){
 			if (isLeaf == false || nodes == null || nodes.size() <= 1)
 				return;
-			if (DEBUG)
+			if (DEBUG){
 				printNodes("start", treePath);
+			}
 			long t1 = System.currentTimeMillis();
 			
 			mergeEqualIds();
 			mergeLastRectangles();
-
 			if (DEBUG)
 				printNodes("prep", treePath);
 
@@ -778,7 +778,7 @@ public class BoundaryQuadTree {
 			for (int i=0; i < nodes.size(); i++){
 				NodeElem toAdd = nodes.get(i);
 				if (DEBUG){
-					if (treePath.equals(DEBUG_TREEPATH)){
+					if (treePath.equals(DEBUG_TREEPATH) || DEBUG_TREEPATH.equals("all")){
 						for (NodeElem nodeElem: reworked){
 							nodeElem.saveGPX("debug"+i,treePath);
 						}			
@@ -800,19 +800,14 @@ public class BoundaryQuadTree {
 					// the bounding boxes intersect, so we have to find out if the areas also intersect
 					Area toAddxCurr = new Area(currElem.area);
 					toAddxCurr.intersect(toAdd.area);
-					
-					if (toAddxCurr.isEmpty()){
-						// empty intersection: nothing to do
-						continue;
+										
+					if (!isWritable(toAddxCurr)){
+						continue; // empty or only too small fragments 
 					}
-					Path2D.Float path = new Path2D.Float(toAddxCurr);
-					Area testArea = new Area(path);
-					if (testArea.isEmpty())
-						continue;  // intersection would not be written to *.bnd file
-
 					
 					Area toAddMinusCurr = new Area(toAdd.area);
 					toAddMinusCurr.subtract(currElem.area);
+
 					if (toAddMinusCurr.isEmpty()){
 						// toadd is fully covered by curr
 						if (toAdd.tagMask == POSTCODE_ONLY){
@@ -838,9 +833,10 @@ public class BoundaryQuadTree {
 					
 					Area currMinusToAdd = new Area(currElem.area);
 					currMinusToAdd.subtract(toAdd.area);
+					
 					// remove intersection part from toAdd
 					toAdd.area = toAddMinusCurr;
-					if (currMinusToAdd.isEmpty()){
+					if (!isWritable(currMinusToAdd)){
 					    // curr is fully covered by toAdd 
 						if (toAdd.tagMask != POSTCODE_ONLY){
 							currElem.addLocInfo(toAdd);
@@ -927,7 +923,7 @@ public class BoundaryQuadTree {
 		}
 
 		/**
-		 * The mergeBoundaries() algorithm can create almost empty
+		 * The mergeBoundaries() algorithm can create empty
 		 * areas (points, lines, or extremely small intersections). 
 		 * These are removed here.
 		 * @param treePath
@@ -938,16 +934,18 @@ public class BoundaryQuadTree {
 				NodeElem chkRemove = nodes.get(j);
 				if (chkRemove.isValid() == false)
 					removeThis = true;
-				else {
-					Path2D.Float path = new Path2D.Float(chkRemove.area);
-					Area testArea = new Area(path);
-					if (testArea.isEmpty())
-						removeThis = true;
+				else if (this.bbox.intersects(chkRemove.area.getBounds2D()) == false){
+					// we might get here because of errors in java.awt.geom.Area
+					// sometimes, Area.subtract() seems to produce an area which 
+					// lies outside of original areas
+					removeThis = true;
+				}else if (!isWritable(chkRemove.area)){
+					removeThis = true;
 				}
 				if (removeThis){
 					nodes.remove(j);
 				}
-			}			
+			}			 		
 		}
 
 		/**
@@ -980,7 +978,11 @@ public class BoundaryQuadTree {
 			if (isLeaf == true){
 				if  (nodes == null)
 					return;
-
+				if (DEBUG){
+					String fname = "gpx/" + treePath+ "/bbox"+treePath;
+					List<List<Coord>> polys = Java2DConverter.areaToShapes(Java2DConverter.createBoundsArea(bounds));
+					GpxCreator.createGpx(fname, polys.get(0));
+				}
 				// subject to tuning
 				if (depth >= 5 || nodes.size() <= 7 || bounds.getHeight() < 10 || bounds.getWidth() < 10  ){
 					makeDistinct(treePath);
@@ -1331,5 +1333,21 @@ public class BoundaryQuadTree {
 			// if all is equal, prefer the lower boundaryId
 			return o1.compareTo(o2);
 		}
+	}
+	
+	/**
+	 * test if the conversion to a Path2D and back gives an empty area. If the
+	 * area is not already empty this routine simulates the writing and reading
+	 * and tests if the result is empty. Returns true is the area is not empty.
+	 */
+	public static boolean isWritable(Area area){
+		if (area.isEmpty())
+			return false;
+		Path2D.Double path = new Path2D.Double(area);
+		Area testArea = new Area(path);
+		if (testArea.isEmpty()){
+			return false;  
+		}
+		return true;
 	}
 }

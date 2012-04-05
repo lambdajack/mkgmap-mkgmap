@@ -46,6 +46,8 @@ public class BoundarySaver {
 	public static final String RAW_DATA_FORMAT = "RAW";
 	public static final String QUADTREE_DATA_FORMAT = "QUADTREE";
 	public static final int CURRENT_RECORD_ID = 1;
+	
+	public static final double RESET_DELTA = Double.POSITIVE_INFINITY; 
 
 	private final File boundaryDir;
 	private final String dataFormat;
@@ -56,7 +58,7 @@ public class BoundarySaver {
 	private int minLong = Integer.MAX_VALUE;
 	private int maxLat = Integer.MIN_VALUE;
 	private int maxLong = Integer.MIN_VALUE;
-
+	
 	private static final class StreamInfo {
 		File file;
 		String boundsKey;
@@ -371,7 +373,6 @@ public class BoundarySaver {
 			System.exit(1);
 		}
 		try {
-
 			dos.writeUTF(boundary.getId());
 			
 			// write the tags
@@ -393,7 +394,7 @@ public class BoundarySaver {
 			writeArea(dos,boundary.getArea());
 			dos.close();
 
-			// now start to write into the real stream
+			// now start to write into the real stream 
 
 			// first write the bounding box so that is possible to skip the
 			// complete entry
@@ -422,14 +423,15 @@ public class BoundarySaver {
 	}
 
 	/**
-	 * Write area to stream with Float precision. 
+	 * Write area to stream with Double precision. The coordinates
+	 * are saved as varying length doubles with delta coding. 
 	 * @param dos the already opened DataOutputStream 
 	 * @param area the area (can be non-singular)
 	 * @throws IOException
 	 */
 	public static void writeArea(DataOutputStream dos, Area area) throws IOException{
-		float[] res = new float[6];
-
+		double[] res = new double[6];
+		double[] lastRes = new double[2];
 		List<Integer> pairs = new LinkedList<Integer>();
 		// step 1: count parts
 		PathIterator pit = area.getPathIterator(null);
@@ -462,10 +464,22 @@ public class BoundarySaver {
 					len = pairs.remove(0);
 					dos.writeInt(len);
 				}
+				// no break
 			case PathIterator.SEG_MOVETO: 
 				len--;
-				dos.writeFloat(res[0]);
-				dos.writeFloat(res[1]);
+				for (int i = 0; i < 2; i++){
+					double delta = res[i] - lastRes[i];
+					if (delta + lastRes[i] != res[i]){
+						// handle rounding error in delta processing
+						// write POSITIVE_INFINITY to signal that next value is
+						// not delta coded
+						//System.out.println("reset " + i ) ;
+						writeVarDouble(dos, BoundarySaver.RESET_DELTA);
+						delta = res[i];
+					}
+					lastRes[i] = res[i];
+					writeVarDouble(dos, delta);
+				}
 				break;
 			case PathIterator.SEG_CLOSE:
 				break;
@@ -520,4 +534,35 @@ public class BoundarySaver {
 	public void setCreateEmptyFiles(boolean createEmptyFiles) {
 		this.createEmptyFiles = createEmptyFiles;
 	}
+
+	/**
+	 * Write a varying length double. A typical double value requires only ~ 20 bits 
+	 * (the left ones). As in o5m format we use the leftmost bit of a byte to signal
+	 * that a further byte is to read, the remaining 7 bits are used to store the value.
+	 * Many values are stored within 3 bytes, but some may require 10 bytes  
+	 * (64 bits = 9*7 + 1) . We start with the highest bits of the long value that
+	 * represents the double.
+	 *    
+	 * @param dos the already opened OutputStream
+	 * @param val the double value to be written
+	 * @throws IOException
+	 */
+	private static void writeVarDouble(OutputStream dos, double val) throws IOException{
+		long v64 = Double.doubleToRawLongBits(val);
+		if (v64 == 0){
+			dos.write(0);
+			return;
+		}
+		byte[] buffer = new byte[12];
+		int numBytes = 0;
+		while(v64 != 0){
+			v64 = (v64 << 7) | (v64 >>> -7); // rotate left 7 bits
+			buffer[numBytes++] = (byte)(v64 & 0x7f|0x80L);
+			v64 &= 0xffffffffffffff80L;
+		}
+		
+		buffer[numBytes-1] &= 0x7f;
+		dos.write(buffer, 0, numBytes);
+	}  
+
 }

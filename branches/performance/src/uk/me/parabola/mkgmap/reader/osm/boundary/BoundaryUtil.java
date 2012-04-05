@@ -182,14 +182,14 @@ public class BoundaryUtil {
 	
 	/**
 	 * read path iterator info from stream and create Area. 
-	 * Data is stored with float precision.  
+	 * Data is stored with varying length doubles.
 	 * @param inpStream the already opened DataInputStream 
 	 * @return a new Area object or null if not successful 
 	 * @throws IOException
 	 */
 	public static Area readAreaAsPath(DataInputStream inpStream) throws IOException{
-		Path2D.Float path = new Path2D.Float();
-
+		double[] res = new double[2];
+		Path2D.Double path = new Path2D.Double();
 		int windingRule = inpStream.readInt();
 		path.setWindingRule(windingRule);
 		int type = inpStream.readInt(); 
@@ -198,16 +198,26 @@ public class BoundaryUtil {
 			case PathIterator.SEG_LINETO:
 				int len = inpStream.readInt();
 				while(len > 0){
-					float x = inpStream.readFloat();
-					float y = inpStream.readFloat();
-					path.lineTo(x, y);
+					for (int ii = 0; ii < 2; ii++){
+						double delta = readVarDouble(inpStream);
+						if (delta == BoundarySaver.RESET_DELTA)
+							res[ii] = readVarDouble(inpStream);
+						else
+							res[ii] = res[ii] + delta;
+					}
+					path.lineTo(res[0],res[1]);
 					--len;
 				}
 				break;
 			case PathIterator.SEG_MOVETO:
-				float x = inpStream.readFloat();
-				float y = inpStream.readFloat();
-				path.moveTo(x, y);
+				for (int ii = 0; ii < 2; ii++){
+					double delta = readVarDouble(inpStream);
+					if (delta == BoundarySaver.RESET_DELTA)
+						res[ii] = readVarDouble(inpStream);
+					else
+						res[ii] = res[ii] + delta;
+				}
+				path.moveTo(res[0],res[1]);
 				break;
 			case PathIterator.SEG_CLOSE:
 				path.closePath();
@@ -625,9 +635,9 @@ public class BoundaryUtil {
 	 * @param path
 	 * @param area
 	 */
-	public static void addToPath (Path2D.Float path, Area area){
+	public static void addToPath (Path2D.Double path, Area area){
 		PathIterator pit = area.getPathIterator(null);
-		float [] res = new float[6];
+		double[] res = new double[6];
 		path.setWindingRule(pit.getWindingRule());
 		while (!pit.isDone()) {
 			int type = pit.currentSegment(res);
@@ -648,6 +658,34 @@ public class BoundaryUtil {
 
 			pit.next();
 		}
+	}
+
+	/**
+	 * read a varying length double. See BoundarySaver.writeVarDouble().
+	 * @param inp the already opened DataInputStream
+	 * @return the extracted double value
+	 * @throws IOException
+	 */
+	static double readVarDouble(DataInputStream inp) throws IOException{
+		byte b;
+		long res = 0;
+		long toShift = 64 - 7;
+		while (((b = inp.readByte()) & 0x80) != 0){ // more bytes will follow
+			res |= (b & 0x7f);
+			toShift -= 7;
+			if (toShift > 0)
+				res <<= 7;
+		}
+		if (toShift > 0){
+			res |= b;
+			res <<= toShift;
+		}
+		else {
+			// special case: all 64 bits were written, 64 = 9*7 + 1
+			res <<= 1;
+			res |= 1;
+		}
+		return Double.longBitsToDouble(res);
 	}
 	
 }

@@ -171,7 +171,7 @@ public class BoundaryDiff {
 		Map<String, Tags> bTags = bqt.getTagsMap();
 		Map<String, List<Area>> areas = bqt.getAreas();
 		Area a = new Area();
-		Path2D.Float path = new Path2D.Float();
+		Path2D.Double path = new Path2D.Double();
 		for (Entry<String, Tags> entry: bTags.entrySet()){
 			if (value.equals(entry.getValue().get(tag))){
 				List<Area> aList = areas.get(entry.getKey());
