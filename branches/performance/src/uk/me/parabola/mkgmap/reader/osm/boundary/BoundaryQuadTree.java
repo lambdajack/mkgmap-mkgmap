@@ -352,9 +352,9 @@ public class BoundaryQuadTree {
 						if (refs.isEmpty()) 
 							refs = null;
 						Area area = BoundaryUtil.readAreaAsPath(inpStream);
-						if (area.isEmpty() == false){
+						
+						if (area != null && area.isEmpty() == false)
 							root.add(area, refs, id, treePath);
-						}
 					} else {
 						log.debug("Bbox does not intersect. Skip",bSize);
 						inpStream.skipBytes(bSize);
@@ -600,8 +600,7 @@ public class BoundaryQuadTree {
 				node.nodes = new ArrayList<NodeElem>();
 			}
 			NodeElem nodeElem = new NodeElem(boundaryId, area, refs);
-			assert this.bbox.intersects(area.getBounds2D()) : "boundary bbox doesn't fit into quadtree "
-			+ bbox + " " + area.getBounds2D(); 
+			assert (area.getBounds2D().getWidth() == 0 || area.getBounds2D().getHeight() == 0 || this.bbox.intersects(area.getBounds2D())) : "boundary bbox doesn't fit into quadtree "+ bbox + " " + area.getBounds2D(); 
 			node.nodes.add(nodeElem);
 		}
 
