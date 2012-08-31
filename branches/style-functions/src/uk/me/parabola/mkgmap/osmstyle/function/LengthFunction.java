@@ -20,7 +20,6 @@ import java.util.Map.Entry;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.mkgmap.reader.osm.Element;
-import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.mkgmap.scan.SyntaxException;
@@ -51,18 +50,33 @@ public class LengthFunction extends AbstractFunction {
 			Relation rel = (Relation)el;
 			double length = 0;
 			for (Entry<String,Element> relElem : rel.getElements()) {
-				length += calcLength(relElem.getValue());
+				if (relElem.getValue() instanceof Way || relElem.getValue() instanceof Relation) {
+					length += calcLength(relElem.getValue());
+				}
 			}
 			return length;
-		} else if (el instanceof Node) {
-			return 0;
 		} else {
-			throw new SyntaxException("mkgmap::length operator only valid for ways");
+			throw new SyntaxException("mkgmap::length cannot calculate elements of type "+el.getClass().getName());
 		}
 	}
 	
 	protected String getName() {
 		return "length";
+	}
+
+
+	public boolean supportsWay() {
+		return true;
+	}
+
+
+	public boolean supportsShape() {
+		return true;
+	}
+
+
+	public boolean supportsRelation() {
+		return true;
 	}
 
 }
