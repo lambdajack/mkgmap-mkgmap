@@ -60,7 +60,7 @@ public class LengthFunction extends AbstractFunction {
 		}
 	}
 	
-	protected String getName() {
+	public String getName() {
 		return "length";
 	}
 

@@ -18,6 +18,11 @@ import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 
+/**
+ * Abstract implementation of a style function that is able
+ * to cache the function values.
+ * @author WanMil
+ */
 public abstract class AbstractFunction implements StyleFunction {
 
 	public boolean supportsNode() {
@@ -28,15 +33,12 @@ public abstract class AbstractFunction implements StyleFunction {
 		return false;
 	}
 
-	public boolean supportsShape() {
-		return false;
-	}
-
 	public boolean supportsRelation() {
 		return false;
 	}
 
 	public final String calcValue(Element el) {
+		// check if the element type is supported by this function
 		if (el instanceof Node ) {
 			if (supportsNode() == false) {
 				return null;
@@ -51,6 +53,8 @@ public abstract class AbstractFunction implements StyleFunction {
 			}
 		}
 		
+		// if caching is supported check if the value has already
+		// been calculated
 		if (supportsCaching()) {
 			String cachedValue = el.getTag(getCacheTag());
 			if (cachedValue != null) {
@@ -58,8 +62,10 @@ public abstract class AbstractFunction implements StyleFunction {
 			}
 		}
 		
+		// calculate the function value
 		String functionResult = calcImpl(el);
 		
+		// if caching is supported save the value for later usage
 		if (supportsCaching()) {
 			el.addTag(getCacheTag(), functionResult);
 		}
@@ -67,14 +73,29 @@ public abstract class AbstractFunction implements StyleFunction {
 		return functionResult;
 	}
 	
+	/**
+	 * This method contains the real calculation of the function value and must be 
+	 * implemented by subclasses.
+	 * @param el the function parameter
+	 * @return the function value
+	 */
 	protected abstract String calcImpl(Element el);
 
-	protected abstract String getName();
-	
+	/**
+	 * Retrieves if the function value for an element can be cached (<code>true</code>) or
+	 * if it should be recalculated each time (<code>false</code>) the function is called. 
+	 * @return <code>true</code> cache is used; 
+	 * <code>false</code> function value is calculated each time the function is called
+	 */
 	protected boolean supportsCaching() {
 		return true;
 	}
 	
+	/**
+	 * Retrieves the tag name that is used to cache the function value to 
+	 * avoid multiple calculations for the same element. 
+	 * @return tag name used for caching
+	 */
 	protected String getCacheTag() {
 		return "mkgmap:cache_"+getName();
 	}
