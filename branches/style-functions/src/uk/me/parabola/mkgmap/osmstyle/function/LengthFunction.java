@@ -19,12 +19,15 @@ import java.util.Locale;
 import java.util.Map.Entry;
 
 import uk.me.parabola.imgfmt.app.Coord;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.mkgmap.scan.SyntaxException;
 
 public class LengthFunction extends AbstractFunction {
+	private static final Logger log = Logger
+			.getLogger(LengthFunction.class);
 
 	private final DecimalFormat nf = new DecimalFormat("0.0#####################", DecimalFormatSymbols.getInstance(Locale.US)); 
 
@@ -51,7 +54,12 @@ public class LengthFunction extends AbstractFunction {
 			double length = 0;
 			for (Entry<String,Element> relElem : rel.getElements()) {
 				if (relElem.getValue() instanceof Way || relElem.getValue() instanceof Relation) {
-					length += calcLength(relElem.getValue());
+					if (rel == relElem.getValue()) {
+						// avoid recursive call
+						log.error("Relation "+rel.getId()+" contains itself as element. This is not supported.");
+					} else {
+						length += calcLength(relElem.getValue());
+					}
 				}
 			}
 			return length;
