@@ -50,9 +50,9 @@ public interface StyleFunction {
     public String calcValue(Element el);
     
 	/**
-	 * Retrieves the function name. This is the part after the prefix "mkgmap::". It is 
+	 * Retrieves the function name. This is the part without function brackets (). It is 
 	 * case sensitive but should be lower case.
-	 * @return the function name (e.g. length for mkgmap::length)
+	 * @return the function name (e.g. length for length())
 	 */
 	public String getName();
 }

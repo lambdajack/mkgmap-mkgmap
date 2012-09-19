@@ -77,8 +77,8 @@ public abstract class AbstractOp implements Op {
 	}
 
 	protected String getTagValue(Element el, String key) {
-		if (key.startsWith("mkgmap::")) {
-			String functionName = key.substring("mkgmap::".length());
+		if (key.endsWith("()")) {
+			String functionName = key.substring(0, key.length()-2);
 			StyleFunction function = FunctionFactory.getCachedFunction(functionName);
 			if (function==null) {
 				log.error("Unknown style function "+ functionName);

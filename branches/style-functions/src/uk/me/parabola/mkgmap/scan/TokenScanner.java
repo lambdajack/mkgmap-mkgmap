@@ -163,7 +163,7 @@ public class TokenScanner {
 			return new Token(TokType.EOF);
 		}
 
-		StringBuffer val = new StringBuffer();
+		StringBuilder val = new StringBuilder();
 		val.append((char) c);
 
 		TokType tt;
@@ -248,7 +248,7 @@ public class TokenScanner {
 	}
 
 	public String readUntil(TokType type, String value) {
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 		while (!isEndOfFile()) {
 			Token t = peekToken();
 			if (t.getType() == type && (value == null || value.equals(t.getValue())))
@@ -309,7 +309,7 @@ public class TokenScanner {
 			}
 		}
 
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 		while (!isEndOfFile()) {
 			tok = nextRawToken();
 			if (quotec == 0) {
