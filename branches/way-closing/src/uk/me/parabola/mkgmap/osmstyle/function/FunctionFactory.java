@@ -66,6 +66,9 @@ public class FunctionFactory {
 		if ("is_closed".equals(name)) {
 			return new IsClosedFunction();
 		}
+		if ("is_complete".equals(name)) {
+			return new IsCompleteFunction();
+		}
 		return null;
 	}
 }
