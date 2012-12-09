@@ -126,7 +126,11 @@
 	<target name="resolve-macker" depends="init-ivy" description="Downloads macker program dependencies using ivy.">
 		<ivy:retrieve conf="macker" log="download-only"/>
 	</target>
-	<target name="resolve" depends="resolve-compile, resolve-test, resolve-macker" description="Downloads all program dependencies using ivy." />
+	<target name="resolve-optional" depends="init-ivy" description="Downloads optional program dependencies using ivy.">
+		<ivy:retrieve conf="optional" log="download-only"/>
+	</target>
+	<target name="resolve" depends="resolve-compile, resolve-test, resolve-macker, resolve-optional"
+					description="Downloads all program dependencies using ivy." />
 
 	<!-- targets for publishing the project (locally) via ivy -->
 	<target name="publish" depends="dist">
@@ -262,10 +266,10 @@
 
 	<target name="test" depends="build-test" description="Run the junit tests">
 		<mkdir dir="tmp/report"/>
-		<junit printsummary="yes">
-			<formatter type="plain"/>
+		<junit printsummary="yes" failureproperty="junit.failure">
 
 			<classpath refid="test"/>
+			<formatter type="xml"/>
 			
 			<assertions>
 				<enable/>
@@ -277,6 +281,11 @@
 				</fileset>
 			</batchtest>
 		</junit>
+		<junitreport todir="tmp">
+      <fileset dir="tmp/report"/>
+      <report todir="test-reports"/>
+    </junitreport>
+    <fail if="junit.failure" message="Test failed.  See test-reports/index.html"/>
 	</target>
 
 	<target name="obtain-test-input-files" description="download the input files for the functional tests">
