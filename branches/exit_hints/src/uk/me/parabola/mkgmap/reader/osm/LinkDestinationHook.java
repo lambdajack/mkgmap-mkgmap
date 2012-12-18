@@ -25,6 +25,7 @@ import java.util.Set;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.build.LocatorUtil;
 import uk.me.parabola.util.EnhancedProperties;
 
 /**
@@ -46,8 +47,11 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 	private HashSet<String> tagValues = new HashSet<String>(Arrays.asList(
 			"motorway_link", "trunk_link"));
 
+	private List<String> nameTags;
+	
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
 		this.saver = saver;
+		nameTags = LocatorUtil.getNameTags(props);
 		return props.containsKey("process-destination");
 	}
 
@@ -192,6 +196,177 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 		}
 	}
 	
+	/**
+	 * Retrieves the name of the given element based on the name-tag-list option.
+	 * @param e an OSM element
+	 * @return the name or <code>null</code> if the element has no name
+	 */
+	private String getName(Element e) {
+		if (e.getName()!= null) {
+			return e.getName();
+		}
+		for (String nameTag : nameTags) {
+			String nameTagVal = e.getTag(nameTag);
+			if (nameTagVal != null) {
+				return nameTagVal;
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * Cuts off at least minLength meter of the given way and returns the cut off way tagged
+	 * identical to the given way.   
+	 * @param w the way to be cut 
+	 * @param minLength the cut off way must have at least this length
+	 * @return the cut off way or <code>null</code> if cutting not possible
+	 */
+	private Way cutoffWay(Way w, double minLength) {
+		if (w.getPoints().size()<2) {
+			return null;
+		}
+		
+		boolean useExistingPoints = w.getPoints().size() >= 3;
+		useExistingPoints = false;
+		double remainLength = minLength;
+		Coord lastC = w.getPoints().get(0);
+		for (int i = 1; i < w.getPoints().size(); i++) {
+			Coord c = w.getPoints().get(i);
+			double segmentLength = lastC.distance(c);
+			
+			// do not use the last point of the way
+			// instead it need to be split in such a case
+			useExistingPoints = useExistingPoints && i < w.getPoints().size()-1;
+			
+			if (useExistingPoints && remainLength - segmentLength <= 0.0) {
+				// create a new way with all points 0..i and identical tags
+				Way precedingWay = new Way(FakeIdGenerator.makeFakeId(), new ArrayList<Coord>(w.getPoints().subList(0, i+1)));
+				precedingWay.copyTags(w);
+				// the first node of the new way is now used by the org and the new way
+				precedingWay.getPoints().get(0).incHighwayCount();
+				
+				saver.addWay(precedingWay);
+				// remove the points of the new way from the original way
+				w.getPoints().subList(0, i).clear();
+				
+				// return the new way
+				return precedingWay;
+			} 
+			
+			if (useExistingPoints == false && remainLength - segmentLength <=  0.0d) {
+				double frac = remainLength / segmentLength;
+				// insert a new point and the minimum distance  
+				Coord cConnection = lastC.makeBetweenPoint(c, frac);
+
+				// the new point is used by the old and the new way
+				cConnection.incHighwayCount();
+				cConnection.incHighwayCount();
+				
+				w.getPoints().add(i,cConnection);
+				
+				// create the new way with identical tags
+				Way precedingWay = new Way(FakeIdGenerator.makeFakeId(), new ArrayList<Coord>(w.getPoints().subList(0, i+1)));
+				precedingWay.copyTags(w);
+				
+				saver.addWay(precedingWay);
+				
+				// remove the points of the new way from the old way
+				w.getPoints().subList(0, i).clear();
+				
+				// return the split way
+				return precedingWay;			
+			} 		
+			remainLength -= segmentLength;
+			lastC = c;
+		}
+		
+		// way too short
+		return null;
+	}
+	
+	/**
+	 * Cuts motorway_link ways connected to an exit node
+	 * (highway=motorway_junction) into three parts to be able to get a hint on
+	 * Garmin GPS. The mid part way is tagged additionally with the following
+	 * tags:
+	 * <ul>
+	 * <li>mkgmap:exit_hint=true</li>
+	 * <li>mkgmap:exit_hint_ref: Tagged with the ref tag value of the exit node</li>
+	 * <li>mkgmap:exit_hint_name: Tagged with the name tag value of the exit
+	 * node</li>
+	 * </ul>
+	 * Style implementors can use the common Garmin code 0x09 for motorway_links
+	 * and the motorway code 0x01 for the links with mkgmap:exit_hint=true. The
+	 * naming of this middle way can be assigned from mkgmap:exit_hint_ref and
+	 * mkgmap:exit_hint_name.
+	 */
+	private void createExitHints() {
+		// collect all nodes of highway=motorway ways so that we can check if an exit node
+		// belongs to a motorway or is a "subexit" within a motorway junction
+		Set<Coord> highwayCoords = new HashSet<Coord>();
+		for (Way w : saver.getWays().values()) {
+			if ("motorway".equals(w.getTag("highway"))) {
+				highwayCoords.addAll(w.getPoints());
+			}
+		}
+		
+		// get all nodes tagged with highway=motorway_junction
+		for (Node exitNode : saver.getNodes().values()) {
+			if ("motorway_junction".equals(exitNode.getTag("highway")) && (getName(exitNode) != null ) 
+					&& saver.getBoundingBox().contains(exitNode.getLocation())) {
+				
+				// use exits only if they are located on a motorway
+				if (highwayCoords.contains(exitNode.getLocation()) == false) {
+					if (log.isDebugEnabled())
+						log.debug("Skip non highway exit:", exitNode.toBrowseURL(), exitNode.toTagString());
+					continue;
+				}
+				
+				// retrieve all ways with this exit node
+				Set<Way> exitWays = adjacentWays.get(exitNode.getLocation());
+				if (exitWays==null) {
+					log.debug("Exit node", exitNode, "has no connected ways. Skip it.");
+					continue;
+				}
+				
+				// use the motorway_link ways only
+				for (Way w : exitWays) {
+					if ("motorway_link".equals(w.getTag("highway"))) {
+						log.debug("Try to cut motorway_link", w, "into three parts for giving hint to exit", exitNode);
+
+						// now create three parts:
+						// wayPart1: 10m having the original tags only
+						// hintWay: 10m having the original tags plus the mkgmap:exit_hint* tags
+						// w: the rest of the original way 
+						
+						Way wayPart1 = cutoffWay(w,10.0);
+						if (wayPart1 == null) {
+							log.info("Way", w, "is too short to cut at least 10m from it. Cannot create exit hint.");
+							continue;
+						} else {
+							if (log.isDebugEnabled())
+								log.debug("Cut off way", wayPart1, wayPart1.toTagString());
+						}
+						
+						Way hintWay = cutoffWay(w,10.0);
+						if (hintWay == null) {
+							log.info("Way", w, "is too short to cut at least 20m from it. Cannot create exit hint.");
+						} else {
+							hintWay.addTag("mkgmap:exit_hint", "true");
+							if (exitNode.getTag("ref") != null)
+								hintWay.addTag("mkgmap:exit_hint_ref", exitNode.getTag("ref"));
+							hintWay.addTag("mkgmap:exit_hint_name", getName(exitNode));
+							
+							if (log.isInfoEnabled())
+								log.info("Cut off exit hint way", hintWay, hintWay.toTagString());
+						}
+
+					}
+				}
+			}
+		}
+	}
+	
 
 	/**
 	 * Cleans all internal data that is no longer used after the hook has been processed.
@@ -201,6 +376,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 		destinationLinkWays = null;
 		tagValues = null;
 		saver = null;
+		nameTags = null;
 	}
 
 // Do not return any used tag because this hook only has an effect if the tag destination is
@@ -216,7 +392,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 		retrieveWays();
 		
 		processDestinations();
-
+		createExitHints();
 		cleanup();
 
 		log.info("LinkDestinationHook finished");
