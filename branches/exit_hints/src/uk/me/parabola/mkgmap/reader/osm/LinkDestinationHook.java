@@ -285,6 +285,22 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 	}
 	
 	/**
+	 * Retrieves if the given node is tagged as motorway exit. So it must contain at least the tags
+	 * highway=motorway_junction and one of the tags ref, name or exit_to.
+	 * @param node the node to check
+	 * @return <code>true</code> the node is a motorway exit, <code>false</code> the node is not a 
+	 * 		motorway exit  
+	 */
+	private boolean isTaggedAsExit(Node node) {
+		if ("motorway_junction".equals(node.getTag("highway")) == false) {
+			return false;
+		}
+		return node.getTag("ref") != null || 
+				(getName(node) != null) || 
+				node.getTag("exit_to") != null;
+	}
+	
+	/**
 	 * Cuts motorway_link ways connected to an exit node
 	 * (highway=motorway_junction) into three parts to be able to get a hint on
 	 * Garmin GPS. The mid part way is tagged additionally with the following
@@ -292,6 +308,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 	 * <ul>
 	 * <li>mkgmap:exit_hint=true</li>
 	 * <li>mkgmap:exit_hint_ref: Tagged with the ref tag value of the exit node</li>
+	 * <li>mkgmap:exit_hint_exit_to: Tagged with the exit_to tag value of the exit node</li>
 	 * <li>mkgmap:exit_hint_name: Tagged with the name tag value of the exit
 	 * node</li>
 	 * </ul>
@@ -312,8 +329,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 		
 		// get all nodes tagged with highway=motorway_junction
 		for (Node exitNode : saver.getNodes().values()) {
-			if ("motorway_junction".equals(exitNode.getTag("highway")) && (getName(exitNode) != null ) 
-					&& saver.getBoundingBox().contains(exitNode.getLocation())) {
+			if (isTaggedAsExit(exitNode) && saver.getBoundingBox().contains(exitNode.getLocation())) {
 				
 				// use exits only if they are located on a motorway
 				if (highwayCoords.contains(exitNode.getLocation()) == false) {
@@ -353,9 +369,13 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 							log.info("Way", w, "is too short to cut at least 20m from it. Cannot create exit hint.");
 						} else {
 							hintWay.addTag("mkgmap:exit_hint", "true");
+							
 							if (exitNode.getTag("ref") != null)
 								hintWay.addTag("mkgmap:exit_hint_ref", exitNode.getTag("ref"));
-							hintWay.addTag("mkgmap:exit_hint_name", getName(exitNode));
+							if (exitNode.getTag("exit_to") != null)
+								hintWay.addTag("mkgmap:exit_hint_exit_to", exitNode.getTag("exit_to"));
+							if (getName(exitNode) != null)
+								hintWay.addTag("mkgmap:exit_hint_name", getName(exitNode));
 							
 							if (log.isInfoEnabled())
 								log.info("Cut off exit hint way", hintWay, hintWay.toTagString());
