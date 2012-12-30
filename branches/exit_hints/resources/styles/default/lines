@@ -14,10 +14,8 @@ aeroway=runway [0x27 resolution 20]
 aeroway=taxiway [0x27 resolution 24]
 
 # Set the routing direction
-(highway=motorway|highway=motorway_link) & destination=* { add
-display_name = '${ref} (${destination})' }
-(highway=trunk|highway=trunk_link)       & destination=* { add
-display_name = '${ref} (${destination})' }
+(highway=motorway|highway=trunk ) & ref=* & destination=* { add display_name =
+'${ref|subst: =>}(${destination|subst:;=> |subst:/=> })' }
 
 # Remove access=yes from highways.
 highway=* & (access=yes|access=permissive|access=designated|access=official) { delete access }
