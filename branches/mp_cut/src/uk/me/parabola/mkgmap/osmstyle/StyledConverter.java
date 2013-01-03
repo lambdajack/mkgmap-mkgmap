@@ -70,6 +70,8 @@ import uk.me.parabola.mkgmap.reader.osm.Way;
 public class StyledConverter implements OsmConverter {
 	private static final Logger log = Logger.getLogger(StyledConverter.class);
 
+	public static final String RESOLUTION_LIMIT_TAG = "mkgmap:resolution";
+	
 	private final String[] nameTagList;
 
 	private final MapCollector collector;
@@ -213,8 +215,10 @@ public class StyledConverter implements OsmConverter {
 					// Not sure if this is needed as this really is a completely new way.
 					// originalWay.put(el, way);
 				}
-				postConvertRules(el, type);
-				addConvertedWay((Way) el, type);
+				if (applyResolutionLimit(el, type)) {
+					postConvertRules(el, type);
+					addConvertedWay((Way) el, type);
+				}
 			}
 		});
 	}
@@ -255,12 +259,46 @@ public class StyledConverter implements OsmConverter {
 					// Not sure if this is needed as this really is a completely new way.
 					// originalWay.put(el, way);
 				}
-				postConvertRules(el, type);
-				addPoint((Node) el, type);
+				if (applyResolutionLimit(el, type)) {
+					postConvertRules(el, type);
+					addPoint((Node) el, type);
+				}
 			}
 		});
 	}
 
+	/**
+	 * Checks if the given element has a resolution limit and apply that to the given type 
+	 * in such a case.
+	 * The resolution can be limited using the tag {@value #RESOLUTION_LIMIT_TAG}. 
+	 * @param el an OSM element
+	 * @param type the type
+	 * @return <code>true</code> element can be used with the given type; 
+	 *  <code>false</code> element should not be used with the resolution range of the given type
+	 */
+	private boolean applyResolutionLimit(Element el, GType type) {
+		String resLimit = el.getTag(RESOLUTION_LIMIT_TAG);
+		// resolution limit is not set
+		if (resLimit == null) {
+			return true;
+		}
+		
+		try {
+			int resolution = Integer.valueOf(resLimit);
+			// check if there is an overlap
+			if (type.getMinResolution() > resolution || type.getMaxResolution() < resolution) {
+				// no it isn't => ignore the element
+				return false;
+			}
+			type.setMinResolution(resolution);
+			type.setMaxResolution(resolution);
+			return true;
+		} catch (NumberFormatException exp) {
+			log.error("Element "+el.toBrowseURL()+": Value of "+RESOLUTION_LIMIT_TAG+" must be a number but is "+resLimit+". Skip this element.");
+			return false;
+		}
+	}
+	
 	/**
 	 * Rules to run before converting the element.
 	 */
