@@ -14,7 +14,7 @@ aeroway=runway [0x27 resolution 20]
 aeroway=taxiway [0x27 resolution 24]
 
 # Set the routing direction
-(highway=motorway|highway=trunk ) & ref=* & destination=* { add display_name =
+(highway=motorway|highway=trunk ) & ref=* & destination=* { add mkgmap:display_name =
 '${ref|subst: =>}(${destination|subst:;=> |subst:/=> })' }
 
 # Remove access=yes from highways.
@@ -42,15 +42,15 @@ highway=* & oneway=yes & (access=private|access=no)
 # Set highway names to include the reference if there is one
 highway=motorway {name '${ref|highway-symbol:hbox} ${name}' | '${ref|highway-symbol:hbox}' | '${name}' }
 highway=motorway_link & mkgmap:exit_hint=true 
-  { delete display_name; 
+  { delete mkgmap:display_name; 
     name 'Exit ${mkgmap:exit_hint_ref} ${mkgmap:exit_hint_name}' | 
          'Exit ${mkgmap:exit_hint_ref} ${mkgmap:exit_hint_exit_to}' | 
          'Exit ${mkgmap:exit_hint_exit_to}' |
          'Exit ${mkgmap:exit_hint_name}' |
          'Exit ${mkgmap:exit_hint_ref}' }
-highway=trunk {name '${ref|highway-symbol:hbox} ${name}' | '${ref|highway-symbol:hbox}' | '${name}'; add display_name = '${name} (${ref})' }
-highway=primary {name '${ref|highway-symbol:box} ${name}' | '${ref|highway-symbol:box}' | '${name}'; add display_name = '${name} (${ref})' }
-highway=secondary | highway=tertiary {name '${ref|highway-symbol:oval} ${name}' | '${ref|highway-symbol:oval}' | '${name}'; add display_name = '${name} (${ref})' }
+highway=trunk {name '${ref|highway-symbol:hbox} ${name}' | '${ref|highway-symbol:hbox}' | '${name}'; add mkgmap:display_name = '${name} (${ref})' }
+highway=primary {name '${ref|highway-symbol:box} ${name}' | '${ref|highway-symbol:box}' | '${name}'; add mkgmap:display_name = '${name} (${ref})' }
+highway=secondary | highway=tertiary {name '${ref|highway-symbol:oval} ${name}' | '${ref|highway-symbol:oval}' | '${name}'; add mkgmap:display_name = '${name} (${ref})' }
 highway=* {name '${name}' | '${ref}' }
 
 # Flag unpaved roads.

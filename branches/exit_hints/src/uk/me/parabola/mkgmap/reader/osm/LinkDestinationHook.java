@@ -127,7 +127,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 			if (isNotOneway(link)) {
 				// non oneway links cannot be handled. The destination tag is probably wrong.
 				if (log.isInfoEnabled())
-					log.info("Link is not oneway. Do not handle it. ", link);
+					log.info("Link is not oneway. Do not handle it.", link);
 				continue;
 			}
 
@@ -199,7 +199,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 
 				if (oneDestination) {
 					if (log.isInfoEnabled())
-						log.info("Add destination=" + destinationTag + " to", connection);
+						log.info("Add destination=" + destinationTag, "to", connection);
 					connection.addTag("destination", destinationTag);
 
 					if (tagValues.contains(connection.getTag("highway"))) {

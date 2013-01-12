@@ -8,14 +8,12 @@
 # later recognised by mkgmap. In general these begin with the
 # string 'mkgmap:'
 #
-display_name
 exit:facility
 exit:road_ref
 exit:to
 int_ref
 junction
 maxspeed
-mkgmap:gtype
 name
 nat_ref
 oneway

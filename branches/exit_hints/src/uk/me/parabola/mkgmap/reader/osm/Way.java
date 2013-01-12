@@ -50,12 +50,12 @@ public class Way extends Element {
 	}
 
 	public Way(long id, List<Coord> points) {
-		this.points = points;
+		this.points = new ArrayList<Coord>(points);
 		setId(id);
 	}
 
 	public Way copy() {
-		Way dup = new Way(getId(), new ArrayList<Coord>(points));
+		Way dup = new Way(getId(), points);
 		dup.setName(getName());
 		dup.copyTags(this);
 		dup.closed = this.closed;
@@ -195,7 +195,7 @@ public class Way extends Element {
 
 	// returns true if the way is a closed polygon with a clockwise
 	// direction
-	public boolean clockwise() {
+	public static boolean clockwise(List<Coord> points) {
 
 		if(points.size() < 3 || !points.get(0).equals(points.get(points.size() - 1)))
 			return false;
