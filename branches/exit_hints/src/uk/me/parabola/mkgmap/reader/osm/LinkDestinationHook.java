@@ -55,11 +55,16 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 	private IdentityHashMap<Coord, Set<Way>> wayNodes = new IdentityHashMap<Coord, Set<Way>>();
 	private boolean onlyMotorwayExitHint;
 	
+	private boolean processDestinations;
+	private boolean processExits;
+	
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
 		this.saver = saver;
 		nameTags = LocatorUtil.getNameTags(props);
 		onlyMotorwayExitHint = props.containsKey("all-exit-hints") == false;
-		return props.containsKey("process-destination");
+		processDestinations = props.containsKey("process-destination");
+		processExits = props.containsKey("process-exits");
+		return processDestinations || processExits;
 	}
 
 	/**
@@ -572,8 +577,11 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 
 		retrieveWays();
 		
-		processDestinations();
-		createExitHints();
+		if (processDestinations)
+			processDestinations();
+		if (processExits)
+			createExitHints();
+		
 		cleanup();
 
 		log.info("LinkDestinationHook finished");
