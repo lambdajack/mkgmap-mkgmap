@@ -124,6 +124,8 @@ public class MultiPolygonRelation extends Relation {
 			addElement(role, el);
 			roleMap.put(el.getId(), role);
 		}
+		
+		this.cutAlgorithm.init(this);
 	}
 	
 
