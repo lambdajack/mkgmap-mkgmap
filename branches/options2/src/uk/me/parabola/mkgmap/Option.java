@@ -20,20 +20,15 @@ public class Option {
 	private final String value;
 	private final boolean experimental;
 	private final boolean reset;
+	private final boolean longOpt;
 
 	protected Option(String optval) {
-		String[] v = optval.split("[=:]", 2);
+		this(optval.split("[:=]", 2));
+	}
 
-		String name;
-		String val;
-
-		if (v.length > 1) {
-			name = v[0].trim();
-			val = v[1].trim();
-		} else {
-			name = optval;
-			val = "";
-		}
+	public Option(String optname, String value) {
+		String name = optname;
+		String val = (value == null)? "": value;
 
 		boolean reset = false;
 		if (name.startsWith("no-")) {
@@ -49,13 +44,17 @@ public class Option {
 		}
 
 		option = name;
-		value = val;
+		this.value = val;
 		experimental = exp;
 		this.reset = reset;
+		if (name.length() > 1)
+			longOpt = true;
+		else
+			longOpt = false;
 	}
 
-	protected Option(String option, String value) {
-		this(option + '=' + value);
+	private Option(String[] split) {
+		this(split[0], (split.length > 1)? split[1]: null);
 	}
 
 	public String getOption() {
@@ -72,5 +71,9 @@ public class Option {
 
 	public boolean isReset() {
 		return reset;
+	}
+
+	public boolean isLongOpt() {
+		return longOpt;
 	}
 }

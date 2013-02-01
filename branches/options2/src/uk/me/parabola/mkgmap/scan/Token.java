@@ -53,5 +53,9 @@ public class Token {
 	public boolean isEol() {
 		return type == TokType.EOL || type == TokType.EOF;
 	}
+
+	public boolean isText() {
+		return type == TokType.TEXT;
+	}
 }
 

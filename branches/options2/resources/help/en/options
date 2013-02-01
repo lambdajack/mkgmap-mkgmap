@@ -389,7 +389,7 @@ Miscellaneous options:
 	can be specified with this option.  This is a workaround for not
 	being able to search for roads.
 	0x2f15: a blue dot in the middle of the road, and if you select,
-		or 'hover' over it, the streetname appears.
+	or 'hover' over it, the streetname appears.
 	
 --add-pois-to-lines
 	Generate POIs for lines. For each line (must not be closed) POIs are
