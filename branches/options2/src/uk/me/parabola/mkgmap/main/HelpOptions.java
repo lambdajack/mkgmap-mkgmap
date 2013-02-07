@@ -16,7 +16,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.Utils;
@@ -73,29 +75,34 @@ public class HelpOptions {
 	}
 
 	private void parseDescription(TokenScanner scan) {
+		System.out.println("description");
 		boolean para = false;
 		while (!scan.isEndOfFile()) {
-			String line = scan.readLine();
-			if (line.startsWith("    ")) {
-				// Trim off 4 spaces in option descriptions.
-				if (para) {
-					current.addDescriptionLine("");
-					para = false;
-				}
-				line = line.substring(4);
-			} else if (line.startsWith("\t")){
-				// Using tabs is not really allowed, but if you do, we remove the first.
-				line = line.substring(1);
-			} else if (line.trim().isEmpty()) {
-				para = true;
-			} else {
-				current.addDescriptionLine(line);
+
+			Token tok = scan.peekToken();
+			if (tok.isType(TokType.TEXT) && tok.getValue().startsWith("-")) {
+				break;
 			}
+
+			String line = null;
+			if (tok.isType(TokType.SPACE)) {
+				line = scan.readLine();
+			} else if (tok.isType(TokType.TEXT) && tok.getValue().startsWith("-")) {
+					break;
+
+			} else {
+				line = scan.readLine();
+			}
+
+			if (line != null)
+				current.addDescriptionLine(line);
 		}
 	}
 
 	private void parseOpt(TokenScanner scan) {
+		System.out.println("opt");
 		while (!scan.isEndOfFile()) {
+			System.out.println("next opt");
 			String optname = scan.nextValue();
 
 			boolean longOpt = false;
@@ -140,7 +147,19 @@ public class HelpOptions {
 
 	public void dump() { // XXX temp
 		for (HelpOptionItem item : list) {
-			System.out.println("\n" + item);
+			System.out.println("\n\n" + item);
 		}
+	}
+
+	/**
+	 * Get a list of the long option names.
+	 */
+	public Set<String> getOptionNameSet() {
+		Set<String> set = new HashSet();
+		for (HelpOptionItem item : list) {
+			item.getOptionNames();
+			//set.add(item.)
+		}
+		return set;
 	}
 }

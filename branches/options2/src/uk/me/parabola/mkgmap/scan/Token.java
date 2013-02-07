@@ -57,5 +57,9 @@ public class Token {
 	public boolean isText() {
 		return type == TokType.TEXT;
 	}
+
+	public boolean isType(TokType type) {
+		return this.type == type;
+	}
 }
 

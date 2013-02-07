@@ -13,7 +13,9 @@
 package uk.me.parabola.mkgmap.main;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import uk.me.parabola.mkgmap.Option;
 
@@ -47,6 +49,7 @@ public class HelpOptionItem {
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
 		for (Option opt : options) {
+			System.out.println("O:" + opt);
 			String key = opt.getOption();
 
 			sb.append(opt.isLongOpt() ? "--" : "-");
@@ -62,6 +65,7 @@ public class HelpOptionItem {
 		}
 
 		for (String line : description) {
+			System.out.printf(":%b\n", hasOptions());
 			if (hasOptions())
 				sb.append("    ");
 			sb.append(line);
@@ -76,5 +80,15 @@ public class HelpOptionItem {
 
 	private boolean hasOptions() {
 		return !options.isEmpty();
+	}
+
+
+	public Set<String> getOptionNames() {
+		Set<String> set = new HashSet<String>();
+		for (Option opt : options) {
+			String optionName = opt.getOption();
+			set.add(optionName);
+		}
+		return set;
 	}
 }

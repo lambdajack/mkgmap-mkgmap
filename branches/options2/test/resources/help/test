@@ -13,8 +13,8 @@ Text between options.
 Next options have arguments
 
 --input-file=filename
-	Read input data from the give file.  This option (or just a
-	filename) may be given more than once.
+    Read input data from the give file.  This option (or just a
+    filename) may be given more than once.
 
 -h filename
 --has-short-form=filename

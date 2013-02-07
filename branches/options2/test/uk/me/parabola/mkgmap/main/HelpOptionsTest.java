@@ -44,6 +44,7 @@ public class HelpOptionsTest {
 		ho.dump();
 	}
 
+
 	@Test
 	public void testDefaultValue() {
 
