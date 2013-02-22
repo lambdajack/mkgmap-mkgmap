@@ -632,8 +632,8 @@ public class RuleFileReaderTest {
 						"((a~b | c~d) & e=f) & g=h [0x5]" +
 						"e=f & g=h & (a~b | c~'d.*')  [0x6]" +
 						"(e=f & g=h) & (a~b | c~'d.*')  [0x7]" +
-						"a=* & b=* & c=d" +
-						"a=* & (b=* | c=d)" +
+						"a=* & b=* & c=d [0x8]" +
+						"a=* & (b=* | c=d) [0x9]" +
 						""
 		);
 

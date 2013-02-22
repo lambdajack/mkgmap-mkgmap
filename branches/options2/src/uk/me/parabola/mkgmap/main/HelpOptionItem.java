@@ -26,11 +26,10 @@ import uk.me.parabola.mkgmap.Option;
  *
  * @author Steve Ratcliffe
  */
-public class HelpOptionItem {
+public class HelpOptionItem extends HelpItem {
 	private final List<Option> options = new ArrayList<Option>();
-	private final List<String> description = new ArrayList<String>();
 
-	private String defaultValue;
+	//private String defaultValue;
 
 	/**
 	 * Add an option name to the help item.
@@ -42,14 +41,9 @@ public class HelpOptionItem {
 		options.add(new Option(name, meta));
 	}
 
-	public void addDescriptionLine(String line) {
-		description.add(line);
-	}
-
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
 		for (Option opt : options) {
-			System.out.println("O:" + opt);
 			String key = opt.getOption();
 
 			sb.append(opt.isLongOpt() ? "--" : "-");
@@ -64,8 +58,7 @@ public class HelpOptionItem {
 			sb.append('\n');
 		}
 
-		for (String line : description) {
-			System.out.printf(":%b\n", hasOptions());
+		for (String line : descriptionLines) {
 			if (hasOptions())
 				sb.append("    ");
 			sb.append(line);
@@ -74,14 +67,9 @@ public class HelpOptionItem {
 		return sb.toString();
 	}
 
-	public boolean isUsed() {
-		return hasOptions() || !description.isEmpty();
-	}
-
 	private boolean hasOptions() {
 		return !options.isEmpty();
 	}
-
 
 	public Set<String> getOptionNames() {
 		Set<String> set = new HashSet<String>();
@@ -90,5 +78,13 @@ public class HelpOptionItem {
 			set.add(optionName);
 		}
 		return set;
+	}
+
+	public String getMeta(String name) {
+		for (Option opt : options) {
+			if (opt.getOption().equals(name))
+				return opt.getValue();
+		}
+		return null;
 	}
 }

@@ -1,13 +1,12 @@
 
-This is a test file, it is OK if it is different to the real options
-help file.
+This is a test file.
 
 = Section 1
 This is a section to introduce the options that
 follow.
 
 --version 
-	Print the version number of mkgmap.
+    Print the version number of mkgmap.
 
 Text between options.
 Next options have arguments
@@ -23,4 +22,19 @@ Next options have arguments
 	line can be used, however you omit the leading '--'.  The short
 	option names with a single '-' cannot be used, simply use the
 	long name instead.
+
+Options with defaults follow.
+
+--bin-def-on
+    A binary option that defaults to being on.
+    # default: on
+
+--bin-def-off
+    A binary options that default to being off. This is the same as not having a
+    default state.
+    # default: off
+
+--string-with-def
+    A string value with a default
+    # default: "has a value"
 

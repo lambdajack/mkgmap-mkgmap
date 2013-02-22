@@ -16,8 +16,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import uk.me.parabola.imgfmt.ExitException;
@@ -34,9 +36,8 @@ import uk.me.parabola.mkgmap.scan.TokenScanner;
  */
 public class HelpOptions {
 
-	private final List<HelpOptionItem> list = new ArrayList<HelpOptionItem>();
-
-	private HelpOptionItem current = new HelpOptionItem();
+	private final List<HelpItem> list = new ArrayList<HelpItem>();
+	private final Map<String, HelpOptionItem> options = new HashMap<String, HelpOptionItem>();
 
 	/**
 	 * Read the file given.
@@ -57,6 +58,7 @@ public class HelpOptions {
 
 	private void parse(InputStreamReader r) {
 		TokenScanner scan = new TokenScanner("options", r);
+		scan.setCommentChar(null);  // turn off comment processing which we don't use
 		scan.setExtraWordChars("-");
 
 		while (!scan.isEndOfFile()) {
@@ -64,18 +66,16 @@ public class HelpOptions {
 			Token tok = scan.peekToken();
 
 			if (isOption(tok)) {
-				startNew();
 				parseOpt(scan);
 			} else {
-				parseDescription(scan);
+				parseSection(scan);
 			}
 		}
-
-		list.add(current);
 	}
 
-	private void parseDescription(TokenScanner scan) {
-		System.out.println("description");
+	private void parseSection(TokenScanner scan) {
+		HelpItem item = new HelpItem();
+
 		boolean para = false;
 		while (!scan.isEndOfFile()) {
 
@@ -84,82 +84,121 @@ public class HelpOptions {
 				break;
 			}
 
-			String line = null;
-			if (tok.isType(TokType.SPACE)) {
-				line = scan.readLine();
-			} else if (tok.isType(TokType.TEXT) && tok.getValue().startsWith("-")) {
-					break;
-
-			} else {
-				line = scan.readLine();
+			if (para) {
+				item.addDescriptionLine("");
+				para = false;
 			}
 
-			if (line != null)
-				current.addDescriptionLine(line);
+			if (tok.isType(TokType.EOL)) {
+				scan.skipSpace();
+				para = true;
+			} else {
+				item.addDescriptionLine(scan.readLine());
+			}
 		}
+
+		list.add(item);
 	}
 
 	private void parseOpt(TokenScanner scan) {
-		System.out.println("opt");
+		HelpOptionItem item = new HelpOptionItem();
+
 		while (!scan.isEndOfFile()) {
-			System.out.println("next opt");
 			String optname = scan.nextValue();
 
-			boolean longOpt = false;
 			if (optname.startsWith("--")) {
-				longOpt = true;
 				optname = optname.substring(2);
 			} else {
 				optname = optname.substring(1);
 			}
 
-			String meta = null;
-			if (longOpt) {
-				if (scan.checkToken("=")) {
-					scan.nextToken();
-					meta = scan.nextWord().toUpperCase();
-				}
-			} else {
-				Token next = scan.peekToken();
-				if (next.getType() == TokType.SPACE) {
-					meta = scan.readLine().trim().toUpperCase();
-					if (meta.isEmpty())
-						meta = null;
-				}
-			}
-			current.addOption(optname, meta);
+			readMeta(scan, optname, item);
 
 			Token next = scan.peekToken();
-			if (next.getType() != TokType.TEXT || !next.getValue().startsWith("-"))
+			if (next.getType() != TokType.TEXT || !next.getValue().startsWith("-")) {
+				parseDescription(scan, next, item);
 				break;
+			}
 		}
+
+		// Add a reference for each name
+		for (String optname : item.getOptionNames())
+			options.put(optname, item);
+
+		// Add the ordered list
+		list.add(item);
 	}
 
-	private void startNew() {
-		if (current.isUsed())
-			list.add(current);
-		current = new HelpOptionItem();
+	private void readMeta(TokenScanner scan, String optname, HelpOptionItem item) {
+		String meta = null;
+		while (!scan.isEndOfFile()) {
+			Token tok = scan.nextRawToken();
+
+			if (tok.isType(TokType.EOL)) break;
+
+			if (isSym(tok, "=") || tok.isWhiteSpace()) {
+				meta = scan.nextWord();
+			}
+		}
+
+		item.addOption(optname, meta);
+	}
+
+	private boolean isSym(Token tok, String sym) {
+		return tok.isType(TokType.SYMBOL) && tok.getValue().equals(sym);
+	}
+
+	/**
+	 * Parse the description of a particular option. This is not for text that occurs between options.
+	 *
+	 * @param scan The token stream.
+	 * @param next The next token in the stream, it has not been removed from the stream yet.
+	 * @param item The current option item. The description is added here.
+	 */
+	private void parseDescription(TokenScanner scan, Token next, HelpOptionItem item) {
+		boolean para = false;
+		Token tok = next;
+		while (!scan.isEndOfFile()) {
+
+			if (tok.isType(TokType.TEXT))
+				break;
+
+
+			if (tok.isType(TokType.SPACE)) {
+				if (para) {
+					item.addDescriptionLine("");
+					para = false;
+				}
+				scan.skipSpace();
+				item.addDescriptionLine(scan.readLine());
+			} else if (tok.isType(TokType.EOL)) {
+				scan.nextRawToken();
+				para = true;
+			} else {
+				assert false : "unexpected";
+			}
+
+			tok = scan.peekToken();
+		}
 	}
 
 	private boolean isOption(Token tok) {
 		return tok.isText() && tok.getValue().startsWith("-");
 	}
 
-	public void dump() { // XXX temp
-		for (HelpOptionItem item : list) {
-			System.out.println("\n\n" + item);
-		}
-	}
-
 	/**
 	 * Get a list of the long option names.
 	 */
 	public Set<String> getOptionNameSet() {
-		Set<String> set = new HashSet();
-		for (HelpOptionItem item : list) {
-			item.getOptionNames();
-			//set.add(item.)
+		Set<String> set = new HashSet<String>();
+		for (HelpItem item : list) {
+			if (item instanceof HelpOptionItem)
+				set.addAll(((HelpOptionItem) item).getOptionNames());
 		}
 		return set;
+	}
+
+	public HelpOptionItem getOptionByName(String name) {
+		return options.get(name);
 	}
 }

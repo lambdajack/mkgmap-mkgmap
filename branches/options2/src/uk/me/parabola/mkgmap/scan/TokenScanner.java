@@ -34,6 +34,7 @@ public class TokenScanner {
 
 	// Reading state
 	private Reader reader;
+	@SuppressWarnings("RedundantFieldInitialization")
 	private int pushback = NO_PUSHBACK;
 	private boolean isEOF;
 
@@ -375,7 +376,6 @@ public class TokenScanner {
 				sb.append(tok.getValue());
 			}
 		}
-		skipSpace();
 		return new WordInfo(sb.toString(), quotec != 0);
 	}
 
