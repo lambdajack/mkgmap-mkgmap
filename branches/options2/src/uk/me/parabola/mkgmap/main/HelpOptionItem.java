@@ -28,8 +28,7 @@ import uk.me.parabola.mkgmap.Option;
  */
 public class HelpOptionItem extends HelpItem {
 	private final List<Option> options = new ArrayList<Option>();
-
-	//private String defaultValue;
+	private String defaultValue;
 
 	/**
 	 * Add an option name to the help item.
@@ -86,5 +85,22 @@ public class HelpOptionItem extends HelpItem {
 				return opt.getValue();
 		}
 		return null;
+	}
+
+	/**
+	 * Is this a boolean option or not?
+	 * @return True if this is a boolean option, in other words if it does not take an argument.
+	 */
+	public boolean isBoolean() {
+		Option option = options.get(0);
+		return option.getValue() == null || option.getValue().isEmpty();
+	}
+
+	public String getDefault() {
+		return defaultValue;
+	}
+
+	public void setDefaultValue(String defaultValue) {
+		this.defaultValue = defaultValue;
 	}
 }

@@ -133,8 +133,36 @@ public class HelpOptionsTest {
 		assertNotNull(ho.getOptionByName("option2"));
 	}
 
+	@Test
+	public void testDefaultBooleanOn() {
+		HelpOptions ho = parseOptions("Initial description\n\n" +
+				"--option1\n    First opt\n    # default:on\n\n"
+		);
+
+		assertEquals("", ho.getOptionByName("option1").getDefault());
+	}
+
+	@Test
+	public void testTestBooleanBadDefault() {
+		HelpOptions ho = parseOptions("--option1\n    First opt\n    # default: 'invalid default for boolean'\n\n");
+
+		assertNull(ho.getOptionByName("option1").getDefault());
+	}
+
+	@Test
+	public void testWithDefaultString() {
+		HelpOptions ho = parseOptions("--option1=FILE\n    First opt\n    # default: 'default value'\n\n");
+		assertEquals("default value", ho.getOptionByName("option1").getDefault());
+	}
+
+	@Test
+	public void testNoDefault() {
+		HelpOptions ho = parseOptions("--option1=FILE\n    First opt\n");
+		assertNull(ho.getOptionByName("option1").getDefault());
+	}
+
 	@Test //@Ignore
-	public void testOptionNames() throws IOException {
+	public void testFromFile() throws IOException {
 		InputStream stream = new FileInputStream("test/resources/help/test");
 		TestUtils.registerFile(stream);
 		assertNotNull(stream);
@@ -152,17 +180,6 @@ public class HelpOptionsTest {
 		assertEquals(oldDirect.size(),  optSet.size());
 		assertTrue(oldDirect.containsAll(optSet));
 		assertTrue(optSet.containsAll(oldDirect));
-	}
-
-	@Test
-	public void testDefaultValue() {
-
-	}
-
-
-	@Test
-	public void testDefaultBoolean() {
-
 	}
 
 	/**

@@ -160,17 +160,28 @@ public class HelpOptions {
 		Token tok = next;
 		while (!scan.isEndOfFile()) {
 
-			if (tok.isType(TokType.TEXT))
+			if (tok.isType(TokType.TEXT)) {
 				break;
 
-
-			if (tok.isType(TokType.SPACE)) {
+			} else if (tok.isType(TokType.SPACE)) {
 				if (para) {
 					item.addDescriptionLine("");
 					para = false;
 				}
-				scan.skipSpace();
-				item.addDescriptionLine(scan.readLine());
+
+				tok = scan.nextRawToken();
+				String val = tok.getValue();
+				String line = "";
+				if (val.length() > 4)
+					line = val.substring(4);
+
+				tok = scan.peekToken();
+				if (tok.isValue("#")) {
+					parseCommands(scan, item);
+				} else {
+					line += scan.readLine();
+					item.addDescriptionLine(line);
+				}
 			} else if (tok.isType(TokType.EOL)) {
 				scan.nextRawToken();
 				para = true;
@@ -182,8 +193,40 @@ public class HelpOptions {
 		}
 	}
 
-	private boolean isOption(Token tok) {
-		return tok.isText() && tok.getValue().startsWith("-");
+	/**
+	 * Read and interpret the commands.
+	 * Commands follow the option description.
+	 *
+	 * @param scan Input stream
+	 * @param item The current option.
+	 */
+	private void parseCommands(TokenScanner scan, HelpOptionItem item) {
+		scan.validateNext("#");
+
+		while (!scan.isEndOfFile()) {
+			Token tok = scan.peekToken();
+
+			if (tok.isType(TokType.EOL)) {
+				return;
+			} else if (tok.isType(TokType.TEXT)) {
+				String cmd = scan.nextWord();
+
+				if ("default".equals(cmd)) {
+					scan.validateNext(":");
+					String defaultValue = scan.nextWord();
+					if (item.isBoolean()) {
+						if ("on".equals(defaultValue))
+							item.setDefaultValue("");
+						else
+							item.setDefaultValue(null);
+					} else {
+						item.setDefaultValue(defaultValue);
+					}
+				}
+			} else {
+				scan.nextRawToken();
+			}
+		}
 	}
 
 	/**
@@ -200,5 +243,9 @@ public class HelpOptions {
 
 	public HelpOptionItem getOptionByName(String name) {
 		return options.get(name);
+	}
+
+	private boolean isOption(Token tok) {
+		return tok.isText() && tok.getValue().startsWith("-");
 	}
 }
