@@ -38,3 +38,24 @@ Options with defaults follow.
     A string value with a default
     # default: "has a value"
 
+Options with deprecated and removed varients.
+
+--old-option # old
+--new-name
+    The old-option will not be shown in listings, but can be used. When used it gives a warning that it
+    will be removed in the future.
+
+--old-option2 # old: message to be printed
+    The old-option2 will not be listed in help, but can be used. When used it prints the given message
+    as a warning.
+
+--old-without-replacement # removed
+    This is an option that has been removed, if used it is an error and this description
+    message will be printed
+
+Removed options without help description - as might be normal.
+
+--removed1 # removed
+--removed2 # removed
+--removed3 # removed
+

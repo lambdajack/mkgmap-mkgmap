@@ -39,7 +39,7 @@ public class HelpOptionsTest {
 		Set<String> nameSet = ho.getOptionNameSet();
 		assertTrue(nameSet.contains("c"));
 
-		HelpOptionItem item = ho.getOptionByName("c");
+		HelpOptionItem item = ho.getItemByName("c");
 		assertEquals("Single letter option", item.getDescription());
 	}
 
@@ -50,7 +50,7 @@ public class HelpOptionsTest {
 		Set<String> nameSet = ho.getOptionNameSet();
 		assertTrue(nameSet.contains("long-name"));
 
-		HelpOptionItem item = ho.getOptionByName("long-name");
+		HelpOptionItem item = ho.getItemByName("long-name");
 		assertEquals("A long name option", item.getDescription());
 	}
 
@@ -58,9 +58,9 @@ public class HelpOptionsTest {
 	public void testOptionWithTwoNames() {
 		HelpOptions ho = parseOptions("-l\n--long-name\n    A long name option\n");
 
-		HelpOptionItem item = ho.getOptionByName("l");
+		HelpOptionItem item = ho.getItemByName("l");
 		assertNotNull(item);
-		HelpOptionItem item2 = ho.getOptionByName("long-name");
+		HelpOptionItem item2 = ho.getItemByName("long-name");
 		assertNotNull(item2);
 		assertEquals(item, item2);
 	}
@@ -69,7 +69,7 @@ public class HelpOptionsTest {
 	public void testShortOptWithValue() {
 		HelpOptions ho = parseOptions("-c file\n    Single letter option\n");
 
-		HelpOptionItem item = ho.getOptionByName("c");
+		HelpOptionItem item = ho.getItemByName("c");
 		assertNotNull(item);
 
 		assertEquals("file", item.getMeta("c"));
@@ -79,7 +79,7 @@ public class HelpOptionsTest {
 	public void testLongOptWithValue() {
 		HelpOptions ho = parseOptions("-long-opt=file\n    With meta\n");
 
-		HelpOptionItem item = ho.getOptionByName("long-opt");
+		HelpOptionItem item = ho.getItemByName("long-opt");
 		assertNotNull(item);
 
 		assertEquals("file", item.getMeta("long-opt"));
@@ -90,9 +90,9 @@ public class HelpOptionsTest {
 		HelpOptions ho = parseOptions("--option1=file\n    With meta\n\n" +
 				"--option2=name\n    Second opt\n");
 
-		HelpOptionItem item = ho.getOptionByName("option1");
+		HelpOptionItem item = ho.getItemByName("option1");
 		assertEquals("With meta", item.getDescription());
-		item = ho.getOptionByName("option2");
+		item = ho.getItemByName("option2");
 		assertEquals("Second opt", item.getDescription());
 	}
 
@@ -101,7 +101,7 @@ public class HelpOptionsTest {
 		HelpOptions ho = parseOptions("Initial description\n\n" +
 				"--option1=name\n    First opt\n");
 
-		HelpOptionItem item = ho.getOptionByName("option1");
+		HelpOptionItem item = ho.getItemByName("option1");
 		assertNotNull(item);
 		assertEquals("First opt", item.getDescription());
 	}
@@ -113,11 +113,11 @@ public class HelpOptionsTest {
 				"New section\n\n" +
 				"--option2=file\n    Second opt\n");
 
-		HelpOptionItem option1 = ho.getOptionByName("option1");
+		HelpOptionItem option1 = ho.getItemByName("option1");
 		assertNotNull(option1);
 		assertEquals("First opt", option1.getDescription());
 
-		HelpOptionItem option2 = ho.getOptionByName("option2");
+		HelpOptionItem option2 = ho.getItemByName("option2");
 		assertNotNull(option2);
 		assertEquals("Second opt", option2.getDescription());
 	}
@@ -129,8 +129,8 @@ public class HelpOptionsTest {
 				"--option2\n    Second opt\n    # default:off\n\n"
 		);
 
-		assertNotNull(ho.getOptionByName("option1"));
-		assertNotNull(ho.getOptionByName("option2"));
+		assertNotNull(ho.getItemByName("option1"));
+		assertNotNull(ho.getItemByName("option2"));
 	}
 
 	@Test
@@ -139,26 +139,48 @@ public class HelpOptionsTest {
 				"--option1\n    First opt\n    # default:on\n\n"
 		);
 
-		assertEquals("", ho.getOptionByName("option1").getDefault());
+		assertEquals("", ho.getItemByName("option1").getDefault());
 	}
 
 	@Test
 	public void testTestBooleanBadDefault() {
 		HelpOptions ho = parseOptions("--option1\n    First opt\n    # default: 'invalid default for boolean'\n\n");
 
-		assertNull(ho.getOptionByName("option1").getDefault());
+		assertNull(ho.getItemByName("option1").getDefault());
 	}
 
 	@Test
 	public void testWithDefaultString() {
 		HelpOptions ho = parseOptions("--option1=FILE\n    First opt\n    # default: 'default value'\n\n");
-		assertEquals("default value", ho.getOptionByName("option1").getDefault());
+		assertEquals("default value", ho.getItemByName("option1").getDefault());
 	}
 
 	@Test
 	public void testNoDefault() {
 		HelpOptions ho = parseOptions("--option1=FILE\n    First opt\n");
-		assertNull(ho.getOptionByName("option1").getDefault());
+		assertNull(ho.getItemByName("option1").getDefault());
+	}
+
+	/**
+	 * An option that will be removed, but currently is still available.  There may be a message as
+	 * a warning for a replacement.
+	 */
+	@Test
+	public void testOldOption() {
+		HelpOptions ho = parseOptions("--option1=FILE # old: no longer needed\n    First opt\n");
+		HelpOption opt = ho.getOptionByName("option1");
+		assertTrue(opt.isOld());
+	}
+
+	/**
+	 * A removed option is not usable and raises an error. A message is available for information
+	 * about what to do instead if anything.
+	 */
+	@Test
+	public void testRemovedOption() {
+		HelpOptions ho = parseOptions("--option1=FILE # removed\n    No longer needed.\n");
+		HelpOption opt = ho.getOptionByName("option1");
+		assertTrue(opt.isRemoved());
 	}
 
 	@Test //@Ignore

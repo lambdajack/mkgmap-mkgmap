@@ -36,7 +36,7 @@ import uk.me.parabola.mkgmap.scan.TokenScanner;
  */
 public class HelpOptions {
 
-	private final List<HelpItem> list = new ArrayList<HelpItem>();
+	private final List<HelpOptionItem> list = new ArrayList<HelpOptionItem>();
 	private final Map<String, HelpOptionItem> options = new HashMap<String, HelpOptionItem>();
 
 	/**
@@ -56,6 +56,9 @@ public class HelpOptions {
 		}
 	}
 
+	/**
+	 * Read the given input stream and parse it.
+	 */
 	private void parse(InputStreamReader r) {
 		TokenScanner scan = new TokenScanner("options", r);
 		scan.setCommentChar(null);  // turn off comment processing which we don't use
@@ -73,8 +76,14 @@ public class HelpOptions {
 		}
 	}
 
+	/**
+	 * Parse a section of text between the options.
+	 * This text starts in column 1.
+	 *
+	 * @param scan The token stream.
+	 */
 	private void parseSection(TokenScanner scan) {
-		HelpItem item = new HelpItem();
+		HelpOptionItem item = new HelpOptionItem();
 
 		boolean para = false;
 		while (!scan.isEndOfFile()) {
@@ -100,6 +109,13 @@ public class HelpOptions {
 		list.add(item);
 	}
 
+	/**
+	 * Parse a single option. An option can have several names (eg short and long form, or
+	 * a deprecated version and a new name), and it is followed by a description that is
+	 * indented by 4 spaces. There can be blank lines within the description.
+	 *
+	 * @param scan The token stream.
+	 */
 	private void parseOpt(TokenScanner scan) {
 		HelpOptionItem item = new HelpOptionItem();
 
@@ -112,7 +128,7 @@ public class HelpOptions {
 				optname = optname.substring(1);
 			}
 
-			readMeta(scan, optname, item);
+			readMeta(scan, item, optname);
 
 			Token next = scan.peekToken();
 			if (next.getType() != TokType.TEXT || !next.getValue().startsWith("-")) {
@@ -129,19 +145,39 @@ public class HelpOptions {
 		list.add(item);
 	}
 
-	private void readMeta(TokenScanner scan, String optname, HelpOptionItem item) {
+	/**
+	 * Read the meta variable for an option that takes an argument.
+	 * @param scan The token stream.
+	 * @param item The current option item.
+	 * @param optname The name of the option.
+	 */
+	private void readMeta(TokenScanner scan, HelpOptionItem item, String optname) {
 		String meta = null;
+		boolean old = false;
+		boolean removed = false;
+
 		while (!scan.isEndOfFile()) {
 			Token tok = scan.nextRawToken();
 
 			if (tok.isType(TokType.EOL)) break;
 
-			if (isSym(tok, "=") || tok.isWhiteSpace()) {
+			if (meta == null && (isSym(tok, "=") || tok.isWhiteSpace()))
 				meta = scan.nextWord();
+			else if (isSym(tok, "#")) {
+				String cmd = scan.nextWord();
+				if ("old".equals(cmd)) {
+					old = true;
+				} else if ("removed".equals(cmd)) {
+					removed = true;
+				}
 			}
 		}
 
-		item.addOption(optname, meta);
+		HelpOption opt = new HelpOption(optname, meta);
+		opt.setOld(old);
+		opt.setRemoved(removed);
+
+		item.addOption(opt);
 	}
 
 	private boolean isSym(Token tok, String sym) {
@@ -234,15 +270,21 @@ public class HelpOptions {
 	 */
 	public Set<String> getOptionNameSet() {
 		Set<String> set = new HashSet<String>();
-		for (HelpItem item : list) {
-			if (item instanceof HelpOptionItem)
-				set.addAll(((HelpOptionItem) item).getOptionNames());
+		for (HelpOptionItem item : list) {
+			set.addAll(item.getOptionNames());
 		}
 		return set;
 	}
 
-	public HelpOptionItem getOptionByName(String name) {
+	public HelpOptionItem getItemByName(String name) {
 		return options.get(name);
+	}
+
+	public HelpOption getOptionByName(String name) {
+		HelpOptionItem item = getItemByName(name);
+		if (item == null)
+			return null;
+		return item.getOptionForName(name);
 	}
 
 	private boolean isOption(Token tok) {
