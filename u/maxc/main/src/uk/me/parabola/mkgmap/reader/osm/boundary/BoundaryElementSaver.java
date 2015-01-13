@@ -47,9 +47,9 @@ public class BoundaryElementSaver extends ElementSaver {
 
 	/**
 	 * Checks if the given element is an administrative boundary or a
-	 * postal code area.
+	 * postal code area or a multipoligon with tag "place".
 	 * @param element an element
-	 * @return <code>true</code> administrative boundary or postal code; 
+	 * @return <code>true</code> administrative boundary or postal code or multipoligon with place tag; 
 	 * <code>false</code> element cannot be used for precompiled bounds 
 	 */
 	public static boolean isBoundary(Element element) {
@@ -101,6 +101,8 @@ public class BoundaryElementSaver extends ElementSaver {
 					// does not contain a name tag => do not use it
 					return false;						
 				} else if (element.getTag("postal_code") != null){
+					return true;
+				} else if (element.getTag("place") != null){
 					return true;
 				} else {
 					return false;
