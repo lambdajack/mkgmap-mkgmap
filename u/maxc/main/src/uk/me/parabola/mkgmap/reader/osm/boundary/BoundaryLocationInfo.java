@@ -23,15 +23,17 @@ public class BoundaryLocationInfo  {
 	private final String zip;
 	private final String name;
 	private final int admLevel;
+	private final String place;
 	private boolean isISO;
 
-	BoundaryLocationInfo (int admLevel, String name, String zip, boolean isISO){
+	BoundaryLocationInfo (int admLevel, String name, String zip, String place, boolean isISO){
 		this.admLevel = admLevel;
 		if (admLevel > 0 && name == null)
 			this.name = "not_set"; // TODO: review
 		else 
 			this.name = name;
 		this.zip = zip;
+		this.place = place;
 		this.isISO = isISO;
 	}
 	public String getZip() {
@@ -46,6 +48,10 @@ public class BoundaryLocationInfo  {
 		return admLevel;
 	}
 
+	public String getPlace() {
+		return place;
+	}
+	
 	public boolean isISOName(){
 		return isISO;
 	}

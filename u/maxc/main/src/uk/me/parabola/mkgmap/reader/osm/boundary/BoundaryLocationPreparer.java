@@ -69,6 +69,7 @@ public class BoundaryLocationPreparer {
 		int admLevel = getAdminLevel(tags);
 		boolean isISO = false;
 		String name = getName(tags);
+		String place = getPlace(tags);
 		if (locator != null){
 			if (admLevel == 2) {
 				String isoCode = locator.addCountry(tags);
@@ -81,7 +82,7 @@ public class BoundaryLocationPreparer {
 				log.debug("Coded:",name);
 			}
 		}
-		return new BoundaryLocationInfo(admLevel, name, zip, isISO);
+		return new BoundaryLocationInfo(admLevel, name, zip, place, isISO);
 	}
 
 	/** 
@@ -191,6 +192,17 @@ public class BoundaryLocationPreparer {
 		} catch (NumberFormatException nfe) {
 			return UNSET_ADMIN_LEVEL;
 		}
+	}
+	
+	/**
+	 * Try to extract a place type from the the tags of a boundary. 
+	 * @param tags the boundary tags
+	 * @return null if no place type was found, else a String that should be a place type. 
+	 */
+	private String getPlace(Tags tags) {
+		String place = tags.get("place");
+		
+		return place;
 	}
 } 
 
