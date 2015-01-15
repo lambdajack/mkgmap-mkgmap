@@ -87,10 +87,14 @@ public class BoundaryQuadTree {
 		"mkgmap:admin_level9",
 		"mkgmap:admin_level10",
 		"mkgmap:admin_level11",
+		"mkgmap:place",
+		"mkgmap:place_name",
 		"mkgmap:postcode"
 	};
-	// 11: the position of "mkgmap:postcode" in the above array
-	public final static short POSTCODE_ONLY = 1 << 11;   
+	// 11: the position of "mkgmap:place" in the above array
+	public final static short PLACE_ONLY = 1 << 11;
+	// 13: the position of "mkgmap:postcode" in the above array
+	public final static short POSTCODE_ONLY = 1 << 13;   
 	
 	/**
 	 * Create a quadtree with the data in an open stream. 
@@ -262,8 +266,8 @@ public class BoundaryQuadTree {
 	}
 
 	/**
-	 * Sort the boundary-Tags-Map so that zip-code-only boundaries appear first, followed by
-	 * admin_level-11,10,9,...2
+	 * Sort the boundary-Tags-Map so that zip-code-only boundaries appear first, followed by place,
+	 * followed by admin_level-11,10,9,...2
 	 */
 	private void sortBoundaryTagsMap(){
 		// make sure that the merged LinkedHashMap is sorted as mergeBoundaries() needs it
@@ -847,7 +851,7 @@ public class BoundaryQuadTree {
 					toAdd.setArea(toAddMinusCurr);
 					if (!isWritable(currMinusToAdd)){
 					    // curr is fully covered by toAdd 
-						if (toAdd.tagMask != POSTCODE_ONLY){
+						if (toAdd.tagMask < PLACE_ONLY){
 							currElem.addLocInfo(toAdd);
 						}
 						continue; // no need to create new intersection area
@@ -863,7 +867,7 @@ public class BoundaryQuadTree {
 					// remove intersection part also from curr 
 					currElem.setArea(currMinusToAdd);
 					
-					if (toAdd.tagMask != POSTCODE_ONLY){
+					if (toAdd.tagMask < PLACE_ONLY){
 						// combine tag info in intersection
 						intersect.addLocInfo(toAdd);
 						reworked.add(intersect);
@@ -920,7 +924,7 @@ public class BoundaryQuadTree {
 				NodeElem lastNode = nodes.get(nodes.size()-1);
 				NodeElem prevNode = nodes.get(nodes.size()-2);
 				// don't merge admin_level tags into zip-code only boundary
-				if (prevNode.tagMask != POSTCODE_ONLY && lastNode.getArea().isRectangular() && prevNode.getArea().isRectangular()){
+				if (prevNode.tagMask < PLACE_ONLY && lastNode.getArea().isRectangular() && prevNode.getArea().isRectangular()){
 					// two areas are rectangles, it is likely that they are equal to the bounding box
 					// In this case we add the tags to the existing area instead of creating a new one
 					if (prevNode.getArea().equals(lastNode.getArea())){
@@ -1124,6 +1128,11 @@ public class BoundaryQuadTree {
 				locTags.put("mkgmap:postcode",bInfo.getZip());
 			}
 			
+			if (bInfo.getPlace() != null){
+				locTags.put("mkgmap:place", bInfo.getPlace());
+				locTags.put("mkgmap:place_name", bInfo.getName());
+			}
+			
 			if (bInfo.getAdmLevel() != BoundaryLocationPreparer.UNSET_ADMIN_LEVEL){
 				locTags.put(BoundaryQuadTree.mkgmapTagsArray[bInfo.getAdmLevel()-1], bInfo.getName());
 			}
@@ -1148,11 +1157,21 @@ public class BoundaryQuadTree {
 					if (addAdmLevel != BoundaryLocationPreparer.UNSET_ADMIN_LEVEL){
 						addAdmName = addInfo.getName();
 					}
+					String addPlace = addInfo.getPlace();
+					String addPlaceName = null;
+					if (addPlace != null)
+						addPlaceName = addInfo.getName();
 					String addZip = addInfo.getZip();
 
 					if (addAdmName != null){
 						if (locTags.get(BoundaryQuadTree.mkgmapTagsArray[addAdmLevel-1]) == null)
 							locTags.put(BoundaryQuadTree.mkgmapTagsArray[addAdmLevel-1], addAdmName);
+					}
+					if (addPlace != null){
+						if (locTags.get("mkgmap:place") == null)
+							locTags.put("mkgmap:place", addPlace);
+						if (locTags.get("mkgmap:place_name") == null)
+							locTags.put("mkgmap:place_name", addPlaceName);
 					}
 					if (addZip != null){
 						if (locTags.get("mkgmap:postcode") == null)
@@ -1297,7 +1316,7 @@ public class BoundaryQuadTree {
 							break;
 						}
 					}
-					else{
+					else if (testMask < PLACE_ONLY){
 						errAdmLevel = k+1;
 						errMsg = new String ("same admin_level (" + errAdmLevel + ")");
 						break;
@@ -1372,12 +1391,21 @@ public class BoundaryQuadTree {
 				if (i1.isISOName() == false && i2.isISOName() == true)
 					return -1;
 			}
+			
+			boolean place1set = i1.getPlace() != null;
+			boolean place2set = i2.getPlace() != null;
+			if (place1set && !place2set)
+				return 1;
+			if (!place1set && place2set)
+				return -1;
+			
 			boolean post1set = i1.getZip() != null;
 			boolean post2set = i2.getZip() != null;
 			if (post1set && !post2set)
 				return 1;
 			if (!post1set && post2set)
 				return -1;
+			
 			// if all is equal, prefer the lower boundaryId
 			return o1.compareTo(o2);
 		}
