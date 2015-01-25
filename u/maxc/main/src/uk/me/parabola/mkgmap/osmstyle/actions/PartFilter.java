@@ -35,7 +35,7 @@ import uk.me.parabola.mkgmap.scan.SyntaxException;
  * part:#:-1 returns Ee
  * part:#:2  returns Bb
  * part:#:-2 returns Dd
- * part:#>1  returns Bb#Cc#Dd#Ee#
+ * part:#>1  returns Bb#Cc#Dd#Ee
  * part:#<5  returns Aa#Bb#Cc#Dd#
  * part:#<-1 returns Aa#Bb#Cc#Dd#
  *
