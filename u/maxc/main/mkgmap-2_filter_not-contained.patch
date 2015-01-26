@@ -15,7 +15,7 @@ Index: doc/styles/rules-filters.txt
 +....
 +type=route & route=bus & ref=* {
 +   apply {
-+      set route_ref='$(route_ref),${ref|not-included:,:route_ref}' | '$(route_ref)' | '${ref}';
++      set route_ref='$(route_ref),${ref|not-contained:,:route_ref}' | '$(route_ref)' | '${ref}';
 +   }
 +}
 +....
