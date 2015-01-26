@@ -849,7 +849,7 @@
 		<variant>ROU</variant>
 		<variant>Romania</variant>
 	</country>
-	<country name="Russian Federation" abr="RUS" streetBeforeHousenumber="true">
+	<country name="Russian Federation" abr="RUS" streetBeforeHousenumber="true" postalcodeBeforeCity="true">
 		<variant>RU</variant>
 		<variant>RUS</variant>
 		<variant>Russia</variant>

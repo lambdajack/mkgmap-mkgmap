@@ -139,7 +139,9 @@ Address search options:
               mkgmap:admin_level3 : Name of the admin_level=3 boundary
               ..
               mkgmap:admin_level11
-              mkgmap:postcode : the postal_code value
+              mkgmap:place : Place type (city, hamlet, ...) of the multipolygon with place tag
+              mkgmap:place_name : Name of the multipolygon with place tag
+              mkgmap:postcode : Postal_code value
               
     Preprocessed bounds can be created with the following command:
        java -cp mkgmap.jar 

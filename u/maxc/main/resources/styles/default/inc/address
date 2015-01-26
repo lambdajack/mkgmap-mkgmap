@@ -96,6 +96,11 @@ mkgmap:country=SVK & mkgmap:city!=* & mkgmap:admin_level8=* { set mkgmap:city='$
 mkgmap:country=GRE & mkgmap:city!=* & mkgmap:admin_level7=* { set mkgmap:city='${mkgmap:admin_level7}' }
 mkgmap:country=GRE & mkgmap:city!=* & mkgmap:admin_level8=* { set mkgmap:city='${mkgmap:admin_level8}' }
 
+# Russia
+mkgmap:country=RUS & mkgmap:city!=* & mkgmap:admin_level8=* { set mkgmap:city='${mkgmap:admin_level8}' }
+mkgmap:country=RUS & mkgmap:city!=* & mkgmap:place=* { set mkgmap:city='${mkgmap:place_name}' }
+mkgmap:country=RUS & mkgmap:city!=* & mkgmap:admin_level6=* { set mkgmap:city='${mkgmap:admin_level6}' }
+
 # common rules for all the rest of countries
 mkgmap:region!=* & mkgmap:admin_level6=* { set mkgmap:region='${mkgmap:admin_level6}' } 
 mkgmap:region!=* & mkgmap:admin_level5=* { set mkgmap:region='${mkgmap:admin_level5}' } 
