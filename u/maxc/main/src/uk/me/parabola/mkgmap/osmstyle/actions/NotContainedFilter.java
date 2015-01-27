@@ -42,7 +42,7 @@ public class NotContainedFilter extends ValueFilter {
 	public NotContainedFilter(String arg) {
 		String[] temp = arg.split(":");
 
-		if (temp.length < 2)
+		if (temp.length < 2 || temp[1].isEmpty())
 			throw new SyntaxException(
 					"Missing tag to compare in style not-contained command: " + arg);
 
