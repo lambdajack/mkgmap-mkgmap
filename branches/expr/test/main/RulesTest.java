@@ -28,11 +28,13 @@ import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -81,6 +83,7 @@ public class RulesTest {
 
 	private static final String TEST_FILE_NAME = "tmp.test";
 	private static final int TEST_TIMEOUT = 500;  // In Milli seconds
+	private static final Set<String> USED_FUNCS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("length()", "type()")));
 
 	static {
 		USEFUL_NODES = EnumSet.allOf(NodeType.class);
@@ -95,7 +98,6 @@ public class RulesTest {
 	private static boolean debug;
 	private static boolean saveErrors;
 	private static boolean stopOnFail;
-	private static boolean doLengths = false;
 
 
 	private final String[] values = {
@@ -128,8 +130,6 @@ public class RulesTest {
 				arranger = new ExpressionArranger();
 			} else if (s.startsWith("--stop")) {
 				stopOnFail = true;
-			} else if (s.startsWith("--use-len")) {
-				doLengths = true;
 			} else if (s.startsWith("--seed")) {
 				seed = Long.parseLong(args[++i]);
 			} else if (s.startsWith("--rand")) {
@@ -141,16 +141,12 @@ public class RulesTest {
 						"--arrange-test use the ExpressionArranger instead of style tester\n" +
 						"--max-errors   stop after this many errors\n" +
 						"--max-rules    run this number of random rules\n" +
-						"--use-lengths  add some length() terms, you will see errors\n" +
 						"--errors       only show errors\n" +
 						"--stop-on-fail stop on test failures (not syntax errors)\n" +
 						"--seed N       set the random number seed\n" +
 						"--rand         set the random seed to the current time\n" +
 						"--save-errors  save errors as style tester files\n" +
 						"\n" +
-						"You see errors when including length() terms, because this program cannot\n" +
-						"tell if they should work.  It makes a best attempt.  You should make sure that\n" +
-						"all failues are really correct\n\n" +
 						"If there are any non-syntax failures, then that is always a bug.\n")
 				;
 				System.exit(2);
@@ -433,7 +429,7 @@ public class RulesTest {
 			return false;
 
 		Op f = expr.getFirst();
-		if (hasNot &&  f != null && f.isType(FUNCTION) && Objects.equals(f.toString(), "length()"))
+		if (hasNot &&  f != null && f.isType(FUNCTION) && USED_FUNCS.contains(f.toString()))
 			return true;
 
 		boolean invalid = false;
@@ -497,6 +493,11 @@ public class RulesTest {
 		case 8:
 			return new NotExistsOp().setFirst(genNameOp(NOT_EXISTS));
 		default:
+			if (rand.nextInt(4) == 0) {
+				ValueOp f = FunctionFactory.createFunction("type");
+				ValueOp s = new ValueOp("way");
+				return new EqualsOp().set(f, s);
+			}
 			return fillNameValue(new EqualsOp());
 		}
 	}
@@ -523,7 +524,7 @@ public class RulesTest {
 	}
 
 	private Op genNameOp(NodeType type) {
-		if (doLengths && type == GTE && rand.nextInt(4) == 0) {
+		if (type == GTE && rand.nextInt(4) == 0) {
 			return FunctionFactory.createFunction("length");
 		}
 
