@@ -17,12 +17,15 @@
 package uk.me.parabola.imgfmt.fs;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.FileExistsException;
 import uk.me.parabola.imgfmt.FileSystemParam;
+import uk.me.parabola.imgfmt.sys.GmapFS;
+import uk.me.parabola.imgfmt.sys.ImgFS;
 
 
 /**
@@ -88,4 +91,11 @@ public interface FileSystem extends Closeable {
 	 * to explicitly sync the data out first, to be sure that it has worked.
 	 */
 	void close();
+
+	static FileSystem openFS(String name) throws FileNotFoundException {
+		File f = new File(name);
+		if (f.isDirectory())
+			return GmapFS.openFs(name);
+		return ImgFS.openFs(name);
+	}
 }
