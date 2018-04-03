@@ -77,6 +77,9 @@ public class ConvertedWay {
 		this.roadSpeed = other.roadSpeed;
 		this.mkgmapAccess = other.mkgmapAccess;
 		this.routeFlags = other.routeFlags;
+		this.isRoad = other.isRoad;
+		this.reversed = other.reversed;
+		this.overlay = other.overlay;
 	}
 	
 	public int getIndex(){

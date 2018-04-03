@@ -358,28 +358,10 @@ public class RoadMerger {
 	 * 	{@code false} the roads cannot be merged at {@code mergePoint}
 	 */
 	private static boolean isMergeable(Coord mergePoint, ConvertedWay road1, ConvertedWay road2) {
-		// check if basic road attributes match
-		if (road1.getRoadClass() != road2.getRoadClass())
-			return false;
-		if (road1.getRoadSpeed() != road2.getRoadSpeed())
+		if (!isMergeable(road1, road2, false))
 			return false;
 		Way way1 = road1.getWay();
 		Way way2 = road2.getWay();
-
-		if (road1.getAccess() != road2.getAccess()) {
-			if (log.isDebugEnabled()) {
-				reportFirstDifferentTag(way1, way2, road1.getAccess(),
-						road2.getAccess(), AccessTagsAndBits.ACCESS_TAGS);
-			}
-			return false;
-		}
-		if (road1.getRouteFlags() != road2.getRouteFlags()) {
-			if (log.isDebugEnabled()) {
-				reportFirstDifferentTag(way1, way2, road1.getRouteFlags(),
-						road2.getRouteFlags(), AccessTagsAndBits.ROUTE_TAGS);
-			}
-			return false;
-		}
 
 		// now check if this road starts or stops at the mergePoint
 		Coord cStart = road1.getWay().getPoints().get(0);
@@ -405,11 +387,6 @@ public class RoadMerger {
 			return false;
 		}
 
-		// check if certain fields in the GType objects are the same
-		if (isGTypeMergeable(road1.getGType(), road2.getGType()) == false) {
-			return false;
-		}
-
 		if (road1.isOneway()){
 			assert road2.isOneway();
 			// oneway must not only be checked for equality
@@ -421,17 +398,56 @@ public class RoadMerger {
 			}
 		}
 		
-		// checks if the tag values of both ways match so that the ways
-		// can be merged
-		if (isWayMergeable(mergePoint, way1, way2) == false) 
-			return false;
-		
 
 		// check if the angle between the two ways is not too sharp
 		if (isAngleOK(mergePoint, way1, way2) == false) 
 			return false;
 
 		return true;
+	}
+
+	/**
+	 * Checks if the given {@code otherRoad} can be merged with this road.
+	 * @param road1 1st road instance
+	 * @param road2 2nd road instance
+	 * @param ignoreOneway if true, if differences in oneway tag
+	 * @return {@code true} road1 can be merged with {@code road2};
+	 * 	{@code false} the roads cannot be merged 
+	 */
+	public static boolean isMergeable(ConvertedWay road1, ConvertedWay road2, boolean ignoreOneway) {
+		// check if basic road attributes match
+		if (road1.getRoadClass() != road2.getRoadClass())
+			return false;
+		if (road1.getRoadSpeed() != road2.getRoadSpeed())
+			return false;
+		Way way1 = road1.getWay();
+		Way way2 = road2.getWay();
+
+		if (road1.getAccess() != road2.getAccess()) {
+			if (log.isDebugEnabled()) {
+				reportFirstDifferentTag(way1, way2, road1.getAccess(),
+						road2.getAccess(), AccessTagsAndBits.ACCESS_TAGS);
+			}
+			return false;
+		}
+		byte rf1 = road1.getRouteFlags();
+		byte rf2 = road2.getRouteFlags();
+		if (ignoreOneway) {
+			rf1 |= AccessTagsAndBits.R_ONEWAY;
+			rf2 |= AccessTagsAndBits.R_ONEWAY;
+		}
+		if (rf1 != rf2) {
+			if (log.isDebugEnabled()) {
+				reportFirstDifferentTag(way1, way2, rf1, rf2, AccessTagsAndBits.ROUTE_TAGS);
+			}
+			return false;
+		}
+
+		// check if certain fields in the GType objects are the same
+		if (isGTypeMergeable(road1.getGType(), road2.getGType()) == false) {
+			return false;
+		}
+		return isWayMergeable(way1, way2); 
 	}
 
 
@@ -497,13 +513,12 @@ public class RoadMerger {
 	/**
 	 * Checks if the tag values of the {@link Way} objects of both roads 
 	 * match so that both roads can be merged. 
-	 * @param mergePoint the coord where both roads should be merged
 	 * @param way1 1st way
 	 * @param way2 2nd way
 	 * @return {@code true} tag values match so that both roads might be merged;
 	 *  {@code false} tag values differ so that road must not be merged
 	 */
-	private static boolean isWayMergeable(Coord mergePoint, Way way1, Way way2) {
+	private static boolean isWayMergeable(Way way1, Way way2) {
 		// tags that need to have an equal value
 		for (String tagname : mergeTagsEqualValue) {
 			String tag1 = way1.getTag(tagname);
