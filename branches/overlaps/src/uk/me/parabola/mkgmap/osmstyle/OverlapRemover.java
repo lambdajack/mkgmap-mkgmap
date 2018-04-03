@@ -188,6 +188,9 @@ public class OverlapRemover {
 
 	private void removeOverlaps(Map<Way, List<ConvertedWay>> modRoads) {
 		List<Way> ways = new ArrayList<>(modRoads.keySet());
+		for (Way w : ways) {
+			log.error("routable line overlaps other routable line",w.toBrowseURL());
+		}
 		BitSet mod = new BitSet(ways.size());
 		for (int i = 0; i+1 < ways.size(); i++) {
 			Way w1 = ways.get(i);
@@ -210,15 +213,15 @@ public class OverlapRemover {
 								for (Entry<String, String> entry : r2Labels.entrySet()) {
 									temp.addTag(entry.getKey(), entry.getValue());
 								}
-								r1 = new ConvertedWay(r1, temp);
-								res = checkRemove(r1, r2);
+								ConvertedWay r1Mod = new ConvertedWay(r1, temp);
+								res = checkRemove(r1Mod, r2);
 							} else if (!r1Labels.isEmpty() && r2Labels.isEmpty()) {
 								Way temp = r2.getWay().copy();
 								for (Entry<String, String> entry : r1Labels.entrySet()) {
 									temp.addTag(entry.getKey(), entry.getValue());
 								}
-								r2 = new ConvertedWay(r2, temp);
-								res = checkRemove(r1, r2);
+								ConvertedWay r2Mod = new ConvertedWay(r2, temp);
+								res = checkRemove(r1, r2Mod);
 							}
 							if (res != 0) {
 								// we remove the way segment with the labels, copy them to the other segment
@@ -226,11 +229,13 @@ public class OverlapRemover {
 									for (Entry<String, String> entry : r1Labels.entrySet()) {
 										r2.getWay().addTag(entry.getKey(), entry.getValue());
 									}
+									mod.set(j);
 								} else if (res == 2 && !r2Labels.isEmpty()) {
 									for (Entry<String, String> entry : r2Labels.entrySet()) {
 										r1.getWay().addTag(entry.getKey(), entry.getValue());
 									}
 									r1Labels = r1.getWay().getTagsWithPrefix("mkgmap:label:", false);
+									mod.set(i);
 								}
 							}
 						}
@@ -264,52 +269,44 @@ public class OverlapRemover {
 			}
 
 			List<ConvertedWay> parts = modRoads.get(w);
+			if (parts.size() <= 1) 
+				continue;
+			
 //			for (int xx = 0; xx < parts.size(); xx++) {
 //				GpxCreator.createGpx("e:/ld/part"+w.getId()+"_"+xx, parts.get(xx).getPoints());
 //			}
-			ConvertedWay pattern = parts.get(0);
-			List<List<Coord>> combinedPoints = new ArrayList<>();
-			List<Coord> part = new ArrayList<>();
-			for (ConvertedWay cw1 : parts) {
-				if (part.isEmpty())
-					part.addAll(cw1.getPoints());
-				else {
-					Coord p1 = part.get(part.size()-1);
-					Coord p2 = cw1.getPoints().get(0);
-					if (p1 == p2) {
-						// re-combine
-						part.remove(part.size()-1);
-						part.addAll(cw1.getPoints());
-					} else {
-						combinedPoints.add(part);
-						part = new ArrayList<>(cw1.getPoints());
-					}
+			List<ConvertedWay> combined = new ArrayList<>();
+			combined.add(parts.get(0));
+			ConvertedWay prev = combined.get(0);
+			
+			for (int j = 1; j < parts.size(); j++) {
+				// loop tries also to combine last with first
+				ConvertedWay cw = parts.get(j);
+				List<Coord> prevPoints = prev.getPoints();
+				Coord p1 = prevPoints.get(prevPoints.size()-1);
+				Coord p2 = cw.getPoints().get(0);
+				if (p1 == p2 && RoadMerger.isMergeable(prev, cw, false)) {
+					// re-combine
+					prevPoints.remove(prevPoints.size()-1);
+					prevPoints.addAll(cw.getPoints());
+				} else {
+					combined.add(cw);
+					prev = cw;
 				}
 			}
-			if (!part.isEmpty()) {
-				if (!combinedPoints.isEmpty()) {
-					// check if we can combine last with first sequence
-					List<Coord> firstPart = combinedPoints.get(0);
-					Coord p1 = part.get(part.size() - 1);
-					Coord p2 = firstPart.get(0);
-					if (p1 == p2) {
-						firstPart.remove(0);
-						part.addAll(firstPart);
-						combinedPoints.set(0, part);
-					} else {
-						combinedPoints.add(part);
-					}
-				} else {
-					combinedPoints.add(part);
+			if (combined.size() > 1) {
+				ConvertedWay first = combined.get(0);
+				ConvertedWay last = combined.get(combined.size() - 1);
+				Coord p1 = first.getPoints().get(0);
+				Coord p2 = last.getPoints().get(last.getPoints().size() - 1);
+				if (p1 == p2 && RoadMerger.isMergeable(first, last, false)) {
+					combined.remove(0);
+					first.getPoints().remove(0);
+					last.getPoints().addAll(first.getPoints());
 				}
 			}
 			parts.clear();
-			for (List<Coord> seq : combinedPoints) {
-				Way w2 = new Way(w.getOriginalId(), seq);
-				w2.setFakeId();
-				ConvertedWay cw = new ConvertedWay(idx++, w2, pattern.getGType());
-				parts.add(cw);
-			}
+			parts.addAll(combined);
 		}
 	}
 
