@@ -14,9 +14,13 @@ package uk.me.parabola.mkgmap.osmstyle;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -40,7 +44,7 @@ public class OverlapRemover {
 	private final Area bbox;
 	
 	private List<ConvertedWay> roads;
-	private MultiHashMap<Long, RestrictionRelation> wayRestrictionsMap = new MultiHashMap<>();
+	private MultiHashMap<Long, RestrictionRelation> wayRestrictionsMap;
 	private int idx;
 
 	private int removedSegments;
@@ -60,11 +64,17 @@ public class OverlapRemover {
 		long t1 = System.currentTimeMillis();
 		this.roads = roads;
 		this.idx = roads.size();
-		
-		List<Segment> dups = findDups(roads);
+		wayRestrictionsMap = new MultiHashMap<>();
+		HashSet<Way> dups = findDups(roads);
 		if (!dups.isEmpty()) {
+			
 			handleDups(dups, restrictions);
+//			dups = findDups(roads);
+//			for (Way w : dups)
+//				log.error("remaining overlap in way",w.toBrowseURL());
 		}
+		roads = null;
+		wayRestrictionsMap = null;
 		long dt = System.currentTimeMillis() - t1;
 		log.error("check for overlapping road segments took", dt, "ms");
 	}
@@ -74,7 +84,7 @@ public class OverlapRemover {
 	 * @param roads list of roads
 	 * @return list of shared segments
 	 */
-	private List<Segment> findDups(List<ConvertedWay> roads) {
+	private HashSet<Way> findDups(List<ConvertedWay> roads) {
 		MultiIdentityHashMap<Coord, Segment> node2SegmentMap = new MultiIdentityHashMap<>(); 
 		List<Segment> dups = new ArrayList<>();
 		Way lastWay = null;
@@ -88,14 +98,12 @@ public class OverlapRemover {
 			lastWay = way;
 			List<Coord> points = way.getPoints();
 			int last = points.size();
-			if (!way.isClosed())
-				last--;
 			// TODO: add check against bbox to avoid splitting roads outside of it
-			for (int j = 0; j < last; j++) {
+			for (int j = 0; j + 1 < last; j++) {
 				Coord p1 = points.get(j);
 				if (p1.getHighwayCount() <= 1) 
 					continue;
-				Coord p2 = points.get(j + 1 < points.size() ? j + 1 : 0);
+				Coord p2 = points.get(j + 1);
 				if (p2.getHighwayCount() > 1) {
 					boolean added = false;
 					List<Segment> segments = new ArrayList<>();
@@ -105,7 +113,7 @@ public class OverlapRemover {
 						if (s.p1 == p1 && s.p2 == p2 || s.p2 == p1 && s.p1 == p2) {
 							s.ways.add(way);
 							added = true;
-							log.debug("found overlapping road segments",s.ways.get(0).toBrowseURL(),way.toBrowseURL());
+							log.info("found overlapping road segments",s.ways.get(0).toBrowseURL(),way.toBrowseURL());
 							dups.add(s);
 						}
 					}
@@ -117,7 +125,11 @@ public class OverlapRemover {
 				}
 			}
 		}
-		return dups;
+		HashSet<Way> dupWays = new LinkedHashSet<>();
+		for (Segment s : dups) {
+			dupWays.addAll(s.ways);
+		}
+		return dupWays;
 	}
 	
 	/**
@@ -125,11 +137,7 @@ public class OverlapRemover {
 	 * @param dups
 	 * @param restrictions 
 	 */
-	private void handleDups(List<Segment> dups, List<RestrictionRelation> restrictions) {
-		HashSet<Way> splitWays = new HashSet<>();
-		for (Segment s : dups) {
-			splitWays.addAll(s.ways);
-		}
+	private void handleDups(HashSet<Way> dups, List<RestrictionRelation> restrictions) {
 		// get all restriction relations
 		// eventually they must be modified if one of its ways is split
 		for (RestrictionRelation rrel : restrictions) {
@@ -140,7 +148,7 @@ public class OverlapRemover {
 			}
 		}
 		
-		splitWaysAtNodes(splitWays);
+		splitWaysAtNodes(dups);
 	}
 	
 	/**
@@ -195,6 +203,14 @@ public class OverlapRemover {
 				ConvertedWay origRoad = iter.next();
 				for (Entry<Way, List<ConvertedWay>> entry : modRoads.entrySet()) {
 					if (entry.getKey() == origRoad.getWay()) {
+						if (entry.getValue().size() == 1) {
+							List<Coord> oldPoints = origRoad.getWay().getPoints();
+							List<Coord> modPoints = entry.getValue().get(0).getWay().getPoints();
+							if (oldPoints.equals(modPoints)) {
+								// we get here if all points are equal, only other attributes like labels changed 
+								continue;
+							}
+						}
 						updateRels(origRoad, entry.getValue());
 						iter.remove();
 						log.error("removed part(s) of",origRoad);
@@ -296,41 +312,57 @@ public class OverlapRemover {
 				Iterator<ConvertedWay> iter1 = parts1.iterator();
 				while (iter1.hasNext()) {
 					ConvertedWay r1 = iter1.next();
+					if (r1.getWay().getPoints().size() != 2)
+						continue;
 					Map<String, String> r1Labels = r1.getWay().getTagsWithPrefix("mkgmap:label:", false);
 					Iterator<ConvertedWay> iter2 = parts2.iterator();
 					while (iter2.hasNext()) {
 						ConvertedWay r2 = iter2.next();
+						if (r1.getWay().getPoints().size() != 2)
+							continue;
+						if (isSameSegment(r1,r2) == false)
+							continue;
 						int res = checkRemove(r1, r2);
 						if (res == 0) {
 							// maybe only the labels are different
 							Map<String, String> r2Labels = r2.getWay().getTagsWithPrefix("mkgmap:label:", false);
-							if (r1Labels.isEmpty() && !r2Labels.isEmpty()) {
-								Way temp = r1.getWay().copy();
-								for (Entry<String, String> entry : r2Labels.entrySet()) {
-									temp.addTag(entry.getKey(), entry.getValue());
+							Map<String, String> mergedLabels =  new HashMap<>();
+							mergedLabels.putAll(r1Labels);
+							for (int k = 1; k < 5; k++) {
+								String label = r2Labels.get("mkgmap:label:" + k);
+								if (label == null)
+									break;
+								if (r1Labels.containsValue(label) == false) {
+									mergedLabels.put("mkgmap:label:" + (k+r1Labels.size()) ,label);
 								}
-								ConvertedWay r1Mod = new ConvertedWay(r1, temp);
-								res = checkRemove(r1Mod, r2);
-							} else if (!r1Labels.isEmpty() && r2Labels.isEmpty()) {
-								Way temp = r2.getWay().copy();
-								for (Entry<String, String> entry : r1Labels.entrySet()) {
-									temp.addTag(entry.getKey(), entry.getValue());
+							}
+							if (mergedLabels.size() > 4) {
+								long dd  =4;
+							}
+							if (!mergedLabels.isEmpty() && mergedLabels.size() <= 4) {
+								// create copies with identical (merged) labels
+								Way temp1 = r1.getWay().copy();
+								Way temp2 = r2.getWay().copy();
+								for (Entry<String, String> entry : mergedLabels.entrySet()) {
+									temp1.addTag(entry.getKey(), entry.getValue());
+									temp2.addTag(entry.getKey(), entry.getValue());
 								}
-								ConvertedWay r2Mod = new ConvertedWay(r2, temp);
-								res = checkRemove(r1, r2Mod);
+								ConvertedWay r1Mod = new ConvertedWay(r1, temp1);
+								ConvertedWay r2Mod = new ConvertedWay(r2, temp2);
+								res = checkRemove(r1Mod, r2Mod);
 							}
 							if (res != 0) {
 								// we remove the way segment with the labels, copy them to the other segment
-								if (res == 1 && !r1Labels.isEmpty()) {
-									for (Entry<String, String> entry : r1Labels.entrySet()) {
+								if (res == 1) {
+									for (Entry<String, String> entry : mergedLabels.entrySet()) {
 										r2.getWay().addTag(entry.getKey(), entry.getValue());
 									}
 									mod.set(j);
-								} else if (res == 2 && !r2Labels.isEmpty()) {
-									for (Entry<String, String> entry : r2Labels.entrySet()) {
+								} else if (res == 2) {
+									for (Entry<String, String> entry : mergedLabels.entrySet()) {
 										r1.getWay().addTag(entry.getKey(), entry.getValue());
 									}
-									r1Labels = r1.getWay().getTagsWithPrefix("mkgmap:label:", false);
+									r1Labels = mergedLabels;
 									mod.set(i);
 								}
 							}
@@ -407,6 +439,22 @@ public class OverlapRemover {
 		}
 	}
 
+	/**
+	 * 
+	 * @param road1
+	 * @param road2
+	 * @return true if the two roads have the same single road segment
+	 */
+	private boolean isSameSegment(ConvertedWay road1, ConvertedWay road2) {
+		if (road1.getPoints().size() != 2 || road2.getPoints().size() != 2)
+			return false;
+		Coord p10 = road1.getPoints().get(0);
+		Coord p11 = road1.getPoints().get(1);
+		Coord p20 = road2.getPoints().get(0);
+		Coord p21 = road2.getPoints().get(1);
+		return p10 == p20 && p11 == p21 || p10 == p21 && p11 == p20; 
+	}
+
 	private Way createWayPart(Way w, List<Coord> points) {
 		Way part = new Way(w.getId(), points);
 		part.setFakeId();
@@ -422,8 +470,6 @@ public class OverlapRemover {
 	 * @return 0 if no way is removable, 1 if 1st way should be removed, 2 if 2nd way should be removed.
 	 */
 	private int checkRemove(ConvertedWay road1, ConvertedWay road2) {
-		if (road1.getPoints().size() != 2 || road2.getPoints().size() != 2)
-			return 0;
 		boolean isEqual = RoadMerger.isMergeable(road1, road2, true); // TODO: tolerate different labels?
 		if (isEqual) {
 			int rc = 0;
