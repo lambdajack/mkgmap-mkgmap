@@ -606,6 +606,8 @@ public class StyledConverter implements OsmConverter {
 		filterCoordPOI();
 		OverlapRemover overlapRemover = new OverlapRemover(bbox);
 		overlapRemover.processWays(roads, restrictions);
+		resetHighwayCounts();
+		setHighwayCounts();
 		WrongAngleFixer wrongAngleFixer = new WrongAngleFixer(bbox);
 		wrongAngleFixer.optimizeWays(roads, lines, modifiedRoads, deletedRoads, restrictions);
 
