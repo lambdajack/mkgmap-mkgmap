@@ -587,10 +587,6 @@ public class RestrictionRelation extends Relation {
 		return valid;
 	}
 
-	public void setInvalid() {
-		valid = false;
-	}
-	
 	public List<Coord> getViaCoords() {
 		assert evalWasCalled;
 		return viaPoints;
@@ -635,22 +631,29 @@ public class RestrictionRelation extends Relation {
 	}
 
 	/**
-	 * check if restriction is still valid if the way with the given id is not in the map
+	 * Remove the given way from the restriction.
 	 * @param wayId
-	 * @return
+	 * @return true if restriction is still valid.
 	 */
-	public boolean isValidWithoutWay(long wayId) {
+	public boolean removeWayAndCheck(long wayId) {
 		assert evalWasCalled;
-		if (viaWayIds.contains(wayId))
+		
+		if (viaWayIds.remove(wayId)) {
+			valid = false;
 			return false;
+		}
 		fromWayIds.remove(wayId);
-		if (fromWayIds.isEmpty())
+		if (fromWayIds.isEmpty()) {
+			valid = false;
 			return false;
+		}
 		// else it must be a no_entry restriction which still is valid
 
 		toWayIds.remove(wayId);
-		if (toWayIds.isEmpty())
+		if (toWayIds.isEmpty()) {
+			valid = false;
 			return false;
+		}
 		// else it must be a no_exit restriction which still is valid
 		return true;
 	}
