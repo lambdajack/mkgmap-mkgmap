@@ -14,8 +14,12 @@ package uk.me.parabola.imgfmt.app.net;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.TagDict;
+import uk.me.parabola.mkgmap.reader.osm.Way;
 
 /**
  * mkgmap internal representation of (vehicle) access.
@@ -118,5 +122,29 @@ public final class AccessTagsAndBits {
 
 		return routeFlags;
 	}
+
+	/**
+	 * For logging purposes. Print first tag with different meaning.
+	 * @param log the logger to use
+	 * @param way1 1st way
+	 * @param way2 2nd way
+	 * @param flags1 the bit mask for 1st way 
+	 * @param flags2 the bit mask for 2nd way
+	 * @param tagMaskMap the map that explains the meaning of the bit masks
+	 */
+	public static void reportFirstDifferentTag(Logger log, Way way1, Way way2, byte flags1,
+			byte flags2, Map<String, Byte> tagMaskMap) {
+		for (Entry<String, Byte> entry : tagMaskMap.entrySet()){
+			byte mask = entry.getValue();
+			if ((flags1 & mask) != (flags2 & mask)){
+				String tagKey = entry.getKey();
+				log.debug(entry.getKey(), "does not match", way1.getId(), "("
+						+ way1.getTag(tagKey) + ")", 
+						way2.getId(), "(" + way2.getTag(tagKey) + ")");
+				return; // report only first mismatch 
+			}
+		}
+	}
+
 
 }

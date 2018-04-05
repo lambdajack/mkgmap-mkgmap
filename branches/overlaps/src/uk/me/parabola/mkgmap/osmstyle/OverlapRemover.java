@@ -13,9 +13,8 @@
 package uk.me.parabola.mkgmap.osmstyle;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -23,10 +22,12 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Map.Entry;
 
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
+import uk.me.parabola.imgfmt.app.net.AccessTagsAndBits;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.RestrictionRelation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
@@ -323,9 +324,11 @@ public class OverlapRemover {
 						if (isSameSegment(r1,r2) == false)
 							continue;
 						int res = checkRemove(r1, r2);
-						if (res == 0) {
-							// maybe only the labels are different
-							Map<String, String> r2Labels = r2.getWay().getTagsWithPrefix("mkgmap:label:", false);
+						if (res == 0)
+							continue;
+						// routing attributes are OK, check labels
+						Map<String, String> r2Labels = r2.getWay().getTagsWithPrefix("mkgmap:label:", false);
+						if (!r1Labels.equals(r2Labels)) {
 							Map<String, String> mergedLabels =  new HashMap<>();
 							mergedLabels.putAll(r1Labels);
 							for (int k = 1; k < 5; k++) {
@@ -337,28 +340,19 @@ public class OverlapRemover {
 								}
 							}
 							if (mergedLabels.size() > 4) {
-								long dd  =4;
+								log.error("too many labels after merging",r1,r2);
+								continue;
 							}
-							if (!mergedLabels.isEmpty() && mergedLabels.size() <= 4) {
-								// create copies with identical (merged) labels
-								Way temp1 = r1.getWay().copy();
-								Way temp2 = r2.getWay().copy();
-								for (Entry<String, String> entry : mergedLabels.entrySet()) {
-									temp1.addTag(entry.getKey(), entry.getValue());
-									temp2.addTag(entry.getKey(), entry.getValue());
-								}
-								ConvertedWay r1Mod = new ConvertedWay(r1, temp1);
-								ConvertedWay r2Mod = new ConvertedWay(r2, temp2);
-								res = checkRemove(r1Mod, r2Mod);
-							}
-							if (res != 0) {
-								// we remove the way segment with the labels, copy them to the other segment
-								if (res == 1) {
+							// we remove the way segment with the labels, copy them to the other segment
+							if (res == 1) {
+								if (!r2Labels.equals(mergedLabels)) {
 									for (Entry<String, String> entry : mergedLabels.entrySet()) {
 										r2.getWay().addTag(entry.getKey(), entry.getValue());
 									}
 									mod.set(j);
-								} else if (res == 2) {
+								}
+							} else if (res == 2) {
+								if (!r1Labels.equals(mergedLabels)) {
 									for (Entry<String, String> entry : mergedLabels.entrySet()) {
 										r1.getWay().addTag(entry.getKey(), entry.getValue());
 									}
@@ -366,10 +360,6 @@ public class OverlapRemover {
 									mod.set(i);
 								}
 							}
-						}
-						
-						if (res == 0) {
-							continue;
 						}
 						removedSegments++;
 						if (res == 1) {
@@ -413,7 +403,7 @@ public class OverlapRemover {
 				List<Coord> prevPoints = prev.getPoints();
 				Coord p1 = prevPoints.get(prevPoints.size()-1);
 				Coord p2 = cw.getPoints().get(0);
-				if (p1 == p2 && RoadMerger.isMergeable(prev, cw, false)) {
+				if (p1 == p2 && RoadMerger.isMergeable(prev, cw)) {
 					// re-combine
 					prevPoints.remove(prevPoints.size()-1);
 					prevPoints.addAll(cw.getPoints());
@@ -427,7 +417,7 @@ public class OverlapRemover {
 				ConvertedWay last = combined.get(combined.size() - 1);
 				Coord p1 = first.getPoints().get(0);
 				Coord p2 = last.getPoints().get(last.getPoints().size() - 1);
-				if (p1 == p2 && RoadMerger.isMergeable(first, last, false)) {
+				if (p1 == p2 && RoadMerger.isMergeable(first, last)) {
 					combined.remove(0);
 					first.getPoints().remove(0);
 					last.getPoints().addAll(first.getPoints());
@@ -470,8 +460,8 @@ public class OverlapRemover {
 	 * @return 0 if no way is removable, 1 if 1st way should be removed, 2 if 2nd way should be removed.
 	 */
 	private int checkRemove(ConvertedWay road1, ConvertedWay road2) {
-		boolean isEqual = RoadMerger.isMergeable(road1, road2, true); // TODO: tolerate different labels?
-		if (isEqual) {
+		boolean isSimilar = isSimilar(road1, road2);
+		if (isSimilar) {
 			int rc = 0;
 			Coord p10 = road1.getPoints().get(0);
 			Coord p11 = road1.getPoints().get(1);
@@ -493,22 +483,105 @@ public class OverlapRemover {
 					rc = 3;   
 				}
 			}
-			if (rc != 0) {
-//				if ((rc & 1) != 0 && wayRestrictionsMap.containsKey(road1.getWay().getOriginalId()))
-//					rc -= 1;
-//				if ((rc & 2) != 0 && wayRestrictionsMap.containsKey(road2.getWay().getOriginalId()))
-//					rc -= 2;
-				if (rc == 3) {
-					// both are equal, prefer to remove part of area
-					if ("yes".equals(road1.getWay().getTag("area")))
-						return 1;
-					return 2;
-				}
-				return rc;
+			if (road1.isRoundabout() != road2.isRoundabout()) {
+				// keep the roundabout segment
+				if (road1.isRoundabout())
+					rc &= ~1; 
+				else 
+					rc &= ~2;
 			}
+			if (rc != 3)
+				return rc;
+			boolean a1 = "yes".equals(road1.getWay().getTag("area"));
+			boolean a2 = "yes".equals(road2.getWay().getTag("area"));
+			if (a1 != a2) {
+				if (a1) 
+					return 1; 
+				else 
+					return 2;
+			}
+			// if road speed is not equal, remove the segment with the lower value
+			int d = Integer.compare(road1.getRoadSpeed(), road2.getRoadSpeed());
+			if (d < 0)
+				return 1;
+			else if (d > 0)
+				return 2; 
+			boolean rr1 = wayRestrictionsMap.containsKey(road1.getWay().getOriginalId());
+			boolean rr2 = wayRestrictionsMap.containsKey(road2.getWay().getOriginalId());
+			if (rr1 != rr2) {
+				if (rr1)
+					return 2; 
+				else 
+					return 1;
+			}
+			if (rc == 3) {
+				// no difference found, remove the 2nd
+				return 2;
+			}
+			return rc;
 		}
 
 		return 0;
+	}
+	
+	/**
+	 * Compare selected attributes of roads.
+	 * @param road1
+	 * @param road2
+	 * @return true if roads are similar enough 
+	 */
+	private static boolean isSimilar(ConvertedWay road1, ConvertedWay road2) {
+		// check if basic road attributes match
+		if (road1.getRoadClass() != road2.getRoadClass())
+			return false;
+		Way way1 = road1.getWay();
+		Way way2 = road2.getWay();
+
+		if (road1.getAccess() != road2.getAccess()) {
+			if (log.isDebugEnabled()) {
+				AccessTagsAndBits.reportFirstDifferentTag(log, way1, way2, road1.getAccess(),
+						road2.getAccess(), AccessTagsAndBits.ACCESS_TAGS);
+			}
+			return false;
+		}
+		byte rf1 = road1.getRouteFlags();
+		byte rf2 = road2.getRouteFlags();
+		// ignore oneway and roundabout flags here
+		rf1 |= AccessTagsAndBits.R_ONEWAY;
+		rf2 |= AccessTagsAndBits.R_ONEWAY;
+		rf1 |= AccessTagsAndBits.R_ROUNDABOUT;
+		rf2 |= AccessTagsAndBits.R_ROUNDABOUT;
+		
+		if (rf1 != rf2) {
+			if (log.isDebugEnabled()) {
+				AccessTagsAndBits.reportFirstDifferentTag(log,way1, way2, rf1, rf2, AccessTagsAndBits.ROUTE_TAGS);
+			}
+			return false;
+		}
+		return true;
+	}
+	
+	private final static Set<String> similarTagsEqualValue = new HashSet<>(Arrays.asList( 
+			"mkgmap:label:1",
+			"mkgmap:label:2",
+			"mkgmap:label:3",
+			"mkgmap:label:4"
+			));
+
+	private boolean compareLabels(Way way1, Way way2) {
+		for (String tagname : similarTagsEqualValue) {
+			String tag1 = way1.getTag(tagname);
+			String tag2 = way2.getTag(tagname);
+			if (RoadMerger.stringEquals(tag1, tag2) == false) {
+				if (log.isDebugEnabled()){
+					log.debug(tagname, "does not match", way1.getId(), "("
+							+ tag1 + ")", way2.getId(), "(" + tag2
+							+ ")");
+				}
+				return false;
+			}
+		}
+		return true;
 	}
 	
 	static class Segment {

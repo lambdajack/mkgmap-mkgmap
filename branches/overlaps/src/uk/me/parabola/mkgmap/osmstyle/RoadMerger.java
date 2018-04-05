@@ -21,7 +21,6 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import uk.me.parabola.imgfmt.Utils;
@@ -82,7 +81,7 @@ public class RoadMerger {
 	 * @param s2 second string ({@code null} allowed)
 	 * @return {@code true} both strings are equal or both {@code null}; {@code false} both strings are not equal
 	 */
-	private static boolean stringEquals(String s1, String s2) {
+	static boolean stringEquals(String s1, String s2) {
 		if (s1 == null) 
 			return s2 == null;
 		return s1.equals(s2);
@@ -358,7 +357,7 @@ public class RoadMerger {
 	 * 	{@code false} the roads cannot be merged at {@code mergePoint}
 	 */
 	private static boolean isMergeable(Coord mergePoint, ConvertedWay road1, ConvertedWay road2) {
-		if (!isMergeable(road1, road2, false))
+		if (!isMergeable(road1, road2))
 			return false;
 		Way way1 = road1.getWay();
 		Way way2 = road2.getWay();
@@ -410,11 +409,10 @@ public class RoadMerger {
 	 * Checks if the given {@code otherRoad} can be merged with this road.
 	 * @param road1 1st road instance
 	 * @param road2 2nd road instance
-	 * @param ignoreOneway if true, if differences in oneway tag
 	 * @return {@code true} road1 can be merged with {@code road2};
 	 * 	{@code false} the roads cannot be merged 
 	 */
-	public static boolean isMergeable(ConvertedWay road1, ConvertedWay road2, boolean ignoreOneway) {
+	public static boolean isMergeable(ConvertedWay road1, ConvertedWay road2) {
 		// check if basic road attributes match
 		if (road1.getRoadClass() != road2.getRoadClass())
 			return false;
@@ -425,20 +423,16 @@ public class RoadMerger {
 
 		if (road1.getAccess() != road2.getAccess()) {
 			if (log.isDebugEnabled()) {
-				reportFirstDifferentTag(way1, way2, road1.getAccess(),
+				AccessTagsAndBits.reportFirstDifferentTag(log, way1, way2, road1.getAccess(),
 						road2.getAccess(), AccessTagsAndBits.ACCESS_TAGS);
 			}
 			return false;
 		}
 		byte rf1 = road1.getRouteFlags();
 		byte rf2 = road2.getRouteFlags();
-		if (ignoreOneway) {
-			rf1 |= AccessTagsAndBits.R_ONEWAY;
-			rf2 |= AccessTagsAndBits.R_ONEWAY;
-		}
 		if (rf1 != rf2) {
 			if (log.isDebugEnabled()) {
-				reportFirstDifferentTag(way1, way2, rf1, rf2, AccessTagsAndBits.ROUTE_TAGS);
+				AccessTagsAndBits.reportFirstDifferentTag(log, way1, way2, rf1, rf2, AccessTagsAndBits.ROUTE_TAGS);
 			}
 			return false;
 		}
@@ -448,29 +442,6 @@ public class RoadMerger {
 			return false;
 		}
 		return isWayMergeable(way1, way2); 
-	}
-
-
-	/**
-	 * For logging purposes. Print first tag with different meaning.
-	 * @param way1 1st way
-	 * @param way2 2nd way
-	 * @param flags1 the bit mask for 1st way 
-	 * @param flags2 the bit mask for 2nd way
-	 * @param tagMaskMap the map that explains the meaning of the bit masks
-	 */
-	private static void reportFirstDifferentTag(Way way1, Way way2, byte flags1,
-			byte flags2, Map<String, Byte> tagMaskMap) {
-		for (Entry<String, Byte> entry : tagMaskMap.entrySet()){
-			byte mask = entry.getValue();
-			if ((flags1 & mask) != (flags2 & mask)){
-				String tagKey = entry.getKey();
-				log.debug(entry.getKey(), "does not match", way1.getId(), "("
-						+ way1.getTag(tagKey) + ")", 
-						way2.getId(), "(" + way2.getTag(tagKey) + ")");
-				return; // report only first mismatch 
-			}
-		}
 	}
 
 
