@@ -27,6 +27,7 @@ import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.net.AccessTagsAndBits;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.general.LineClipper;
 import uk.me.parabola.mkgmap.reader.osm.RestrictionRelation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.util.MultiHashMap;
@@ -64,7 +65,7 @@ public class OverlapRemover {
 		this.roads = roads;
 		this.idx = roads.size();
 		wayRestrictionsMap = new MultiHashMap<>();
-		HashSet<Way> dups = findDups(roads);
+		HashSet<Way> dups = findDups();
 		if (!dups.isEmpty()) {
 			
 			handleDups(dups, restrictions);
@@ -83,12 +84,11 @@ public class OverlapRemover {
 	 * @param roads list of roads
 	 * @return list of shared segments
 	 */
-	private HashSet<Way> findDups(List<ConvertedWay> roads) {
+	private HashSet<Way> findDups() {
 		MultiIdentityHashMap<Coord, Segment> node2SegmentMap = new MultiIdentityHashMap<>(); 
 		List<Segment> dups = new ArrayList<>();
 		Way lastWay = null;
-		for (int i = 0; i < roads.size(); i++) {
-			ConvertedWay cw = roads.get(i);
+		for (ConvertedWay cw : roads) {
 			if (!cw.isValid() || cw.isOverlay()) 
 				continue;
 			Way way = cw.getWay();
@@ -112,7 +112,6 @@ public class OverlapRemover {
 						if (s.p1 == p1 && s.p2 == p2 || s.p2 == p1 && s.p1 == p2) {
 							s.ways.add(way);
 							added = true;
-							log.info("found overlapping road segments",s.ways.get(0).toBrowseURL(),way.toBrowseURL());
 							dups.add(s);
 						}
 					}
@@ -126,6 +125,20 @@ public class OverlapRemover {
 		}
 		HashSet<Way> dupWays = new LinkedHashSet<>();
 		for (Segment s : dups) {
+			// check bbox
+			if (!bbox.contains(s.p1) || !bbox.contains(s.p2)) {
+				List<Coord> line = new ArrayList<>();
+				line.add(s.p1);
+				line.add(s.p2);
+				List<List<Coord>> lineSegs = LineClipper.clip(bbox, line);
+				if (lineSegs.isEmpty()) {
+					// overlap is outside of bbox, ignore it
+					continue;
+				}
+				log.info("found overlapping road segments",s.ways.get(0).toBrowseURL(),s.ways.get(1).toBrowseURL());
+				
+			}
+			
 			dupWays.addAll(s.ways);
 		}
 		return dupWays;

@@ -93,10 +93,6 @@ public class WrongAngleFixer {
 		printBadAngles("bad_angles_start", roads);
 		writeOSM("roads_orig", roads);
 		writeOSM("lines_orig", lines);
-		Long2ObjectOpenHashMap<Coord> coordMap = new Long2ObjectOpenHashMap<>();
-		replaceDuplicateBoundaryNodes(roads, coordMap);
-		replaceDuplicateBoundaryNodes(lines, coordMap);
-		coordMap.clear();
 		removeWrongAngles(roads, lines, modifiedRoads, deletedRoads, restrictions);
 		writeOSM("roads_post_rem_wrong_angles", roads);
 		removeObsoletePoints(roads, modifiedRoads);
@@ -110,34 +106,6 @@ public class WrongAngleFixer {
 		writeOSM("lines_final", lines);
 	}	
 	
-	/**
-	 * Make boundary nodes unique.
-	 * @param convertedWays
-	 * @param coordMap
-	 */
-	private void replaceDuplicateBoundaryNodes(List<ConvertedWay> convertedWays, Long2ObjectOpenHashMap<Coord> coordMap) {
-		for (ConvertedWay cw : convertedWays) {
-			if (!cw.isValid() || cw.isOverlay()) 
-				continue;
-			Way way = cw.getWay();
-			List<Coord> points = way.getPoints();
-			for (int i = 0; i < points.size(); i++) {
-				Coord co = points.get(i);
-				if (!co.getOnBoundary())
-					continue;
-				Coord repl = coordMap.get(Utils.coord2Long(co));
-				if (repl == null)
-					coordMap.put(Utils.coord2Long(co), co);
-				else {
-					if (!co.isAddedByClipper() && repl.isAddedByClipper()) {
-						log.debug("check replaced original boundary node at",co);
-					}
-					points.set(i, repl);
-				}
-			}
-		}
-	}
-
 	private static void replaceCoord(Coord toRepl, Coord replacement, Map<Coord, Coord> replacements) {
 		assert toRepl != replacement;
 		if (toRepl.getOnBoundary()){

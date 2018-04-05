@@ -30,7 +30,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import uk.me.parabola.imgfmt.ExitException;
+import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.CoordNode;
@@ -600,14 +602,23 @@ public class StyledConverter implements OsmConverter {
 		style.reportStats();
 		driveOnLeft = calcDrivingSide();
 		
+		// make sure that added boundary nodes are the same coord instances
+		Long2ObjectOpenHashMap<Coord> coordMap = new Long2ObjectOpenHashMap<>();
+		replaceDuplicateBoundaryNodes(roads, coordMap);
+		replaceDuplicateBoundaryNodes(lines, coordMap);
+		coordMap.clear();
+		
 		setHighwayCounts();
 		findUnconnectedRoads();
 		rotateClosedWaysToFirstNode();
 		filterCoordPOI();
+		
 		OverlapRemover overlapRemover = new OverlapRemover(bbox);
+		
 		overlapRemover.processWays(roads, restrictions);
 		resetHighwayCounts();
 		setHighwayCounts();
+		
 		WrongAngleFixer wrongAngleFixer = new WrongAngleFixer(bbox);
 		wrongAngleFixer.optimizeWays(roads, lines, modifiedRoads, deletedRoads, restrictions);
 
@@ -722,6 +733,35 @@ public class StyledConverter implements OsmConverter {
 		
 	}
 
+	/**
+	 * Make boundary nodes unique.
+	 * @param convertedWays
+	 * @param coordMap
+	 */
+	private void replaceDuplicateBoundaryNodes(List<ConvertedWay> convertedWays, Long2ObjectOpenHashMap<Coord> coordMap) {
+		for (ConvertedWay cw : convertedWays) {
+			if (!cw.isValid() || cw.isOverlay()) 
+				continue;
+			Way way = cw.getWay();
+			List<Coord> points = way.getPoints();
+			for (int i = 0; i < points.size(); i++) {
+				Coord co = points.get(i);
+				if (!co.getOnBoundary())
+					continue;
+				Coord repl = coordMap.get(Utils.coord2Long(co));
+				if (repl == null)
+					coordMap.put(Utils.coord2Long(co), co);
+				else {
+					if (!co.isAddedByClipper() && repl.isAddedByClipper()) {
+						log.debug("check replaced original boundary node at",co);
+					}
+					points.set(i, repl);
+				}
+			}
+		}
+	}
+
+	
 	/**
 	 * Check the counters and verify the driveOn value to calculate
 	 * the drive on left flag. 
