@@ -13,7 +13,6 @@
 package uk.me.parabola.mkgmap.osmstyle;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,7 +21,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
 
 import uk.me.parabola.imgfmt.app.Area;
@@ -557,29 +555,6 @@ public class OverlapRemover {
 				AccessTagsAndBits.reportFirstDifferentTag(log,way1, way2, rf1, rf2, AccessTagsAndBits.ROUTE_TAGS);
 			}
 			return false;
-		}
-		return true;
-	}
-	
-	private final static Set<String> similarTagsEqualValue = new HashSet<>(Arrays.asList( 
-			"mkgmap:label:1",
-			"mkgmap:label:2",
-			"mkgmap:label:3",
-			"mkgmap:label:4"
-			));
-
-	private boolean compareLabels(Way way1, Way way2) {
-		for (String tagname : similarTagsEqualValue) {
-			String tag1 = way1.getTag(tagname);
-			String tag2 = way2.getTag(tagname);
-			if (RoadMerger.stringEquals(tag1, tag2) == false) {
-				if (log.isDebugEnabled()){
-					log.debug(tagname, "does not match", way1.getId(), "("
-							+ tag1 + ")", way2.getId(), "(" + tag2
-							+ ")");
-				}
-				return false;
-			}
 		}
 		return true;
 	}
