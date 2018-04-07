@@ -67,16 +67,12 @@ public class OverlapRemover {
 		wayRestrictionsMap = new MultiHashMap<>();
 		HashSet<Way> dups = findDups();
 		if (!dups.isEmpty()) {
-			
 			handleDups(dups, restrictions);
-//			dups = findDups(roads);
-//			for (Way w : dups)
-//				log.error("remaining overlap in way",w.toBrowseURL());
 		}
 		roads = null;
 		wayRestrictionsMap = null;
 		long dt = System.currentTimeMillis() - t1;
-		log.error("check for overlapping road segments took", dt, "ms");
+		log.info("check for overlapping road segments took", dt, "ms");
 	}
 
 	/**
@@ -207,7 +203,7 @@ public class OverlapRemover {
 		int origBad = modRoads.size();
 		removeOverlaps(modRoads);
 		if (modRoads.isEmpty()) {
-			log.error("could not change any of the",origBad,"road(s) with overlapping segments");
+			log.warn("could not change any of the",origBad,"road(s) with overlapping segments");
 		} else {
 			Iterator<ConvertedWay> iter = roads.iterator();
 			List<ConvertedWay> roadParts = new ArrayList<>(); 
@@ -225,13 +221,13 @@ public class OverlapRemover {
 						}
 						updateRels(origRoad, entry.getValue());
 						iter.remove();
-						log.error("removed part(s) of",origRoad);
+						log.info("removed part(s) of",origRoad);
 						roadParts.addAll(entry.getValue());
 					}
 				}
 			}
 			roads.addAll(roadParts);
-			log.error("changed",modRoads.size(),"of",origBad,"roads with overlapping segments and remvoed",removedSegments,"segments");
+			log.info("changed",modRoads.size(),"of",origBad,"roads with overlapping segments and remvoed",removedSegments,"segments");
 		}
 		
 	}
@@ -252,9 +248,9 @@ public class OverlapRemover {
 				continue;
 			if (rr.removeWayAndCheck(origRoad.getWay().getId()) == false) {
 				if (parts.isEmpty())
-					log.error("ignoring restriction relation",rr,"because way",origRoad.getWay().getId(),"was removed");
+					log.warn("ignoring restriction relation",rr,"because way",origRoad.getWay().getId(),"was removed");
 				else 
-					log.error("ignoring restriction relation",rr,"because part of way",origRoad.getWay().getId(),"was removed");
+					log.warn("ignoring restriction relation",rr,"because part of way",origRoad.getWay().getId(),"was removed");
 			}
 			//TODO: 
 //			if (parts.isEmpty())
@@ -312,7 +308,7 @@ public class OverlapRemover {
 	private void removeOverlaps(Map<Way, List<ConvertedWay>> modRoads) {
 		List<Way> ways = new ArrayList<>(modRoads.keySet());
 		for (Way w : ways) {
-			log.error("routable line overlaps other routable line",w.toBrowseURL());
+			log.warn("routable line overlaps other routable line",w.toBrowseURL());
 		}
 		BitSet mod = new BitSet(ways.size());
 		for (int i = 0; i+1 < ways.size(); i++) {
@@ -351,7 +347,7 @@ public class OverlapRemover {
 								}
 							}
 							if (mergedLabels.size() > 4) {
-								log.error("too many labels after merging",r1,r2);
+								log.warn("did not remove overlap, too many labels after merging",r1,r2);
 								continue;
 							}
 							// we remove the way segment with the labels, copy them to the other segment
@@ -572,7 +568,12 @@ public class OverlapRemover {
 		return true;
 	}
 	
-	static class Segment {
+	/**
+	 * Helper class to group overlapping segments with the ways 
+	 * @author Gerd Petermann
+	 *
+	 */
+	private static class Segment {
 		final Coord p1,p2;
 		final ArrayList<Way> ways = new ArrayList<>();
 
