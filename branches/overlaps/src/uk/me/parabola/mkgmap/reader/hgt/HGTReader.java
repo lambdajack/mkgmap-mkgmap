@@ -160,6 +160,7 @@ public class HGTReader {
 					return entry;
 				}
 			}
+			return null;
 		}
 		return null;
 	}
