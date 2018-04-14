@@ -144,6 +144,7 @@ public class StyledConverter implements OsmConverter {
 	private int reportDeadEnds; 
 	private final boolean linkPOIsToWays;
 	private final boolean mergeRoads;
+	private boolean removeOverlappingRoadSegments;
 	private final boolean routable;
 	private final Tags styleOptionTags;
 	private final static String STYLE_OPTION_PREF = "mkgmap:option:";
@@ -208,6 +209,8 @@ public class StyledConverter implements OsmConverter {
 		
 		// undocumented option - usually used for debugging only
 		mergeRoads = props.getProperty("no-mergeroads", false) == false;
+		removeOverlappingRoadSegments = props.getProperty("no-remove-overlaps", false) == false;
+
 		routable = props.containsKey("route");
 		String styleOption= props.getProperty("style-option",null);
 		styleOptionTags = parseStyleOption(styleOption);
@@ -613,11 +616,12 @@ public class StyledConverter implements OsmConverter {
 		rotateClosedWaysToFirstNode();
 		filterCoordPOI();
 		
-		OverlapRemover overlapRemover = new OverlapRemover(bbox);
-		
-		overlapRemover.processWays(roads, restrictions);
-		resetHighwayCounts();
-		setHighwayCounts();
+		if (removeOverlappingRoadSegments) {
+			OverlapRemover overlapRemover = new OverlapRemover(bbox);
+			overlapRemover.processWays(roads, restrictions);
+			resetHighwayCounts();
+			setHighwayCounts();
+		}
 		
 		WrongAngleFixer wrongAngleFixer = new WrongAngleFixer(bbox);
 		wrongAngleFixer.optimizeWays(roads, lines, modifiedRoads, deletedRoads, restrictions);

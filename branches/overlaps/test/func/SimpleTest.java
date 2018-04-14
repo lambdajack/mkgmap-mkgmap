@@ -53,7 +53,7 @@ public class SimpleTest extends Base {
 	@Test
 	public void testBasic() throws FileNotFoundException {
 
-		Main.mainNoSystemExit(Args.TEST_STYLE_ARG, "--preserve-element-order",
+		Main.mainNoSystemExit(Args.TEST_STYLE_ARG, "--preserve-element-order", "--x-no-remove-overlaps",
 				Args.TEST_RESOURCE_OSM + "uk-test-1.osm.gz");
 
 		MapReader mr = new MapReader(Args.DEF_MAP_ID + ".img");
@@ -70,6 +70,28 @@ public class SimpleTest extends Base {
 
 		List<Polyline> list1 = mr.linesForLevel(0);
 		assertEquals("number of lines at level 0", 3382, list1.size());
+	}
+
+	@Test
+	public void testOverlapRemover() throws FileNotFoundException {
+
+		Main.mainNoSystemExit(Args.TEST_STYLE_ARG, "--preserve-element-order",
+				Args.TEST_RESOURCE_OSM + "uk-test-1.osm.gz");
+
+		MapReader mr = new MapReader(Args.DEF_MAP_ID + ".img");
+		TestUtils.registerFile(mr);
+		//FileSystem fs = ImgFS.openFs(Args.DEF_MAP_ID + ".img");
+		assertNotNull("file exists", mr);
+
+		Area bounds = mr.getTreBounds();
+		Area expBox = new Area(2402404, -11185, 2407064, -6524);
+		assertEquals("bounds of map", expBox, bounds);
+
+		List<Point> list = mr.pointsForLevel(0, MapReader.WITH_EXT_TYPE_DATA);
+		assertEquals("number of points at level 0", 204, list.size());
+
+		List<Polyline> list1 = mr.linesForLevel(0);
+		assertEquals("number of lines at level 0", 3371, list1.size());
 	}
 
 	@Test
