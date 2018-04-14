@@ -162,7 +162,7 @@ public class HGTReader {
 			}
 			return null;
 		}
-		return null;
+		return entry;
 	}
 	
 	/**
