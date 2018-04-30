@@ -91,7 +91,7 @@ public class TREFile extends ImgFile implements Configurable {
 
 		header.setMapInfoSize(header.getMapInfoSize() + enc.getLength() + 1);
 		getWriter().put(val);
-		getWriter().put((byte) 0);
+		getWriter().put1u(0);
 	}
 
 	public void addCopyright(Label cr) {
@@ -175,7 +175,7 @@ public class TREFile extends ImgFile implements Configurable {
 					header.setSubdivSize(header.getSubdivSize() + TREHeader.SUBDIV_REC_SIZE);
 			}
 		}
-		getWriter().putInt(lastRgnPos);
+		getWriter().put4(lastRgnPos);
 		header.setSubdivSize(header.getSubdivSize() + 4);
 	}
 
@@ -330,7 +330,7 @@ public class TREFile extends ImgFile implements Configurable {
 		ImgFileWriter writer = getWriter();
 		for (Label l : copyrights) {
 			header.incCopyrightSize();
-			writer.put3(l.getOffset());
+			writer.put3u(l.getOffset());
 		}
 	}
 
@@ -357,7 +357,7 @@ public class TREFile extends ImgFile implements Configurable {
 		header.setBounds(area);
 	}
 
-	public void addPoiDisplayFlags(byte b) {
+	public void addPoiDisplayFlags(int b) {
 		header.addPoiDisplayFlags(b);
 	}
 
