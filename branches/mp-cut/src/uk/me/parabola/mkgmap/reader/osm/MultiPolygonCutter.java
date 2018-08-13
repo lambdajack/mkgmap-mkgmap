@@ -193,41 +193,8 @@ public class MultiPolygonCutter {
 				// Now find the intersection of these two boxes with the
 				// original polygon. This will make two new areas, and each
 				// area will be one (or more) polygons.
-				Area a1 = new Area(r1); 
-				Area a2 = new Area(r2);
-				a1.intersect(areaCutData.outerArea);
-				a2.intersect(areaCutData.outerArea);
-				if (areaCutData.innerAreas.isEmpty()) {
-					finishedAreas.addAll(Java2DConverter.areaToSingularAreas(a1));
-					finishedAreas.addAll(Java2DConverter.areaToSingularAreas(a2));
-				} else {
-					ArrayList<Area> cuttedAreas = new ArrayList<>();
-					cuttedAreas.addAll(Java2DConverter.areaToSingularAreas(a1));
-					cuttedAreas.addAll(Java2DConverter.areaToSingularAreas(a2));
-					
-					for (Area nextOuterArea : cuttedAreas) {
-						ArrayList<Area> nextInnerAreas = null;
-						// go through all remaining inner areas and check if they
-						// must be further processed with the nextOuterArea 
-						for (Area nonProcessedInner : areaCutData.innerAreas) {
-							if (nextOuterArea.intersects(nonProcessedInner.getBounds2D())) {
-								if (nextInnerAreas == null) {
-									nextInnerAreas = new ArrayList<>();
-								}
-								nextInnerAreas.add(nonProcessedInner);
-							}
-						}
-						
-						if (nextInnerAreas == null || nextInnerAreas.isEmpty()) {
-							finishedAreas.add(nextOuterArea);
-						} else {
-							AreaCutData outCutData = new AreaCutData();
-							outCutData.outerArea = nextOuterArea;
-							outCutData.innerAreas= nextInnerAreas;
-							areasToCut.add(outCutData);
-						}
-					}
-				}
+				divide(r1, areaCutData, finishedAreas, areasToCut);
+				divide(r2, areaCutData, finishedAreas, areasToCut);
 			}
 			
 		}
@@ -262,6 +229,49 @@ public class MultiPolygonCutter {
 		}
 
 		return cuttedOuterPolygon;
+	}
+
+	/**
+	 * Clip the area with the given rectangle and check if further processing is needed.
+	 * @param cutRect
+	 * @param areaCutData
+	 * @param finishedAreas
+	 * @param areasToCut
+	 */
+	private void divide(Rectangle2D cutRect, AreaCutData areaCutData, Collection<Area> finishedAreas, Queue<AreaCutData> areasToCut) {
+		Area area = new Area(cutRect);
+		if (area.isEmpty()) {
+			// nothing to do
+			return;
+		}
+		area.intersect(areaCutData.outerArea);
+		List<Area> singularAreas = Java2DConverter.areaToSingularAreas(area);
+		if (areaCutData.innerAreas.isEmpty()) {
+			finishedAreas.addAll(singularAreas);
+		} else {
+			for (Area nextOuterArea : singularAreas) {
+				ArrayList<Area> nextInnerAreas = null;
+				// go through all remaining inner areas and check if they
+				// must be further processed with the nextOuterArea 
+				for (Area nonProcessedInner : areaCutData.innerAreas) {
+					if (nextOuterArea.intersects(nonProcessedInner.getBounds2D())) {
+						if (nextInnerAreas == null) {
+							nextInnerAreas = new ArrayList<>();
+						}
+						nextInnerAreas.add(nonProcessedInner);
+					}
+				}
+				
+				if (nextInnerAreas == null || nextInnerAreas.isEmpty()) {
+					finishedAreas.add(nextOuterArea);
+				} else {
+					AreaCutData outCutData = new AreaCutData();
+					outCutData.outerArea = nextOuterArea;
+					outCutData.innerAreas= nextInnerAreas;
+					areasToCut.add(outCutData);
+				}
+			}
+		}
 	}
 	
 	private static CutPoint calcNextCutPoint(AreaCutData areaData) {
