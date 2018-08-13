@@ -114,11 +114,11 @@ class PrecompSeaSaver implements Runnable {
 					Long2ObjectOpenHashMap<Long> coordIds = new Long2ObjectOpenHashMap<>();
 					Map<Long,uk.me.parabola.splitter.Way> pbfWays = new TreeMap<Long, uk.me.parabola.splitter.Way>();
 					long maxNodeId = 1;
+					long wayId = 1;
 					for (Way w : tileData.getValue()) {
 						uk.me.parabola.splitter.Way pbfWay = new uk.me.parabola.splitter.Way();
-						pbfWay.set(w.getId());
-						for (Entry<String, String> tag : w
-								.getTagEntryIterator()) {
+						pbfWay.set(wayId++);
+						for (Entry<String, String> tag : w.getTagEntryIterator()) {
 							pbfWay.addTag(tag.getKey(), tag.getValue());
 						}
 						for (Coord c : w.getPoints()) {
