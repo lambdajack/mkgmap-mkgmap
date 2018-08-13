@@ -396,7 +396,7 @@ public class MultiPolygonCutter {
 	private static final int CUT_POINT_CLASSIFICATION_GOOD_THRESHOLD = 1<<(11 + Coord.DELTA_SHIFT);
 	private static final int CUT_POINT_CLASSIFICATION_BAD_THRESHOLD = 1<< (8 + Coord.DELTA_SHIFT);
 	private static class CutPoint implements Comparable<CutPoint>{
-		private int startPoinHp = Integer.MAX_VALUE; // high precision map units
+		private int startPointHp = Integer.MAX_VALUE; // high precision map units
 		private int stopPointHp = Integer.MIN_VALUE;  // high precision map units
 		private Integer cutPointHp = null; // high precision map units
 		private final LinkedList<Area> areas;
@@ -416,7 +416,7 @@ public class MultiPolygonCutter {
 		public CutPoint duplicate() {
 			CutPoint newCutPoint = new CutPoint(this.axis, this.outerBounds);
 			newCutPoint.areas.addAll(areas);
-			newCutPoint.startPoinHp = startPoinHp;
+			newCutPoint.startPointHp = startPointHp;
 			newCutPoint.stopPointHp = stopPointHp;
 			return newCutPoint;
 		}
@@ -428,13 +428,13 @@ public class MultiPolygonCutter {
 		}
 		
 		private boolean isBadCutPoint() {
-			int d1 = getCutPointHighPrec() - startPoinHp;
+			int d1 = getCutPointHighPrec() - startPointHp;
 			int d2 = stopPointHp - getCutPointHighPrec();
 			return Math.min(d1, d2) < CUT_POINT_CLASSIFICATION_BAD_THRESHOLD;
 		}
 		
 		private boolean isStartCut() {
-			return (startPoinHp <= axis.getStartHighPrec(outerBounds));
+			return (startPointHp <= axis.getStartHighPrec(outerBounds));
 		}
 		
 		private boolean isStopCut() {
@@ -451,9 +451,9 @@ public class MultiPolygonCutter {
 				return cutPointHp;
 			}
 			
-			if (startPoinHp == stopPointHp) {
+			if (startPointHp == stopPointHp) {
 				// there is no choice => return the one possible point 
-				cutPointHp = startPoinHp;
+				cutPointHp = startPointHp;
 				return cutPointHp;
 			}
 			
@@ -467,7 +467,7 @@ public class MultiPolygonCutter {
 			if (isStopCut()) {
 				// the polygons can be cut out at the end of the sector
 				// thats good because the big polygon need not to be cut into two halves
-				cutPointHp = startPoinHp;
+				cutPointHp = startPointHp;
 				return cutPointHp;
 			}
 			
@@ -475,9 +475,9 @@ public class MultiPolygonCutter {
 			int midOuterHp = axis.getStartHighPrec(outerBounds)+(axis.getStopHighPrec(outerBounds) - axis.getStartHighPrec(outerBounds)) / 2;
 			cutPointHp = midOuterHp;
 
-			if (midOuterHp < startPoinHp) {
+			if (midOuterHp < startPointHp) {
 				// not possible => the start point is greater than the middle so correct to the startPoint
-				cutPointHp = startPoinHp;
+				cutPointHp = startPointHp;
 				
 				if (((cutPointHp & ~(CUT_POINT_CLASSIFICATION_GOOD_THRESHOLD-1)) + CUT_POINT_CLASSIFICATION_GOOD_THRESHOLD) <= stopPointHp) {
 					cutPointHp = ((cutPointHp & ~(CUT_POINT_CLASSIFICATION_GOOD_THRESHOLD-1)) + CUT_POINT_CLASSIFICATION_GOOD_THRESHOLD);
@@ -487,7 +487,7 @@ public class MultiPolygonCutter {
 				// not possible => the stop point is smaller than the middle so correct to the stopPoint
 				cutPointHp = stopPointHp;
 
-				if ((cutPointHp & ~(CUT_POINT_CLASSIFICATION_GOOD_THRESHOLD-1))  >= startPoinHp) {
+				if ((cutPointHp & ~(CUT_POINT_CLASSIFICATION_GOOD_THRESHOLD-1))  >= startPointHp) {
 					cutPointHp = (cutPointHp & ~(CUT_POINT_CLASSIFICATION_GOOD_THRESHOLD-1));
 				}
 			}
@@ -502,13 +502,13 @@ public class MultiPolygonCutter {
 			}
 			
 			int cut1 = (cutMod > 0 ? cutPointHp-cutMod : cutPointHp  - CUT_POINT_CLASSIFICATION_GOOD_THRESHOLD- cutMod);
-			if (cut1 >= startPoinHp && cut1 <= stopPointHp) {
+			if (cut1 >= startPointHp && cut1 <= stopPointHp) {
 				cutPointHp = cut1;
 				return cutPointHp;
 			}
 			
 			int cut2 = (cutMod > 0 ? cutPointHp + CUT_POINT_CLASSIFICATION_GOOD_THRESHOLD -cutMod : cutPointHp - cutMod);
-			if (cut2 >= startPoinHp && cut2 <= stopPointHp) {
+			if (cut2 >= startPointHp && cut2 <= stopPointHp) {
 				cutPointHp = cut2;
 				return cutPointHp;
 			}
@@ -552,7 +552,7 @@ public class MultiPolygonCutter {
 
 			areas.add(area);
 			Collections.sort(areas, comparator);
-			startPoinHp = axis.getStartHighPrec(Collections.max(areas,
+			startPointHp = axis.getStartHighPrec(Collections.max(areas,
 				(axis == CoordinateAxis.LONGITUDE ? COMP_LONG_START
 						: COMP_LAT_START)));
 			stopPointHp = axis.getStopHighPrec(areas.getFirst());
@@ -662,7 +662,7 @@ public class MultiPolygonCutter {
 		}
 
 		public String toString() {
-			return axis +" "+getNumberOfAreas()+" "+startPoinHp+" "+stopPointHp+" "+getCutPointHighPrec();
+			return axis +" "+getNumberOfAreas()+" "+startPointHp+" "+stopPointHp+" "+getCutPointHighPrec();
 		}
 	}
 
