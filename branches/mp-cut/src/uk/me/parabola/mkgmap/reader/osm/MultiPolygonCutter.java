@@ -460,7 +460,7 @@ public class MultiPolygonCutter {
 			if (isStartCut()) {
 				// the polygons can be cut out at the start of the sector
 				// thats good because the big polygon need not to be cut into two halves
-				cutPointHp = startPoinHp;
+				cutPointHp = stopPointHp;
 				return cutPointHp;
 			}
 			
