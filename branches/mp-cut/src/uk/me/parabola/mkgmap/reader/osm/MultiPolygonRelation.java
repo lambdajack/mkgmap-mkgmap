@@ -38,9 +38,12 @@ import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 
+import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.util.ElementQuadTree;
 import uk.me.parabola.util.Java2DConverter;
+import uk.me.parabola.util.MultiHashSet;
 
 /**
  * Representation of an OSM Multipolygon Relation.<br/>
@@ -68,6 +71,9 @@ public class MultiPolygonRelation extends Relation {
 	protected ArrayList<BitSet> containsMatrix;
 	protected ArrayList<JoinedWay> polygons;
 	protected Set<JoinedWay> intersectingPolygons;
+	
+	/** maps intersecting polygons */ 
+	private MultiHashSet<JoinedWay, JoinedWay> intersectingPolygonsMap; 
 	
 	protected double largestSize;
 	protected JoinedWay largestOuterPolygon;
@@ -772,6 +778,7 @@ public class MultiPolygonRelation extends Relation {
 	protected BitSet outerPolygons;
 	protected BitSet taggedOuterPolygons;
 
+
 	/**
 	 * Process the ways in this relation. Joins way with the role "outer" Adds
 	 * ways with the role "inner" to the way with the role "outer"
@@ -1292,6 +1299,7 @@ public class MultiPolygonRelation extends Relation {
 		polygons = null;
 		tileArea = null;
 		intersectingPolygons = null;
+		intersectingPolygonsMap = null;
 		outerWaysForLineTagging = null;
 		outerTags = null;
 		
@@ -1363,12 +1371,15 @@ public class MultiPolygonRelation extends Relation {
 	 *            a list of polygons
 	 */
 	protected void createContainsMatrix(List<JoinedWay> polygonList) {
+		long t1 = System.currentTimeMillis();
 		containsMatrix = new ArrayList<>();
 		for (int i = 0; i < polygonList.size(); i++) {
 			containsMatrix.add(new BitSet());
 		}
 
-		long t1 = System.currentTimeMillis();
+		intersectingPolygonsMap = new MultiHashSet<>(); 
+		calcIntersections(getTileBounds(), polygonList);
+		
 
 		if (log.isDebugEnabled())
 			log.debug("createContainsMatrix listSize:", polygonList.size());
@@ -1511,11 +1522,20 @@ public class MultiPolygonRelation extends Relation {
 		// so it is necessary to check if there is at least one
 		// point of polygon2 in polygon1 ignoring all points outside the bounding box
 		boolean onePointContained = false;
+		
+		boolean mayIntersectOrTouch = true;
+		Collection<JoinedWay> intersecting = intersectingPolygonsMap.get(polygon2);
+		if (intersecting == null || !intersecting.contains(polygon1.getWay()))
+			mayIntersectOrTouch = false;
+		
 		boolean allOnLine = true;
 		for (Coord px : polygon2.getPoints()) {
 			if (polygon1.getPolygon().contains(px.getHighPrecLon(), px.getHighPrecLat())){
 				// there's one point that is in polygon1 and in the bounding
 				// box => polygon1 may contain polygon2
+				if (!mayIntersectOrTouch)
+					return true;
+				
 				onePointContained = true;
 				if (!locatedOnLine(px, polygon1.getWay().getPoints())) {
 					allOnLine = false;
@@ -1523,6 +1543,8 @@ public class MultiPolygonRelation extends Relation {
 				}
 			} else if (tileBounds.contains(px)) {
 				// we have to check if the point is on one line of the polygon1
+				if (!mayIntersectOrTouch)
+					return false;
 				
 				if (!locatedOnLine(px, polygon1.getWay().getPoints())) {
 					// there's one point that is not in polygon1 but inside the
@@ -2235,4 +2257,79 @@ public class MultiPolygonRelation extends Relation {
 			return polygon+"_"+outer;
 		}
 	}
+	
+	/**
+	 * Find points where polygon rings intersect (cross or touch each other) inside the tile bbox.
+	 * Self intersections are ignored here.
+	 * @param bbox the bounding box of the tile
+	 * @param polygons the list of polygon rings
+	 * @return map that maps a ring to all intersecting or touching other rings
+	 */
+	private void calcIntersections(uk.me.parabola.imgfmt.app.Area bbox, List<JoinedWay> polygons) {
+		if (polygons.size() <= 1)
+			return;
+		
+		List<Element> elements = new ArrayList<>();
+		Map<Element, Way> map = new IdentityHashMap<>(); // maps elements to the original ring
+		for (JoinedWay jw : polygons) {
+			splitPolygon(elements, map, jw);
+		}
+		ElementQuadTree qt = new ElementQuadTree(bbox, elements);
+		for (Element el0 : elements) {
+			Way way0 = (Way) el0;
+			uk.me.parabola.imgfmt.app.Area searchRect = uk.me.parabola.imgfmt.app.Area.getBBox(way0.getPoints());
+			Set<Element> nearElements = qt.get(searchRect);
+			if (nearElements.isEmpty())
+				continue;
+			
+			// the bounding box of the road intersects with one or more bounding boxes of borders
+			Coord pw1 = way0.getPoints().get(0);
+			for (int pos = 1; pos < way0.getPoints().size(); pos++) {
+				Coord pw2 = way0.getPoints().get(pos);
+				for (Element el1 : nearElements) {
+					if (el1.getOriginalId() == way0.getOriginalId())
+						continue; // same ring: either same element or different part of the ring 
+					List<Coord> points1 = ((Way) el1).getPoints();
+					for (int i = 0; i < points1.size() - 1; i++) {
+						Coord pb1 = points1.get(i);
+						Coord pb2 = points1.get(i + 1);
+						Coord is = Utils.getSegmentSegmentIntersection(pw1, pw2, pb1, pb2);
+						if (is != null) {
+							// the two polygons intersect or touch each other
+							JoinedWay jw1 = (JoinedWay) map.get(el0);
+							JoinedWay jw2 = (JoinedWay) map.get(el1);
+							
+							intersectingPolygonsMap.add(jw1,jw2);
+							intersectingPolygonsMap.add(jw2,jw1);
+							break;
+						}
+					}
+				}
+				pw1 = pw2;
+			}
+		}
+	}
+
+	/**
+	 * Split complex ways into smaller portions so that the quad tree performs well.
+	 * @param elements
+	 * @param map maps elements in the quad tree with the original ways
+	 * @param orig the original way
+	 */
+	private static void splitPolygon(List<Element> elements, Map<Element, Way> map, Way orig) {
+		int pos = 0;
+		final int max = 20; // seems to be a good compromise
+		List<Coord> points = orig.getPoints();
+		while (pos < points.size()) {
+			int right = Math.min(points.size(), pos + max);
+			Way w = new Way(orig.getId(), points.subList(pos, right));
+			map.put(w, orig);
+			w.setFakeId();
+			elements.add(w);
+			pos += max - 1;
+			if (pos + 1 == points.size())
+				pos--;
+		}
+	}
+ 
 }
