@@ -244,7 +244,12 @@ public class MultiPolygonCutter {
 			// nothing to do
 			return;
 		}
-		area.intersect(areaCutData.outerArea);
+		Rectangle2D outerBBox = areaCutData.outerArea.getBounds2D();
+		if (cutRect.equals(outerBBox)) {
+			area = areaCutData.outerArea;
+		} else {
+			area.intersect(areaCutData.outerArea);
+		}
 		List<Area> singularAreas = Java2DConverter.areaToSingularAreas(area);
 		if (areaCutData.innerAreas.isEmpty()) {
 			finishedAreas.addAll(singularAreas);
