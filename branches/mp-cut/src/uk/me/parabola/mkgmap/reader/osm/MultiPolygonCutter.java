@@ -448,6 +448,14 @@ public class MultiPolygonCutter {
 			return Math.min(d1, d2) < CUT_POINT_CLASSIFICATION_BAD_THRESHOLD;
 		}
 		
+		private boolean isStartCut() {
+			return (startPointHp <= axis.getStartHighPrec(outerBounds));
+		}
+		
+		private boolean isStopCut() {
+			return (stopPointHp >= axis.getStopHighPrec(outerBounds));
+		}
+		
 		/**
 		 * Calculates the point where the cut should be applied.
 		 * @return the point of cut
@@ -461,6 +469,20 @@ public class MultiPolygonCutter {
 			if (startPointHp == stopPointHp) {
 				// there is no choice => return the one possible point 
 				cutPointHp = startPointHp;
+				return cutPointHp;
+			}
+			
+			if (isStartCut()) {
+				// the polygons can be cut out at the start of the sector
+				// thats good because the big polygon need not to be cut into two halves
+				cutPointHp = startPointHp;
+				return cutPointHp;
+			}
+			
+			if (isStopCut()) {
+				// the polygons can be cut out at the end of the sector
+				// thats good because the big polygon need not to be cut into two halves
+				cutPointHp = stopPointHp;
 				return cutPointHp;
 			}
 			
@@ -589,6 +611,20 @@ public class MultiPolygonCutter {
 			if (this == o) {
 				return 0;
 			}
+			// prefer a cut at the boundaries
+			if (isStartCut() && o.isStartCut() == false) {
+				return 1;
+			} 
+			else if (isStartCut() == false && o.isStartCut()) {
+				return -1;
+			}
+			else if (isStopCut() && o.isStopCut() == false) {
+				return 1;
+			}
+			else if (isStopCut() == false && o.isStopCut()) {
+				return -1;
+			}
+			
 			// handle the special case that a cut has no area
 			if (getNumberOfAreas() == 0) {
 				if (o.getNumberOfAreas() == 0) {
