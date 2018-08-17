@@ -302,43 +302,6 @@ public class MultiPolygonCutter {
 		
 		ArrayList<Area> innerStart = new ArrayList<>(areaData.innerAreas);
 		
-		// first try to cut out all polygons that intersect the boundaries of the outer polygon
-		// this has the advantage that the outer polygon need not be split into two halves
-		for (CoordinateAxis axis : CoordinateAxis.values()) {
-			CutPoint edgeCutPoint = new CutPoint(axis, outerBounds);
-
-			// go through the inner polygon list and use all polygons that intersect the outer polygons bbox at the start
-			Collections.sort(innerStart, (axis == CoordinateAxis.LONGITUDE ? COMP_LONG_START: COMP_LAT_START));
-			for (Area anInnerStart : innerStart) {
-				if (axis.getStartHighPrec(anInnerStart) <= axis.getStartHighPrec(outerBounds)) {
-					// found a touching area
-					edgeCutPoint.addArea(anInnerStart);
-				} else {
-					break;
-				}
-			}
-			if (edgeCutPoint.getNumberOfAreas() > 0) {
-				// there at least one intersecting inner polygon
-				return edgeCutPoint;
-			}
-			
-			Collections.sort(innerStart, (axis == CoordinateAxis.LONGITUDE ? COMP_LONG_STOP: COMP_LAT_STOP));
-			// go through the inner polygon list and use all polygons that intersect the outer polygons bbox at the stop
-			for (Area anInnerStart : innerStart) {
-				if (axis.getStopHighPrec(anInnerStart) >= axis.getStopHighPrec(outerBounds)) {
-					// found a touching area
-					edgeCutPoint.addArea(anInnerStart);
-				} else {
-					break;
-				}
-			}
-			if (edgeCutPoint.getNumberOfAreas() > 0) {
-				// there at least one intersecting inner polygon
-				return edgeCutPoint;
-			}
-		}
-		
-		
 		ArrayList<CutPoint> bestCutPoints = new ArrayList<>(CoordinateAxis.values().length);
 		for (CoordinateAxis axis : CoordinateAxis.values()) {
 			CutPoint bestCutPoint = new CutPoint(axis, outerBounds);
@@ -473,15 +436,15 @@ public class MultiPolygonCutter {
 			}
 			
 			if (isStartCut()) {
-				// the polygons can be cut out at the start of the sector
-				// thats good because the big polygon need not to be cut into two halves
+				// the polygons can be cut out at the start of the sector and thus adds complexity to the outer polygon
+				// without dividing it. That's bad because it makes further splits slower
 				cutPointHp = startPointHp;
 				return cutPointHp;
 			}
 			
 			if (isStopCut()) {
-				// the polygons can be cut out at the end of the sector
-				// thats good because the big polygon need not to be cut into two halves
+				// the polygons can be cut out at the start of the sector and thus adds complexity to the outer polygon
+				// without dividing it. That's bad because it makes further splits slower
 				cutPointHp = stopPointHp;
 				return cutPointHp;
 			}
@@ -611,19 +574,6 @@ public class MultiPolygonCutter {
 			if (this == o) {
 				return 0;
 			}
-			// prefer a cut at the boundaries
-			if (isStartCut() && o.isStartCut() == false) {
-				return 1;
-			} 
-			else if (isStartCut() == false && o.isStartCut()) {
-				return -1;
-			}
-			else if (isStopCut() && o.isStopCut() == false) {
-				return 1;
-			}
-			else if (isStopCut() == false && o.isStopCut()) {
-				return -1;
-			}
 			
 			// handle the special case that a cut has no area
 			if (getNumberOfAreas() == 0) {
@@ -633,6 +583,20 @@ public class MultiPolygonCutter {
 					return -1;
 				}
 			} else if (o.getNumberOfAreas() == 0) {
+				return 1;
+			}
+			
+			// prefer a cut that is not at the boundaries
+			if (isStartCut() && o.isStartCut() == false) {
+				return -1;
+			} 
+			else if (isStartCut() == false && o.isStartCut()) {
+				return 1;
+			}
+			else if (isStopCut() && o.isStopCut() == false) {
+				return -1;
+			}
+			else if (isStopCut() == false && o.isStopCut()) {
 				return 1;
 			}
 			
