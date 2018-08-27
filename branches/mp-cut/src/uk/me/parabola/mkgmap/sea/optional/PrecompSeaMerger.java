@@ -46,6 +46,7 @@ class PrecompSeaMerger implements Runnable {
 	private final CountDownLatch signal;
 	private final BlockingQueue<Entry<String, List<Way>>> saveQueue;
 	private ExecutorService service;
+	private final static List<Coord> PLANET_WAY = uk.me.parabola.imgfmt.app.Area.PLANET.toCoords();
 
 	static class MergeData {
 		public final Rectangle2D bounds;
@@ -64,7 +65,10 @@ class PrecompSeaMerger implements Runnable {
 		public String getKey() {
 			return key;
 		}
-
+		@Override
+		public String toString() {
+			return key;
+		}
 	}
 
 	public PrecompSeaMerger(Rectangle2D bounds, String key,
@@ -155,24 +159,27 @@ class PrecompSeaMerger implements Runnable {
 		// convert the land area to a list of ways
 		List<Way> ways = convertToWays(mergeData.landArea, "land");
 
-		if (ways.isEmpty()) {
+		boolean landOnly = false;
+		if (ways.size() == 1) {
+			if (mergeData.landArea.isRectangular() && mergeData.bounds.equals(mergeData.landArea.getBounds2D())) {
+				landOnly = true;
+			}
+		}
+		if (landOnly) {
+			// no sea in this tile, nothing more to do
+		}
+		else if (ways.isEmpty()) {
 			// no land in this tile => create a sea way only
 			ways.addAll(convertToWays(new Area(mergeData.bounds), "sea"));
 		} else {
 			Map<Long, Way> landWays = new HashMap<Long, Way>();
-			List<List<Coord>> landParts = Java2DConverter
-					.areaToShapes(mergeData.landArea);
+			List<List<Coord>> landParts = Java2DConverter.areaToShapes(mergeData.landArea);
 			for (List<Coord> landPoints : landParts) {
 				Way landWay = new Way(FakeIdGenerator.makeFakeId(), landPoints);
 				landWays.put(landWay.getId(), landWay);
 			}
 
-			Way seaWay = new Way(FakeIdGenerator.makeFakeId());
-			seaWay.addPoint(new Coord(-90.0d, -180.0d));
-			seaWay.addPoint(new Coord(90.0d, -180.0d));
-			seaWay.addPoint(new Coord(90.0d, 180.0d));
-			seaWay.addPoint(new Coord(-90.0d, 180.0d));
-			seaWay.addPoint(seaWay.getPoints().get(0)); // close shape
+			Way seaWay = new Way(FakeIdGenerator.makeFakeId(), PLANET_WAY);
 			seaWay.setClosedInOSM(true);
 			landWays.put(seaWay.getId(), seaWay);
 
