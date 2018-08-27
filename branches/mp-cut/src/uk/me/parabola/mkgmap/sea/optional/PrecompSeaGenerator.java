@@ -15,6 +15,7 @@ package uk.me.parabola.mkgmap.sea.optional;
 
 import java.awt.Rectangle;
 import java.awt.geom.Area;
+import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -291,9 +292,12 @@ public class PrecompSeaGenerator {
 
 			// create an overall area for a simple check if a polygon read from the
 			// shape file intersects one of the currently processed sea tiles
-			Area tileArea = new Area();
+			Rectangle2D tileArea = null;
 			for (PrecompSeaMerger m : mergers) {
-				tileArea.add(new Area(m.getTileBounds()));
+				if (tileArea == null)
+					tileArea = (Rectangle2D) m.getTileBounds().clone();
+				else
+					tileArea.add(m.getTileBounds());
 				// start the mergers
 				service.execute(m);
 			}
@@ -339,7 +343,7 @@ public class PrecompSeaGenerator {
 
 					// easy check if the polygon is used by any tile that is
 					// currently processed
-					if (polyBounds.intersects(tileArea.getBounds2D())) {
+					if (polyBounds.intersects(tileArea)) {
 						
 						// yes it touches at least one tile => convert it to 
 						// a java.awt.geom.Area object
