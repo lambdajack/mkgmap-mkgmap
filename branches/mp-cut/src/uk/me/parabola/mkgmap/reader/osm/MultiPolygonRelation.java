@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2014.
+ * Copyright (C) 2011.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 3 or
@@ -17,6 +17,7 @@ import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.geom.Area;
 import java.awt.geom.Line2D;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -72,6 +73,8 @@ public class MultiPolygonRelation extends Relation {
 	protected ArrayList<JoinedWay> polygons;
 	protected Set<JoinedWay> intersectingPolygons;
 	
+	/** maps polygons which touch or intersect each other */ 
+	private MultiHashSet<JoinedWay, JoinedWay> intersectingOrTouchingPolygonsMap; 
 	/** maps intersecting polygons */ 
 	private MultiHashSet<JoinedWay, JoinedWay> intersectingPolygonsMap; 
 	
@@ -993,15 +996,20 @@ public class MultiPolygonRelation extends Relation {
 					singularOuterPolygons = Collections
 							.singletonList((Way) new JoinedWay(currentPolygon.polygon));
 				} else {
-					List<Way> innerWays = new ArrayList<>(holes.size());
+					List<JoinedWay> innerWays = new ArrayList<>(holes.size());
 					for (PolygonStatus polygonHoleStatus : holes) {
 						innerWays.add(polygonHoleStatus.polygon);
 					}
-
-					MultiPolygonCutter cutter = new MultiPolygonCutter(this, tileArea);
-					singularOuterPolygons = cutter.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
+					if (intersectingPolygonsMap.isEmpty()) {
+						MultiPolygonCutter2 cutter2 = new MultiPolygonCutter2(this, tileBounds);
+						singularOuterPolygons = cutter2.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
+					} else {
+						// TODO maybe combine intersecting inner so that other cutter can always be used?
+						MultiPolygonCutter cutter = new MultiPolygonCutter(this, tileArea);
+						singularOuterPolygons = cutter.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
+					}
 				}
-				
+//				log.error(this, singularOuterPolygons.size());
 				if (singularOuterPolygons.isEmpty()==false) {
 					// handle the tagging 
 					if (currentPolygon.outer && hasStyleRelevantTags(this)) {
@@ -1299,6 +1307,7 @@ public class MultiPolygonRelation extends Relation {
 		polygons = null;
 		tileArea = null;
 		intersectingPolygons = null;
+		intersectingOrTouchingPolygonsMap = null;
 		intersectingPolygonsMap = null;
 		outerWaysForLineTagging = null;
 		outerTags = null;
@@ -1377,6 +1386,7 @@ public class MultiPolygonRelation extends Relation {
 			containsMatrix.add(new BitSet());
 		}
 
+		intersectingOrTouchingPolygonsMap = new MultiHashSet<>(); 
 		intersectingPolygonsMap = new MultiHashSet<>(); 
 		calcIntersections(getTileBounds(), polygonList);
 		
@@ -1523,9 +1533,13 @@ public class MultiPolygonRelation extends Relation {
 		// point of polygon2 in polygon1 ignoring all points outside the bounding box
 		boolean onePointContained = false;
 		
-		boolean mayIntersectOrTouch = true;
 		Collection<JoinedWay> intersecting = intersectingPolygonsMap.get(polygon2);
-		if (intersecting == null || !intersecting.contains(polygon1.getWay()))
+		if (intersecting != null && intersecting.contains(polygon1.getWay()))
+			return false;
+
+		boolean mayIntersectOrTouch = true;
+		Collection<JoinedWay> touching = intersectingOrTouchingPolygonsMap.get(polygon2);
+		if (touching == null || !touching.contains(polygon1.getWay()))
 			mayIntersectOrTouch = false;
 		
 		boolean allOnLine = true;
@@ -1559,32 +1573,19 @@ public class MultiPolygonRelation extends Relation {
 			onePointContained = false;
 			// all points of polygon2 lie on lines of polygon1
 			// => the middle of each line polygon must NOT lie outside polygon1
-			ArrayList<Coord> middlePoints2 = new ArrayList<>(polygon2.getPoints().size());
 			Coord p1 = null;
 			for (Coord p2 : polygon2.getPoints()) {
 				if (p1 != null) {
 					Coord pm = p1.makeBetweenPoint(p2, 0.5);
-					middlePoints2.add(pm);
+					if (polygon1.getPolygon().contains(pm.getHighPrecLon(), pm.getHighPrecLat())){
+						// there's one point that is in polygon1 and in the bounding
+						// box => polygon1 may contain polygon2
+						onePointContained = true;
+						break;
+					} 
 				}
 				p1 = p2;
 			}
-			
-			for (Coord px : middlePoints2) {
-				if (polygon1.getPolygon().contains(px.getHighPrecLon(), px.getHighPrecLat())){
-					// there's one point that is in polygon1 and in the bounding
-					// box => polygon1 may contain polygon2
-					onePointContained = true;
-					break;
-				} else if (tileBounds.contains(px)) {
-					// we have to check if the point is on one line of the polygon1
-					
-					if (!locatedOnLine(px, polygon1.getWay().getPoints())) {
-						// there's one point that is not in polygon1 but inside the
-						// bounding box => polygon1 does not contain polygon2
-						return false;
-					} 
-				}
-			}			
 		}
 
 		if (!onePointContained) {
@@ -2035,11 +2036,12 @@ public class MultiPolygonRelation extends Relation {
 		private final List<Way> originalWays;
 		private boolean closedArtificially;
 
-		private int minLat;
-		private int maxLat;
-		private int minLon;
-		private int maxLon;
+		private int minLatHP;
+		private int maxLatHP;
+		private int minLonHP;
+		private int maxLonHP;
 		private Rectangle bounds;
+		private Rectangle2D bounds2D;
 
 		public JoinedWay(Way originalWay) {
 			super(originalWay.getOriginalId(), originalWay.getPoints());
@@ -2049,10 +2051,23 @@ public class MultiPolygonRelation extends Relation {
 
 			// we have to initialize the min/max values
 			Coord c0 = originalWay.getPoints().get(0);
-			minLat = maxLat = c0.getLatitude();
-			minLon = maxLon = c0.getLongitude();
+			minLatHP = maxLatHP = c0.getHighPrecLat();
+			minLonHP = maxLonHP = c0.getHighPrecLon();
 
 			updateBounds(originalWay.getPoints());
+		}
+
+		public JoinedWay(JoinedWay w, List<Coord> points) {
+			super(w.getOriginalId(), points);
+			setFakeId();
+			originalWays = new ArrayList<>(w.originalWays);
+
+			// we have to initialize the min/max values
+			Coord c0 = points.get(0);
+			minLatHP = maxLatHP = c0.getHighPrecLat();
+			minLonHP = maxLonHP = c0.getHighPrecLon();
+
+			updateBounds(points);
 		}
 
 		public void addPoint(int index, Coord point) {
@@ -2067,36 +2082,40 @@ public class MultiPolygonRelation extends Relation {
 
 		private void updateBounds(List<Coord> pointList) {
 			for (Coord c : pointList) {
-				updateBounds(c.getLatitude(),c.getLongitude());
+				updateBounds(c);
 			}
 		}
 
 		private void updateBounds (JoinedWay other){
-			updateBounds(other.minLat,other.minLon);
-			updateBounds(other.maxLat,other.maxLon);
+			updateBounds(other.minLatHP,other.minLonHP);
+			updateBounds(other.maxLatHP,other.maxLonHP);
 		}
 
-		private void updateBounds(int lat, int lon) {
-			if (lat < minLat) {
-				minLat = lat;
+		private void updateBounds(int latHp, int lonHp) {
+			if (latHp < minLatHP) {
+				minLatHP = latHp;
 				bounds = null;
-			} else if (lat > maxLat) {
-				maxLat = lat;
+				bounds2D = null;
+			} else if (latHp > maxLatHP) {
+				maxLatHP = latHp;
 				bounds = null;
+				bounds2D = null;
 			}
 
-			if (lon < minLon) {
-				minLon = lon;
+			if (lonHp < minLonHP) {
+				minLonHP = lonHp;
 				bounds = null;
-			} else if (lon > maxLon) {
-				maxLon = lon;
+				bounds2D = null;
+			} else if (lonHp > maxLonHP) {
+				maxLonHP = lonHp;
 				bounds = null;
+				bounds2D = null;
 			}
 
 			
 		}
 		private void updateBounds(Coord point) {
-			updateBounds(point.getLatitude(), point.getLongitude());
+			updateBounds(point.getHighPrecLat(), point.getHighPrecLon());
 		}
 		
 		/**
@@ -2109,10 +2128,10 @@ public class MultiPolygonRelation extends Relation {
 		 *         bounding box; <code>false</code> else
 		 */
 		public boolean intersects(uk.me.parabola.imgfmt.app.Area bbox) {
-			return (maxLat >= bbox.getMinLat() && 
-					minLat <= bbox.getMaxLat() && 
-					maxLon >= bbox.getMinLong() && 
-					minLon <= bbox.getMaxLong());
+			return (maxLatHP >= (bbox.getMinLat() << Coord.DELTA_SHIFT) && 
+					minLatHP <= (bbox.getMaxLat()  << Coord.DELTA_SHIFT)&& 
+					maxLonHP >= (bbox.getMinLong()  << Coord.DELTA_SHIFT)&& 
+					minLonHP <= (bbox.getMaxLong() << Coord.DELTA_SHIFT));
 		}
 
 		public Rectangle getBounds() {
@@ -2120,11 +2139,26 @@ public class MultiPolygonRelation extends Relation {
 				// note that we increase the rectangle by 1 because intersects
 				// checks
 				// only the interior
-				bounds = new Rectangle(minLon - 1, minLat - 1, maxLon - minLon
-						+ 2, maxLat - minLat + 2);
+				int x = (minLonHP >> Coord.DELTA_SHIFT) - 1;
+				int y = (minLatHP >> Coord.DELTA_SHIFT) - 1;
+				int w = (maxLonHP >> Coord.DELTA_SHIFT) + 1 - x;
+				int h = (maxLatHP >> Coord.DELTA_SHIFT) + 1 - y;
+				bounds = new Rectangle(x, y, w, h);
 			}
 
 			return bounds;
+		}
+		
+		public Rectangle2D getBounds2D() {
+			if (bounds2D == null) {
+				double minX = (double) minLonHP / (1 << Coord.DELTA_SHIFT);
+				double minY = (double) minLatHP / (1 << Coord.DELTA_SHIFT);
+				double maxX = (double) maxLonHP / (1 << Coord.DELTA_SHIFT);
+				double maxY = (double) maxLatHP / (1 << Coord.DELTA_SHIFT);
+				bounds2D = new Rectangle2D.Double(minX,minY,maxX-minX,maxY-minY);
+			}
+
+			return bounds2D;
 		}
 
 		public boolean linePossiblyIntersectsWay(Coord p1, Coord p2) {
@@ -2218,6 +2252,22 @@ public class MultiPolygonRelation extends Relation {
 		public double getSizeOfArea() {
 			return MultiPolygonRelation.calcAreaSize(getPoints());
 		}
+		public int getMinLatHP() {
+			return minLatHP;
+		}
+
+		public int getMaxLatHP() {
+			return maxLatHP;
+		}
+
+		public int getMinLonHP() {
+			return minLonHP;
+		}
+
+		public int getMaxLonHP() {
+			return maxLonHP;
+		}
+
 
 		public String toString() {
 			StringBuilder sb = new StringBuilder(200);
@@ -2282,7 +2332,7 @@ public class MultiPolygonRelation extends Relation {
 			if (nearElements.isEmpty())
 				continue;
 			
-			// the bounding box of the road intersects with one or more bounding boxes of borders
+			// the bounding box of the element intersects with one or more bounding boxes of other elements
 			Coord pw1 = way0.getPoints().get(0);
 			for (int pos = 1; pos < way0.getPoints().size(); pos++) {
 				Coord pw2 = way0.getPoints().get(pos);
@@ -2298,9 +2348,17 @@ public class MultiPolygonRelation extends Relation {
 							// the two polygons intersect or touch each other
 							JoinedWay jw1 = (JoinedWay) map.get(el0);
 							JoinedWay jw2 = (JoinedWay) map.get(el1);
-							
-							intersectingPolygonsMap.add(jw1,jw2);
-							intersectingPolygonsMap.add(jw2,jw1);
+							Set<JoinedWay> known = intersectingOrTouchingPolygonsMap.get(jw1);
+							if (known == null || !known.contains(jw2)) {
+								intersectingOrTouchingPolygonsMap.add(jw1, jw2);
+								intersectingOrTouchingPolygonsMap.add(jw2, jw1);
+
+								int isChk = checkIfTouchingOrOverlapping(jw1, jw2);
+								if (isChk == CROSSING || isChk == EQUAL) {
+									intersectingPolygonsMap.add(jw1, jw2);
+									intersectingPolygonsMap.add(jw2, jw1);
+								}
+							}
 							break;
 						}
 					}
@@ -2309,6 +2367,40 @@ public class MultiPolygonRelation extends Relation {
 			}
 		}
 	}
+
+	private static int OUTSIDE = 0;
+	private static int FIRST_INSIDE_2ND = 1;
+	private static int SECOND_INSIDE_1ST = 2;
+	private static int CROSSING = 3;
+	private static int EQUAL = 4;
+
+	/**
+	 * Check if two polygons are really intersecting, not just touching each other.
+	 * @param jw1
+	 * @param jw2
+	 * @return either FIRST_INSIDE_2ND, FIRST_OUTSIDE_2ND, or FIRST_INTERSECTS_2ND 
+	 */
+	private int checkIfTouchingOrOverlapping(JoinedWay jw1, JoinedWay jw2) {
+		Area a1 = Java2DConverter.createArea(jw1.getPoints());
+		Area a2 = Java2DConverter.createArea(jw2.getPoints());
+
+		if (a1.getBounds2D().equals(a2.getBounds2D()) && a1.equals(a2))
+			return EQUAL;
+		Area inter = new Area(a1);
+        inter.intersect(a2);
+
+        Rectangle bounds = inter.getBounds();
+
+        if (inter.isEmpty() || bounds.getHeight()*bounds.getWidth() <= 1.0d) {
+            return OUTSIDE;
+        } else if (a2.getBounds2D().contains(a1.getBounds2D()) && inter.equals(a1)) {
+            return FIRST_INSIDE_2ND;
+        } else if (a1.getBounds2D().contains(a2.getBounds2D()) && inter.equals(a2)) {
+            return SECOND_INSIDE_1ST;
+        }
+        return CROSSING;
+	}
+
 
 	/**
 	 * Split complex ways into smaller portions so that the quad tree performs well.

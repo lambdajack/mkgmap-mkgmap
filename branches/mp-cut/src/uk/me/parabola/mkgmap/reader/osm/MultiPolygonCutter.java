@@ -67,7 +67,7 @@ public class MultiPolygonCutter {
 	 * @return a list of polygons that make the outer polygon cut by the inner
 	 *         polygons
 	 */
-	public List<Way> cutOutInnerPolygons(Way outerPolygon, List<Way> innerPolygons) {
+	public List<Way> cutOutInnerPolygons(Way outerPolygon, List<JoinedWay> innerPolygons) {
 		if (innerPolygons.isEmpty()) {
 			Way outerWay = new JoinedWay(outerPolygon);
 			if (log.isDebugEnabled()) {

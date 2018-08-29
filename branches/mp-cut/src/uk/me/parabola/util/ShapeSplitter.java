@@ -492,6 +492,17 @@ Eventually maybe can be used instead of some of the above and elsewhere
 				if (this.direction == 0)
 					this.direction = -1;
 			} else { // add at start
+				if (this.points.get(0) == other.points.get(other.points.size()-1)) {
+					if (this.points.size() > 1 && other.points.size() > 1) {
+						Coord c1 = this.points.get(1);
+						Coord c2 = other.points.get(other.points.size()-1);
+						Coord c3 = other.points.get(other.points.size()-2);
+						if (Utils.STRAIGHT_SPIKE == Utils.isHighPrecStraight(c1, c2, c3)) {
+							this.points.remove(0);
+							other.points.remove(other.points.size()-1);
+						};
+					}
+				}
 				other.points.addAll(this.points);
 				this.points = other.points;
 				if (this.direction == 0)
