@@ -74,7 +74,7 @@ public class MultiPolygonRelation extends Relation {
 	protected Set<JoinedWay> intersectingPolygons;
 	
 	/** maps polygons which touch or intersect each other */ 
-	private MultiHashSet<JoinedWay, JoinedWay> intersectingOrTouchingPolygonsMap; 
+	private MultiHashSet<JoinedWay, JoinedWay> touchingOrIntersectingPolygonsMap; 
 	/** maps intersecting polygons */ 
 	private MultiHashSet<JoinedWay, JoinedWay> intersectingPolygonsMap; 
 	
@@ -1000,16 +1000,17 @@ public class MultiPolygonRelation extends Relation {
 					for (PolygonStatus polygonHoleStatus : holes) {
 						innerWays.add(polygonHoleStatus.polygon);
 					}
-					if (intersectingPolygonsMap.isEmpty()) {
-						MultiPolygonCutter2 cutter2 = new MultiPolygonCutter2(this, tileBounds);
-						singularOuterPolygons = cutter2.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
-					} else {
+//					if (intersectingPolygonsMap.isEmpty()) {
+//						MultiPolygonCutter2 cutter2 = new MultiPolygonCutter2(this, tileBounds);
+//						// TODO: cutter fails i
+//						singularOuterPolygons = cutter2.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
+//					} else {
 						// TODO maybe combine intersecting inner so that other cutter can always be used?
 						MultiPolygonCutter cutter = new MultiPolygonCutter(this, tileArea);
 						singularOuterPolygons = cutter.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
-					}
+//					}
 				}
-//				log.error(this, singularOuterPolygons.size());
+				log.error(this, singularOuterPolygons.size());
 				if (singularOuterPolygons.isEmpty()==false) {
 					// handle the tagging 
 					if (currentPolygon.outer && hasStyleRelevantTags(this)) {
@@ -1307,7 +1308,7 @@ public class MultiPolygonRelation extends Relation {
 		polygons = null;
 		tileArea = null;
 		intersectingPolygons = null;
-		intersectingOrTouchingPolygonsMap = null;
+		touchingOrIntersectingPolygonsMap = null;
 		intersectingPolygonsMap = null;
 		outerWaysForLineTagging = null;
 		outerTags = null;
@@ -1386,7 +1387,7 @@ public class MultiPolygonRelation extends Relation {
 			containsMatrix.add(new BitSet());
 		}
 
-		intersectingOrTouchingPolygonsMap = new MultiHashSet<>(); 
+		touchingOrIntersectingPolygonsMap = new MultiHashSet<>(); 
 		intersectingPolygonsMap = new MultiHashSet<>(); 
 		calcIntersections(getTileBounds(), polygonList);
 		
@@ -1538,7 +1539,7 @@ public class MultiPolygonRelation extends Relation {
 			return false;
 
 		boolean mayIntersectOrTouch = true;
-		Collection<JoinedWay> touching = intersectingOrTouchingPolygonsMap.get(polygon2);
+		Collection<JoinedWay> touching = touchingOrIntersectingPolygonsMap.get(polygon2);
 		if (touching == null || !touching.contains(polygon1.getWay()))
 			mayIntersectOrTouch = false;
 		
@@ -2348,10 +2349,10 @@ public class MultiPolygonRelation extends Relation {
 							// the two polygons intersect or touch each other
 							JoinedWay jw1 = (JoinedWay) map.get(el0);
 							JoinedWay jw2 = (JoinedWay) map.get(el1);
-							Set<JoinedWay> known = intersectingOrTouchingPolygonsMap.get(jw1);
+							Set<JoinedWay> known = touchingOrIntersectingPolygonsMap.get(jw1);
 							if (known == null || !known.contains(jw2)) {
-								intersectingOrTouchingPolygonsMap.add(jw1, jw2);
-								intersectingOrTouchingPolygonsMap.add(jw2, jw1);
+								touchingOrIntersectingPolygonsMap.add(jw1, jw2);
+								touchingOrIntersectingPolygonsMap.add(jw2, jw1);
 
 								int isChk = checkIfTouchingOrOverlapping(jw1, jw2);
 								if (isChk == CROSSING || isChk == EQUAL) {

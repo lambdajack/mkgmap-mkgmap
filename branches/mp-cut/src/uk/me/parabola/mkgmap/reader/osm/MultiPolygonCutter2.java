@@ -48,7 +48,7 @@ public class MultiPolygonCutter2 {
 	private final MultiPolygonRelation rel;
 	private final Rectangle2D tileBBox;
 	private uk.me.parabola.imgfmt.app.Area tileBounds;
-	private static boolean debugGpx = false;
+	private static final boolean debugGpx = true;
 
 	/**
 	 * Create cutter for a given MP-relation and tile
@@ -162,10 +162,10 @@ public class MultiPolygonCutter2 {
 				}
 			}
 			if (allMatchingInner.size() != cutPoint.getNumberOfAreas()) {
-				drawGpx("e:/ld/outer", areaCutData.outerArea.getPoints());
-				drawGpx("e:/ld/c", cutPoint.getCutLine());
+				drawGpx("outer", areaCutData.outerArea.getPoints());
+				drawGpx("c", cutPoint.getCutLine());
 				for (int i = 0; i < allMatchingInner.size(); i++) {
-					drawGpx("e:/ld/mi"+i, allMatchingInner.get(i).getPoints());
+					drawGpx("mi"+i, allMatchingInner.get(i).getPoints());
 				}
 				cutPoint.getAreas().clear();
 				cutPoint.getAreas().addAll(allMatchingInner);
@@ -243,7 +243,7 @@ public class MultiPolygonCutter2 {
 	 * @param inner the inner polygon
 	 */
 	private boolean divideOuters(List<JoinedWay> outerAreas, JoinedWay inner) {
-		drawGpx("e:/ld/i", inner.getPoints());
+		drawGpx("i", inner.getPoints());
 
 		boolean innerTouchesOuter = inner.getBounds2D().getMaxY() == tileBBox.getMaxY()
 				|| inner.getBounds2D().getMaxX() == tileBBox.getMaxX() 
@@ -260,14 +260,14 @@ public class MultiPolygonCutter2 {
 		while (iter.hasNext()) {
 			JoinedWay o = iter.next();
 			if (o.getBounds2D().intersects(inner.getBounds2D())) {
-				drawGpx("e:/ld/o", o.getPoints());
+				drawGpx("o", o.getPoints());
 				Area outer = Java2DConverter.createArea(o.getPoints());
 				outer.subtract(innerArea);
 				
 				List<List<Coord>> shapes = Java2DConverter.areaToShapes(outer);
 				iter.remove();
 				for (List<Coord> shape : shapes) {
-					drawGpx("e:/ld/s"+divided.size(), shape);
+					drawGpx("s"+divided.size(), shape);
 					JoinedWay w = new JoinedWay(o, shape);
 					divided.add(w);
 				}
@@ -388,13 +388,13 @@ public class MultiPolygonCutter2 {
 				if (!spike)
 					break;
 //				log.error("spike near", start.toDegreeString());
-				drawGpx("e:/ld/spike1", ring);
+				drawGpx("spike1", ring);
 				ring.remove(ring.size() - 1);
 				if (next.highPrecEquals(prevLast))
 					ring.remove(0);
 				else 
 					ring.set(0,prevLast); // new closing
-				drawGpx("e:/ld/spike2", ring);
+				drawGpx("spike2", ring);
 				continue;
 			}
 			if (ring.size() < 2) {
@@ -446,24 +446,24 @@ public class MultiPolygonCutter2 {
 		 */
 		public List<JoinedWay> split(JoinedWay outerRing, Long2ObjectOpenHashMap<Coord> coordPool, int countPoll) {
 			List<List<Coord>> lessOuterList = new ArrayList<>(), moreOuterList = new ArrayList<>();
-			drawGpx("e:/ld/outer"+countPoll, outerRing.getPoints());
-			drawGpx("e:/ld/c"+countPoll, getCutLine());
+			drawGpx("outer"+countPoll, outerRing.getPoints());
+			drawGpx("c"+countPoll, getCutLine());
 			List<SplitRing> moreInners = new ArrayList<>(), lessInners = new ArrayList<>();
 			for (int i = 0; i < inners.size(); i++) {
 				JoinedWay inner = inners.get(i);
-				drawGpx("e:/ld/inner"+i, inner.getPoints());
+				drawGpx("inner"+i, inner.getPoints());
 				List<List<Coord>> lessInnerList = new ArrayList<>(), moreInnerList = new ArrayList<>();
 				ShapeSplitter.splitShape(inner.getPoints(), getCutPointHighPrec(), axis.useX, lessInnerList, moreInnerList, coordPool);
 				for (int j = 0; j < lessInnerList.size(); j++) {
 					List<Coord> points = lessInnerList.get(j);
 					assert points.size() > 0 && points.get(0) == points.get(points.size()-1);
-					drawGpx("e:/ld/iless"+i+"_"+j, points);
+					drawGpx("iless"+i+"_"+j, points);
 					lessInners.add(new SplitRing(points, getCutPointHighPrec(), axis));
 				}
 				for (int j = 0; j < moreInnerList.size(); j++) {
 					List<Coord> points = moreInnerList.get(j);
 					assert points.size() > 0 && points.get(0) == points.get(points.size()-1);
-					drawGpx("e:/ld/imore"+i+"_"+j, points);
+					drawGpx("imore"+i+"_"+j, points);
 					moreInners.add(new SplitRing(points, getCutPointHighPrec(), axis));
 				}
 			}
@@ -474,13 +474,13 @@ public class MultiPolygonCutter2 {
 				List<Coord> points = lessOuterList.get(i);
 				assert points.size() > 0 && points.get(0) == points.get(points.size()-1);
 				lessOuter.add(new SplitRing(points, getCutPointHighPrec(), axis));
-				drawGpx("e:/ld/less"+i, points);
+				drawGpx("less"+i, points);
 			}
 			for (int i = 0; i < moreOuterList.size(); i++) {
 				List<Coord> points = moreOuterList.get(i);
 				assert points.size() > 0 && points.get(0) == points.get(points.size()-1);
 				moreOuter.add(new SplitRing(points, getCutPointHighPrec(), axis));
-				drawGpx("e:/ld/more"+i, points);
+				drawGpx("more"+i, points);
 			}
 			boolean modified = false;
 			modified |= subtractInnerFromOuter(moreOuter, moreInners, true);
@@ -539,7 +539,7 @@ public class MultiPolygonCutter2 {
 									mod.add(mod.get(0)); // close
 									if (Way.clockwise(mod))
 										Collections.reverse(mod);
-									drawGpx("e:/ld/exo"+res.size(),  mod);
+									drawGpx("exo"+res.size(),  mod);
 									
 									res.add(new SplitRing(mod, inner.dividingLine, inner.axis));
 								}
@@ -547,7 +547,7 @@ public class MultiPolygonCutter2 {
 									List<Coord> part = new ArrayList<>(j - lastHitPos + 2);
 									part.addAll(inner.ring.subList(lastHitPos, j+1));
 									part.add(part.get(0)); // close
-									drawGpx("e:/ld/part"+parts.size(),  part);
+									drawGpx("part"+parts.size(),  part);
 									parts.add(part);
 								}
 							}
@@ -557,7 +557,7 @@ public class MultiPolygonCutter2 {
 					}
 				}
 				if (parts.size() > 1 || parts.size() == 1 && parts.get(0).size() != inner.ring.size()) {
-					drawGpx("e:/ld/mult",  inner.ring);
+					drawGpx("mult",  inner.ring);
 					inners.set(i, new SplitRing(parts.get(0), inner.dividingLine, inner.axis));
 					for (int j = 1; j < parts.size(); j++) {
 						newInners.add(new SplitRing(parts.get(j), inner.dividingLine, inner.axis));
@@ -591,8 +591,8 @@ public class MultiPolygonCutter2 {
 				while (iter.hasNext()) {
 					SplitRing i2 = iter.next();
 					if (i2.max < i1.max) {
-						drawGpx("e:/ld/over_i1",  i1.ring);
-						drawGpx("e:/ld/over_i2",  i2.ring);
+						drawGpx("over_i1",  i1.ring);
+						drawGpx("over_i2",  i2.ring);
 						overlapped.add(i2);
 						iter.remove();
 					} else 
@@ -614,7 +614,7 @@ public class MultiPolygonCutter2 {
 				sortedInners = new ArrayList<>(inners);
 			}
 //			for (int i = 0; i < sortedInners.size(); i++) {
-//				drawGpx("e:/ld/is"+i,  sortedInners.get(i).ring);
+//				drawGpx("is"+i,  sortedInners.get(i).ring);
 //			}
 			
 			boolean anyChange = false;
@@ -624,7 +624,7 @@ public class MultiPolygonCutter2 {
 				if (sortedInners.isEmpty())
 					break;
 				boolean modified = false;
-				drawGpx("e:/ld/o"+i,  outer.ring);
+				drawGpx("o"+i,  outer.ring);
 				List<Coord> ring = new ArrayList<>();
 //				Coord start = outer.ring.get(0);
 //				if (outer.onDividingLine(start)) {
@@ -657,29 +657,39 @@ public class MultiPolygonCutter2 {
 					} else {
 						Iterator<SplitRing> iter = sortedInners.iterator();
 						while (iter.hasNext()) {
+							boolean removeSpike = false;
 							SplitRing inner = iter.next();
 							if (inner.max > outer.max || inner.min < outer.min) {
 								// not an inner for this outer
 								continue;
 							}
 							if (currPosOnAxis > prevPosOnAxis) {
-								if (inner.max < prevPosOnAxis)
-									continue;
 								if (inner.min > currPosOnAxis) {
 									// all further inner rings have a larger min  
 									break;
+								}
+								if (inner.max < prevPosOnAxis || inner.max > currPosOnAxis) {
+									continue;
 								}
 							} else {
 								if (inner.max < currPosOnAxis) {
 									continue;
 								}
-								if (inner.min > prevPosOnAxis) {
+								if (inner.min > prevPosOnAxis || inner.min < currPosOnAxis) {
 									continue;
 								}
 							}
+							if (inner.max == currPosOnAxis || inner.max == prevPosOnAxis) {
+								// cut might create a spike
+								removeSpike = true;
+							}
+							if (inner.min == currPosOnAxis || inner.min == prevPosOnAxis) {
+								// cut might create a spike
+								removeSpike = true;
+							}
 							// found an inner that has touches the cutline between the current points
-							drawGpx("e:/ld/i",  inner.ring);
-							drawGpx("e:/ld/r1",  ring);
+							drawGpx("i",  inner.ring);
+							drawGpx("r1",  ring);
 							List<Coord> toAdd;
 							if (inner.clockwise != outer.clockwise)
 								toAdd = inner.ring;
@@ -696,7 +706,7 @@ public class MultiPolygonCutter2 {
 							} else {
 								// inner touches cutline in a single point, don't remove it
 							}
-							drawGpx("e:/ld/toAdd",  toAdd);
+							drawGpx("toAdd",  toAdd);
 							// calculate the position where we have to add the points
 							boolean addBeforeLast;
 							if (currPosOnAxis > prevPosOnAxis) {
@@ -709,10 +719,12 @@ public class MultiPolygonCutter2 {
 							} else {
 								ring.addAll(toAdd);
 							}
-							
+							if (removeSpike) {
+								ring = removeObsoletePoints(ring);
+							}
+							prevPosOnAxis = axis.getPosOnAxis(toAdd.get(toAdd.size()-1));
 							modified = true;
-							drawGpx("e:/ld/r2",  ring);
-
+							drawGpx("r2",  ring);
 							iter.remove();
 						}
 					}
@@ -720,15 +732,15 @@ public class MultiPolygonCutter2 {
 					
 				if (modified) {
 					anyChange = true;
-					drawGpx("e:/ld/mof"+i,  ring);
-					
-					outers.set(i, new SplitRing(ring, outer.dividingLine, outer.axis));
+					SplitRing sr = new SplitRing(ring, outer.dividingLine, outer.axis);
+					drawGpx("mof"+i,  sr.ring);
+					outers.set(i, sr);
 				}
 			}
 			
 			if (!sortedInners.isEmpty()) {
 				for (int i = 0; i < sortedInners.size(); i++) {
-					drawGpx("e:/ld/ui"+i,  sortedInners.get(i).ring);
+					drawGpx("ui"+i,  sortedInners.get(i).ring);
 				}
 			}
 			if (!anyChange)
@@ -1131,8 +1143,9 @@ public class MultiPolygonCutter2 {
 		return modifiedPoints;
 	}
 
-	private static void drawGpx(String path, List<Coord> points) {
-		if (debugGpx)
-			GpxCreator.createGpx(path, points);
+	private static void drawGpx(String name, List<Coord> points) {
+		if (debugGpx) {
+			GpxCreator.createGpx("e:/ld/" + name, points);
+		}
 	}
 }
