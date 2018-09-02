@@ -48,7 +48,7 @@ public class MultiPolygonCutter2 {
 	private final MultiPolygonRelation rel;
 	private final Rectangle2D tileBBox;
 	private uk.me.parabola.imgfmt.app.Area tileBounds;
-	private static final boolean debugGpx = true;
+	private static final boolean debugGpx = false;
 
 	/**
 	 * Create cutter for a given MP-relation and tile
@@ -360,6 +360,7 @@ public class MultiPolygonCutter2 {
 		private final int dividingLine;
 		private final CoordinateAxis axis;
 		public final boolean clockwise;
+		final int maxDist;
 
 		public SplitRing(List<Coord> points, int dividingLine, CoordinateAxis axis) {
 			this.ring = points;
@@ -368,7 +369,6 @@ public class MultiPolygonCutter2 {
 			if (points.size() <= 1 || points.get(0) != points.get(points.size()-1)) {
 				log.error("not a ring ?", points.size());
 			}
-			
 			min = Integer.MAX_VALUE;
 			max = Integer.MIN_VALUE;
 
@@ -393,20 +393,26 @@ public class MultiPolygonCutter2 {
 				if (next.highPrecEquals(prevLast))
 					ring.remove(0);
 				else 
-					ring.set(0,prevLast); // new closing
+					ring.set(0, prevLast); // new closing
 				drawGpx("spike2", ring);
 				continue;
 			}
 			if (ring.size() < 2) {
 				ring.clear();
 			}
+			int md = 0;
 			for (Coord c : ring) {
+				int distToLine = Math.abs((axis == CoordinateAxis.LATITUDE ? c.getHighPrecLat() : c.getHighPrecLon()) - dividingLine);
+				if (md < distToLine)
+					md = distToLine;
 				if (onDividingLine(c)) {
 					int pos = axis.getPosOnAxis(c);
 					min = Math.min(min, pos);
 					max = Math.max(max, pos);
 				}
 			}
+			maxDist = md;
+
 			clockwise = Way.clockwise(ring);
 		}
 
@@ -414,6 +420,19 @@ public class MultiPolygonCutter2 {
 			return dividingLine == (axis == CoordinateAxis.LONGITUDE ? c.getHighPrecLon() : c.getHighPrecLat()); 
 		}
 
+	}
+	
+	static class SplitRingComparator implements Comparator<SplitRing> {
+		@Override
+		public int compare(SplitRing o1, SplitRing o2) {
+			int d = Integer.compare(o1.min, o2.min);
+			if (d != 0)
+				return d;
+			d = Integer.compare(o1.max, o2.max);
+			if (d != 0)
+				return d;
+			return Integer.compare(o2.maxDist, o1.maxDist); // larger dist first
+		}
 	}
 	
 	private static final int CUT_POINT_CLASSIFICATION_GOOD_THRESHOLD = 1<<(11 + Coord.DELTA_SHIFT);
@@ -519,48 +538,59 @@ public class MultiPolygonCutter2 {
 					// inner touches cutline in a single point, cannot enclose an outer ring
 					continue;
 				}
-				List<List<Coord>> parts = new ArrayList<>();
+
 				int lastHitPos = -1;
 				Coord lastHit = null;
+				List<SplitRing> splitParts = new ArrayList<>();
+				assert inner.onDividingLine(inner.ring.get(0)) : "inner ring doesn't start on cut line";
 				for (int j = 0; j < inner.ring.size(); j++) {
 					Coord c = inner.ring.get(j);
+					
 					if (inner.onDividingLine(c)) {
 						if (lastHit != null) {
-							if (j - lastHitPos > 1) {
-								boolean extractPartOfInner = false;
-								if (inner.axis.getPosOnAxis(lastHit) == inner.min) {
-									extractPartOfInner = inner.axis.getPosOnAxis(c) == inner.max;
-								} else if (inner.axis.getPosOnAxis(lastHit) == inner.max) {
-									extractPartOfInner = inner.axis.getPosOnAxis(c) == inner.min;
-								} else {
-									// this will be a new outer ring
-									List<Coord> mod = new ArrayList<>(j - lastHitPos + 2);
-									mod.addAll(inner.ring.subList(lastHitPos, j+1));
-									mod.add(mod.get(0)); // close
-									if (Way.clockwise(mod))
-										Collections.reverse(mod);
-									drawGpx("exo"+res.size(),  mod);
-									
-									res.add(new SplitRing(mod, inner.dividingLine, inner.axis));
-								}
-								if (extractPartOfInner) {
-									List<Coord> part = new ArrayList<>(j - lastHitPos + 2);
-									part.addAll(inner.ring.subList(lastHitPos, j+1));
-									part.add(part.get(0)); // close
-									drawGpx("part"+parts.size(),  part);
-									parts.add(part);
-								}
+//							log.error(j - lastHitPos, inner.ring.size() - j, splitParts.size());
+							if (j - lastHitPos > 1 && (inner.ring.size() - j > 2 || !splitParts.isEmpty())) {
+								List<Coord> ring = new ArrayList<>(inner.ring.subList(lastHitPos, j + 1));
+								ring.add(ring.get(0));
+								SplitRing sr = new SplitRing(ring, getCutPointHighPrec(), axis);
+								splitParts.add(sr);
 							}
 						}
 						lastHit = c;
 						lastHitPos = j;
 					}
 				}
-				if (parts.size() > 1 || parts.size() == 1 && parts.get(0).size() != inner.ring.size()) {
+				if (splitParts.size() > 1) {
 					drawGpx("mult",  inner.ring);
-					inners.set(i, new SplitRing(parts.get(0), inner.dividingLine, inner.axis));
-					for (int j = 1; j < parts.size(); j++) {
-						newInners.add(new SplitRing(parts.get(j), inner.dividingLine, inner.axis));
+					Collections.sort(splitParts, new SplitRingComparator());
+					for (int j = 0; j < splitParts.size(); j++) {
+						SplitRing sp1 = splitParts.get(j);
+						if (sp1 == null)
+							continue;
+						for (int k = j+1; k < splitParts.size(); k++) {
+							SplitRing sp2 = splitParts.get(k);
+							if (sp2 == null)
+								continue;
+							if (sp1.min <= sp2.min && sp1.max >= sp2.max) {
+								List<Coord> exo = new ArrayList<>(sp2.ring);
+								if (sp2.clockwise)
+									Collections.reverse(exo);
+								drawGpx("exo"+res.size(),  exo);
+								res.add(new SplitRing(exo, inner.dividingLine, inner.axis));
+								splitParts.set(k, null);
+							}
+						}
+					}
+					boolean first = true;
+					for (SplitRing sp : splitParts) {
+						if (sp == null)
+							continue;
+						drawGpx("part",  sp.ring);
+						if (first) {
+							inners.set(i, sp);
+							first = false;
+						} else 
+							newInners.add(sp);
 					}
 				}
 			}

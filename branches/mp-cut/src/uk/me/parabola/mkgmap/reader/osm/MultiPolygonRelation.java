@@ -1000,17 +1000,16 @@ public class MultiPolygonRelation extends Relation {
 					for (PolygonStatus polygonHoleStatus : holes) {
 						innerWays.add(polygonHoleStatus.polygon);
 					}
-//					if (intersectingPolygonsMap.isEmpty()) {
-//						MultiPolygonCutter2 cutter2 = new MultiPolygonCutter2(this, tileBounds);
-//						// TODO: cutter fails i
-//						singularOuterPolygons = cutter2.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
-//					} else {
+					if (touchingOrIntersectingPolygonsMap.isEmpty()) {
+						MultiPolygonCutter2 cutter2 = new MultiPolygonCutter2(this, tileBounds);
+						singularOuterPolygons = cutter2.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
+					} else {
 						// TODO maybe combine intersecting inner so that other cutter can always be used?
 						MultiPolygonCutter cutter = new MultiPolygonCutter(this, tileArea);
 						singularOuterPolygons = cutter.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
-//					}
+					}
 				}
-				log.error(this, singularOuterPolygons.size());
+//				log.error(this, singularOuterPolygons.size());
 				if (singularOuterPolygons.isEmpty()==false) {
 					// handle the tagging 
 					if (currentPolygon.outer && hasStyleRelevantTags(this)) {
