@@ -14,6 +14,11 @@ leisure=* & sport=* & name=* { set name='${name} (${sport})' }
 leisure=* & sport=* & name!=* { add name='${sport}' }
 
 include 'inc/name';
+#Buildings
+(building = train_station | aerialway = station | public_transport = station | aeroway = terminal) & location != underground 	[0x6a resolution 22-24]																									
+building = no { delete building }
+building = * [0x13 resolution 24]
+
 
 aeroway=airport [0x07 resolution 20]
 aeroway=aerodrome [0x07 resolution 20]
@@ -23,14 +28,14 @@ aeroway=heliport [0x07 resolution 20]
 aeroway=helipad [0x0e resolution 22]
 
 amenity=kindergarten [0x0a resolution 22]
-amenity=cafe | amenity=fast_food | amenity=restaurant | amenity=food_court [0x08 resolution 22]
+#Disabled amenity=cafe | amenity=fast_food | amenity=restaurant | amenity=food_court [0x08 resolution 22]
 amenity=college [0x0a resolution 22]
 parking=underground | parking=multi-storey [0x06 resolution 22]
 amenity=parking | parking=surface [0x05 resolution 22]
 amenity=prison [0x04 resolution 22]
 amenity=school [0x0a resolution 22]
 # amenity=supermarket is superceded by shop=supermarket or landuse=retail
-amenity=supermarket [0x08 resolution 22]
+#Disabled amenity=supermarket [0x08 resolution 22]
 amenity=university [0x0a resolution 21]
 
 healthcare=hospital | amenity=hospital | amenity=clinic [0x0b resolution 22]
@@ -53,10 +58,12 @@ leisure=water_park [0x09 resolution 21]
 
 place=village [0x03 resolution 19]
 
-shop=* [0x08 resolution 22]
+#Disabled shop=* [0x08 resolution 22]
 
+#platforms
+(highway = platform | railway = platform) & !(man_made = pier | tunnel = yes | covered = yes | location = underground) {name '${name}' | '${ref}' } [0x6c resolution 22]
 # squares and plazas
-highway=pedestrian & (area=yes | mkgmap:mp_created=true) [0x17 resolution 22]
+(highway=pedestrian | highway=footway | highway=path) & (area=yes | mkgmap:mp_created=true) [0x6b resolution 22]
 # other highways that have area=yes set must be parking lots
 highway=* & (area=yes | mkgmap:mp_created=true) [0x05 resolution 22]
 
@@ -66,6 +73,7 @@ historic=archaeological_site | historic=ruins [0x1e resolution 21]
 landuse=basin [0x3f resolution 20]
 (landuse=reservoir | (natural=water & water=reservoir)) [0x3f resolution 20]
 
+waterway=dock { set natural = water }
 natural=bay [0x3d resolution 18]
 natural=glacier [0x4d resolution 18]
 natural=marsh [0x51 resolution 20]
@@ -79,7 +87,7 @@ waterway=riverbank [0x46 resolution 20]
 
 landuse=allotments [0x4e resolution 21]
 landuse=cemetery|landuse=cemetary|amenity=grave_yard [0x1a resolution 21]
-landuse=commercial [0x0c resolution 19]
+landuse=commercial [0x08 resolution 19]
 landuse=construction [0x0c resolution 21]
 landuse=farm |landuse=farmland [0x4e resolution 20]
 landuse=farmyard [0x10 resolution 22]
@@ -105,8 +113,8 @@ military=range [0x04 resolution 20]
 natural=scrub [0x4f resolution 20]
 natural=wood [0x50 resolution 20]
 
-# building tag should be last
-(building=* | amenity=*) & area!=no & amenity!=grave_yard [0x13 resolution 24]
+#Disabled building tag should be last
+#Disabled (building=* | amenity=*) & area!=no & amenity!=grave_yard [0x13 resolution 24]
 tourism=* & area!=no & waterway!=* [0x1f resolution 24]
 # man_made can be used on areas or lines
 man_made=* & area!=no

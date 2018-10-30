@@ -138,9 +138,9 @@ junction=roundabout & highway=* [0x0c road_class=0 road_speed=1 resolution 22]
 
 # Ways that may or may not be useable
 
-# Treat ways under construction almost as highway=path, see also extra rule in inc/access
-highway=construction { add mkgmap:dead-end-check = false; }
-[0x16 road_class=0 road_speed=0 resolution 23]
+#Disabled:  Treat ways under construction almost as highway=path, see also extra rule in inc/access
+#Disabled: highway=construction { add mkgmap:dead-end-check = false; } [0x16 road_class=0 road_speed=0 resolution 23]
+highway=construction { add mkgmap:dead-end-check = false; } [0x10c06 resolution 23]
 
 # Lower the road speed of ways under some construction.
 highway=* & construction=* & maxspeed!=* { add mkgmap:road-speed = '-1' }
@@ -178,7 +178,7 @@ highway=unclassified [0x06 road_class=0 road_speed=3 resolution 21]
 highway=pedestrian & area!=yes [0x16 road_class=0 road_speed=0 resolution 22]
 highway=living_street [0x06 road_class=0 road_speed=1 resolution 22]
 highway=residential [0x06 road_class=0 road_speed=2 resolution 22]
-highway=bridleway [0x07 road_class=0 road_speed=0 resolution 23]
+highway=bridleway [0x16 road_class=0 road_speed=0 resolution 23]
 highway=byway [0x16 road_class=0 road_speed=0 resolution 23]
 
 highway=service & service=parking_aisle
@@ -187,7 +187,7 @@ highway=service & (service=alley|service=driveway)
 [0x07 road_class=0 road_speed=0 resolution 23]
 highway=service [0x07 road_class=0 road_speed=2 resolution 22]
 
-highway=cycleway [0x07 road_class=0 road_speed=1 resolution 23]
+highway=cycleway [0x11 road_class=0 road_speed=1 resolution 23]
 
 highway=footway|highway=path|highway=steps [0x16 road_class=0 road_speed=0 resolution 23]
 highway=track [0x0a road_class=0 road_speed=1 resolution 22]
@@ -200,8 +200,10 @@ highway=* & area!=yes [0x07 road_class=0 road_speed=0 resolution 23]
 natural=coastline [0x15 resolution 12]
 power=line [0x29 resolution 21]
 
-railway=abandoned [0x0a road_class=0 road_speed=1 resolution 22]
-railway=platform [0x16 road_class=0 road_speed=0 resolution 23]
+#Disabled: railway=abandoned [0x0a road_class=0 road_speed=1 resolution 22]
+#Disabled: railway=platform [0x16 road_class=0 road_speed=0 resolution 23]
+(highway = platform | railway = platform ) & !(area = yes | is_closed() = true | tunnel = yes | location = underground)  [0x10a06 resolution 24]
+
 # Railway lines, note that many devices display type 0x14 only at resolution 24 
 (railway=rail | railway=tram | railway=disused | railway=subway | railway=narrow_gauge | railway=light_rail | railway=preserved) & !(tunnel=yes) [0x14 resolution 22]
 
