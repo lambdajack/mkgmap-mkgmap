@@ -406,6 +406,7 @@
 				<include name="styles/default/**"/>
 				<include name="styles/noname/**"/>
 				<include name="chars/ascii/row02.trans"/>
+				<include name="typ-files/**"/>
 			</fileset>
 		</copy>
 		
