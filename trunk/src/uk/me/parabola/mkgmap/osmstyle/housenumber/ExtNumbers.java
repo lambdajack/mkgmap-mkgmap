@@ -26,12 +26,13 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.net.NumberStyle;
 import uk.me.parabola.imgfmt.app.net.Numbers;
+import uk.me.parabola.imgfmt.app.net.RoadDef;
 import uk.me.parabola.log.Logger;
-import uk.me.parabola.mkgmap.filters.LineSplitterFilter;
 import uk.me.parabola.mkgmap.general.CityInfo;
 import uk.me.parabola.mkgmap.general.MapRoad;
 import uk.me.parabola.mkgmap.general.ZipCodeInfo;
@@ -507,6 +508,11 @@ public class ExtNumbers {
 	private ExtNumbers splitInterval(){
 		if (log.isDebugEnabled())
 			log.debug("trying to split",this,"so that",badNum,"is not contained");
+		if (getRoad().countNodes() + 1 > 0x3ff) {
+			log.warn("cannot increase number of number nodes", getRoad());
+			return this;
+		}
+		
 		boolean doSplit = false;
 		Numbers origNumbers = getNumbers();
 		if (origNumbers.countMatches(badNum) == 0){
@@ -678,14 +684,15 @@ public class ExtNumbers {
 	 * @return
 	 */
 	private ExtNumbers tryAddNumberNode(int reason) {
+		int numNumNodes = getRoad().countNodes();
+		if (numNumNodes + 1 > RoadDef.MAX_NUMBER_NODES){
+			log.warn("can't change intervals, road has already", numNumNodes, "number nodes");
+			return this; // can't add a node
+		}
 		String action;
 		if (endInRoad - startInRoad > 1)
 			action = "change";
 		else {
-			if (getRoad().getPoints().size() + 1 > LineSplitterFilter.MAX_POINTS_IN_LINE){
-				log.warn("can't change intervals, road has already",LineSplitterFilter.MAX_POINTS_IN_LINE,"points");
-				return this; // can't add a node
-			}
 			Coord c1 = getRoad().getPoints().get(startInRoad);
 			Coord c2 = getRoad().getPoints().get(startInRoad+1);
 			if (c1.equals(c2)){
@@ -1085,6 +1092,9 @@ public class ExtNumbers {
 	 * @return new start of next interval
 	 */
 	private int addAsNumberNode(int pos, Coord toAdd){
+		if (getRoad().countNodes()  + 1 > RoadDef.MAX_NUMBER_NODES) {
+			throw new MapFailedException("too many number nodes in " + getRoad());
+		}
 		toAdd.setNumberNode(true);
 		toAdd.setAddedNumberNode(true);
 		getRoad().getPoints().add(pos, toAdd);
@@ -1132,16 +1142,18 @@ public class ExtNumbers {
 				continue;
 			if (multipleZipOrCity(left))
 				multipleZipOrCity = true;
-			for (HousenumberMatch house: houses){
-				int hn = house.getHousenumber();
-				if (countOccurence(houses, hn) > 1)
-					continue;
-				ExtNumbers modIvl = simulateRemovalOfHouseNumber(hn, left);
-				if (modIvl.isPlausible()){
-					badNum = hn;
-					if (log.isDebugEnabled())
-						log.debug("splitpos details: single remove of",badNum,"results in plausible interval");
-					return;
+			if (houses.size() < 50) {
+				for (HousenumberMatch house: houses){
+					int hn = house.getHousenumber();
+					if (countOccurence(houses, hn) > 1)
+						continue;
+					ExtNumbers modIvl = simulateRemovalOfHouseNumber(hn, left);
+					if (modIvl.isPlausible()){
+						badNum = hn;
+						if (log.isDebugEnabled())
+							log.debug("splitpos details: single remove of",badNum,"results in plausible interval");
+						return;
+					}
 				}
 			}
 		}
