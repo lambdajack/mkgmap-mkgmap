@@ -18,49 +18,55 @@ CodePage=1252
 ;MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;General Public License for more details.
 ;
-;Auto generated: 20190113 12:05
+;Auto generated: 20190115 21:43
 ;From master: MKG
 ;As subset: mkgmap
 ;
 [End]
 
 [_drawOrder]
-Type=0x04b,1
-Type=0x053,1
-Type=0x003,2
-Type=0x007,2
-Type=0x008,2
-Type=0x009,2
-Type=0x010,2
-Type=0x016,2
-Type=0x018,2
-Type=0x01e,2
-Type=0x01f,2
-Type=0x032,2
-Type=0x03d,2
-Type=0x046,2
-Type=0x04d,2
-Type=0x051,2
-Type=0x06b,2
-Type=0x00a,3
-Type=0x00c,3
-Type=0x01a,3
-Type=0x04e,3
-Type=0x050,3
-Type=0x00b,4
-Type=0x04f,4
-Type=0x017,5
-Type=0x005,6
-Type=0x019,6
-Type=0x03c,6
-Type=0x03f,6
-Type=0x006,7
-Type=0x00e,7
-Type=0x013,8
-Type=0x06a,8
-Type=0x06c,9
-Type=0x004,10
-[End]
+Type=0x02,2
+Type=0x03,2
+Type=0x04,10
+Type=0x05,6
+Type=0x06,7
+Type=0x07,2
+Type=0x08,2
+Type=0x09,2
+Type=0x0a,3
+Type=0x0b,4
+Type=0x0c,3
+Type=0x0e,7
+Type=0x10,2
+Type=0x13,8
+Type=0x16,2
+Type=0x17,5
+Type=0x18,2
+Type=0x19,6
+Type=0x1a,3
+Type=0x1e,2
+Type=0x1f,2
+Type=0x32,2
+Type=0x3b,2
+Type=0x3c,6
+Type=0x3d,2
+Type=0x3f,6
+Type=0x41,6
+Type=0x46,2
+Type=0x47,2
+Type=0x48,2
+Type=0x4b,1
+Type=0x4c,2
+Type=0x4d,2
+Type=0x4e,3
+Type=0x4f,4
+Type=0x50,3
+Type=0x51,2
+Type=0x53,1
+Type=0x6a,8
+Type=0x6b,2
+Type=0x6c,9
+[end]
 
 [_polygon]
 type=0x02
@@ -74,9 +80,8 @@ String6=0x24,
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
 CustomColor=No
-Xpm="0 0 2 0"
+Xpm="0 0 1 0"
 "1 c #E0DFDF"
-"2 c #000000"
 [end]
 
 [_polygon]
@@ -91,9 +96,8 @@ String6=0x24,
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
 CustomColor=No
-Xpm="0 0 2 0"
+Xpm="0 0 1 0"
 "1 c #E0DFDF"
-"2 c #000000"
 [end]
 
 [_polygon]
@@ -158,9 +162,8 @@ String6=0x24,
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
 CustomColor=No
-Xpm="0 0 2 0"
+Xpm="0 0 1 0"
 "1 c #EEEEEE"
-"2 c #000000"
 [end]
 
 [_polygon]
@@ -303,9 +306,8 @@ String6=0x24,
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
 CustomColor=No
-Xpm="0 0 2 0"
+Xpm="0 0 1 0"
 "1 c #E0DFDF"
-"2 c #000000"
 [end]
 
 [_polygon]
@@ -368,9 +370,8 @@ String6=0x24,
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
 CustomColor=No
-Xpm="0 0 2 0"
+Xpm="0 0 1 0"
 "1 c #B5E3B5"
-"2 c #000000"
 [end]
 
 [_polygon]
@@ -2863,35 +2864,33 @@ type=0x02b
 subtype=0x07
 ;GRMN_TYPE: //
 String1=0x01,
-String2=0x02,
-String3=0x04,
-String4=0x03,VRIJ
+String2=0x02,Berg Schutzhütte
+String3=0x04,Shelter
+String4=0x03,Bergschuilhut
 String5=0x09,
 String6=0x24,
 ExtendedLabels=Y
-FontStyle=NoLabel (invisible)
-CustomColor=No
-DayXpm="16 16 3 1"   Colormode=16
-"!	c #FFFFFF"
-"#	c #006500"
+FontStyle=SmallFont
+CustomColor=Day
+DaycustomColor:#0065D5
+DayXpm="14 14 2 1"   Colormode=16
+"!	c #0095FF"
 "  	c none"
-"!!!!!!!!!!!!!!!!"
-"!!!!!!!!!!!!!!!!"
-"!!!!!!!!!!!!!!!!"
-"!!!!!!!!!!!!!!!!"
-"!!!!!!!!!!!!#!#!"
-"!!!!!!!!!!!!!!!!"
-"!#!!!#!#   !#!#!"
-"!#!!!#!### !#!#!"
-"!!#!#!!#  #!#!#!"
-"!!#!#!!#   !#!#!"
-"!!!#!!!#   !#!#!"
-"!!!#!! #!  !#!#!"
-"!!!!!!!!!!!!!!#!"
-"!!!!!!!!!!!!###!"
-"!!!!!!!!!!!!!!!!"
-"!!!!!!!!!!!!!!!!"
-;1234567890123456
+"        !!    "
+"        !!    "
+"     !!!!!    "
+"   !!!!!!!!   "
+" !!!!!  !!!!! "
+"!!!     !! !!!"
+"!!!     !! !!!"
+" !!     !! !! "
+" !!     !! !! "
+" !! !!!!!! !! "
+" !! !!!!!! !! "
+" !! !!  !! !! "
+" !! !!  !! !! "
+" !! !!!!!! !! "
+;12345678901234
 [end]
 
 [_point]
