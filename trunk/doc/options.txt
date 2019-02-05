@@ -102,15 +102,9 @@ also given, then the index is generated within the resulting
 gmapsupp.img file so that address search will work on a GPS
 device.
 <p>
-If instead the --tdbfile option is given then the index consists
-of two files named osmmap.mdx and osmmap_mdr.img which can be used
-with MapSource.  The --overview-mapname option can be used to change
-these names.  (For compatibility, you do not need the tdbfile
-option if gmapsupp is not given).
-<p>
-If both the --gmapsupp and --tdbfile options are given alongside
-the --index option, then both indexes will be created. Note that
-this will require roughly twice as much memory.
+If both the --gmapsupp and any of --tdbfile, --gmapi, or --nsis options 
+are given alongside the --index option, then both indexes will be created.
+Note that this will require roughly twice as much memory.
 <p>
 If the map is sent to the device by MapSource, it will enable
 find by name and address search on the GPS.
@@ -797,7 +791,7 @@ compared with these patterns and those that match are deleted.
 <p>
 ;--tdbfile
 : 	Write files that are essential to running with MapSource, a .tdb file and
-an overview map.
+an overview map. The options --nsis and --gmapi imply --tdbfile.
 <p>
 ;--show-profiles=1
 : 	Sets a flag in tdb file. The meaning depends on the availability of DEM 

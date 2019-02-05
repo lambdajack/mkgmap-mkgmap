@@ -24,6 +24,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.mkgmap.CommandArgs;
@@ -39,11 +40,15 @@ public class NsisBuilder implements Combiner {
 	private String id;
 	private int productId;
 
-	private boolean hasIndex;
+	private final boolean hasIndex;
 	private boolean hasTyp;
 
 	private final List<String> mapList = new ArrayList<>();
 	private String typName;
+
+	public NsisBuilder(Map<String, Combiner> combinerMap) {
+		this.hasIndex = combinerMap.containsKey("mdx");
+	}
 
 	public void init(CommandArgs args) {
 		int familyId = args.get("family-id", CommandArgs.DEFAULT_FAMILYID);
@@ -60,8 +65,6 @@ public class NsisBuilder implements Combiner {
 		licenseFilename = baseFilename + "_license.txt";
 		
 		outputDir = args.getOutputDir();
-		
-		hasIndex = args.exists("index");
 	}
 
 	public void onMapEnd(FileInfo info) {
@@ -74,12 +77,7 @@ public class NsisBuilder implements Combiner {
 			File typFile = new File(info.getFilename());
 			typName = typFile.getName();
 			break;
-		case MDR_KIND:
-			hasIndex = true;
-			break;
-		case APP_KIND:
-		case GMAPSUPP_KIND:
-		case UNKNOWN_KIND:
+		default:
 			break;
 		}
 	}
