@@ -29,6 +29,10 @@
 				conf="compile->default(*)"
 				/>
 
+		<dependency org="javax.xml.bind" name="jaxb-api"
+				rev="2.3.0"
+				conf="test->default(*)"/>
+
 		<dependency org="junit" name="junit"
 			    rev="4.11"
 			    conf="test->runtime(*),master(*)" />

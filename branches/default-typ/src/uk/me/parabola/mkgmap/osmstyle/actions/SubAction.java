@@ -36,11 +36,11 @@ import uk.me.parabola.mkgmap.reader.osm.Relation;
 public class SubAction implements Action {
 	private final List<Action> actionList = new ArrayList<Action>();
 	private final String role;
-	private final boolean once;
+	private final String selector;
 
-	public SubAction(String role, boolean once) {
+	public SubAction(String role, String selector) {
 		this.role = role;
-		this.once = once;
+		this.selector = selector;
 	}
 
 	public boolean perform(Element el) {
@@ -58,6 +58,8 @@ public class SubAction implements Action {
 			else if (a instanceof AddAccessAction)
 				((AddAccessAction) a).setValueTags(rel);
 
+		boolean once = "once".equals(selector);
+		boolean first_only = "first".equals(selector);
 		HashSet<Element> elems = once ? new HashSet<Element>() : null;
 
 		for (Map.Entry<String,Element> r_el : elements) {
@@ -67,6 +69,8 @@ public class SubAction implements Action {
 				for (Action a : actionList)
 					a.perform(r_el.getValue());
 			}
+			if (first_only)
+				break;
 		}
 	}
 
@@ -76,7 +80,10 @@ public class SubAction implements Action {
 
 	public String toString() {
 		Formatter fmt = new Formatter();
-		fmt.format(once ? "apply_once" : "apply");
+		fmt.format("apply");
+		if (selector != null) {
+			fmt.format("_%s",selector);
+		}
 		if (role != null)
 			fmt.format(" role=%s ", role);
 		

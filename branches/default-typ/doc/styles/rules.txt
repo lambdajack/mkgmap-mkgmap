@@ -487,6 +487,13 @@ per relation member. A round-trip route relation may include the same
 ways multiple times, unless all member ways have been defined as parallel
 one way streets.
 
+=== apply_first ===
+The apply_first action is like +apply+, but it will apply the action only to the 
+first relation member as appearing in the input file. In combination with the 
+--add-pois-to-lines option this might be used with route relations to mark the 
+beginning of a route, presuming that the relation is complete and ordered so
+that the first member is the start of the route. 
+                                                
 === echo ===
 The echo action prints the element id plus a text to standard error. This can be
 used for quality checks and debugging purposes.

@@ -29,6 +29,7 @@ import java.util.TreeMap;
 import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.BitWriter;
+import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
 import uk.me.parabola.imgfmt.app.Label;
 import uk.me.parabola.imgfmt.app.lbl.City;
@@ -61,6 +62,7 @@ import uk.me.parabola.mkgmap.general.ZipCodeInfo;
 
 public class RoadDef {
 	private static final Logger log = Logger.getLogger(RoadDef.class);
+	public static final int MAX_NUMBER_NODES = 0x3ff; 
 
 	public static final int NET_FLAG_NODINFO  = 0x40;
 	public static final int NET_FLAG_ADDRINFO = 0x10;
@@ -140,7 +142,7 @@ public class RoadDef {
 	// the first point in the road is a node (the above routing node)
 	private boolean startsWithNode = true;
 	// number of nodes in the road
-	private int nnodes;
+	private int nnodes = -1;
 
 	// always appears to be set
 	private int nod2Flags = NOD2_FLAG_UNK;
@@ -524,6 +526,9 @@ public class RoadDef {
 	}
 
 	public void setNumNodes(int n) {
+		if (n-2 > MAX_NUMBER_NODES) {
+			throw new MapFailedException("Too many special nodes: " + n + " is > " + MAX_NUMBER_NODES + " " + this);
+		}
 		nnodes = n;
 	}
 

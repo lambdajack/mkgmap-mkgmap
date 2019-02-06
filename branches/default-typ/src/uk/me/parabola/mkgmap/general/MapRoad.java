@@ -18,6 +18,7 @@ package uk.me.parabola.mkgmap.general;
 
 import java.util.List;
 
+import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.lbl.City;
 import uk.me.parabola.imgfmt.app.lbl.Zip;
 import uk.me.parabola.imgfmt.app.net.Numbers;
@@ -185,6 +186,19 @@ public class MapRoad extends MapLine {
 		return false;
 	}
 	
+	public int getLabelPos(String label){
+		if (label == null)
+			return -1;
+		for (int i = 0; i < labels.length; i++){
+			if (labels[i] == null){
+				return -1;
+			}
+			if (labels[i].equals(label))
+				return i;
+		}
+		return -1;
+	}
+	
 	public String toString(){
 		if ((getName() == null || getName().isEmpty()) && getStreet() != null)
 			return "id="+this.getRoadDef().getId() + ", (" + this.getStreet() + ")";
@@ -196,4 +210,15 @@ public class MapRoad extends MapLine {
 		roadDef.resetImgData();
 		
 	}
+	
+	public int countNodes() {
+		int n = 0;
+		for (Coord p : getPoints()) {
+			if (p.isNumberNode()) 
+				n++;
+		}
+		return n;
+	}
+
+	
 }

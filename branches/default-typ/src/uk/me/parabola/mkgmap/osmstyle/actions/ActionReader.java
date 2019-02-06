@@ -71,9 +71,11 @@ public class ActionReader {
 			} else if ("addaccess".equals(cmd)) { 
 				actions.add(readAccessValue(false, changeableTags));
 			} else if ("apply".equals(cmd)) {
-				actions.add(readAllCmd(false));
+				actions.add(readAllCmd(null));
 			} else if ("apply_once".equals(cmd)) {
-				actions.add(readAllCmd(true));
+				actions.add(readAllCmd("once"));
+			} else if ("apply_first".equals(cmd)) {
+				actions.add(readAllCmd("first"));
 			} else if ("name".equals(cmd)) {
 				actions.add(readValueBuilder(new NameAction()));
 				changeableTags.add("mkgmap:label:1");
@@ -115,7 +117,7 @@ public class ActionReader {
 		return new ActionList(actions, changeableTags);
 	}
 
-	private Action readAllCmd(boolean once) {
+	private Action readAllCmd(String selector) {
 		String role = null;
 		if (scanner.checkToken("role")) {
 			scanner.nextToken();
@@ -124,7 +126,7 @@ public class ActionReader {
 				throw new SyntaxException(scanner, "Expecting '=' after role keyword");
 			role = scanner.nextWord();
 		}
-		SubAction subAction = new SubAction(role, once);
+		SubAction subAction = new SubAction(role, selector);
 
 		List<Action> actionList = readActions().getList();
 		for (Action a : actionList)

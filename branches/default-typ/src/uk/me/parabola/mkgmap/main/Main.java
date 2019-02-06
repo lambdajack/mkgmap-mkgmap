@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.lang.OutOfMemoryError;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
@@ -691,12 +690,15 @@ public class Main implements ArgumentProcessor {
 		boolean gmapsuppOpt = args.exists("gmapsupp");
 		boolean tdbOpt = args.exists("tdbfile");
 		boolean gmapiOpt = args.exists("gmapi");
+		boolean nsisOpt = args.exists("nsis");
 
+		for (String opt : Arrays.asList("gmapi", "nsis")) {
+			if (!createTdbFiles && args.exists(opt)) {
+				throw new ExitException("Options --" + opt  + " and --no-tdbfiles are mutually exclusive");
+			}
+		}
 		if (tdbOpt || createTdbFiles){ 
 			addTdbBuilder();
-		}
-		if (args.exists("nsis")) {
-			addCombiner("nsis", new NsisBuilder());
 		}
 		if (gmapsuppOpt) {
 			GmapsuppBuilder gmapBuilder = new GmapsuppBuilder();
@@ -705,14 +707,17 @@ public class Main implements ArgumentProcessor {
 			addCombiner("gmapsupp", gmapBuilder);
 		}
 
-		if (indexOpt && (tdbOpt || !gmapsuppOpt)) {
+		if (indexOpt && (tdbOpt || !gmapsuppOpt || gmapiOpt || nsisOpt)) {
 			addCombiner("mdr", new MdrBuilder());
 			addCombiner("mdx", new MdxBuilder());
 		}
-
 		if (gmapiOpt) {
 			addCombiner("gmapi", new GmapiBuilder(combinerMap));
 		}
+		if (nsisOpt) {
+			addCombiner("nsis", new NsisBuilder(combinerMap));
+		}
+		
 	}
 
 	/**
