@@ -33,6 +33,7 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -84,7 +85,8 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 
     private PolishTurnRestriction restriction;
 
-	private final List<List<Coord>> lineStrings = new ArrayList<>();
+    /** contains the information from the lines starting with DATA */
+	private final Map<Integer, List<List<Coord>>> lineStringMap = new LinkedHashMap<>();
 
 	private final RoadHelper roadHelper = new RoadHelper();
     private final RestrictionHelper restrictionHelper = new RestrictionHelper();
@@ -96,6 +98,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	private LevelInfo[] levels;
 	private int endLevel;
 	private char elevUnits;
+	private int currentLevel;
 	private static final double METERS_TO_FEET = 3.2808399;
 
 	private int lineNo;
@@ -243,74 +246,54 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			mapper.addPoint(point);
 			break;
 		case S_POLYLINE:
-			if (!lineStrings.isEmpty()) {
+			if (!lineStringMap.isEmpty()) {
 				MapLine origPolyline = polyline.copy();
-				for (List<Coord> points : lineStrings) {
-					polyline = origPolyline.copy();
-					if (roadHelper.isRoad()) {
-						polyline.setPoints(points);
-						mapper.addRoad(roadHelper.makeRoad(polyline));
-					}
-					else {
-						if(extraAttributes != null && polyline.hasExtendedType())
-							polyline.setExtTypeAttributes(makeExtTypeAttributes());
-						final int maxPointsInLine = LineSplitterFilter.MAX_POINTS_IN_LINE;
-						if(points.size() > maxPointsInLine) {
-							List<Coord> segPoints = new ArrayList<>(maxPointsInLine);
-							for(Coord p : points) {
-								segPoints.add(p);
-								if(segPoints.size() == maxPointsInLine) {
-									MapLine seg = polyline.copy();
-									seg.setPoints(segPoints);
-									mapper.addLine(seg);
-									segPoints = new ArrayList<>(maxPointsInLine);
-									segPoints.add(p);
-								}
-							}
-							if(!segPoints.isEmpty()) {
-								polyline.setPoints(segPoints);
-								mapper.addLine(polyline);
-							}
+				
+				for (Map.Entry<Integer , List<List<Coord>>> entry : lineStringMap.entrySet()) {
+					setResolution(origPolyline, entry.getKey());
+					for (List<Coord> points : entry.getValue()) {
+						polyline = origPolyline.copy();
+						if (roadHelper.isRoad()) {
+							polyline.setPoints(points);
+							mapper.addRoad(roadHelper.makeRoad(polyline));
 						}
 						else {
-							polyline.setPoints(points);
-							mapper.addLine(polyline);
+							if(extraAttributes != null && polyline.hasExtendedType())
+								polyline.setExtTypeAttributes(makeExtTypeAttributes());
+							final int maxPointsInLine = LineSplitterFilter.MAX_POINTS_IN_LINE;
+							if(points.size() > maxPointsInLine) {
+								List<Coord> segPoints = new ArrayList<>(maxPointsInLine);
+								for(Coord p : points) {
+									segPoints.add(p);
+									if(segPoints.size() == maxPointsInLine) {
+										MapLine seg = polyline.copy();
+										seg.setPoints(segPoints);
+										mapper.addLine(seg);
+										segPoints = new ArrayList<>(maxPointsInLine);
+										segPoints.add(p);
+									}
+								}
+								if(!segPoints.isEmpty()) {
+									polyline.setPoints(segPoints);
+									mapper.addLine(polyline);
+								}
+							}
+							else {
+								polyline.setPoints(points);
+								mapper.addLine(polyline);
+							}
 						}
 					}
 				}
 			}
 			break;
 		case S_POLYGON:
-			if (!lineStrings.isEmpty()) {
+			if (!lineStringMap.isEmpty()) {
 				if (extraAttributes != null && shape.hasExtendedType())
 					shape.setExtTypeAttributes(makeExtTypeAttributes());
-				if (lineStrings.size() == 1) {
-					List<Coord> points = lineStrings.get(0);
-					shape.setPoints(points);
-					mapper.addShape(shape);
-				} else {
-					Map<Long, Way> wayMap = new HashMap<>();
-					
-					Way w = new Way(FakeIdGenerator.makeFakeId(), lineStrings.get(0));
-					wayMap.put(w.getId(), w);
-					
-					GeneralRelation gr = new GeneralRelation(FakeIdGenerator.makeFakeId());
-					gr.addElement("outer", w);
-					for (int i = 1; i < lineStrings.size(); i++) {
-						w = new Way(FakeIdGenerator.makeFakeId(), lineStrings.get(i));
-						wayMap.put(w.getId(), w);
-						gr.addElement("inner", w);
-					}
-					gr.addTag("code", Integer.toHexString(shape.getType())); // need at least one tag
-					MultiPolygonRelation mp = new MultiPolygonRelation(gr, wayMap, Area.PLANET);
-					mp.processElements();
-					for (Way s: wayMap.values()) {
-						if (MultiPolygonRelation.STYLE_FILTER_POLYGON.equals(s.getTag(MultiPolygonRelation.STYLE_FILTER_TAG))) {
-							MapShape copy = shape.copy();
-							copy.setPoints(s.getPoints());
-							mapper.addShape(copy);
-						}
-					}
+				for (Map.Entry<Integer , List<List<Coord>>> entry : lineStringMap.entrySet()) {
+					setResolution(shape, entry.getKey());
+					addShapesFromPattern(entry.getValue());
 				}
 			}
 			break;
@@ -329,9 +312,42 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 		// Clear the section state.
 		section = 0;
 		endLevel = 0;
-		lineStrings.clear();
+		lineStringMap.clear();
+		currentLevel = 0;
 	}
 
+	private void addShapesFromPattern(List<List<Coord>> pointsLists) {
+		if (pointsLists.size() == 1) {
+			MapShape copy = shape.copy();
+			copy.setPoints(pointsLists.get(0));
+			mapper.addShape(copy);
+		} else {
+			// we have a multipolygon with one outer and one or more inner rings
+			Map<Long, Way> wayMap = new HashMap<>();
+
+			Way w = new Way(FakeIdGenerator.makeFakeId(), pointsLists.get(0));
+			wayMap.put(w.getId(), w);
+
+			GeneralRelation gr = new GeneralRelation(FakeIdGenerator.makeFakeId());
+			gr.addElement("outer", w);
+			for (int i = 1; i < pointsLists.size(); i++) {
+				w = new Way(FakeIdGenerator.makeFakeId(), pointsLists.get(i));
+				wayMap.put(w.getId(), w);
+				gr.addElement("inner", w);
+			}
+			gr.addTag("code", Integer.toHexString(shape.getType())); // add a tag (needed?)
+			MultiPolygonRelation mp = new MultiPolygonRelation(gr, wayMap, Area.PLANET);
+			mp.processElements();
+			for (Way s: wayMap.values()) {
+				if (MultiPolygonRelation.STYLE_FILTER_POLYGON.equals(s.getTag(MultiPolygonRelation.STYLE_FILTER_TAG))) {
+					MapShape copy = shape.copy();
+					copy.setPoints(s.getPoints());
+					mapper.addShape(copy);
+				}
+			}
+		}
+		
+	}
 
 	/**
 	 * This should be a line that is a key value pair.  We switch out to a
@@ -419,16 +435,14 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 		if (name.equals("Type")) {
 			polyline.setType(Integer.decode(value));
 		} else if (name.startsWith("Data")) {
-			List<Coord> newPoints = coordsFromString(value, false);
+			extractResolution(name);
+			addLineString(value, false);
 			// If it is a contour line, then fix the elevation if required.
 			if ((polyline.getType() == 0x20) ||
 			    (polyline.getType() == 0x21) ||
 			    (polyline.getType() == 0x22)) {
 				fixElevation();
 			}
-
-			setResolution(polyline, name);
-			lineStrings.add(newPoints);
 		} else if (name.equals("RoadID")) {
 			roadHelper.setRoadId(Integer.parseInt(value));
 		} else if (name.startsWith("Nod")) {
@@ -496,12 +510,14 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	private void shape(String name, String value) {
 		if (name.equals("Type")) {
 			int type = Integer.decode(value);
+			if (type == 0x4a00)
+				type = 0x4a;
 			shape.setType(type);
 			if(type == 0x4b)
 				havePolygon4B = true;
 		} else if (name.startsWith("Data")) {
-			lineStrings.add(coordsFromString(value, true));
-			setResolution(shape, name);
+			extractResolution(name);
+			addLineString(value, true);
 		}
 		else {
 			if(extraAttributes == null)
@@ -510,6 +526,15 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 		}
 	}
 
+	private void addLineString (String value, boolean close) {
+		List<List<Coord>> lists = lineStringMap.get(currentLevel);
+		if (lists == null) {
+			lists = new ArrayList<>();
+			lineStringMap.put(currentLevel, lists);
+		}
+		lists.add(coordsFromString(value, close));
+	}
+	
 	private boolean isCommonValue(MapElement elem, String name, String value) {
 		if (name.equals("Label")) {
 			elem.setName(unescape(recode(value)));
@@ -624,11 +649,31 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	}
 
 	private void setResolution(MapElement elem, String name) {
+		
 		if (endLevel > 0) {
 			elem.setMinResolution(extractResolution(endLevel));
 		    elem.setMaxResolution(extractResolution(name));
 		} else {
 			int res = extractResolution(name);
+			elem.setMinResolution(res);
+			elem.setMaxResolution(res);
+		}
+	}
+
+	private void setResolution(MapElement elem, int level) {
+		if (endLevel > 0) {
+		    elem.setMaxResolution(extractResolution(level));
+			if (lineStringMap.size() > 1) {
+				for (int i = level+1; i < endLevel; i++) {
+					if (lineStringMap.containsKey(i)) {
+						elem.setMinResolution(extractResolution(i-1));
+						return;
+					}
+				}
+			}
+			elem.setMinResolution(extractResolution(endLevel));
+		} else {
+			int res = extractResolution(level);
 			elem.setMinResolution(res);
 			elem.setMaxResolution(res);
 		}
@@ -645,8 +690,8 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	 * @return The resolution that corresponds to the level.
 	 */
 	private int extractResolution(String name) {
-		int level = Integer.parseInt(name.substring(name.charAt(0) == 'O'? 6: 4), 10);
-		return extractResolution(level);
+		currentLevel = Integer.parseInt(name.substring(name.charAt(0) == 'O'? 6: 4), 10);
+		return extractResolution(currentLevel);
 	}
 
 	/**
@@ -695,7 +740,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			char fc = value.charAt(0);
 			if (fc == 'm' || fc == 'M')
 				elevUnits = 'm';
-		} else if (name.equals("CodePage")) {
+		} else if (name.equalsIgnoreCase("CodePage")) {
 			dec = Charset.forName("cp" + value).newDecoder();
 			dec.onUnmappableCharacter(CodingErrorAction.REPLACE);
 		} else if (name.endsWith("LeftSideTraffic")){
