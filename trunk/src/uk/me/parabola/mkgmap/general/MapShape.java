@@ -63,7 +63,7 @@ public class MapShape extends MapLine {// So top code can link objects from here
 	public long getFullArea() { // this is unadulterated size, +ve if clockwise
 		if (this.fullArea == Long.MAX_VALUE) {
 			java.util.List<Coord> points = this.getPoints();
-			if (points.size() >= 4 && points.get(0).highPrecEquals(points.get(points.size()-1)))
+			if (points != null && points.size() >= 4 && points.get(0).highPrecEquals(points.get(points.size()-1)))
 				this.fullArea = ShapeMergeFilter.calcAreaSizeTestVal(points);
 		}
 		return this.fullArea;
