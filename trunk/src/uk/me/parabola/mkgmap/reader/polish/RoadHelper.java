@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.CoordNode;
 import uk.me.parabola.imgfmt.app.net.AccessTagsAndBits;
@@ -119,7 +120,6 @@ class RoadHelper {
 
 	public MapRoad makeRoad(MapLine l) {
 		assert roadId != 0;
-
 		if (log.isDebugEnabled())
 			log.debug("finishing road id " + roadId);
 
@@ -145,6 +145,9 @@ class RoadHelper {
 			int n = ni.index;
 			if (log.isDebugEnabled())
 				log.debug("road has " + points.size() +" points");
+			if (n < 0 || n >= points.size()) {
+				throw new MapFailedException("bad node index " + n + " in road id " + roadId);
+			}
 			Coord coord = points.get(n);
 			long id = coord.getId();
 			if (id == 0) {

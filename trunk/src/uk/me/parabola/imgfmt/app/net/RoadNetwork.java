@@ -381,7 +381,7 @@ public class RoadNetwork {
 		// a bit more complex: determine the to-node and arc(s) 
 		RouteNode tn = null;
 		int toId = 0; 
-		List<RouteArc> toArcs = new ArrayList<>();
+		List<RouteArc> toArcs;
 		if (grr.getToNode() != null){ 
 			// polish input data provides id
 			toId = grr.getToNode().getId();
@@ -390,6 +390,7 @@ public class RoadNetwork {
 				log.error(sourceDesc, "can't locate 'to' RouteNode with id", toId);
 				return 0; 
 			}
+			toArcs = lastViaNode.getDirectArcsTo(tn, grr.getToWayId()); 
 		} else {
 			// we can have multiple arcs between last via node and to node. The 
 			// arcs can be on the same OSM way or on different OSM ways.

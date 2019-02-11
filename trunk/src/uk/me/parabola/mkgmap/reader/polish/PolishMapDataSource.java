@@ -250,10 +250,11 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 				MapLine origPolyline = polyline.copy();
 				
 				for (Map.Entry<Integer , List<List<Coord>>> entry : lineStringMap.entrySet()) {
-					setResolution(origPolyline, entry.getKey());
+					int level = entry.getKey();
+					setResolution(origPolyline, level);
 					for (List<Coord> points : entry.getValue()) {
 						polyline = origPolyline.copy();
-						if (roadHelper.isRoad()) {
+						if (roadHelper.isRoad() && level == 0) {
 							polyline.setPoints(points);
 							mapper.addRoad(roadHelper.makeRoad(polyline));
 						}
@@ -845,42 +846,15 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
         try {
             // Proceed only if the restriction is not already marked as invalid.
             if (restriction.isValid()) {
-                if (name.equals("Nod")) {
-                    restriction.setNodId(Long.valueOf(value));
-                } else if (name.equals("TraffPoints")) {
-                    String[] traffPoints = value.split(",");
-
-                    // Supported restriction type.
-                    /*
-                        [RESTRICT]
-                        TraffPoints=16968,25008,25009
-                        TraffRoads=520763,532674
-                        [END-RESTRICT]
-                    */
-                    if (traffPoints.length == 3) {
-                        restriction.setFromNodId(Long.valueOf(traffPoints[0]));
-                        restriction.setToNodId(Long.valueOf(traffPoints[2]));
-                    } else if (traffPoints.length < 3) {
-                        restriction.setValid(false);
-                        log.error("Invalid restriction definition. " + restriction);
-                    } else { // More than 3 nodes are participating in the restriction
-                        // Not supported.
-                        /*
-                            [RESTRICT]
-                            TraffPoints=25009,25008,16968,16967
-                            TraffRoads=532674,520763,520763
-                            [END-RESTRICT]
-                         */
-                        restriction.setValid(false);
-                        log.info("Restrictions composed from 3 or more roads are not yet supported");
-                    }
-                } else if (name.equals("TraffRoads")) {
-                    String[] traffRoads = value.split(",");
-                    restriction.setRoadIdA(Long.valueOf(traffRoads[0]));
-                    restriction.setRoadIdB(Long.valueOf(traffRoads[1]));
-                } else if (name.equals("RestrParam")) {
+                if (name.equalsIgnoreCase("Nod")) {
+                    /* ignore */
+                } else if (name.equalsIgnoreCase("TraffPoints")) {
+                	restriction.setTrafficPoints(value);
+                } else if (name.equalsIgnoreCase("TraffRoads")) {
+                	restriction.setTrafficRoads(value);
+                } else if (name.equalsIgnoreCase("RestrParam")) {
                     restriction.setExceptMask(getRestrictionExceptionMask(value));
-                } else if (name.equals("Time")) {
+                } else if (name.equalsIgnoreCase("Time")) {
                     // Do nothing for now
                 }
             }

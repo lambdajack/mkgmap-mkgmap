@@ -12,20 +12,21 @@
  */
 package uk.me.parabola.mkgmap.reader.polish;
 
+import java.util.Arrays;
+import java.util.Map;
+
+import uk.me.parabola.imgfmt.MapFailedException;
+import uk.me.parabola.imgfmt.app.CoordNode;
+import uk.me.parabola.imgfmt.app.net.GeneralRouteRestriction;
+
 /**
  * Holder for each turn restriction definition.
  * @author Supun Jayathilake
  */
 public class PolishTurnRestriction {
-    private long nodId;
-    private long toNodId;
-    private long fromNodId;
-    private long viaNodId;
-    private long roadIdA;
-    private long roadIdB;
-    private long roadIdC;
-    private byte exceptMask;
-
+	private long[] trafficNodes;
+	private long[] trafficRoads;
+	private byte exceptMask;
 
     //  Consider as a valid node upon the instantiation.
     private boolean valid = true;
@@ -37,63 +38,6 @@ public class PolishTurnRestriction {
     public void setValid(boolean valid) {
         this.valid = valid;
     }
-
-    public long getNodId() {
-        return nodId;
-    }
-
-    public void setNodId(long nodId) {
-        this.nodId = nodId;
-    }
-
-    public long getToNodId() {
-        return toNodId;
-    }
-
-    public void setToNodId(long toNodId) {
-        this.toNodId = toNodId;
-    }
-
-    public long getFromNodId() {
-        return fromNodId;
-    }
-
-    public void setFromNodId(long fromNodId) {
-        this.fromNodId = fromNodId;
-    }
-
-    public long getViaNodId() {
-		return viaNodId;
-	}
-
-	public void setViaNodId(long viaNodId) {
-		this.viaNodId = viaNodId;
-	}
-
-	public long getRoadIdA() {
-        return roadIdA;
-    }
-
-    public void setRoadIdA(long roadIdA) {
-        this.roadIdA = roadIdA;
-    }
-
-    public long getRoadIdB() {
-        return roadIdB;
-    }
-
-    public void setRoadIdB(long roadIdB) {
-        this.roadIdB = roadIdB;
-    }
-
-	public long getRoadIdC() {
-		return roadIdC;
-	}
-
-	public void setRoadIdC(long roadIdC) {
-		this.roadIdC = roadIdC;
-	}
-
 	public byte getExceptMask() {
         return exceptMask;
     }
@@ -104,7 +48,62 @@ public class PolishTurnRestriction {
 
     @Override
     public String toString() {
-        return "TurnRestriction[FromNodId=" + fromNodId + ", ViaNodId=" + nodId + ", ToNodId=" + toNodId + "]";
+        return "TurnRestriction" + trafficNodes;
     }
+
+	public void setTrafficPoints(String idsList) {
+		try {
+			trafficNodes = parse(idsList);
+			if (trafficNodes.length < 3 || trafficNodes.length > 4) 
+				setValid(false);
+		} catch (NumberFormatException e) {
+			setValid(false);
+			throw new MapFailedException("invalid list of nod ids " + idsList);
+		}
+	}
+
+	public void setTrafficRoads(String idsList) {
+		try {
+			trafficRoads = parse(idsList);
+			if (trafficRoads.length < 2 || trafficRoads.length > 3) 
+				setValid(false);
+		} catch (NumberFormatException e) {
+			setValid(false);
+			throw new MapFailedException("invalid list of road ids " + idsList);
+		}
+	}
+
+	public GeneralRouteRestriction toGeneralRouteRestriction(Map<Long, CoordNode> allNodes) {
+		for (Long id : trafficNodes) {
+			if (!allNodes.containsKey(id))
+				return null;
+		}
+			 
+		if (trafficNodes.length == trafficRoads.length + 1) { 
+			
+			GeneralRouteRestriction grr = new GeneralRouteRestriction("not", getExceptMask(), "polish");
+			grr.setFromNode(allNodes.get(trafficNodes[0]));
+			grr.setFromWayId(trafficRoads[0]);
+			if (trafficNodes.length == 3) {
+				grr.setViaNodes(Arrays.asList(allNodes.get(trafficNodes[1])));
+			} else {
+				grr.setViaNodes(Arrays.asList(allNodes.get(trafficNodes[1]), allNodes.get(trafficNodes[2])));
+				grr.setViaWayIds(Arrays.asList(trafficRoads[1]));
+			}
+			grr.setToNode(allNodes.get(trafficNodes[trafficNodes.length - 1]));
+			grr.setToWayId(trafficRoads[trafficRoads.length - 1]);
+			return grr;
+		}
+		return null;
+	}
+
+	private long[] parse(String idsValue) {
+		String[] ids = idsValue.split(",");
+		long[] longs = new long[ids.length];
+		for (int i = 0; i < ids.length; i++) {
+			longs[i] = Long.parseLong(ids[i]);
+		}
+		return longs;
+	}
 
 }

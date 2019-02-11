@@ -17,7 +17,6 @@ import uk.me.parabola.imgfmt.app.net.GeneralRouteRestriction;
 import uk.me.parabola.mkgmap.general.MapDetails;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -33,25 +32,19 @@ import java.util.Map;
 public class RestrictionHelper {
 
     // Holds all collected restrictions.
-    private final List<PolishTurnRestriction> allRestrictions = new ArrayList<PolishTurnRestriction>();
+    private final List<PolishTurnRestriction> allRestrictions = new ArrayList<>();
 
     public void processAndAddRestrictions(RoadHelper roadHelper, MapDetails mapper) {
         Map<Long, CoordNode> allNodes = roadHelper.getNodeCoords();
 
         for (PolishTurnRestriction tr : allRestrictions) {
-        	GeneralRouteRestriction grr = new GeneralRouteRestriction("not", tr.getExceptMask(),Long.toString(tr.getNodId()));
-        	grr.setFromNode(allNodes.get(tr.getFromNodId()));
-        	grr.setFromWayId(tr.getRoadIdA());
-        	grr.setToNode(allNodes.get(tr.getToNodId()));
-        	if (tr.getViaNodId() != 0){
-        		grr.setViaNodes(Arrays.asList(allNodes.get(tr.getNodId()),allNodes.get(tr.getViaNodId())));
-        		grr.setViaWayIds(Arrays.asList(tr.getRoadIdB()));
-        		grr.setToWayId(tr.getRoadIdC());
-        	} else {
-        		grr.setViaNodes(Arrays.asList(allNodes.get(tr.getNodId())));
-        		grr.setToWayId(tr.getRoadIdB());
+        	if (tr.isValid()) {
+        		GeneralRouteRestriction grr = tr.toGeneralRouteRestriction(allNodes);
+        		if (grr != null) {
+        			// restriction should be part of the map
+        			mapper.addRestriction(grr);
+        		}
         	}
-        	mapper.addRestriction(grr); // restriction should be part of the map
         }
     }
 
@@ -60,6 +53,10 @@ public class RestrictionHelper {
      * @param restriction Restriction to be added to the map.
      */
     public void addRestriction(PolishTurnRestriction restriction) {
-        allRestrictions.add(restriction);
+    	if (restriction.isValid())
+    		allRestrictions.add(restriction);
+    	else {
+    		System.err.println(restriction);
+    	}
     }
 }
