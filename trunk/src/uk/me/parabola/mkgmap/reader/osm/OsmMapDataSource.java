@@ -357,4 +357,9 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 	public boolean isFileSupported(String name) {
 		return true; // we always try xml reader if nothing else matched
 	}
+
+	@Override
+	public int getPoiDispFlag() {
+		return 0; // no info in OSM data  
+	}
 }

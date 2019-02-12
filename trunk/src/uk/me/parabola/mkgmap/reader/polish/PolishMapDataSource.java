@@ -42,15 +42,20 @@ import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.net.AccessTagsAndBits;
+import uk.me.parabola.imgfmt.app.net.NumberStyle;
+import uk.me.parabola.imgfmt.app.net.Numbers;
 import uk.me.parabola.imgfmt.app.trergn.ExtTypeAttributes;
+import uk.me.parabola.imgfmt.app.trergn.TREHeader;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.filters.LineSplitterFilter;
+import uk.me.parabola.mkgmap.general.CityInfo;
 import uk.me.parabola.mkgmap.general.LevelInfo;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 import uk.me.parabola.mkgmap.general.MapElement;
 import uk.me.parabola.mkgmap.general.MapLine;
 import uk.me.parabola.mkgmap.general.MapPoint;
 import uk.me.parabola.mkgmap.general.MapShape;
+import uk.me.parabola.mkgmap.general.ZipCodeInfo;
 import uk.me.parabola.mkgmap.reader.MapperBasedMapDataSource;
 import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
 import uk.me.parabola.mkgmap.reader.osm.GeneralRelation;
@@ -99,6 +104,9 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	private int endLevel;
 	private char elevUnits;
 	private int currentLevel;
+	private int poiDispFlag;
+	private String defaultCountry;
+	private String defaultRegion;
 	private static final double METERS_TO_FEET = 3.2808399;
 
 	private int lineNo;
@@ -211,6 +219,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 
 		if (name.equalsIgnoreCase("IMG ID")) {
 			section = S_IMG_ID;
+			poiDispFlag = 0;
 		} else if (name.equalsIgnoreCase("POI") || name.equals("RGN10") || name.equals("RGN20")) {
 			point = new MapPoint();
 			section = S_POINT;
@@ -350,7 +359,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 
 	/**
 	 * This should be a line that is a key value pair.  We switch out to a
-	 * routine that is dependant on the section that we are in.
+	 * routine that is dependent on the section that we are in.
 	 *
 	 * @param line The raw input line from the file.
 	 */
@@ -451,7 +460,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 		} else if (name.equals("DirIndicator")) {
 			polyline.setDirection(Integer.parseInt(value) > 0);
 		} else if (name.startsWith("Numbers")) {
-			roadHelper.addNumbers(value);
+			roadHelper.addNumbers(parseNumbers(value));
 		} else {
 			if (extraAttributes == null)
 				extraAttributes = new HashMap<>();
@@ -459,6 +468,59 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 		}
 	}
 
+	/**
+	 * This constructor takes a comma separated list as in the polish format. Also used in testing as
+	 * it is an easy way to set all common parameters at once.
+	 *
+	 * @param spec Node number, followed by left and then right parameters as in the polish format.
+	 */
+	public Numbers parseNumbers(String spec) {
+		Numbers nums = new Numbers();
+		String[] strings = spec.split(",");
+		nums.setNodeNumber(Integer.parseInt(strings[0]));
+		NumberStyle numberStyle = NumberStyle.fromChar(strings[1]);
+		int start = Integer.parseInt(strings[2]);
+		int end = Integer.parseInt(strings[3]);
+		nums.setNumbers(Numbers.LEFT, numberStyle, start, end);
+		numberStyle = NumberStyle.fromChar(strings[4]);
+		start = Integer.parseInt(strings[5]);
+		end = Integer.parseInt(strings[6]);
+		nums.setNumbers(Numbers.RIGHT, numberStyle, start, end);
+
+		if (strings.length > 8){
+			// zip codes 
+			String zip = strings[7];
+			if (!"-1".equals(zip))
+				nums.setZipCode(Numbers.LEFT, new ZipCodeInfo(zip));
+			zip = strings[8];
+			if (!"-1".equals(zip))
+				nums.setZipCode(Numbers.RIGHT, new ZipCodeInfo(zip));
+		}
+		if (strings.length > 9){
+			String city,region,country;
+			int nextPos = 9;
+			city = strings[nextPos];
+			if (!"-1".equals(city)){
+				region = strings[nextPos + 1];
+				country = strings[nextPos + 2];
+				nums.setCityInfo(Numbers.LEFT, createCityInfo(city, region, country));
+				nextPos = 12;
+			} else 
+				nextPos = 10;
+			city = strings[nextPos];
+			if ("-1".equals(city)){
+				region = strings[nextPos + 1];
+				country = strings[nextPos + 2];
+				nums.setCityInfo(Numbers.RIGHT, createCityInfo(city, region, country));
+			} 			
+		}
+		return nums;
+	}
+	
+	private CityInfo createCityInfo(String city, String region, String country) {
+		return new CityInfo(recode(city), recode(region), unescape(recode(country)));
+	}
+	
 	private List<Coord> coordsFromString(String value, boolean close) {
 		String[] ords = value.split("\\) *, *\\(");
 		List<Coord> points = new ArrayList<>();
@@ -689,7 +751,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	 * @return The resolution that corresponds to the level.
 	 */
 	private int extractResolution(String name) {
-		currentLevel = Integer.parseInt(name.substring(name.charAt(0) == 'O'? 6: 4), 10);
+		currentLevel = Integer.parseInt(name.substring(name.charAt(0) == 'O'? 6: 4));
 		return extractResolution(currentLevel);
 	}
 
@@ -723,11 +785,11 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 		if (name.equals("Copyright")) {
 			copyright = value;
 		} else if (name.equals("Levels")) {
-			int nlev = Integer.parseInt(value, 10);
+			int nlev = Integer.parseInt(value);
 			levels = new LevelInfo[nlev];
 		} else if (name.startsWith("Level")) {
 			int level = Integer.parseInt(name.substring(5), 10);
-			int bits = Integer.parseInt(value, 10);
+			int bits = Integer.parseInt(value);
 			LevelInfo info = new LevelInfo(level, bits);
 
 			int nlevels = levels.length;
@@ -748,7 +810,27 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			} else if ("N".equals(value)){ 
 				setDriveOnLeft(false);
 			}
+		} else if ("Transparent".equals(name)) {
+			if ("Y".equals(value) || "S".equals(value))
+				poiDispFlag |= TREHeader.POI_FLAG_TRANSPARENT; 
+		} else if ("POIZipFirst".equals(name)) {
+			if ("Y".equals(value))
+				poiDispFlag |= TREHeader.POI_FLAG_POSTALCODE_BEFORE_CITY; 
+		} else if ("POINumberFirst".equals(name)) {
+			if ("N".equals(value))
+				poiDispFlag |= TREHeader.POI_FLAG_STREET_BEFORE_HOUSENUMBER;  
+		} else if ("Numbering".equals(name)) {
+			// ignore
+		} else if ("Routing".equals(name)) {
+			// ignore
+		} else if ("CountryName".equalsIgnoreCase(name)) {
+			defaultCountry = value;
+		} else if ("RegionName".equalsIgnoreCase(name)) {
+			defaultRegion = value;
+		} else {
+			System.out.println("'IMG ID' section: ignoring " + name + " " + value);
 		}
+		
 	}
 
 	/**
@@ -924,4 +1006,17 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 
         return exceptMask;
     }
+
+	@Override
+	public int getPoiDispFlag() {
+		return poiDispFlag;
+	}
+
+	public String getDefaultCountry() {
+		return defaultCountry;
+	}
+
+	public String getDefaultRegion() {
+		return defaultRegion;
+	}
 }

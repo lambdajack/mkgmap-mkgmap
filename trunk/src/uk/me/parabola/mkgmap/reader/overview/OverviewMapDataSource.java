@@ -176,4 +176,9 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 	public void addThroughRoute(int junctionNodeId, long roadIdA, long roadIdB) {
 		log.error("This is not supposed to be called");
 	}
+
+	@Override
+	public int getPoiDispFlag() {
+		return 0; 
+	}
 }

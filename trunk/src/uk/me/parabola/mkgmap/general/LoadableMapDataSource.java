@@ -96,4 +96,5 @@ public interface LoadableMapDataSource extends MapDataSource, Configurable {
 	 */
 	public String[] copyrightMessages();
 
+	public int getPoiDispFlag();
 }

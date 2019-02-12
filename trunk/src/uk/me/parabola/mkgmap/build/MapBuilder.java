@@ -981,10 +981,12 @@ public class MapBuilder implements Configurable {
 	private void processInfo(Map map, LoadableMapDataSource src) {
 		// The bounds of the map.
 		map.setBounds(src.getBounds());
-		if (src instanceof OverviewMapDataSource == false)
+		if (!(src instanceof OverviewMapDataSource))
 			poiDisplayFlags |= TREHeader.POI_FLAG_DETAIL;
 			
-		if(poiDisplayFlags != 0)					// POI requested alternate address notation
+		poiDisplayFlags |= src.getPoiDispFlag();
+
+		if(poiDisplayFlags != 0)
 			map.addPoiDisplayFlags(poiDisplayFlags);
 
 		// You can add anything here.

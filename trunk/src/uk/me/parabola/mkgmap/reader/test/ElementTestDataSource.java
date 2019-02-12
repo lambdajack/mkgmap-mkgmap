@@ -81,4 +81,9 @@ public class ElementTestDataSource extends MapperBasedMapDataSource implements L
 	public void config(EnhancedProperties props) {
 		this.configProps = props;
 	}
+
+	@Override
+	public int getPoiDispFlag() {
+		return 0;
+	}
 }

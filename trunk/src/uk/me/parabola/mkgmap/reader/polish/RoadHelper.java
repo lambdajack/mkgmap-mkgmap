@@ -188,12 +188,11 @@ class RoadHelper {
 		return nodeCoords;
 	}
 
-	public void addNumbers(String value) {
+	public void addNumbers(Numbers nums) {
 		if (numbers == null)
 			numbers = new ArrayList<>();
-		Numbers num = new Numbers(value);
-		if (num.getLeftNumberStyle() != NumberStyle.NONE || num.getRightNumberStyle() != NumberStyle.NONE)
-			numbers.add(num);
+		if (nums.getLeftNumberStyle() != NumberStyle.NONE || nums.getRightNumberStyle() != NumberStyle.NONE)
+			numbers.add(nums);
 	}
 
 	private static class NodeIndex {
