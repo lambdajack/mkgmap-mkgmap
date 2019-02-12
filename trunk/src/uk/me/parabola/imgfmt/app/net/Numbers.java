@@ -88,58 +88,43 @@ public class Numbers {
 	 */
 	public Numbers(String spec) {
 		String[] strings = spec.split(",");
-		nodeNumber = Integer.parseInt(strings[0]);
+		nodeNumber = Integer.valueOf(strings[0]);
 		NumberStyle numberStyle = NumberStyle.fromChar(strings[1]);
-		int start = Integer.parseInt(strings[2]);
-		int end = Integer.parseInt(strings[3]);
+		int start = Integer.valueOf(strings[2]);
+		int end = Integer.valueOf(strings[3]);
 		setNumbers(LEFT, numberStyle, start, end);
 		numberStyle = NumberStyle.fromChar(strings[4]);
-		start = Integer.parseInt(strings[5]);
-		end = Integer.parseInt(strings[6]);
+		start = Integer.valueOf(strings[5]);
+		end = Integer.valueOf(strings[6]);
 		setNumbers(RIGHT, numberStyle, start, end);
 
 		if (strings.length > 8){
 			// zip codes 
 			String zip = strings[7];
-			if (!"-1".equals(zip))
+			if ("-1".equals(zip) == false)
 				setZipCode(LEFT, new ZipCodeInfo(zip));
 			zip = strings[8];
-			if (!"-1".equals(zip))
+			if ("-1".equals(zip) == false)
 				setZipCode(RIGHT, new ZipCodeInfo(zip));
 		}
 		if (strings.length > 9){
 			String city,region,country;
 			int nextPos = 9;
 			city = strings[nextPos];
-			if (!"-1".equals(city)){
+			if ("-1".equals(city) == false){
 				region = strings[nextPos + 1];
-				country = parseCountry(strings[nextPos + 2]);
+				country = strings[nextPos + 2];
 				setCityInfo(LEFT, new CityInfo(city, region, country));
 				nextPos = 12;
 			} else 
 				nextPos = 10;
 			city = strings[nextPos];
-			if ("-1".equals(city)){
+			if ("-1".equals(city) == false){
 				region = strings[nextPos + 1];
-				country = parseCountry(strings[nextPos + 2]);
+				country = strings[nextPos + 2];
 				setCityInfo(RIGHT, new CityInfo(city, region, country));
 			} 			
 		} 		
-	}
-
-	private static final String COUNTRY_SEPARATOR_TEXT = "~[0x1d]"; 
-	/** replace ~[0x1d] in country name by char 0x1d
-	 * Sample POLSKA TOPO~[0x1d]PL 
-	 * @param s the country string
-	 * @return string where "~[0x1d]" is replaced by (char) 0x1d
-	 */
-	private static String parseCountry(String s) {
-		int pos = s.indexOf(COUNTRY_SEPARATOR_TEXT);
-		if (pos >= 0) {
-			return s.substring(0, pos) + (char) 0x1d + s.substring(pos + COUNTRY_SEPARATOR_TEXT.length(), s.length());
-		}
-		return s;
-		
 	}
 
 	public void setNumbers(boolean left, NumberStyle numberStyle, int start, int end){
