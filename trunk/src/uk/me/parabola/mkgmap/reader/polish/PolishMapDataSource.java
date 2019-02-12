@@ -323,20 +323,18 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			copy.setPoints(pointsLists.get(0));
 			mapper.addShape(copy);
 		} else {
-			// we have a multipolygon with one outer and one or more inner rings
+			// we have a multipolygon with multiple rings, use
+			// MultiPolygonRelation to compute the geometry
 			Map<Long, Way> wayMap = new HashMap<>();
-
-			Way w = new Way(FakeIdGenerator.makeFakeId(), pointsLists.get(0));
-			wayMap.put(w.getId(), w);
-
 			GeneralRelation gr = new GeneralRelation(FakeIdGenerator.makeFakeId());
-			gr.addElement("outer", w);
-			for (int i = 1; i < pointsLists.size(); i++) {
-				w = new Way(FakeIdGenerator.makeFakeId(), pointsLists.get(i));
+			// add one tag so that MultiPolygonRelation doesn't ignore the relation 
+			gr.addTag("code", Integer.toHexString(shape.getType())); 
+			for (int i = 0; i < pointsLists.size(); i++) {
+				Way w = new Way(FakeIdGenerator.makeFakeId(), pointsLists.get(i));
 				wayMap.put(w.getId(), w);
-				gr.addElement("inner", w);
+				// empty role, let MultiPolygonRelation find out what is inner or outer
+				gr.addElement("", w);  
 			}
-			gr.addTag("code", Integer.toHexString(shape.getType())); // add a tag (needed?)
 			MultiPolygonRelation mp = new MultiPolygonRelation(gr, wayMap, Area.PLANET);
 			mp.processElements();
 			for (Way s: wayMap.values()) {
