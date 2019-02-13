@@ -56,12 +56,11 @@ public class MapMaker implements MapProcessor {
 					makeMap(args, src, OverviewBuilder.OVERVIEW_PREFIX);
 				} else {
 					String fname = OverviewBuilder.getOverviewImgName(args.getMapname());
-					File f = new File(fname);
-					if (f.exists()) {
-						if (f.isFile() )
-							f.delete();
-						else {
-							// TODO: error message ?
+					
+					File f = new File(args.getOutputDir(), fname);
+					if (f.exists() && f.isFile()) {
+						if (f.delete()) {
+							log.info("removed " + f.getAbsolutePath());
 						}
 					}
 				}
@@ -124,7 +123,7 @@ public class MapMaker implements MapProcessor {
 	 * @param map The map to modify.
 	 * @param args The command line arguments.
 	 */
-	private void setOptions(Map map, CommandArgs args) {
+	private static void setOptions(Map map, CommandArgs args) {
 		map.config(args.getProperties());
 
 		String s = args.getCharset();
@@ -145,7 +144,7 @@ public class MapMaker implements MapProcessor {
 	 * @throws FileNotFoundException For non existing files.
 	 * @throws FormatException When the file format is not valid.
 	 */
-	private LoadableMapDataSource loadFromFile(CommandArgs args, String name) throws
+	private static LoadableMapDataSource loadFromFile(CommandArgs args, String name) throws
 			FileNotFoundException, FormatException
 	{
 		LoadableMapDataSource src = MapReader.createMapReader(name);

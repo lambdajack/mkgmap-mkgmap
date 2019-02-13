@@ -425,11 +425,11 @@ public class OverviewBuilder implements Combiner {
 	/**
 	 * Add the prefix to the file name.
 	 * @param name filename 
-	 * @return filename of the corresponding overview img file
+	 * @return filename of the corresponding overview img file (without a path)
 	 */
 	public static String getOverviewImgName (String name){
 		File f = new File(name);
-		return new File(f.getParent(),OverviewBuilder.OVERVIEW_PREFIX + f.getName()).getAbsolutePath();
+		return OverviewBuilder.OVERVIEW_PREFIX + f.getName();
 	}
 
 	public static String getMapName(String name) {

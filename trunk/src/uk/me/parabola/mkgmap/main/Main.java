@@ -637,9 +637,13 @@ public class Main implements ArgumentProcessor {
 					String fileName = file.getFilename();
 					if (!fileName.endsWith(".img"))
 						continue;
-					fileName = OverviewBuilder.getOverviewImgName(fileName);
+					File f1 = new File(fileName);
+					fileName = new File(f1.getParent(), OverviewBuilder.getOverviewImgName(fileName)).getAbsolutePath();
+					
 					log.info("  " + fileName);
+					
 					FileInfo fileInfo = FileInfo.getFileInfo(fileName);
+					
 					fileInfo.setArgs(file.getArgs());
 					// add the real input file 
 					foundOvmFiles.add(file.getFilename());
