@@ -27,6 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import uk.me.parabola.imgfmt.ExitException;
+import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.util.EnhancedProperties;
 
@@ -116,6 +117,10 @@ public class CommandArgsReader {
 			}
 		}
 
+		if (arglist.getFilenameCount() == 0) {
+			throw new ExitException("Nothing to do: No input file given");
+		}
+		
 		// If there is more than one filename argument we inform of this fact
 		// via a fake option.
 		proc.processOption("number-of-files", String.valueOf(arglist.getFilenameCount()));
