@@ -117,10 +117,6 @@ public class CommandArgsReader {
 			}
 		}
 
-		if (arglist.getFilenameCount() == 0) {
-			throw new ExitException("Nothing to do: No input file given");
-		}
-		
 		// If there is more than one filename argument we inform of this fact
 		// via a fake option.
 		proc.processOption("number-of-files", String.valueOf(arglist.getFilenameCount()));
@@ -129,8 +125,8 @@ public class CommandArgsReader {
 		for (ArgType a : arglist) {
 			a.processArg();
 		}
-
-		proc.endOptions(new CommandArgs(this.args));
+		if (arglist.getFilenameCount() > 0)
+			proc.endOptions(new CommandArgs(this.args));
 	}
 
 
