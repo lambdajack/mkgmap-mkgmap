@@ -18,6 +18,8 @@ package uk.me.parabola.mkgmap.main;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
 
 import uk.me.parabola.imgfmt.FileExistsException;
 import uk.me.parabola.imgfmt.FileNotWritableException;
@@ -59,8 +61,11 @@ public class MapMaker implements MapProcessor {
 					
 					File f = new File(args.getOutputDir(), fname);
 					if (f.exists() && f.isFile()) {
-						if (f.delete()) {
-							log.info("removed " + f.getAbsolutePath());
+						try {
+							Files.delete(f.toPath());
+							log.warn("removed " + f);
+						} catch (IOException e) {
+							log.warn("removing " + f + "failed with " + e.getMessage());
 						}
 					}
 				}

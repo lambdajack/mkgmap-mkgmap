@@ -23,6 +23,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
+import java.nio.file.Files;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -681,10 +682,17 @@ public class Main implements ArgumentProcessor {
 			c.onFinish();
 		
 		if (tdbBuilderAdded && args.getProperties().getProperty("remove-ovm-work-files", false)){
-			for (String fName:foundOvmFiles){
+			for (String fName : foundOvmFiles) {
 				String ovmFile = OverviewBuilder.getOverviewImgName(fName);
-				log.info("removing " + ovmFile);
-				new File(ovmFile).delete();
+				File f = new File(args.getOutputDir(), ovmFile);
+				if (f.exists() && f.isFile()) {
+					try {
+						Files.delete(f.toPath());
+						log.warn("removed " + f);
+					} catch (IOException e) {
+						log.warn("removing " + f + "failed with " + e.getMessage());
+					}
+				}
 			}
 		}
 	}
