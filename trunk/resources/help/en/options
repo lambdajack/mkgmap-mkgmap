@@ -32,7 +32,9 @@ filename
 --read-config=filename
 	Each line of the named file contains a command option in the form
 	option=value or option:value.  The options are included as arguments of
-	the executed command as if they had been specified on the command line.
+	the executed command as if they had been specified on the command line with
+	one exception: a relative path given with option input-file is assumed to be
+	relative to the location of the file.
 	Lines beginning with a # character are ignored and can be used as
 	comments.  Any command line option can be specified, however the
 	leading '--' must be omitted.  The short option names with a single
