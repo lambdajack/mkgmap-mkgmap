@@ -19,6 +19,7 @@ package uk.me.parabola.mkgmap.reader.test;
 import java.io.FileNotFoundException;
 import java.util.Properties;
 
+import uk.me.parabola.imgfmt.app.trergn.TREHeader;
 import uk.me.parabola.mkgmap.general.LevelInfo;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 import uk.me.parabola.mkgmap.reader.MapperBasedMapDataSource;
@@ -84,6 +85,6 @@ public class ElementTestDataSource extends MapperBasedMapDataSource implements L
 
 	@Override
 	public int getPoiDispFlag() {
-		return 0;
+		return TREHeader.POI_FLAG_TRANSPARENT;
 	}
 }

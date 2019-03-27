@@ -39,6 +39,7 @@ import uk.me.parabola.mkgmap.reader.osm.GType;
  * variables BASE_LAT and BASE_LONG set to something just SW of where you
  * are then the map generated will be located near where you are.  Otherwise
  * the default location is at (51.7, 0.24).
+*  Options --x-base-lat and --x-base-long have the same effect. 
  *
  * To run, something like:
  * java -jar mkgmap.jar --gmapsupp test-map:all-elements ...
@@ -103,7 +104,7 @@ class AllElements {
 
         private void drawBackground(MapCollector mapper, double startLat, double startLong, int nUp, int nAcross) {
 		MapShape shape = new MapShape();
-		int type = 0x51; // Wetlands // 0x4d; // glacier-white
+		int type = 0x1b; // Area - Green // 0x4d; // glacier-white
 		shape.setMinResolution(10);
 		shape.setName("background");
 
