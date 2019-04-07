@@ -76,12 +76,14 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 	public static final short AREA2POI_TAG = TagDict.getInstance().xlate("mkgmap:area2poi");
 	public static final short LINE2POI_TAG = TagDict.getInstance().xlate("mkgmap:line2poi");
 	public static final short LINE2POI_TYPE_TAG  = TagDict.getInstance().xlate("mkgmap:line2poitype");
+	public static final short WAY_LENGTH_TAG  = TagDict.getInstance().xlate("mkgmap:way-length");
 	
+	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
 		poisToAreas = props.containsKey("add-pois-to-areas");
 		poisToLines = props.containsKey("add-pois-to-lines");
 		
-		if ((poisToAreas || poisToLines) == false) {
+		if (!(poisToAreas || poisToLines)) {
 			log.info("Disable Areas2POIHook because add-pois-to-areas and add-pois-to-lines option is not set.");
 			return false;
 		}
@@ -100,11 +102,11 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 	 * @return the parsed tag definition list
 	 */
 	public static List<Entry<String,String>> getPoiPlacementTags(EnhancedProperties props) {
-		if (props.containsKey("add-pois-to-areas") == false) {
+		if (!props.containsKey("add-pois-to-areas")) {
 			return Collections.emptyList();
 		}
 		
-		List<Entry<String,String>> tagList = new ArrayList<Entry<String,String>>();
+		List<Entry<String,String>> tagList = new ArrayList<>();
 		
 		String placementDefs = props.getProperty("pois-to-areas-placement", "entrance=main;entrance=yes;building=entrance");
 		placementDefs = placementDefs.trim();
@@ -142,22 +144,24 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 					tagValue = null;
 				} 
 			}
-			Entry<String,String> tag = new AbstractMap.SimpleImmutableEntry<String,String>(tagName, tagValue);
+			Entry<String,String> tag = new AbstractMap.SimpleImmutableEntry<>(tagName, tagValue);
 			tagList.add(tag);
 		}
 		return tagList;
 	}
 	
 
+	@Override
 	public Set<String> getUsedTags() {
 		// return all tags defined in the poiPlacementTags
-		Set<String> tags = new HashSet<String>();
+		Set<String> tags = new HashSet<>();
 		for (Entry<String,String> poiTag : poiPlacementTags) {
 			tags.add(poiTag.getKey());
 		}
 		return tags;
 	}
 	
+	@Override
 	public void end() {
 		log.info(getClass().getSimpleName(), "started");
 		addPOIsForWays();
@@ -169,10 +173,8 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 		for (int order = 0; order < poiPlacementTags.size(); order++) {
 			Entry<String,String> poiTagDef = poiPlacementTags.get(order);
 			String tagValue = elem.getTag(poiTagDef.getKey());
-			if (tagValue != null) {
-				if (poiTagDef.getValue() == null || poiTagDef.getValue().equals(tagValue)) {
-					return order;
-				}
+			if (tagValue != null && poiTagDef.getValue() == null || poiTagDef.getValue().equals(tagValue)) {
+				return order;
 			}
 		}
 		// no poi tag match
@@ -180,11 +182,11 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 	}
 	
 	private void addPOIsForWays() {
-		Map<Coord, Integer> labelCoords = new IdentityHashMap<Coord, Integer>(); 
+		Map<Coord, Integer> labelCoords = new IdentityHashMap<>(); 
 		
 		// save all coords with one of the placement tags to a map
 		// so that ways use this coord as its labeling point
-		if (poiPlacementTags.isEmpty() == false && poisToAreas) {
+		if (!poiPlacementTags.isEmpty() && poisToAreas) {
 			for (Node n : saver.getNodes().values()) {
 				int order = getPlacementOrder(n);
 				if (order >= 0) {
@@ -234,7 +236,7 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 	}
 	
 	private void addPOItoPolygon(Way polygon, Map<Coord, Integer> labelCoords) {
-		if (poisToAreas == false) {
+		if (!poisToAreas) {
 			return;
 		}
 		
@@ -266,17 +268,30 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 		}
 		// add tag mkgmap:cache_area_size to the original polygon so that it is copied to the POI
 		areaSizeFunction.value(polygon);
-		Node poi = createPOI(polygon, poiCoord, AREA2POI_TAG); 
+		Node poi = createPOI(polygon, poiCoord, AREA2POI_TAG, 0); 
 		saver.addNode(poi);
 	}
 	
 	
 	private int addPOItoLine(Way line) {
-		Node startNode = createPOI(line, line.getPoints().get(0), LINE2POI_TAG);
+		// calculate the middle of the line
+		Coord prevC = null;
+		double sumDist = 0.0;
+		ArrayList<Double> dists = new ArrayList<>(line.getPoints().size()-1);
+		for (Coord c : line.getPoints()) {
+			if (prevC != null) {
+				double dist = prevC.distance(c);
+				dists.add(dist);
+				sumDist+=dist;
+			}
+			prevC = c;
+		}
+		
+		Node startNode = createPOI(line, line.getPoints().get(0), LINE2POI_TAG, sumDist);
 		startNode.addTag(LINE2POI_TYPE_TAG,"start");
 		saver.addNode(startNode);
 
-		Node endNode = createPOI(line, line.getPoints().get(line.getPoints().size()-1), LINE2POI_TAG);
+		Node endNode = createPOI(line, line.getPoints().get(line.getPoints().size()-1), LINE2POI_TAG, sumDist);
 		endNode.addTag(LINE2POI_TYPE_TAG,"end");
 		saver.addNode(endNode);
 
@@ -288,24 +303,11 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 					continue;
 				}
 				lastPoint = inPoint;
-				Node innerNode = createPOI(line, inPoint, LINE2POI_TAG);
+				Node innerNode = createPOI(line, inPoint, LINE2POI_TAG, sumDist);
 				innerNode.addTag(LINE2POI_TYPE_TAG,"inner");
 				saver.addNode(innerNode);
 				noPOIs++;
 			}
-		}
-		
-		// calculate the middle of the line
-		Coord prevC = null;
-		double sumDist = 0.0;
-		ArrayList<Double> dists = new ArrayList<Double>(line.getPoints().size()-1);
-		for (Coord c : line.getPoints()) {
-			if (prevC != null) {
-				double dist = prevC.distance(c);
-				dists.add(dist);
-				sumDist+=dist;
-			}
-			prevC = c;
 		}
 		
 		Coord midPoint = null;
@@ -321,7 +323,7 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 		}
 		
 		if (midPoint != null) {
-			Node midNode = createPOI(line, midPoint, LINE2POI_TAG);
+			Node midNode = createPOI(line, midPoint, LINE2POI_TAG, sumDist);
 			midNode.addTag(LINE2POI_TYPE_TAG,"mid");
 			saver.addNode(midNode);
 			noPOIs++;
@@ -330,12 +332,15 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 
 	}
 
-	private static Node createPOI(Element source, Coord poiCoord, short poiTypeTagKey) {
+	private static Node createPOI(Element source, Coord poiCoord, short poiTypeTagKey, double wayLength) {
 		Node poi = new Node(source.getOriginalId(), poiCoord);
 		poi.setFakeId();
 		poi.copyTags(source);
 		poi.deleteTag(MultiPolygonRelation.STYLE_FILTER_TAG);
 		poi.addTag(poiTypeTagKey, "true");
+		if (poiTypeTagKey == LINE2POI_TAG) {
+			poi.addTag(WAY_LENGTH_TAG, String.valueOf(Math.round(wayLength)));
+		}
 		if (log.isDebugEnabled()) {
 			log.debug("Create POI",poi.toTagString(),"from",source.getId(),source.toTagString());
 		}
@@ -348,10 +353,10 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 		for (Relation r : saver.getRelations().values()) {
 			
 			// create POIs for multipolygon relations only
-			if (r instanceof MultiPolygonRelation == false) {
+			if (!(r instanceof MultiPolygonRelation)) {
 				continue;
 			}
-			Node admin_centre = null;
+			Node adminCentre = null;
 			Node labelPOI = null;
 			String relName = nameFinder.getName(r);
 			if (relName != null){
@@ -365,7 +370,7 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 								// location of it
 								String pName = nameFinder.getName(el);
 								if (relName.equals(pName)){
-									admin_centre = (Node) el;
+									adminCentre = (Node) el;
 									if (log.isDebugEnabled())
 										log.debug("using admin_centre node as location for POI for rel",r.getId(),relName,"at",((Node) el).getLocation().toDegreeString());
 								}
@@ -384,19 +389,19 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 				}
 			}
 			Coord point = null;
-			if (admin_centre == null && labelPOI == null)
+			if (adminCentre == null && labelPOI == null)
 				point = ((MultiPolygonRelation)r).getCofG();
 			else {
 				if (labelPOI != null)
 					point = labelPOI.getLocation();
 				else 
-					point = admin_centre.getLocation();
+					point = adminCentre.getLocation();
 			}
 			if (point == null) {
 				continue;
 			}
 			
-			Node poi = createPOI(r, point, AREA2POI_TAG);
+			Node poi = createPOI(r, point, AREA2POI_TAG, 0);
 			// remove the type tag which makes only sense for relations
 			poi.deleteTag("type");
 			saver.addNode(poi);
