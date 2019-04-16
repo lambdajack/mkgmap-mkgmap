@@ -36,6 +36,7 @@ public class Mdr5 extends MdrMapSection {
 	private List<Mdr5Record> cities = new ArrayList<>();
 	private int maxCityIndex;
 	private int localCitySize;
+	private int mdr20PointerSize = 0; // bytes for mdr20 pointer, or 0 if no mdr20
 
 	public Mdr5(MdrConfig config) {
 		setConfig(config);
@@ -188,7 +189,6 @@ public class Mdr5 extends MdrMapSection {
 	}
 
 	public void writeSectData(ImgFileWriter writer) {
-		int size20 = getSizes().getMdr20Size();
 		Mdr5Record lastCity = null;
 		boolean hasString = hasFlag(0x8);
 		boolean hasRegion = hasFlag(0x4);
@@ -217,7 +217,8 @@ public class Mdr5 extends MdrMapSection {
 				writer.put2u(region);
 			if (hasString)
 				putStringOffset(writer, city.getStringOffset());
-			writer.putNu(size20, city.getMdr20());
+			if (mdr20PointerSize > 0)
+				writer.putNu(mdr20PointerSize, city.getMdr20());
 		}
 	}
 
@@ -239,7 +240,7 @@ public class Mdr5 extends MdrMapSection {
 		int size = sizes.getMapSize()
 				+ localCitySize
 				+ 3
-				+ sizes.getMdr20Size();
+				+ mdr20PointerSize;
 		if (hasFlag(0x4))
 			size += 2;
 		if (hasFlag(0x8))
@@ -252,10 +253,15 @@ public class Mdr5 extends MdrMapSection {
 	}
 
 	/**
-	 * Known structure:
-	 * bits 0-1: size of local city index - 1 (all values appear to work)
-	 * bit  3: has region
-	 * bit  4: has string
+	 * Known structure bits/masks:
+	 * 0x0003 size of local city index - 1 (all values appear to work)
+	 * 0x0004 has region/country
+	 * 0x0008 has string
+	 * 0x0010 ? set unconditionally ?
+	 * 0x0040 mdr17 sub section
+	 * 0x0100 mdr20 present
+	 * 0x0400 28_29 offset
+	 * 0x0800 mdr20 offset
 	 * @return The value to be placed in the header.
 	 */
 	public int getExtraValue() {
@@ -269,7 +275,10 @@ public class Mdr5 extends MdrMapSection {
 			val |= 0x08; // string
 		}
 		val |= 0x10;
-		val |= 0x100; // mdr20 present
+		if (getSizes().getNumberOfItems(20) > 0) { 
+			mdr20PointerSize = getSizes().getMdr20Size();
+			val |= 0x100; // mdr20 present
+		}
 		return val;
 	}
 

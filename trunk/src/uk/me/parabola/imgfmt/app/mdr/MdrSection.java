@@ -215,5 +215,9 @@ public abstract class MdrSection extends ConfigBase {
 		public int getSize(int sect) {
 			return sections[sect].getSizeForRecord();
 		}
+
+		public int getNumberOfItems(int sect) {
+			return sections[sect].getNumberOfItems();
+		}
 	}
 }

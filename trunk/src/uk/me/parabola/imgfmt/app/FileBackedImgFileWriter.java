@@ -207,6 +207,7 @@ public class FileBackedImgFileWriter implements ImgFileWriter, Sized {
 	 * @param val The value to write. Unsigned
 	 */
 	public void putNu(int nBytes, int val) {
+		assert nBytes >= 1 && nBytes <= 4: nBytes;
 		try {
 			file.write(val);
 			if (nBytes <= 1) {
