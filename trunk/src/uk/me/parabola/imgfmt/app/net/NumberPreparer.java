@@ -13,7 +13,6 @@
 package uk.me.parabola.imgfmt.app.net;
 
 import java.io.ByteArrayOutputStream;
-import java.util.Iterator;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.Utils;
@@ -116,11 +115,7 @@ public class NumberPreparer {
 	private int setup() {
 		// Should we use the swapped default numbering style EVEN/ODD rather than
 		// ODD/EVEN and the initialValue.
-		for (Iterator<Numbers> iterator = numbers.listIterator(); iterator.hasNext(); ) {
-			Numbers n = iterator.next();
-			if (n.getLeftNumberStyle() == NONE && n.getRightNumberStyle() == NONE)
-				iterator.remove();
-		}
+		numbers.removeIf(Numbers::isEmpty);
 		if (numbers.isEmpty())
 			throw new Abandon("no numbers");
 
