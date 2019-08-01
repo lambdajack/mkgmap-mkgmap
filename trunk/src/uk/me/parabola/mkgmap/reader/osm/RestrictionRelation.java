@@ -516,7 +516,7 @@ public class RestrictionRelation extends Relation {
 		for (Coord v: viaPoints){
 			CoordNode vn = nodeIdMap.get(v);
 			if (vn == null){
-				log.error(messagePrefix,"via node is not a routing node");
+				log.warn(messagePrefix,"via node is not a routing node, restriction relation is ignored");
 				return;
 			}
 			viaNodes.add(vn);
