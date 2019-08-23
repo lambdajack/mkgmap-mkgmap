@@ -508,11 +508,11 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			} else 
 				nextPos = 10;
 			city = strings[nextPos];
-			if ("-1".equals(city)){
+			if (!"-1".equals(city)){
 				region = strings[nextPos + 1];
 				country = strings[nextPos + 2];
 				nums.setCityInfo(Numbers.RIGHT, createCityInfo(city, region, country));
-			} 			
+			} 
 		}
 		return nums;
 	}
