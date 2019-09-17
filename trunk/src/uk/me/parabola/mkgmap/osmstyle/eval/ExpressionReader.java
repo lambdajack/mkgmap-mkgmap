@@ -129,10 +129,10 @@ public class ExpressionReader {
 			if (result != null) {
 				AndOp and = new AndOp();
 				and.setFirst(result);
-				and.setSecond(ops[0]);
+				and.setSecond(ops[0].copy());
 				result = and;
 			} else 
-				result = ops[0];
+				result = ops[0].copy();
 			
 		}
 		return result;
