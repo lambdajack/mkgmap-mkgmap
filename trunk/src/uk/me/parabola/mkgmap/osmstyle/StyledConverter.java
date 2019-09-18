@@ -1800,7 +1800,7 @@ public class StyledConverter implements OsmConverter {
 					arcLength += d;
 				}
 			}
-			if(p.getHighwayCount() > 1 || p.getOnCountryBorder()) {
+			if(routable && (p.getHighwayCount() > 1 || p.getOnCountryBorder())) {
 				// this point is a node connecting highways
 				CoordNode coordNode = nodeIdMap.get(p);
 				if(coordNode == null) {

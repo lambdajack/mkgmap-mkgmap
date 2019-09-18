@@ -29,7 +29,6 @@ import java.util.TreeMap;
 import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.BitWriter;
-import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
 import uk.me.parabola.imgfmt.app.Label;
 import uk.me.parabola.imgfmt.app.lbl.City;
@@ -232,8 +231,11 @@ public class RoadDef {
 		writeLevelDivs(writer, maxlevel);
 
 		if((netFlags & NET_FLAG_ADDRINFO) != 0) {
-			nodeCount--;
-			if (nodeCount + 2 != nnodes){
+			if (nodeCount > 0) {
+				// the very first and last nodes of the polylines making up this road are not counted
+				nodeCount -= 2;
+			}
+			if (nnodes > 0 && nodeCount + 2 != nnodes){
 				log.error("internal error? The nodeCount doesn't match value calculated by RoadNetWork:",this);
 			}
 			writer.put1u(nodeCount & 0xff); // lo bits of node count
@@ -392,6 +394,8 @@ public class RoadDef {
 
 		if (level == 0) {
 			nodeCount += pl.getNodeCount(hasHouseNumbers());
+			if (l.size() > 1)
+				nodeCount--;
 		}
 	}
 

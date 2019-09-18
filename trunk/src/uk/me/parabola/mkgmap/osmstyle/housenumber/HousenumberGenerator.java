@@ -446,6 +446,8 @@ public class HousenumberGenerator {
 	public void addRoad(Way osmRoad, MapRoad road) {
 		allRoads.add(road);
 		if (numbersEnabled) {
+			road.getPoints().get(0).setNumberNode(true);
+			road.getPoints().get(road.getPoints().size() - 1).setNumberNode(true);
 			if("false".equals(osmRoad.getTag(numbersTagKey))) 
 				road.setSkipHousenumberProcessing(true);
 			
