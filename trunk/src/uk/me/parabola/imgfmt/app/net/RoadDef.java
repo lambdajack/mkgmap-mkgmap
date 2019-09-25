@@ -394,8 +394,6 @@ public class RoadDef {
 
 		if (level == 0) {
 			nodeCount += pl.getNodeCount(hasHouseNumbers());
-			if (l.size() > 1)
-				nodeCount--;
 		}
 	}
 
