@@ -278,12 +278,19 @@ public class Polyline extends MapObject {
 	}
 
 	/**
-	 * Count the number of special nodes.
+	 * 
 	 * @param countAllNodes : false: count only coord nodes, true: count number nodes
-	 * @return the number of coord nodes or the number of nodes which are number nodes (coord nodes are always number nodes)
+	 * @return
 	 */
 	public int getNodeCount(boolean countAllNodes ) {
-		return (int) points.stream().filter(c -> c.getId() > 0 || countAllNodes && c.isNumberNode()).count();
+		int idx = 0;
+		int count = 0;
+		
+		for (Coord co : points) {
+			if (idx++ > 0 && (co.getId() > 0 || countAllNodes && co.isNumberNode()))
+				count++;
+		}
+		return count;
 	}
 
 	public boolean hasHouseNumbers() {

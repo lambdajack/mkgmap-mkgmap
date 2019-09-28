@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.Map;
 
 import uk.me.parabola.imgfmt.FormatException;
-import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
@@ -55,12 +54,10 @@ import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 import uk.me.parabola.mkgmap.general.MapElement;
 import uk.me.parabola.mkgmap.general.MapLine;
 import uk.me.parabola.mkgmap.general.MapPoint;
-import uk.me.parabola.mkgmap.general.MapRoad;
 import uk.me.parabola.mkgmap.general.MapShape;
 import uk.me.parabola.mkgmap.general.ZipCodeInfo;
 import uk.me.parabola.mkgmap.reader.MapperBasedMapDataSource;
 import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
-import uk.me.parabola.mkgmap.reader.osm.GType;
 import uk.me.parabola.mkgmap.reader.osm.GeneralRelation;
 import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
@@ -115,10 +112,6 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	private int lineNo;
 
 	private boolean havePolygon4B;
-
-	/** if false, assume that lines with routable types are roads and create corresponding NET data */ 
-	private boolean routing;
-	private int roadIdGenerated;
 
 	// Use to decode labels if they are not in cp1252
 	private CharsetDecoder dec;
@@ -242,7 +235,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
             section = S_RESTRICTION;
         }
 		else
-			log.info("Ignoring unrecognised section: " + name);
+			System.out.println("Ignoring unrecognised section: " + name);
 	}
 
 	/**
@@ -256,15 +249,10 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			break;
 
 		case S_POINT:
-			if (point.getLocation() != null) {
-				if(extraAttributes != null && point.hasExtendedType())
-					point.setExtTypeAttributes(makeExtTypeAttributes());
-				mapper.addToBounds(point.getLocation());
-				mapper.addPoint(point);
-			} else {
-				log.error("skipping POI without coordinates near line " + lineNo );
-			}
-				
+			if(extraAttributes != null && point.hasExtendedType())
+				point.setExtTypeAttributes(makeExtTypeAttributes());
+			mapper.addToBounds(point.getLocation());
+			mapper.addPoint(point);
 			break;
 		case S_POLYLINE:
 			if (!lineStringMap.isEmpty()) {
@@ -275,16 +263,9 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 					setResolution(origPolyline, level);
 					for (List<Coord> points : entry.getValue()) {
 						polyline = origPolyline.copy();
-						if (!routing && GType.isRoutableLineType(polyline.getType())) {
-							roadHelper.setRoadId(++roadIdGenerated);
-						}
 						if (roadHelper.isRoad() && level == 0) {
 							polyline.setPoints(points);
-							MapRoad r = roadHelper.makeRoad(polyline);
-							if (!routing) {
-								r.skipAddToNOD(true);
-							}
-							mapper.addRoad(r);
+							mapper.addRoad(roadHelper.makeRoad(polyline));
 						}
 						else {
 							if(extraAttributes != null && polyline.hasExtendedType())
@@ -471,8 +452,6 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 				fixElevation();
 			}
 		} else if (name.equals("RoadID")) {
-			if (!routing && roadIdGenerated > 0)
-				throw new MapFailedException("found RoadID without Routing=Y in [IMG ID] section in line " + lineNo);
 			roadHelper.setRoadId(Integer.parseInt(value));
 		} else if (name.startsWith("Nod")) {
 			roadHelper.addNode(value);
@@ -843,13 +822,13 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 		} else if ("Numbering".equals(name)) {
 			// ignore
 		} else if ("Routing".equals(name)) {
-			routing = true; // don't generate roadid
+			// ignore
 		} else if ("CountryName".equalsIgnoreCase(name)) {
 			defaultCountry = value;
 		} else if ("RegionName".equalsIgnoreCase(name)) {
 			defaultRegion = value;
 		} else {
-			log.info("'IMG ID' section: ignoring " + name + " " + value);
+			System.out.println("'IMG ID' section: ignoring " + name + " " + value);
 		}
 		
 	}
