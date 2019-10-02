@@ -281,9 +281,9 @@ public class NETFile extends ImgFile {
 	private void addDisconnectedLarge(List<LabeledRoadDef> in, List<LabeledRoadDef> out) {
 		Collections.sort(in, new Comparator<LabeledRoadDef>() {
 			public int compare(LabeledRoadDef o1, LabeledRoadDef o2) {
-				Integer i1 = o1.roadDef.getStartSubdivNumber();
-				Integer i2 = o2.roadDef.getStartSubdivNumber();
-				return i1.compareTo(i2);
+				int i1 = o1.roadDef.getStartSubdivNumber();
+				int i2 = o2.roadDef.getStartSubdivNumber();
+				return Integer.compare(i1, i2);
 			}
 		});
 
