@@ -25,7 +25,6 @@ import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.CoordNode;
 import uk.me.parabola.imgfmt.app.net.AccessTagsAndBits;
-import uk.me.parabola.imgfmt.app.net.NumberStyle;
 import uk.me.parabola.imgfmt.app.net.Numbers;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.MapLine;
@@ -135,12 +134,18 @@ class RoadHelper {
 		road.setAccess(mkgmapAccess);
 
 		if (numbers != null && !numbers.isEmpty()) {
-			convertNodesForHouseNumbers(road);
-			road.setNumbers(numbers);
+			if (numbers.stream().anyMatch(n -> !n.isEmpty())) {
+				convertNodesForHouseNumbers(road);
+				road.setNumbers(numbers);
+			} else 
+				numbers = null;
 		}
 
 		List<Coord> points = road.getPoints();
-
+		if (points.size() > 1) {
+			points.get(0).setNumberNode(true);
+			points.get(road.getPoints().size() - 1).setNumberNode(true);
+		}
 		for (NodeIndex ni : nodes) {
 			int n = ni.index;
 			if (log.isDebugEnabled())
@@ -191,8 +196,7 @@ class RoadHelper {
 	public void addNumbers(Numbers nums) {
 		if (numbers == null)
 			numbers = new ArrayList<>();
-		if (nums.getLeftNumberStyle() != NumberStyle.NONE || nums.getRightNumberStyle() != NumberStyle.NONE)
-			numbers.add(nums);
+		numbers.add(nums);
 	}
 
 	private static class NodeIndex {

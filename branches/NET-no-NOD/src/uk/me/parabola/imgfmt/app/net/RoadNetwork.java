@@ -75,7 +75,6 @@ public class RoadNetwork {
 
 		int npoints = coordList.size();
 		int numCoordNodes = 0;
-		boolean hasInternalNodes = false;
 		int numNumberNodes = 0;
 		BitSet nodeFlags = new BitSet();
 		for (int index = 0; index < npoints; index++) {
@@ -85,8 +84,6 @@ public class RoadNetwork {
 			if (id != 0){
 				nodeFlags.set(numNumberNodes);
 				++numCoordNodes;
-				if(index > 0 && index < npoints - 1)
-					hasInternalNodes = true;
 			}
 			if (co.isNumberNode())
 				++numNumberNodes;
@@ -200,15 +197,11 @@ public class RoadNetwork {
 		}
 		if (roadDef.hasHouseNumbers()){
 			// we ignore number nodes when we have no house numbers
-			if (numCoordNodes < numNumberNodes)
-				hasInternalNodes = true;
 			roadDef.setNumNodes(numNumberNodes);
 			roadDef.setNod2BitSet(nodeFlags);
 		} else {
 			roadDef.setNumNodes(numCoordNodes);
 		}
-		if (hasInternalNodes)
-			roadDef.setInternalNodes(true);
 		roadDef.setLength(roadLength);
 	}
 

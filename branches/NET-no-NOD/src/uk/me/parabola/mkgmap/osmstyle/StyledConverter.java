@@ -111,7 +111,10 @@ public class StyledConverter implements OsmConverter {
 	// limit arc lengths to what can be handled by RouteArc
 	private static final int MAX_ARC_LENGTH = 20450000; // (1 << 22) * 16 / 3.2808 ~ 20455030*/
 
-	private static final int MAX_NODES_IN_WAY = 64; // possibly could be increased
+	/** Number of routing nodes in way, possibly could be increased, not a hard limit in IMG format.
+	 * See also RoadDef.MAX_NUMBER_NODES. 
+	 */
+	private static final int MAX_NODES_IN_WAY = 64;  
 
 	// nodeIdMap maps a Coord into a CoordNode
 	private IdentityHashMap<Coord, CoordNode> nodeIdMap = new IdentityHashMap<>();
@@ -1380,8 +1383,7 @@ public class StyledConverter implements OsmConverter {
 	/**
 	 * Add a way to the road network. May call itself recursively and
 	 * might truncate the way if splitting is required. 
-	 * @param way the way
-	 * @param gt the type assigned by the style
+	 * @param cw the converted way
 	 */
 	private void addRoad(ConvertedWay cw) {
 		Way way = cw.getWay();
@@ -1552,6 +1554,11 @@ public class StyledConverter implements OsmConverter {
 		}
 	}
 
+	/**
+	 * Split way so that it does not self intersect. 
+	 * TODO: Maybe avoid if map is not routable?
+	 * @param cw the converted way
+	 */
 	private void addRoadAfterSplittingLoops(ConvertedWay cw) {
 		Way way = cw.getWay();
 		// make sure the way has nodes at each end
@@ -1800,7 +1807,7 @@ public class StyledConverter implements OsmConverter {
 					arcLength += d;
 				}
 			}
-			if(p.getHighwayCount() > 1 || p.getOnCountryBorder()) {
+			if(p.getHighwayCount() > 1 || (routable && p.getOnCountryBorder())) {
 				// this point is a node connecting highways
 				CoordNode coordNode = nodeIdMap.get(p);
 				if(coordNode == null) {

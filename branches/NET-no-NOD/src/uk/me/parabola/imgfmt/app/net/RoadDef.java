@@ -29,7 +29,6 @@ import java.util.TreeMap;
 import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.BitWriter;
-import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
 import uk.me.parabola.imgfmt.app.Label;
 import uk.me.parabola.imgfmt.app.lbl.City;
@@ -232,9 +231,17 @@ public class RoadDef {
 		writeLevelDivs(writer, maxlevel);
 
 		if((netFlags & NET_FLAG_ADDRINFO) != 0) {
-			nodeCount--;
-			if (nodeCount + 2 != nnodes){
-				log.error("internal error? The nodeCount doesn't match value calculated by RoadNetWork:",this);
+			if (!hasHouseNumbers() && skipAddToNOD()) {
+				// no need to write node infos (decreases bitstream length)
+				nodeCount = 0;
+			} else {
+				nodeCount--;
+				if (nodeCount + 2 != nnodes) {
+					log.error("internal error? The nodeCount doesn't match value calculated by RoadNetWork:", this);
+				}
+				if (nodeCount < 0) {
+					log.error("internal error? The nodeCount is negative", this);
+				}
 			}
 			writer.put1u(nodeCount & 0xff); // lo bits of node count
 
@@ -484,22 +491,6 @@ public class RoadDef {
 		}
 	}
 
-	private boolean internalNodes;
-
-	/**
-	 * Does the road have any nodes besides start and end?
-	 * These can be number nodes or routing nodes.
-	 * This affects whether we need to write extra bits in
-	 * the bitstream in RGN.
-	 */
-	public boolean hasInternalNodes() {
-		return internalNodes;
-	}
-
-	public void setInternalNodes(boolean n) {
-		internalNodes = n;
-	}
-
 	/**
 	 * Set the routing node associated with this road.
 	 *
@@ -575,16 +566,15 @@ public class RoadDef {
 		// If the road has house numbers, we count also
 		// the number nodes, and these get a 0 in the bit stream. 
 		int nbits = nnodes;
-		if (!startsWithNode)
+		if (!startsWithNode && !hasHouseNumbers())
 			nbits++;
 		writer.put2u(nbits);
 		boolean[] bits = new boolean[nbits];
 		
 		if (hasHouseNumbers()){
-			int off = startsWithNode ? 0 :1;
 			for (int i = 0; i < bits.length; i++){
 				if (nod2BitSet.get(i))
-					bits[i+off] = true;
+					bits[i] = true;
 			}
 		} else { 
 			for (int i = 0; i < bits.length; i++)

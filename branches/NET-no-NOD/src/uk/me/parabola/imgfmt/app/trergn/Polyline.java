@@ -233,8 +233,20 @@ public class Polyline extends MapObject {
 		return roaddef != null;
 	}
 
-	public boolean roadHasInternalNodes() {
-		return roaddef.hasInternalNodes();
+	/**
+	 * @return true if this polyline contanins special nodes between the first and last node
+	 */
+	boolean hasInternalNodes() {
+		if (roaddef.hasHouseNumbers() || !roaddef.skipAddToNOD()) {
+			// exclude first and last node
+			for (int i = 1; i < points.size() - 1; i++) {
+				Coord co = points.get(i);
+				if (co.getId() > 0 || (roaddef.hasHouseNumbers() && co.isNumberNode())) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	public void setLastSegment(boolean last) {
@@ -258,7 +270,7 @@ public class Polyline extends MapObject {
 	public boolean sharesNodeWith(Polyline other) {
 		for (Coord p1 : points) {
 			if (p1.getId() != 0) {
-				// point is a node, see if the other line contain the
+				// point is a node, see if the other line contains the
 				// same node
 				for (Coord p2 : other.points)
 					if (p1.getId() == p2.getId())
@@ -280,7 +292,7 @@ public class Polyline extends MapObject {
 	/**
 	 * 
 	 * @param countAllNodes : false: count only coord nodes, true: count number nodes
-	 * @return
+	 * @return number of special nodes in points, ignoring the first node
 	 */
 	public int getNodeCount(boolean countAllNodes ) {
 		int idx = 0;
