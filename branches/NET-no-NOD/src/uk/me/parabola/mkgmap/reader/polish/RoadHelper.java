@@ -137,8 +137,9 @@ class RoadHelper {
 			if (numbers.stream().anyMatch(n -> !n.isEmpty())) {
 				convertNodesForHouseNumbers(road);
 				road.setNumbers(numbers);
-			} else 
+			} else { 
 				numbers = null;
+			}
 		}
 
 		List<Coord> points = road.getPoints();

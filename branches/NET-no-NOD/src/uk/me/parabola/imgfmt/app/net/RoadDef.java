@@ -232,7 +232,7 @@ public class RoadDef {
 
 		if((netFlags & NET_FLAG_ADDRINFO) != 0) {
 			if (!hasHouseNumbers() && skipAddToNOD()) {
-				// no need to write node infos (decreases bitstream length)
+				// no need to write node info (decreases bitstream length)
 				nodeCount = 0;
 			} else {
 				nodeCount--;

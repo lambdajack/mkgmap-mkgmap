@@ -115,7 +115,7 @@ public class HousenumberRoad {
 		for (Coord p : road.getPoints()) {
 			if (currNodePos == 0) {
 				if (road.skipAddToNOD() == false)
-					assert p instanceof CoordNode; 
+					assert p.isNumberNode(); 
 			}
 
 			// An ordinary point in the road.
