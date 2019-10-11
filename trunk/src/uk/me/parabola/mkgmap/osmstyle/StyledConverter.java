@@ -1420,37 +1420,38 @@ public class StyledConverter implements OsmConverter {
 						String roadClass = node.getTag("mkgmap:road-class");
 						String roadSpeed = node.getTag("mkgmap:road-speed");
 						if(roadClass != null || roadSpeed != null) {
-							// find good split point after POI
-							Coord splitPoint;
-							double segmentLength = 0;
-							int splitPos = i+1;
-							while( splitPos+1 < points.size()){
-								splitPoint = points.get(splitPos);
-								segmentLength += splitPoint.distance(points.get(splitPos - 1));
-								if (splitPoint.getHighwayCount() > 1
-										|| segmentLength > stubSegmentLength - 5)
-									break;
-								splitPos++;
-							}
-							if (segmentLength > stubSegmentLength + 10){
-								// insert a new point after the POI to
-								// make a short stub segment
-								splitPoint = points.get(splitPos);
-								Coord prev = points.get(splitPos-1);
-								double dist = splitPoint.distance(prev);
-								double neededLength = stubSegmentLength - (segmentLength - dist);
-								
-								splitPoint = prev.makeBetweenPoint(splitPoint, neededLength / dist);
-								double newDist = splitPoint.distance(prev);
-								segmentLength += newDist - dist;
-								splitPoint.incHighwayCount();
-								points.add(splitPos, splitPoint);
-							}
-							if((splitPos + 1) < points.size() && way.isViaWay() == false &&
-									safeToSplitWay(points, splitPos, i, points.size() - 1)) {
-								Way tail = splitWayAt(way, splitPos);
-								// recursively process tail of way
-								addRoad(new ConvertedWay(cw, tail));
+							if (!way.isViaWay()) {
+								// find good split point after POI
+								Coord splitPoint;
+								double segmentLength = 0;
+								int splitPos = i + 1;
+								while (splitPos + 1 < points.size()) {
+									splitPoint = points.get(splitPos);
+									segmentLength += splitPoint.distance(points.get(splitPos - 1));
+									if (splitPoint.getHighwayCount() > 1 || segmentLength > stubSegmentLength - 5)
+										break;
+									splitPos++;
+								}
+								if (segmentLength > stubSegmentLength + 10) {
+									// insert a new point after the POI to
+									// make a short stub segment
+									splitPoint = points.get(splitPos);
+									Coord prev = points.get(splitPos - 1);
+									double dist = splitPoint.distance(prev);
+									double neededLength = stubSegmentLength - (segmentLength - dist);
+
+									splitPoint = prev.makeBetweenPoint(splitPoint, neededLength / dist);
+									double newDist = splitPoint.distance(prev);
+									segmentLength += newDist - dist;
+									splitPoint.incHighwayCount();
+									points.add(splitPos, splitPoint);
+								}
+								if ((splitPos + 1) < points.size()
+										&& safeToSplitWay(points, splitPos, i, points.size() - 1)) {
+									Way tail = splitWayAt(way, splitPos);
+									// recursively process tail of way
+									addRoad(new ConvertedWay(cw, tail));
+								}
 							}
 							boolean classChanged = cw.recalcRoadClass(node);
 							if (classChanged && log.isInfoEnabled()){
@@ -1468,7 +1469,7 @@ public class StyledConverter implements OsmConverter {
 				// and the next point modifies the way's speed/class,
 				// split the way at this point to limit the size of
 				// the affected region
-				if (i + 1 < points.size()
+				if (!way.isViaWay() && i + 1 < points.size()
 						&& points.get(i + 1) instanceof CoordPOI) {
 					CoordPOI cp = (CoordPOI) points.get(i + 1);
 					Node node = cp.getNode();
@@ -1966,9 +1967,9 @@ public class StyledConverter implements OsmConverter {
 	 * @param index the split position. 
 	 * @return the trailing part of the way
 	 */
-	private static Way splitWayAt(Way way, int index) {
+	private Way splitWayAt(Way way, int index) {
 		if (way.isViaWay()){
-			log.warn("via way of restriction is split, restriction will be ignored",way);
+			removeRestrictionsWithWay(Level.WARNING, way, "is split, restriction will be ignored");
 		}
 		Way trailingWay = new Way(way.getId());
 		List<Coord> wayPoints = way.getPoints();
