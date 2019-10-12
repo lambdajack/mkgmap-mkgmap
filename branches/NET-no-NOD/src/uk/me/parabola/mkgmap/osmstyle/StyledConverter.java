@@ -1996,6 +1996,7 @@ public class StyledConverter implements OsmConverter {
 
 		// ensure split point becomes a node
 		wayPoints.get(index).incHighwayCount();
+		wayPoints.get(index).incHighwayCount();
 
 		// copy the way's name and tags to the new way
 		trailingWay.copyTags(way);
