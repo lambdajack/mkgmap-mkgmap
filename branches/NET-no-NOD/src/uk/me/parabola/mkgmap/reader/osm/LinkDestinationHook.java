@@ -225,8 +225,9 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 		if (wayRestrictions.isEmpty()) {
 			return;
 		}
-		if (oldWay.isViaWay())
-			newWay.setViaWay(true);
+		if (oldWay.isViaWay()) {
+			log.error("internal error: via way is split in", this.getClass().getSimpleName());
+		}
 		// create a copy because original list may be modified within the loop
 		for (RestrictionRelation rr : new ArrayList<>(wayRestrictions)) {
 			Coord lastPointNewWay = newWay.getPoints().get(0);
