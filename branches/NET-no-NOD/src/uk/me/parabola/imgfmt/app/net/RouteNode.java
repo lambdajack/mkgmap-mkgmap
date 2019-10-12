@@ -871,6 +871,10 @@ public class RouteNode implements Comparable<RouteNode> {
 	 */
 	public int getGroup() {
 		if (nodeGroup < 0){
+			if (arcs.isEmpty()) {
+				nodeGroup = 0;
+				return nodeGroup;
+			}
 			HashSet<RoadDef> roads = new HashSet<>();
 			for (RouteArc arc: arcs){
 				roads.add(arc.getRoadDef());

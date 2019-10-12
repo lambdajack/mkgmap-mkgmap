@@ -158,6 +158,7 @@ public class StyledConverter implements OsmConverter {
 	private final boolean linkPOIsToWays;
 	private final boolean mergeRoads;
 	private final boolean routable;
+	private final boolean allRoadsToNod;
 	private final Tags styleOptionTags;
 	private final static String STYLE_OPTION_PREF = "mkgmap:option:";
 	private final PrefixSuffixFilter prefixSuffixFilter;
@@ -222,6 +223,7 @@ public class StyledConverter implements OsmConverter {
 		// undocumented option - usually used for debugging only
 		mergeRoads = props.getProperty("no-mergeroads", false) == false;
 		routable = props.containsKey("route");
+		allRoadsToNod = props.getProperty("all-roads-to-nod", false);
 		String styleOption= props.getProperty("style-option",null);
 		styleOptionTags = parseStyleOption(styleOption);
 		prefixSuffixFilter = new PrefixSuffixFilter(props);
@@ -1445,7 +1447,6 @@ public class StyledConverter implements OsmConverter {
 								splitPoint = prev.makeBetweenPoint(splitPoint, neededLength / dist);
 								double newDist = splitPoint.distance(prev);
 								segmentLength += newDist - dist;
-								splitPoint.incHighwayCount();
 								points.add(splitPos, splitPoint);
 							}
 							if((splitPos + 1) < points.size() && way.isViaWay() == false &&
@@ -1498,7 +1499,6 @@ public class StyledConverter implements OsmConverter {
 								double neededLength = stubSegmentLength - (segmentLength - dist);
 								splitPoint = prev.makeBetweenPoint(splitPoint, neededLength / dist);
 								segmentLength += splitPoint.distance(prev) - dist;
-								splitPoint.incHighwayCount();
 								splitPos++;
 								points.add(splitPos, splitPoint);
 							}
@@ -1561,10 +1561,6 @@ public class StyledConverter implements OsmConverter {
 	 */
 	private void addRoadAfterSplittingLoops(ConvertedWay cw) {
 		Way way = cw.getWay();
-		// make sure the way has nodes at each end
-		way.getPoints().get(0).incHighwayCount();
-		way.getPoints().get(way.getPoints().size() - 1).incHighwayCount();
-
 		// check if the way is a loop or intersects with itself
 
 		boolean wayWasSplit = true; // aka rescan required
@@ -1716,6 +1712,13 @@ public class StyledConverter implements OsmConverter {
 		Way trailingWay = null;
 		String debugWayName = way.getDebugName();
 
+		if (routable && allRoadsToNod
+				&& points.stream().noneMatch(n -> n.getHighwayCount() > 1 || n.getOnCountryBorder())) {
+			// handle roads without any route node: first node will be route node
+			points.get(0).incHighwayCount();
+			log.error("check: forcing road without connection to be written to NOD", debugWayName, points.get(0).toDegreeString());
+		}
+
 		// collect the Way's nodes and also split the way if any
 		// inter-node arc length becomes excessive
 		double arcLength = 0;
@@ -1858,8 +1861,12 @@ public class StyledConverter implements OsmConverter {
 		elementSetup(line, cw.getGType(), way);
 		line.setPoints(points);
 		MapRoad road = new MapRoad(nextRoadId++, way.getId(), line);
-		if (routable == false)
+		if (!routable || nodeIndices.isEmpty()) {
+			if (routable) {
+				log.error("check: road without connection is not written to NOD", debugWayName, points.get(0).toDegreeString());
+			}
 			road.skipAddToNOD(true);
+		}
 		
 		boolean doFlareCheck = true;
 		

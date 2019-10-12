@@ -153,10 +153,14 @@ public class RoadDef {
 	// for diagnostic purposes
 	private final long id;
 	private final String name;
+	
+	// road/address search data from (house) numbers
 	private List<Numbers> numbersList;
 	private List<City> cityList;
 	private List<Zip> zipList;
-	private int nodeCount;
+	
+	/** cumulative number of special nodes between first and last node of line segments */
+	private int nodeCountInner; 
 
 	public RoadDef(long id, String name) {
 		this.id = id;
@@ -233,19 +237,11 @@ public class RoadDef {
 		if((netFlags & NET_FLAG_ADDRINFO) != 0) {
 			if (!hasHouseNumbers() && skipAddToNOD()) {
 				// no need to write node info (decreases bitstream length)
-				nodeCount = 0;
-			} else {
-				nodeCount--;
-				if (nodeCount + 2 != nnodes) {
-					log.error("internal error? The nodeCount doesn't match value calculated by RoadNetWork:", this);
-				}
-				if (nodeCount < 0) {
-					log.error("internal error? The nodeCount is negative", this);
-				}
+				nodeCountInner = 0;
 			}
-			writer.put1u(nodeCount & 0xff); // lo bits of node count
+			writer.put1u(nodeCountInner & 0xff); // lo bits of node count
 
-			int code = (nodeCount >> 8) & 0x3; // top bits of node count
+			int code = (nodeCountInner >> 8) & 0x3; // top bits of node count
 			int len, flag;
 			
 			ByteArrayOutputStream zipBuf = null, cityBuf = null;
@@ -398,7 +394,7 @@ public class RoadDef {
 		l.add(new RoadIndex(pl));
 
 		if (level == 0) {
-			nodeCount += pl.getNodeCount(hasHouseNumbers());
+			nodeCountInner += pl.getNodeCount(hasHouseNumbers());
 		}
 	}
 

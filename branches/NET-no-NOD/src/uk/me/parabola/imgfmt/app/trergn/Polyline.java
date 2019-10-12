@@ -290,16 +290,16 @@ public class Polyline extends MapObject {
 	}
 
 	/**
-	 * 
+	 * Count special nodes between (excluding) first and last node.
 	 * @param countAllNodes : false: count only coord nodes, true: count number nodes
-	 * @return number of special nodes in points, ignoring the first node
+	 * @return number of special nodes in points, ignoring the first and last node
 	 */
 	public int getNodeCount(boolean countAllNodes ) {
-		int idx = 0;
 		int count = 0;
 		
-		for (Coord co : points) {
-			if (idx++ > 0 && (co.getId() > 0 || countAllNodes && co.isNumberNode()))
+		for (int i = 1; i< points.size() -1; i++) {
+			Coord co = points.get(i);
+			if (co.getId() > 0 || countAllNodes && co.isNumberNode())
 				count++;
 		}
 		return count;
