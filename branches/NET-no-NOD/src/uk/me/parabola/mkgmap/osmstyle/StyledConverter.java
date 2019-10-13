@@ -1448,6 +1448,7 @@ public class StyledConverter implements OsmConverter {
 									double newDist = splitPoint.distance(prev);
 									segmentLength += newDist - dist;
 									points.add(splitPos, splitPoint);
+									splitPoint.incHighwayCount(); // new point is on highway
 								}
 								if ((splitPos + 1) < points.size()
 										&& safeToSplitWay(points, splitPos, i, points.size() - 1)) {
@@ -1504,6 +1505,7 @@ public class StyledConverter implements OsmConverter {
 								segmentLength += splitPoint.distance(prev) - dist;
 								splitPos++;
 								points.add(splitPos, splitPoint);
+								splitPoint.incHighwayCount(); // new point is on highway
 							}
 							if(splitPos > 0 &&
 									safeToSplitWay(points, splitPos, 0, points.size()-1)) {
@@ -1823,7 +1825,7 @@ public class StyledConverter implements OsmConverter {
 				}
 				
 				if (p instanceof CoordPOI){
-					// check if this poi should be converted to a route restriction
+					// check if this POI should be converted to a route restriction
 					CoordPOI cp = (CoordPOI) p;
 					if (cp.getConvertToViaInRouteRestriction()){
 						String wayPOI = way.getTag(WAY_POI_NODE_IDS);
@@ -1995,7 +1997,6 @@ public class StyledConverter implements OsmConverter {
 			trailingWay.addPoint(wayPoints.get(i));
 
 		// ensure split point becomes a node
-		wayPoints.get(index).incHighwayCount();
 		wayPoints.get(index).incHighwayCount();
 
 		// copy the way's name and tags to the new way
