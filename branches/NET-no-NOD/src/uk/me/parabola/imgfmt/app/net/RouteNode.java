@@ -14,13 +14,15 @@
  */
 package uk.me.parabola.imgfmt.app.net;
 
-import it.unimi.dsi.fastutil.ints.IntArrayList;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.CoordNode;
@@ -929,5 +931,25 @@ public class RouteNode implements Comparable<RouteNode> {
 		return result;
 	}
 
+	/** used to find routing island, but may also be used for other checks */
+	private int visitId;
 	
+	public int getVisitID() {
+		return visitId;
+	}
+
+	public void visitNet(int visitId, List<RouteNode> visited) {
+		if (this.visitId != visitId) {
+			Deque<RouteNode> toVisit = new ArrayDeque<>();
+			toVisit.add(this);
+			while(!toVisit.isEmpty()) {
+				RouteNode n = toVisit.pop();
+				if (n.visitId != visitId) {
+					n.arcs.forEach(a -> toVisit.addLast(a.getDest()));
+					visited.add(n);
+					n.visitId = visitId;
+				}
+			}
+		}
+	}
 }

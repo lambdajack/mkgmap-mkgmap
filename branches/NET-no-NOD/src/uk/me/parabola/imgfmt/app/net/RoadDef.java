@@ -160,8 +160,10 @@ public class RoadDef {
 	private List<Zip> zipList;
 	
 	/** cumulative number of special nodes between first and last node of line segments */
-	private int nodeCountInner; 
-
+	private int nodeCountInner;
+	
+	private int lenInMeter; 
+	
 	public RoadDef(long id, String name) {
 		this.id = id;
 		this.name = name;
@@ -431,6 +433,7 @@ public class RoadDef {
 	 * Set the road length (in meters).
 	 */
 	public void setLength(double lenInMeter) {
+		this.lenInMeter = (int) Math.round(lenInMeter);
 		roadLength = NODHeader.metersToRaw(lenInMeter);
 	}
 
@@ -823,6 +826,11 @@ public class RoadDef {
 
 	public void skipAddToNOD(boolean skip) {
 		this.skipAddToNOD = skip;
+		if (hasNodInfo()) {
+			// TODO: change to info level
+			log.error("road", this, "is removed from NOD, length:", lenInMeter, "m");
+			netFlags &= ~NET_FLAG_NODINFO;
+		}
 	}
 
 	public void resetImgData() {
@@ -841,6 +849,10 @@ public class RoadDef {
 				}
 			}
 		}
+	}
+
+	public double getLenInMeter() {
+		return lenInMeter;
 	}
 	
 }

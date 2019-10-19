@@ -19,12 +19,16 @@ package uk.me.parabola.imgfmt.app.net;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.CoordNode;
@@ -44,9 +48,6 @@ public class RoadNetwork {
 	private final static int MAX_RESTRICTIONS_ARCS = 7;
 	private final Map<Integer, RouteNode> nodes = new LinkedHashMap<>();
 
-	// boundary nodes
-	// a node should be in here if the nodes boundary flag is set
-	private final List<RouteNode> boundary = new ArrayList<>();
 	private final List<RoadDef> roadDefs = new ArrayList<>();
 	private List<RouteCenter> centers = new ArrayList<>();
 	private AngleChecker angleChecker = new AngleChecker();
@@ -54,13 +55,17 @@ public class RoadNetwork {
 	private boolean checkRoundabouts;
 	private boolean checkRoundaboutFlares;
 	private int maxFlareLengthRatio ;
+	private double maxSumRoadLenghts;
 	private boolean reportSimilarArcs;
+	private boolean routable;
 
 	public void config(EnhancedProperties props) {
 		checkRoundabouts = props.getProperty("check-roundabouts", false);
 		checkRoundaboutFlares = props.getProperty("check-roundabout-flares", false);
 		maxFlareLengthRatio = props.getProperty("max-flare-length-ratio", 0);
 		reportSimilarArcs = props.getProperty("report-similar-arcs", false);
+		maxSumRoadLenghts = props.getProperty("check-routing-island-len", 0);
+		routable = props.containsKey("route");
 		angleChecker.config(props);
 	}
 
@@ -206,14 +211,7 @@ public class RoadNetwork {
 	}
 
 	private RouteNode getOrAddNode(int id, Coord coord) {
-		RouteNode node = nodes.get(id);
-		if (node == null) {
-			node = new RouteNode(coord);
-			nodes.put(id, node);
-			if (node.isBoundary())
-				boundary.add(node);
-		}
-		return node;
+		return nodes.computeIfAbsent(id, key -> new RouteNode(coord));
 	}
 
 	public List<RoadDef> getRoadDefs() {
@@ -258,12 +256,85 @@ public class RoadNetwork {
 	}
 
 	public List<RouteCenter> getCenters() {
-		if (centers.isEmpty()){
+		if (routable && centers.isEmpty()){
+			checkRoutingIslands();
 			angleChecker.check(nodes);
 			addArcsToMajorRoads();
 			splitCenters();
 		}
 		return centers;
+	}
+
+	private void checkRoutingIslands() {
+		long t1 = System.currentTimeMillis();
+		final int visitId = 1;
+
+		// calculate all islands
+		List<List<RouteNode>> islands = new ArrayList<>();
+		for (RouteNode firstNode : nodes.values()) {
+			if (firstNode.getVisitID() != visitId) {
+				List<RouteNode> island = new ArrayList<>();
+				firstNode.visitNet(visitId, island);
+				// we ignore islands which have boundary nodes
+				if (island.stream().noneMatch(RouteNode::isBoundary)) {
+					islands.add(island);
+				}
+			}
+		}
+		if (!islands.isEmpty()) {
+			log.error("check for routing islands found", islands.size(), "islands");
+			
+			for (List<RouteNode> island : islands) {
+				// compute size of island as sum of road lengths
+				double sumOfRoadLenghts = calcIslandSize(island);
+				log.error("routing island with ", island.size(), "routing node(s) at",
+						island.get(0).getCoord().toDegreeString(), "has length",Math.round(sumOfRoadLenghts), "m");
+				if (sumOfRoadLenghts < maxSumRoadLenghts) {
+					// remove NOD data for the routing islands
+					Iterator<Entry<Integer, RouteNode>> iter = nodes.entrySet().iterator();
+					while(iter.hasNext()) {
+						Entry<Integer, RouteNode> n = iter.next();
+						if (island.contains(n.getValue())) {
+							iter.remove();
+						}
+					}
+					for (RoadDef roadDef : roadDefs) {
+						if (island.contains(roadDef.getNode())) {
+							roadDef.skipAddToNOD(true);
+						}
+					}
+				}
+			}
+		}
+		long dt = System.currentTimeMillis() - t1;
+		log.error("routing island check took", dt, "ms");
+	}
+
+	/**
+	 * Calculate sum of road lengths for the routing island described by the routing nodes.
+	 * @param routeNodes the nodes that form the island
+	 * @param maxLength the threshold value
+	 * @return the sum of lengths in meters
+	 */
+	private double calcIslandSize(Collection<RouteNode> routeNodes) {
+		final Set<RoadDef> set = new LinkedHashSet<>();
+		double sumLen = 0;
+		for (RouteNode node : routeNodes) {
+			for (RouteArc arc : node.getArcs()) {
+				RoadDef rd = arc.getRoadDef();
+				if (set.add(rd)) {
+					sumLen += rd.getLenInMeter();
+				}
+			}
+		}
+		// we also have to check the first node of a each road, there might be no arc for it
+		for (RoadDef rd : roadDefs) {
+			if (routeNodes.contains(rd.getNode()) && set.add(rd)) {
+				// the road is connected to the island
+				sumLen += rd.getLenInMeter();
+			}
+		}
+		return sumLen;
 	}
 
 	/**
@@ -287,7 +358,7 @@ public class RoadNetwork {
 	 * Currently empty.
 	 */
 	public List<RouteNode> getBoundary() {
-		return boundary;
+		return nodes.values().stream().filter(RouteNode::isBoundary).collect(Collectors.toList());
 	}
 
 	/**
