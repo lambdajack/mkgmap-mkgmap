@@ -25,11 +25,12 @@ public class RoundCoordsFilter implements MapFilter {
 
 	private int shift;
 	private boolean checkRouting;
+	private int level;
 
 	public void init(FilterConfig config) {
 		shift = config.getShift();
-		checkRouting = config.getLevel() == 0 && config.isRoutable() == true;
-		
+		checkRouting = config.getLevel() == 0 && config.isRoutable();
+		level = config.getLevel();
 	}
 
 	/**
@@ -47,9 +48,13 @@ public class RoundCoordsFilter implements MapFilter {
 		}
 		else {
 			// round lat/lon values to nearest for shift
-			List<Coord> newPoints = new ArrayList<Coord>(line.getPoints().size());
+			List<Coord> newPoints = new ArrayList<>(line.getPoints().size());
 			Coord lastP = null;
 			for(Coord p : line.getPoints()) {
+				if (level > 0 && p.isAddedNumberNode()) {
+					// ignore nodes added by housenumber processing for levels > 0   
+					continue;
+				}
 				int lat = (p.getLatitude() + half) & mask;
 				int lon = (p.getLongitude() + half) & mask;
 				Coord newP;
