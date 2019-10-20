@@ -185,11 +185,7 @@ public class RoadDef {
 	// for diagnostic purposes
 	public String toString() {
 		// assumes id is an OSM id
-		String browseURL = "http://www.openstreetmap.org/browse/way/" + id;
-		//if(getName() != null)
-		//	return "(" + getName() + ", " + browseURL + ")";
-		//else
-			return "(" + browseURL + ")";
+		return "(" + "http://www.openstreetmap.org/browse/way/" + id + ")";
 	}
 
 	public String getName() {
@@ -251,8 +247,9 @@ public class RoadDef {
 			if (len > 0){
 				zipBuf = numbers.zipWriter.getBuffer();
 				flag = Utils.numberToPointerSize(len) - 1;
-			} else 
+			} else {  
 				flag = (zip == null) ? 3 : 2;
+			}
 			code |= flag << 2;
 			
 			len = (numbers == null)  ? 0: numbers.cityWriter.getBuffer().size();
@@ -266,12 +263,12 @@ public class RoadDef {
 			len = (numbers == null) ? 0 : numbers.fetchBitStream().getLength();
 			if (len > 0){
 				flag = Utils.numberToPointerSize(len) - 1;
-			} else 
+			} else { 
 				flag = 3;
+			}
 			code |= flag << 6;
 			
 			writer.put1u(code);
-//			System.out.printf("%d %d %d\n", (code >> 2 & 0x3), (code >> 4 & 0x3), (code >> 6 & 0x3));  
 			
 			if (zipBuf != null){
 				len = zipBuf.size();
@@ -388,12 +385,7 @@ public class RoadDef {
 		if(log.isDebugEnabled())
 			log.debug("adding polyline ref", this, pl.getSubdiv());
 		int level = pl.getSubdiv().getZoom().getLevel();
-		List<RoadIndex> l = roadIndexes.get(level);
-		if (l == null) {
-			l = new ArrayList<>();
-			roadIndexes.put(level, l);
-		}
-		l.add(new RoadIndex(pl));
+		roadIndexes.computeIfAbsent(level, k -> new ArrayList<>()).add(new RoadIndex(pl));
 
 		if (level == 0) {
 			nodeCountInner += pl.getNodeCount(hasHouseNumbers());
@@ -583,9 +575,10 @@ public class RoadDef {
 		}
 		for (int i = 0; i < bits.length; i += 8) {
 			int b = 0;
-            for (int j = 0; j < 8 && j < bits.length - i; j++)
+            for (int j = 0; j < 8 && j < bits.length - i; j++) {
 				if (bits[i+j])
 					b |= 1 << j;
+            }
 			writer.put1u(b);
 		}
 	}
@@ -736,7 +729,7 @@ public class RoadDef {
 		if (cityList == null){
 			cityList = new ArrayList<>(2);
 		}
-		if (cityList.contains(city) == false)
+		if (!cityList.contains(city))
 			cityList.add(city);
 	}
 
@@ -749,7 +742,7 @@ public class RoadDef {
 		if (zipList == null){
 			zipList = new ArrayList<>(2);
 		}
-		if (zipList.contains(zip) == false)
+		if (!zipList.contains(zip))
 			zipList.add(zip);
 	}
 
