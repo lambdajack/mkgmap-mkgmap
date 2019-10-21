@@ -230,7 +230,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 		}
 		// create a copy because original list may be modified within the loop
 		for (RestrictionRelation rr : new ArrayList<>(wayRestrictions)) {
-			Coord lastPointNewWay = newWay.getPoints().get(0);
+			Coord lastPointNewWay = newWay.getFirstPoint();
 			List<Coord> viaCoords = rr.getViaCoords();
 			for (Coord via : viaCoords){
 				if (via == lastPointNewWay) {
@@ -298,7 +298,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 		
 		double startSegmentLength = 0;
 		
-		Coord lastC = w.getPoints().get(0);
+		Coord lastC = w.getFirstPoint();
 		for (int i = 1; i < w.getPoints().size(); i++) {
 			Coord c = w.getPoints().get(i);
 			double segmentLength = lastC.distance(c);
@@ -463,9 +463,9 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 				log.debug("Check way",linkWay.getId(),linkWay.toTagString());
 			
 			// Retrieve all adjacent ways of the current link
-			Coord c = linkWay.getPoints().get(linkWay.getPoints().size()-1);
+			Coord c = linkWay.getLastPoint();
 			if (isOnewayOppositeDirection(linkWay)) {
-				c = linkWay.getPoints().get(0);
+				c = linkWay.getFirstPoint();
 			}
 			
 			Set<Way> nextWays = adjacentWays.get(c);
@@ -478,7 +478,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 
 					// remove the way from destination handling only if both ways are connected with start/end points
 					// otherwise it is a crossroads and therefore both ways need to be handled
-					boolean startEndConnection = connectedWay.getPoints().isEmpty()==false && connectedWay.getPoints().get(0).equals(c);
+					boolean startEndConnection = connectedWay.getPoints().isEmpty()==false && connectedWay.getFirstPoint().equals(c);
 					if (startEndConnection && connectedWay.equals(linkWay) == false 
 							&& connectedWay.getTag("highway").endsWith("_link")
 							&& destination.equals(nextDest)) {

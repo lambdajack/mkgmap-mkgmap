@@ -307,6 +307,10 @@ public abstract class Element {
 		return "http://www.openstreetmap.org/" + kind() + "/" + id;
 	}
 
+	/**
+	 * Create a copy of the element.
+	 * @return
+	 */
 	public Element copy() {
 		// Can be implemented in subclasses
 		throw new UnsupportedOperationException("unsupported element copy");

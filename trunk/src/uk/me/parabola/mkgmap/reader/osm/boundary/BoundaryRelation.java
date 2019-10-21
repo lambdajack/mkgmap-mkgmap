@@ -324,8 +324,8 @@ public class BoundaryRelation extends MultiPolygonRelation {
 			
 			// check all ways for endpoints outside or on the bbox
 			for (JoinedWay w : unclosed) {
-				Coord c1 = w.getPoints().get(0);
-				Coord c2 = w.getPoints().get(w.getPoints().size() - 1);
+				Coord c1 = w.getFirstPoint();
+				Coord c2 = w.getLastPoint();
 				outOfBboxPoints.put(c1, w);
 				outOfBboxPoints.put(c2, w);
 			}
@@ -372,10 +372,10 @@ public class BoundaryRelation extends MultiPolygonRelation {
 						minCon.w1.closeWayArtificially();
 					} else {
 						log.debug("Connect", minCon.w1, "with", minCon.w2);
-						if (minCon.w1.getPoints().get(0) == minCon.c1) {
+						if (minCon.w1.getFirstPoint() == minCon.c1) {
 							Collections.reverse(minCon.w1.getPoints());
 						}
-						if (minCon.w2.getPoints().get(0) != minCon.c2) {
+						if (minCon.w2.getFirstPoint() != minCon.c2) {
 							Collections.reverse(minCon.w2.getPoints());
 						}
 
@@ -409,13 +409,13 @@ public class BoundaryRelation extends MultiPolygonRelation {
 		ListIterator<JoinedWay> pIter = polygons.listIterator();
 		while (pIter.hasNext()) {
 			JoinedWay w = pIter.next();
-			Coord first = w.getPoints().get(0);
-			Coord last =  w.getPoints().get(w.getPoints().size() - 1);
+			Coord first = w.getFirstPoint();
+			Coord last =  w.getLastPoint();
 			if (first != last) {
 				// the way is not closed
 				// check if one of start/endpoint is out of the bounding box
 				// in this case it is too risky to close it
-				if (getTileBounds().contains(first) == false || getTileBounds().contains(last) == false) {
+				if (!getTileBounds().contains(first) || !getTileBounds().contains(last)) {
 					pIter.remove();
 				}
 			}

@@ -1206,7 +1206,7 @@ public class RuleFileReaderTest {
 		el.addPoint(new Coord(2000,2000));
 		el.addPoint(new Coord(2000,1000));
 		if (closed)
-			el.addPoint(el.getPoints().get(0));
+			el.addPoint(el.getFirstPoint());
 		el.setComplete(complete);
 		el.setClosedInOSM(true);
 		return el;

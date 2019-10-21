@@ -182,27 +182,27 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 			int middle = way.getPoints().size() / 2;
 			Coord midPoint;
 			if (way.getPoints().size() == 2) {
-				midPoint = way.getPoints().get(0).makeBetweenPoint(way.getPoints().get(1), 0.5);
+				midPoint = way.getFirstPoint().makeBetweenPoint(way.getLastPoint(), 0.5);
 			} else {
 				midPoint = way.getPoints().get(middle);
 			}
 			tags = search(midPoint);
 			if (tags == null){
 				// try 1st point next
-				tags = search(way.getPoints().get(0));
+				tags = search(way.getFirstPoint());
 			}
 			if (tags == null){
 				// try last point next
-				tags = search(way.getPoints().get(way.getPoints().size()-1));
+				tags = search(way.getLastPoint());
 			}
 			if (tags == null){
 				// still not found, try rest
 				for (int i = 1; i < way.getPoints().size()-1; i++){
-					if (i == middle)
-						continue;
-					tags = search(way.getPoints().get(i));
-					if (tags != null) 
-						break;
+					if (i != middle) {
+						tags = search(way.getPoints().get(i));
+						if (tags != null) 
+							break;
+					}
 				}
 			}
 			if (tags == null)

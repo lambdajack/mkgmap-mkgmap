@@ -1487,9 +1487,8 @@ public class WrongAngleFixer {
 			if (way.equals(lastWay))
 				continue;
 			lastWay = way;
-			List<Coord> points = way.getPoints();
-			points.get(0).setEndOfWay(true);
-			points.get(points.size()-1).setEndOfWay(true);
+			way.getFirstPoint().setEndOfWay(true);
+			way.getLastPoint().setEndOfWay(true);
 		}
 	}
 
