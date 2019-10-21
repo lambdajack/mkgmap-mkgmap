@@ -81,7 +81,7 @@ public class ElementSaver {
 			relationMap = new HashMap<>();
 		}
 
-		ignoreTurnRestrictions = args.getProperty("ignore-turn-restrictions", false);
+		ignoreTurnRestrictions = args.getProperty("ignore-turn-restrictions", false) || !args.containsKey("route");
 	}
 
 	/**
