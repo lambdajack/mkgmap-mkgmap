@@ -13,18 +13,19 @@
 package uk.me.parabola.mkgmap.reader.osm;
 
 import java.util.AbstractMap;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.LineClipper;
 import uk.me.parabola.util.EnhancedProperties;
+import uk.me.parabola.util.MultiHashMap;
 
 /**
  * This is where we save the elements read from any of the file formats that
@@ -46,13 +47,13 @@ import uk.me.parabola.util.EnhancedProperties;
 public class ElementSaver {
 	private static final Logger log = Logger.getLogger(ElementSaver.class);
 
-	protected OSMId2ObjectMap<Coord> coordMap = new OSMId2ObjectMap<Coord>();
+	protected OSMId2ObjectMap<Coord> coordMap = new OSMId2ObjectMap<>();
 
 	protected Map<Long, Node> nodeMap;
 	protected Map<Long, Way> wayMap;
 	protected Map<Long, Relation> relationMap;
 
-	protected final Map<Long, List<Map.Entry<String,Relation>>> deferredRelationMap = new HashMap<Long, List<Map.Entry<String,Relation>>>();
+	protected final MultiHashMap<Long, Map.Entry<String, Relation>> deferredRelationMap = new MultiHashMap<>();
 
 	// This is an explicitly given bounding box from the input file command line etc.
 	private Area boundingBox;
@@ -71,13 +72,13 @@ public class ElementSaver {
 
 	public ElementSaver(EnhancedProperties args) {
 		if (args.getProperty("preserve-element-order", false)) {
-			nodeMap = new LinkedHashMap<Long, Node>(5000);
-			wayMap = new LinkedHashMap<Long, Way>(5000);
-			relationMap = new LinkedHashMap<Long, Relation>();
+			nodeMap = new LinkedHashMap<>(5000);
+			wayMap = new LinkedHashMap<>(5000);
+			relationMap = new LinkedHashMap<>();
 		} else {
-			nodeMap = new HashMap<Long, Node>();
-			wayMap = new HashMap<Long, Way>();
-			relationMap = new HashMap<Long, Relation>();
+			nodeMap = new HashMap<>();
+			wayMap = new HashMap<>();
+			relationMap = new HashMap<>();
 		}
 
 		ignoreTurnRestrictions = args.getProperty("ignore-turn-restrictions", false);
@@ -140,15 +141,17 @@ public class ElementSaver {
 	public void addRelation(Relation rel) {
 		String type = rel.getTag("type");
 		if (type == null) {
+			// maybe set rel to null?
 		} else if ("multipolygon".equals(type) || "boundary".equals(type)) {
 			rel = createMultiPolyRelation(rel); 
 		} else if("restriction".equals(type) || type.startsWith("restriction:")) {
 			if (ignoreTurnRestrictions)
 				rel = null;
-			else if (rel.getTag("restriction") == null && rel.getTagsWithPrefix("restriction:", false).isEmpty())
+			else if (rel.getTag("restriction") == null && rel.getTagsWithPrefix("restriction:", false).isEmpty()) {
 				log.warn("ignoring unspecified/unsupported restriction " + rel.toBrowseURL());
-			else
+			} else {
 				rel = new RestrictionRelation(rel);
+			}
 		}
 
 		if(rel != null) {
@@ -157,10 +160,12 @@ public class ElementSaver {
 			
 			rel.processElements();
 
-			List<Map.Entry<String,Relation>> entries = deferredRelationMap.remove(id);
-			if (entries != null)
-				for (Map.Entry<String,Relation> entry : entries)
+			List<Map.Entry<String, Relation>> entries = deferredRelationMap.remove(id);
+			if (entries != null) {
+				for (Map.Entry<String, Relation> entry : entries) {
 					entry.getValue().addElement(entry.getKey(), rel);
+				}
+			}
 		}
 	}
 
@@ -274,9 +279,9 @@ public class ElementSaver {
 						// insert boundary point before the second point
 						points.add(i, clippedPair[1]);
 						++numBoundaryNodesAdded;
-					} else if(clippedPair[1].getOnBoundary())
+					} else if (clippedPair[1].getOnBoundary()) {
 						++numBoundaryNodesDetected;
-
+					}
 
 					if (clippedPair[0] != points.get(i - 1)) {
 						// the first point in the segment is outside
@@ -285,8 +290,9 @@ public class ElementSaver {
 						// insert boundary point after the first point
 						points.add(i, clippedPair[0]);
 						++numBoundaryNodesAdded;
-					} else if (clippedPair[0].getOnBoundary())
+					} else if (clippedPair[0].getOnBoundary()) {
 						++numBoundaryNodesDetected;
+					}
 				}
 			}
 		}
@@ -336,18 +342,14 @@ public class ElementSaver {
 		}
 	}
 
-	public void deferRelation(long id, Relation rel, String role) {
-		// The relation may be defined later in the input.
-		// Defer the lookup.
-		Map.Entry<String,Relation> entry =
-				new AbstractMap.SimpleEntry<String,Relation>(role, rel);
-
-		List<Map.Entry<String,Relation>> entries = deferredRelationMap.get(id);
-		if (entries == null) {
-			entries = new ArrayList<Map.Entry<String,Relation>>();
-			deferredRelationMap.put(id, entries);
-		}
-
-		entries.add(entry);
+	/**
+	 * Handle the case that a relation refers to another relation which was not yet found in the input.
+	 * The relation may be defined later in the input. Defer the lookup.
+	 * @param id the id of the not yet known relation 
+	 * @param parentRel the parent relation
+	 * @param role the role of the not yet known relation in the parent relation
+	 */
+	public void deferRelation(long id, Relation parentRel, String role) {
+		deferredRelationMap.add(id, new AbstractMap.SimpleEntry<>(role, parentRel));
 	}
 }
