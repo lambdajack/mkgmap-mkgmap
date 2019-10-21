@@ -1782,7 +1782,7 @@ public class HousenumberGenerator {
 		}
 		
 		public List<RoadPoint> getCLoseRoadPoints(HousenumberElem house){
-			Set<RoadPoint> closeRoadPoints = kdTree.findNextPoint(house, kdSearchRange);
+			Set<RoadPoint> closeRoadPoints = kdTree.findClosePoints(house, kdSearchRange);
 			List<RoadPoint> result = new ArrayList<>();
 			for (RoadPoint rp : closeRoadPoints){
 				int id = rp.p.getId();

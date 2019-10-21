@@ -15,6 +15,7 @@ package uk.me.parabola.util;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
+
 import uk.me.parabola.imgfmt.app.Coord;
 
 
@@ -62,7 +63,7 @@ public class KdTree <T extends Locatable> {
 
 	
 	/**
-	 * Start the add action with the root
+	 * Add a point to the tree.
 	 * @param toAdd
 	 */
 	public void add(T toAdd) {
@@ -87,112 +88,101 @@ public class KdTree <T extends Locatable> {
 	}
 	
 	/**
-	 * Recursive routine to find the right place for inserting 
-	 * into the tree.  
-	 * @param toAdd the point
+	 * Recursive routine to find the right place for inserting a point into the tree.  
+	 * @param toAdd the point to add
 	 * @param tree the subtree root node where to add (maybe <code>null</code>)
 	 * @param useLongitude <code>true</code> the tree node uses longitude for comparison; 
 	 * 		<code>false</code> the tree node uses latitude for comparison
 	 * @return the subtree root node after insertion
 	 */
-    private KdNode add( T toAdd, KdNode tree,  boolean useLongitude){
-        if( tree == null ) {
-            tree = new KdNode( toAdd );
-        } else {
-        	if(isSmaller(useLongitude, toAdd.getLocation(), tree.point.getLocation())) {
-        		tree.left = add(toAdd, tree.left, !useLongitude);
-        	} else {
-        		tree.right = add(toAdd, tree.right, !useLongitude);
-        	}
-        }
-        return tree;
-    }
+	private KdNode add(T toAdd, KdNode tree, boolean useLongitude) {
+		if (tree == null) {
+			tree = new KdNode(toAdd);
+		} else {
+			if (isSmaller(useLongitude, toAdd.getLocation(), tree.point.getLocation())) {
+				tree.left = add(toAdd, tree.left, !useLongitude);
+			} else {
+				tree.right = add(toAdd, tree.right, !useLongitude);
+			}
+		}
+		return tree;
+	}
     
 	/**
 	 * Searches for the point that has smallest distance to the given point.
-	 * @param p the point to search for
+	 * @param p the given point
 	 * @return the point with shortest distance to <var>p</var>
 	 */
 	public T findNextPoint(Locatable p) {
 		// reset 
 		minDist = Double.MAX_VALUE;
-		maxDist = -1;
+		maxDist = -1; 
 		set = null;
 		nextPoint = null;
 		
 		// false => first node is a latitude level
-		return findNextPoint(p, root, ROOT_NODE_USES_LONGITUDE);
+		return findNextPoint(p.getLocation(), root, ROOT_NODE_USES_LONGITUDE);
 	}
 
 	/**
-	 * Searches for the point that has smallest distance to the given point.
-	 * @param p the point to search for
-	 * @return the point with shortest distance to <var>p</var>
+	 * Searches for the points that have <var>maxDist</var> distance to the given point.  
+	 * @param p the given point
+	 * @param maxDist the allowed distance
+	 * @return the points within distance <var>maxDist</var> to <var>p</var>
 	 */
-	public Set<T> findNextPoint(Locatable p, double maxDist) {
+	public Set<T> findClosePoints(Locatable p, double maxDist) {
 		// reset 
 		minDist = Double.MAX_VALUE;
 		this.maxDist = Math.pow(maxDist * 360 / Coord.U, 2); // convert maxDist in meter to distanceInDegreesSquared
 		nextPoint = null;
-		this.set = new LinkedHashSet<>();
+		set = new LinkedHashSet<>();
 		// false => first node is a latitude level
-		findNextPoint(p, root, ROOT_NODE_USES_LONGITUDE);
+		findNextPoint(p.getLocation(), root, ROOT_NODE_USES_LONGITUDE);
 		return set;
 	}
 
-	private T findNextPoint(Locatable p, KdNode tree, boolean useLongitude) {
-		boolean continueWithLeft = false;
+	/**
+	 * Recursive routine to find the closest point. If set is not null, all
+	 * elements within the range given by maxDist are collected.
+	 * 
+	 * @param p the location of the given point
+	 * @param tree the sub tree
+	 * @param useLongitude gives the dimension to search in
+	 * @return the closest point
+	 */
+	private T findNextPoint(Coord p, KdNode tree, boolean useLongitude) {
 		if (tree == null)
 			return nextPoint;
 		
-		if (tree.left == null && tree.right == null){
-			double dist = tree.point.getLocation().distanceInDegreesSquared(p.getLocation());
-			if (dist <= maxDist && set != null){
-				set.add(tree.point);
-			}
-			if (dist < minDist){
-				nextPoint = tree.point;
-				if (dist < maxDist)
-					minDist = maxDist;
-				else
-					minDist = dist;
-			}
+		boolean smaller;
+		
+		if (tree.left == null && tree.right == null) {
+			processNode(tree, p);
 			return nextPoint;
 		}
-		else {
-			if (isSmaller(useLongitude, p.getLocation(), tree.point.getLocation())){
-				continueWithLeft = false;
-				nextPoint = findNextPoint(p, tree.left, !useLongitude);
-			}
-			else {
-				continueWithLeft = true;
-				nextPoint = findNextPoint(p, tree.right, !useLongitude);
-			}
-		}
-		
-		double dist = tree.point.getLocation().distanceInDegreesSquared(p.getLocation());
-		if (dist <= maxDist && set != null)
-			set.add(tree.point);
-		if (dist < minDist){
-			nextPoint = tree.point;
-			minDist = dist;
-			if (dist < maxDist)
-				minDist = maxDist;
-			else
-				minDist = dist;
-		} 		
+		smaller = isSmaller(useLongitude, p, tree.point.getLocation());
+		nextPoint = findNextPoint(p, smaller ? tree.left : tree.right, !useLongitude);
+
+		processNode(tree, p);
 		// do we have to search the other part of the tree?
-		Coord test;
-		if (useLongitude)
-			test = Coord.makeHighPrecCoord(p.getLocation().getHighPrecLat(), tree.point.getLocation().getHighPrecLon());
-		else
-			test = Coord.makeHighPrecCoord(tree.point.getLocation().getHighPrecLat(), p.getLocation().getHighPrecLon());
-		if (test.distanceInDegreesSquared(p.getLocation()) < minDist){
-			if (continueWithLeft) 
-				nextPoint = findNextPoint(p, tree.left, !useLongitude);
-			else
-				nextPoint = findNextPoint(p, tree.right, !useLongitude);
+		int testLat = useLongitude ? p.getHighPrecLat() : tree.point.getLocation().getHighPrecLat();
+		int testLon =  useLongitude ? tree.point.getLocation().getHighPrecLon() : p.getHighPrecLon();
+		Coord test = Coord.makeHighPrecCoord(testLat, testLon);
+		if (test.distanceInDegreesSquared(p) < minDist) {
+			nextPoint = findNextPoint(p, smaller ? tree.right : tree.left, !useLongitude);
 		}
 		return nextPoint;
+	}
+	
+	private void processNode(KdNode node, Coord p) {
+		double dist = node.point.getLocation().distanceInDegreesSquared(p);
+		if (dist <= maxDist && set != null) {
+			// node is within wanted range
+			set.add(node.point);
+		}
+		if (dist < minDist) {
+			nextPoint = node.point;
+			minDist = dist < maxDist ? maxDist : dist;
+		}
 	}
 } 

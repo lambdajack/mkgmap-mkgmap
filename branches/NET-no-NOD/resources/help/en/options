@@ -261,6 +261,8 @@ Address search options:
 	the addr:street tag value of the house number node.
 	If the street is not given with addr:housenumber, mkgmap uses heuristics
 	to find the best match.
+	Tells mkgmap to write NET data. If you specify this option, you do not need
+	to specify --net and option -no-net is ignored.
 
 Overview map options:
 --overview-mapname=name
@@ -515,14 +517,14 @@ Miscellaneous options:
 	will ask you to try a value for this option.
 
 --net
-	Tells mkgmap to write NET data, which is needed for address search  
-	and routing. Use this option if you want full address search, but do
-	not need a map that supports routing.
+	Tells mkgmap to write NET data, which is needed for address search
+	and routing. Use this option if you want address search, but do
+	not need a map that supports routing or house number search.
 
 --route
 	Tells mkgmap to write NET and NOD data, which are needed in maps 
 	that support routing. If you specify this option, you do not need
-	to specify --net.
+	to specify --net and option -no-net is ignored.
 
 --drive-on=left|right|detect|detect,left|detect,right
 	Explicitly specify which side of the road vehicles are
