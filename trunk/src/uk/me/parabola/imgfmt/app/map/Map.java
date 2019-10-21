@@ -121,11 +121,11 @@ public class Map implements InternalFiles, Configurable {
 		// we don't want routing info in the overview map (for now)
 		if (!OverviewBuilder.isOverviewImg(mapName)){
 			try {
+				if (props.containsKey("route") || props.containsKey("net") || props.containsKey("housenumbers")) {
+					addNet();
+				} 
 				if (props.containsKey("route")) {
-					addNet();
 					addNod();
-				} else if (props.containsKey("net")) {
-					addNet();
 				} 
 			} catch (FileExistsException e) {
 				log.warn("Could not add NET and/or NOD sections");
