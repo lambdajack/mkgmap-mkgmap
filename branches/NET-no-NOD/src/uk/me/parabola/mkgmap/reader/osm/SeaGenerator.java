@@ -759,8 +759,7 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 			if (w.hasIdenticalEndPoints()) {
 				joined.add(w);
 			} else if (w.getPoints() != null && w.getPoints().size() > 1){
-				List<Coord> points = w.getPoints();
-				beginMap.put(points.get(0), w);
+				beginMap.put(w.getFirstPoint(), w);
 			} else {
 				log.info("Discard coastline way",w.getId(),"because consists of less than 2 points");
 			}
@@ -801,7 +800,7 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 					
 					if (wm.hasIdenticalEndPoints()) {
 						joined.add(wm);
-						beginMap.remove(wm.getPoints().get(0));
+						beginMap.remove(wm.getFirstPoint());
 					}
 					break;
 				}
@@ -933,7 +932,7 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 						assert seaRelation != null;
 						seaRelation.addElement("inner", ai);
 					} 
-					log.warn("Converting anti-island starting at", ai.getPoints().get(0).toOSMURL() , "into an island as it is surrounded by water");
+					log.warn("Converting anti-island starting at", ai.getFirstPoint().toOSMURL() , "into an island as it is surrounded by water");
 				}
 			}
 
@@ -952,7 +951,7 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 					se.getLongitude() + 1));
 			sea.addPoint(new Coord(ne.getLatitude() - 1,
 					ne.getLongitude() + 1));
-			sea.addPoint(sea.getPoints().get(0)); // close shape
+			sea.addPoint(sea.getFirstPoint()); // close shape
 			sea.addTag("natural", "sea");
 			sea.setFullArea(SEA_SIZE);
 
@@ -1072,7 +1071,7 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 					log.info("adding:", segment);
 					for(Coord p : segment.getPoints())
 						w.addPointIfNotEqualToLastPoint(p);
-					hNext = getEdgeHit(seaBounds, segment.getPoints().get(segment.getPoints().size()-1));
+					hNext = getEdgeHit(seaBounds, segment.getLastPoint());
 				} else {
 					w.addPointIfNotEqualToLastPoint(hit.getPoint(seaBounds));
 					hNext = hits.higher(hit);
@@ -1110,7 +1109,7 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 			} while (!hits.isEmpty() && !hit.equals(hFirst));
 
 			if (!w.hasIdenticalEndPoints())
-				w.addPoint(w.getPoints().get(0)); // close shape
+				w.addPoint(w.getFirstPoint()); // close shape
 			log.info("adding non-island landmass, hits.size()=" + hits.size());
 			islands.add(w);
 			shorelineReachesBoundary = true;
@@ -1416,7 +1415,7 @@ public class SeaGenerator extends OsmReadingHooksAdaptor {
 					if(w1.hasIdenticalEndPoints())
 						continue;
 					List<Coord> points1 = w1.getPoints();
-					Coord w1e = points1.get(points1.size() - 1);
+					Coord w1e = w1.getLastPoint();
 					if(bounds.onBoundary(w1e))
 						continue;
 					Way nearest = null;

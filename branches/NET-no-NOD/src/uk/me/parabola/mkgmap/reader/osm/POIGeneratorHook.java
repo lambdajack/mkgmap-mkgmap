@@ -287,16 +287,16 @@ public class POIGeneratorHook extends OsmReadingHooksAdaptor {
 			prevC = c;
 		}
 		
-		Node startNode = createPOI(line, line.getPoints().get(0), LINE2POI_TAG, sumDist);
+		Node startNode = createPOI(line, line.getFirstPoint(), LINE2POI_TAG, sumDist);
 		startNode.addTag(LINE2POI_TYPE_TAG,"start");
 		saver.addNode(startNode);
 
-		Node endNode = createPOI(line, line.getPoints().get(line.getPoints().size()-1), LINE2POI_TAG, sumDist);
+		Node endNode = createPOI(line, line.getLastPoint(), LINE2POI_TAG, sumDist);
 		endNode.addTag(LINE2POI_TYPE_TAG,"end");
 		saver.addNode(endNode);
 
 		int noPOIs = 2;
-		Coord lastPoint = line.getPoints().get(0);
+		Coord lastPoint = line.getFirstPoint();
 		if (line.getPoints().size() > 2) {
 			for (Coord inPoint : line.getPoints().subList(1, line.getPoints().size()-1)) {
 				if (inPoint.equals(lastPoint)){

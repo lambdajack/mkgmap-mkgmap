@@ -35,7 +35,7 @@ public class POIIndex {
 		this.name = name;
 		this.poiIndex = poiIndex;
 		this.group = group;
-		this.subType = subType;
+		this.subType = subType & 0xff;
 	}
 
 	void write(ImgFileWriter writer) {

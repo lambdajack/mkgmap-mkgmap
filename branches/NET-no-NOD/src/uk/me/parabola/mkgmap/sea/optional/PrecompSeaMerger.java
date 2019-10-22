@@ -172,7 +172,7 @@ class PrecompSeaMerger implements Runnable {
 			seaWay.addPoint(new Coord(90.0d, -180.0d));
 			seaWay.addPoint(new Coord(90.0d, 180.0d));
 			seaWay.addPoint(new Coord(-90.0d, 180.0d));
-			seaWay.addPoint(seaWay.getPoints().get(0)); // close shape
+			seaWay.addPoint(seaWay.getFirstPoint()); // close shape
 			seaWay.setClosedInOSM(true);
 			landWays.put(seaWay.getId(), seaWay);
 

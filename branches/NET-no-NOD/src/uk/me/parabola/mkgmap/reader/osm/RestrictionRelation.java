@@ -203,11 +203,11 @@ public class RestrictionRelation extends Relation {
 			if(viaCoord != null)
 				location = viaCoord;
 			else if(!fromWays.isEmpty() && !fromWays.get(0).getPoints().isEmpty())
-				location = fromWays.get(0).getPoints().get(0);
+				location = fromWays.get(0).getFirstPoint();
 			else if(!toWays.isEmpty() && !toWays.get(0).getPoints().isEmpty())
-				location = toWays.get(0).getPoints().get(0);
+				location = toWays.get(0).getFirstPoint();
 			else if(!viaWays.isEmpty() && !viaWays.get(0).getPoints().isEmpty())
-				location = viaWays.get(0).getPoints().get(0);
+				location = viaWays.get(0).getFirstPoint();
 
 			if(location != null)
 				messagePrefix = "Turn restriction (" + restriction + ") " + browseURL + " (at " + location.toOSMURL() + ")";
@@ -329,7 +329,7 @@ public class RestrictionRelation extends Relation {
 					log.warn(messagePrefix,"way",way.toBrowseURL(),"has less than 2 points, restriction is ignored");
 					valid = false;
 				} else {
-					if (way.getPoints().get(0) == way.getPoints().get(way.getPoints().size()-1)){
+					if (way.hasIdenticalEndPoints()){
 						if (ways == toWays && dirIndicator != '?')
 							continue; // we try to determine the correct part in RoadNetwork 
 						log.warn(messagePrefix, "way", way.toBrowseURL(), "starts and ends at same node, don't know which one to use");
@@ -352,13 +352,13 @@ public class RestrictionRelation extends Relation {
 		Coord v1 = viaCoord;
 		Coord v2 = viaCoord;
 		if (viaWays.isEmpty() == false){
-			v1 = viaWays.get(0).getPoints().get(0);
-			v2 = viaWays.get(0).getPoints().get(viaWays.get(0).getPoints().size()-1);
+			v1 = viaWays.get(0).getFirstPoint();
+			v2 = viaWays.get(0).getLastPoint();
 		}
 		// check if all from ways are connected at the given via point or with the given via ways
 		for (Way fromWay : fromWays){
-			Coord e1 = fromWay.getPoints().get(0);
-			Coord e2 = fromWay.getPoints().get(fromWay.getPoints().size() - 1);
+			Coord e1 = fromWay.getFirstPoint();
+			Coord e2 = fromWay.getLastPoint();
 			if (e1 == v1 || e2 == v1)
 				viaCoord = v1;
 			else if (e1 == v2 || e2 == v2)
@@ -375,10 +375,10 @@ public class RestrictionRelation extends Relation {
 		for (int i = 0; i < viaWays.size();i++){
 			Way way = viaWays.get(i);
 			Coord v = viaPoints.get(viaPoints.size()-1);
-			if (way.getPoints().get(0) == v)
-				v2 = way.getPoints().get(way.getPoints().size()-1);
-			else if (way.getPoints().get(way.getPoints().size()-1) == v)
-				v2 = way.getPoints().get(0);
+			if (way.getFirstPoint() == v)
+				v2 = way.getLastPoint();
+			else if (way.getLastPoint() == v)
+				v2 = way.getFirstPoint();
 			else {
 				log.warn(messagePrefix, "'via' way", way.toBrowseURL(), "doesn't start or end at",v.toDegreeString());
 				valid = false;
@@ -404,8 +404,8 @@ public class RestrictionRelation extends Relation {
 		// check if all to ways are connected to via point or last via way
 		Coord lastVia = viaPoints.get(viaPoints.size()-1);
 		for (Way toWay : toWays){
-			Coord e1 = toWay.getPoints().get(0);
-			Coord e2 = toWay.getPoints().get(toWay.getPoints().size() - 1);
+			Coord e1 = toWay.getFirstPoint();
+			Coord e2 = toWay.getLastPoint();
 			if(e1 != lastVia && e2 != lastVia) {
 				log.warn(messagePrefix, "'to' way", toWay.toBrowseURL(), "doesn't start or end at 'via' node or way");
 				valid = false;

@@ -13,7 +13,6 @@
 package uk.me.parabola.imgfmt.app.mdr;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
@@ -26,7 +25,7 @@ import uk.me.parabola.imgfmt.app.srt.SortKey;
  * @author Steve Ratcliffe
  */
 public class Mdr23 extends MdrSection {
-	private final List<Mdr13Record> regions = new ArrayList<Mdr13Record>();
+	private final List<Mdr13Record> regions = new ArrayList<>();
 
 	public Mdr23(MdrConfig config) {
 		setConfig(config);
@@ -39,7 +38,6 @@ public class Mdr23 extends MdrSection {
 	public void sortRegions(List<Mdr13Record> list) {
 		Sort sort = getConfig().getSort();
 		List<SortKey<Mdr13Record>> keys = MdrUtils.sortList(sort, list);
-		Collections.sort(keys);
 
 		String lastName = null;
 		int lastMapIndex = 0;

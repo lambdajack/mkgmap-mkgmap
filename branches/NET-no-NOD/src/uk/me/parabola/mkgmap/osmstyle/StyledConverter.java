@@ -346,9 +346,9 @@ public class StyledConverter implements OsmConverter {
 			rules = polygonRules;
 		else {
 			if (way.isClosedInOSM() && !way.isComplete() && !way.hasIdenticalEndPoints())
-				way.getPoints().add(way.getPoints().get(0));
+				way.getPoints().add(way.getFirstPoint());
 			
-			if (way.hasIdenticalEndPoints() == false || way.getPoints().size() < 4)
+			if (!way.hasIdenticalEndPoints() || way.getPoints().size() < 4)
 				rules = lineRules;
 			else
 				rules = wayRules;
@@ -463,7 +463,7 @@ public class StyledConverter implements OsmConverter {
 			}
 			if (cw.isRoundabout()) {
 				if (wasReversed)
-					log.warn("Roundabout", way.getId(), "has reverse oneway tag (" + way.getPoints().get(0).toOSMURL() + ")");
+					log.warn("Roundabout", way.getId(), "has reverse oneway tag (" + way.getFirstPoint().toOSMURL() + ")");
 			}
 			lastRoadId = way.getId();
 		}
@@ -661,7 +661,7 @@ public class StyledConverter implements OsmConverter {
 				continue;
 			
 			// the bounding box of the road intersects with one or more bounding boxes of borders
-			Coord pw1 = way.getPoints().get(0);
+			Coord pw1 = way.getFirstPoint();
 			int pos = 1;
 			while (pos < way.getPoints().size()) {
 				boolean changed = false;
@@ -1971,11 +1971,7 @@ public class StyledConverter implements OsmConverter {
 	 * @return true if fixme flag was found
 	 */
 	private static boolean checkFixmeCoords(Way way) {
-		if (way.getPoints().get(0).isFixme())
-			return true;
-		if (way.getPoints().get(way.getPoints().size()-1).isFixme())
-			return true;
-		return false;
+		return way.getFirstPoint().isFixme() || way.getLastPoint().isFixme();
 	}
 
 	/**

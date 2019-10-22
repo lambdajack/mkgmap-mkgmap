@@ -186,25 +186,22 @@ public class MultiPolygonRelation extends Relation {
 		boolean joinable = false;
 		
 		// use == or equals as comparator??
-		if (joinWay.getPoints().get(0) == tempWay.getPoints().get(0)) {
+		if (joinWay.getFirstPoint() == tempWay.getFirstPoint()) {
 			insIdx = 0;
 			reverseTempWay = true;
 			firstTmpIdx = 1;
 			joinable = true;
-		} else if (joinWay.getPoints().get(joinWay.getPoints().size() - 1) == tempWay
-				.getPoints().get(0)) {
+		} else if (joinWay.getLastPoint() == tempWay.getFirstPoint()) {
 			insIdx = joinWay.getPoints().size();
 			reverseTempWay = false;
 			firstTmpIdx = 1;
 			joinable = true;
-		} else if (joinWay.getPoints().get(0) == tempWay.getPoints().get(
-				tempWay.getPoints().size() - 1)) {
+		} else if (joinWay.getFirstPoint() == tempWay.getLastPoint()) {
 			insIdx = 0; 
 			reverseTempWay = false;
 			firstTmpIdx = 0;
 			joinable = true;
-		} else if (joinWay.getPoints().get(joinWay.getPoints().size() - 1) == tempWay
-				.getPoints().get(tempWay.getPoints().size() - 1)) {
+		} else if (joinWay.getLastPoint() == tempWay.getLastPoint()) {
 			insIdx = joinWay.getPoints().size();
 			reverseTempWay = true;
 			firstTmpIdx = 0;
@@ -384,8 +381,8 @@ public class MultiPolygonRelation extends Relation {
 			if (way.hasIdenticalEndPoints() || way.getPoints().size() < 3) {
 				continue;
 			}
-			Coord p1 = way.getPoints().get(0);
-			Coord p2 = way.getPoints().get(way.getPoints().size() - 1);
+			Coord p1 = way.getFirstPoint();
+			Coord p2 = way.getLastPoint();
 
 			if (tileBounds.insideBoundary(p1) == false
 					&& tileBounds.insideBoundary(p2) == false) {
@@ -438,14 +435,15 @@ public class MultiPolygonRelation extends Relation {
 				boolean doClose = true;
 				if (maxCloseDist > 0) {
 					// calc the distance to close
-					double closeDist = way.getPoints().get(0).distance(way.getPoints().get(way.getPoints().size()-1));
+					double closeDist = way.getFirstPoint().distance(way.getLastPoint());
 					doClose = closeDist < maxCloseDist;
 				}
 				if (doClose) {
-					log.info("Closing way", way);
-					log.info("from", way.getPoints().get(0).toOSMURL());
-					log.info("to", way.getPoints().get(way.getPoints().size() - 1)
-							.toOSMURL());
+					if (log.isInfoEnabled()) {
+						log.info("Closing way", way);
+						log.info("from", way.getFirstPoint().toOSMURL());
+						log.info("to", way.getLastPoint().toOSMURL());
+					}
 					// mark this ways as artificially closed
 					way.closeWayArtificially();
 				}
@@ -483,8 +481,8 @@ public class MultiPolygonRelation extends Relation {
 			
 			// check all ways for endpoints outside or on the bbox
 			for (JoinedWay w : unclosed) {
-				Coord c1 = w.getPoints().get(0);
-				Coord c2 = w.getPoints().get(w.getPoints().size()-1);
+				Coord c1 = w.getFirstPoint();
+				Coord c2 = w.getLastPoint();
 				if (tileBounds.insideBoundary(c1)==false) {
 					log.debug("Point",c1,"of way",w.getId(),"outside bbox");
 					outOfBboxPoints.put(c1, w);
@@ -564,10 +562,10 @@ public class MultiPolygonRelation extends Relation {
 				} else {
 					log.debug("Connect", minCon.w1, "with", minCon.w2);
 
-					if (minCon.w1.getPoints().get(0) == minCon.c1) {
+					if (minCon.w1.getFirstPoint() == minCon.c1) {
 						Collections.reverse(minCon.w1.getPoints());
 					}
-					if (minCon.w2.getPoints().get(0) != minCon.c2) {
+					if (minCon.w2.getFirstPoint() != minCon.c2) {
 						Collections.reverse(minCon.w2.getPoints());
 					}
 
@@ -1846,13 +1844,13 @@ public class MultiPolygonRelation extends Relation {
 		
 		for (Way orgWay : fakeWay.getOriginalWays()) {
 			log.log(logLevel, " Way",orgWay.getId(),"is composed of other artificial ways. Details:");
-			log.log(logLevel, "  Start:",orgWay.getPoints().get(0).toOSMURL());
+			log.log(logLevel, "  Start:",orgWay.getFirstPoint().toOSMURL());
 			if (orgWay.hasEqualEndPoints()) {
 				// the way is closed so start and end are equal - log the point in the middle of the way
 				int mid = orgWay.getPoints().size()/2;
 				log.log(logLevel, "  Mid:  ",orgWay.getPoints().get(mid).toOSMURL());
 			} else {
-				log.log(logLevel, "  End:  ",orgWay.getPoints().get(orgWay.getPoints().size()-1).toOSMURL());
+				log.log(logLevel, "  End:  ",orgWay.getLastPoint().toOSMURL());
 			}
 		}		
 	}
@@ -2026,7 +2024,7 @@ public class MultiPolygonRelation extends Relation {
 			addWay(originalWay);
 
 			// we have to initialize the min/max values
-			Coord c0 = originalWay.getPoints().get(0);
+			Coord c0 = originalWay.getFirstPoint();
 			minLat = maxLat = c0.getLatitude();
 			minLon = maxLon = c0.getLongitude();
 

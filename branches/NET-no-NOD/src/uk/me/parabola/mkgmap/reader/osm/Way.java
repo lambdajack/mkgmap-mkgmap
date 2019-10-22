@@ -50,15 +50,16 @@ public class Way extends Element {
 	private boolean isViaWay;
 
 	public Way(long id) {
-		points = new ArrayList<Coord>(5);
+		points = new ArrayList<>(5);
 		setId(id);
 	}
 
 	public Way(long id, List<Coord> points) {
-		this.points = new ArrayList<Coord>(points);
+		this.points = new ArrayList<>(points);
 		setId(id);
 	}
 
+	@Override
 	public Way copy() {
 		Way dup = new Way(getId(), points);
 		dup.copyIds(this);
@@ -78,6 +79,20 @@ public class Way extends Element {
 	 */
 	public List<Coord> getPoints() {
 		return points;
+	}
+
+	/**
+	 * @return first point or null if points is empty
+	 */
+	public Coord getFirstPoint() {
+		return points.isEmpty() ? null:points.get(0);
+	}
+
+	/**
+	 * @return last point or null if points is empty
+	 */
+	public Coord getLastPoint() {
+		return points.isEmpty() ? null:points.get(points.size() - 1);
 	}
 
 	public void addPoint(Coord co) {
@@ -207,6 +222,7 @@ public class Way extends Element {
 		return Coord.makeHighPrecCoord((int)Math.round(lat), (int)Math.round(lon));
 	}
 
+	@Override
 	public String kind() {
 		return "way";
 	}
@@ -272,5 +288,4 @@ public class Way extends Element {
 		}
 		return this.fullArea;
 	}
-
 }
