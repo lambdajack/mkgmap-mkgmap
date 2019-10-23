@@ -265,6 +265,13 @@ public class RouteNode implements Comparable<RouteNode> {
 	public void discard() {
 		// mark the node as having been discarded
 		flags |= F_DISCARDED;
+		if (isBoundary()) {
+			log.error("intermal error? boundary node at",coord.toDegreeString(), "is discarded");
+		}
+	}
+
+	public boolean isDiscarded() {
+		return (flags &  F_DISCARDED) != 0;
 	}
 
 	public int getOffsetNod1() {

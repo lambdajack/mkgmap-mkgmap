@@ -20,9 +20,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -34,6 +34,7 @@ import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.CoordNode;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.util.EnhancedProperties;
+import uk.me.parabola.util.MultiHashMap;
 
 /**
  * This holds the road network.  That is all the roads and the nodes
@@ -191,7 +192,7 @@ public class RoadNetwork {
 				arc.setReverseArc(reverseArc);
 				reverseArc.setReverseArc(arc);
 			} else {
-				// This is the first node in the road
+				// This is the first routing node in the road, maybe not the first node
 				roadDef.setNode(getOrAddNode(id, co));
 			}
 
@@ -265,7 +266,12 @@ public class RoadNetwork {
 		return centers;
 	}
 
+	/**
+	 * report routing islands and maybe remove them from NOD.  
+	 */
 	private void checkRoutingIslands() {
+		if (maxSumRoadLenghts < 0)
+			return;
 		long t1 = System.currentTimeMillis();
 		final int visitId = 1;
 
@@ -281,58 +287,70 @@ public class RoadNetwork {
 				}
 			}
 		}
+		long t2 = System.currentTimeMillis();
+		log.error("search for routing islands found", islands.size(), "islands in", (t2 - t1), "ms");
 		if (!islands.isEmpty()) {
-			log.error("check for routing islands found", islands.size(), "islands");
+			/** index : maps first node in road to the road */
+			MultiHashMap<RouteNode, RoadDef> nodeToRoadMap = new MultiHashMap<>();
+			roadDefs.forEach(rd -> {
+				if (rd.getNode() != null) {
+					nodeToRoadMap.add(rd.getNode(), rd);
+				}
+			});
 			
+			boolean cleanNodes = false;
 			for (List<RouteNode> island : islands) {
 				// compute size of island as sum of road lengths
-				double sumOfRoadLenghts = calcIslandSize(island);
-				log.error("routing island with ", island.size(), "routing node(s) at",
-						island.get(0).getCoord().toDegreeString(), "has length",Math.round(sumOfRoadLenghts), "m");
+				Set<RoadDef> visitedRoads = new HashSet<>();
+				double sumOfRoadLenghts = calcIslandSize(island, nodeToRoadMap, visitedRoads);
+				//TODO: change severity to warning 
+				log.error("routing island at", island.get(0).getCoord().toDegreeString(), "with", island.size(),
+						"routing node(s) and total length of",
+						Math.round(sumOfRoadLenghts), "m");
 				if (sumOfRoadLenghts < maxSumRoadLenghts) {
-					// remove NOD data for the routing islands
-					Iterator<Entry<Integer, RouteNode>> iter = nodes.entrySet().iterator();
-					while(iter.hasNext()) {
-						Entry<Integer, RouteNode> n = iter.next();
-						if (island.contains(n.getValue())) {
-							iter.remove();
-						}
-					}
-					for (RoadDef roadDef : roadDefs) {
-						if (island.contains(roadDef.getNode())) {
-							roadDef.skipAddToNOD(true);
-						}
-					}
+					// set discarded flag for all nodes of the island 
+					island.forEach(RouteNode::discard);
+					visitedRoads.forEach(rd -> rd.skipAddToNOD(true));
+					cleanNodes = true;
 				}
 			}
+			
+			if (cleanNodes) {
+				// remove discarded nodes from map nodes
+				nodes.values().removeIf(RouteNode::isDiscarded);
+			}
 		}
-		long dt = System.currentTimeMillis() - t1;
-		log.error("routing island check took", dt, "ms");
+		long t3 = System.currentTimeMillis();
+		//TODO: change severity to info
+		if (maxSumRoadLenghts > 0) {
+			log.error("routing island removal took", (t3-t2), "ms");
+		}
 	}
 
 	/**
 	 * Calculate sum of road lengths for the routing island described by the routing nodes.
-	 * @param routeNodes the nodes that form the island
-	 * @param maxLength the threshold value
+	 * @param islandNodes the nodes that form the island
+	 * @param nodeToRoadMap maps first routing node in RoadDef to RoadDef 
+	 * @param visitedRoads set that will be filled with the roads seen in this island 
 	 * @return the sum of lengths in meters
 	 */
-	private double calcIslandSize(Collection<RouteNode> routeNodes) {
-		final Set<RoadDef> set = new LinkedHashSet<>();
+	private double calcIslandSize(Collection<RouteNode> islandNodes, MultiHashMap<RouteNode, RoadDef> nodeToRoadMap,
+			Set<RoadDef> visitedRoads) {
 		double sumLen = 0;
-		for (RouteNode node : routeNodes) {
+		for (RouteNode node : islandNodes) {
 			for (RouteArc arc : node.getArcs()) {
-				RoadDef rd = arc.getRoadDef();
-				if (set.add(rd)) {
-					sumLen += rd.getLenInMeter();
+				if (arc.isDirect() && arc.isForward()) {
+					visitedRoads.add(arc.getRoadDef());
 				}
 			}
-		}
-		// we also have to check the first node of a each road, there might be no arc for it
-		for (RoadDef rd : roadDefs) {
-			if (routeNodes.contains(rd.getNode()) && set.add(rd)) {
-				// the road is connected to the island
-				sumLen += rd.getLenInMeter();
+			// we also have to check the first node of a each road, there might
+			// be no arc for it in the node
+			for (RoadDef rd : nodeToRoadMap.get(node)) {
+				visitedRoads.add(rd);
 			}
+		}
+		for (RoadDef rd : visitedRoads) {
+			sumLen += rd.getLenInMeter();
 		}
 		return sumLen;
 	}
