@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import uk.me.parabola.imgfmt.app.Coord;
-import uk.me.parabola.imgfmt.app.CoordNode;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.CityInfo;
 import uk.me.parabola.mkgmap.general.MapRoad;
@@ -112,12 +111,8 @@ public class HousenumberRoad {
 		int prevNodePos = 0;
 		extNumbersHead = null;
 		ExtNumbers currNumbers = null;
+		assert road.getPoints().get(0).isNumberNode(); 
 		for (Coord p : road.getPoints()) {
-			if (currNodePos == 0) {
-				if (road.skipAddToNOD() == false)
-					assert p.isNumberNode(); 
-			}
-
 			// An ordinary point in the road.
 			if (p.isNumberNode() == false) {
 				currNodePos++;

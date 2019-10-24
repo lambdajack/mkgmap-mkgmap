@@ -464,12 +464,10 @@ public class HousenumberGenerator {
 					}
 				} 
 				road.getPoints().get(0).setNumberNode(true);
-				road.getPoints().get(road.getPoints().size() - 1).setNumberNode(true);
 				firstRoadSameOSMWay = road;
 				String name = road.getStreet(); 
-				if (name != null) {
-					if (log.isDebugEnabled())
-						log.debug("Housenumber - Streetname:", name, "Way:",osmRoad.getId(),osmRoad.toTagString());
+				if (name != null && log.isDebugEnabled()) {
+					log.debug("Housenumber - Streetname:", name, "Way:",osmRoad.getId(),osmRoad.toTagString());
 				}
 			}
 		} 
