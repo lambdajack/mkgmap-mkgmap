@@ -133,7 +133,6 @@ public class StyledConverter implements OsmConverter {
 	private HashMap<Long, ConvertedWay> modifiedRoads = new HashMap<>();
 	private HashSet<Long> deletedRoads = new HashSet<>();
 
-	private int nextNodeId = 1;
 	private int nextRoadId = 1;
 	
 	private HousenumberGenerator housenumberGenerator;
@@ -158,7 +157,6 @@ public class StyledConverter implements OsmConverter {
 	private final boolean linkPOIsToWays;
 	private final boolean mergeRoads;
 	private final boolean routable;
-	private final boolean allRoadsToNod;
 	private final Tags styleOptionTags;
 	private final static String STYLE_OPTION_PREF = "mkgmap:option:";
 	private final PrefixSuffixFilter prefixSuffixFilter;
@@ -223,7 +221,6 @@ public class StyledConverter implements OsmConverter {
 		// undocumented option - usually used for debugging only
 		mergeRoads = props.getProperty("no-mergeroads", false) == false;
 		routable = props.containsKey("route");
-		allRoadsToNod = props.getProperty("all-roads-to-nod", false);
 		String styleOption= props.getProperty("style-option",null);
 		styleOptionTags = parseStyleOption(styleOption);
 		prefixSuffixFilter = new PrefixSuffixFilter(props);
@@ -819,7 +816,7 @@ public class StyledConverter implements OsmConverter {
 			if (cw.isValid())
 				addRoad(cw);
 		}
-		housenumberGenerator.generate(lineAdder, nextNodeId);
+		housenumberGenerator.generate(lineAdder);
 		housenumberGenerator = null;
 		
 		if (routable)
@@ -1717,13 +1714,6 @@ public class StyledConverter implements OsmConverter {
 		Way trailingWay = null;
 		String debugWayName = way.getDebugName();
 
-		if (routable && allRoadsToNod
-				&& points.stream().noneMatch(n -> n.getHighwayCount() > 1 || n.getOnCountryBorder())) {
-			// handle roads without any route node: first node will be route node
-			points.get(0).incHighwayCount();
-			log.error("check: forcing road without connection to be written to NOD", debugWayName, points.get(0).toDegreeString());
-		}
-
 		// collect the Way's nodes and also split the way if any
 		// inter-node arc length becomes excessive
 		double arcLength = 0;
@@ -1817,13 +1807,6 @@ public class StyledConverter implements OsmConverter {
 			}
 			if(p.getHighwayCount() > 1 || (routable && p.getOnCountryBorder())) {
 				// this point is a node connecting highways
-				CoordNode coordNode = nodeIdMap.get(p);
-				if(coordNode == null) {
-					// assign a node id
-					coordNode = new CoordNode(p, nextNodeId++, p.getOnBoundary(), p.getOnCountryBorder());
-					nodeIdMap.put(p, coordNode);
-				}
-				
 				if (p instanceof CoordPOI){
 					// check if this POI should be converted to a route restriction
 					CoordPOI cp = (CoordPOI) p;
@@ -1866,10 +1849,7 @@ public class StyledConverter implements OsmConverter {
 		elementSetup(line, cw.getGType(), way);
 		line.setPoints(points);
 		MapRoad road = new MapRoad(nextRoadId++, way.getId(), line);
-		if (!routable || nodeIndices.isEmpty()) {
-			if (routable) {
-				log.error("check: road without connection is not written to NOD", debugWayName, points.get(0).toDegreeString());
-			}
+		if (!routable) {
 			road.skipAddToNOD(true);
 		}
 		
@@ -1924,6 +1904,11 @@ public class StyledConverter implements OsmConverter {
 		if(cw.isFerry())
 			road.ferry(true);
 
+		if (routable && nodeIndices.isEmpty()) {
+			// this is a road not connected to other roads, make sure that its first node will be a routing node 
+			nodeIndices.add(0);
+		}
+		
 		int numNodes = nodeIndices.size();
 		if (way.isViaWay() && numNodes > 2){
 			List<RestrictionRelation> rrList = wayRelMap.get(way.getId());
@@ -1936,14 +1921,19 @@ public class StyledConverter implements OsmConverter {
 			// replace Coords that are nodes with CoordNodes
 			for(int i = 0; i < numNodes; ++i) {
 				int n = nodeIndices.get(i);
-				Coord coord = points.get(n);
-				CoordNode thisCoordNode = nodeIdMap.get(coord);
-				assert thisCoordNode != null : "Way " + debugWayName + " node " + i + " (point index " + n + ") at " + coord.toOSMURL() + " yields a null coord node";
-				boolean boundary = coord.getOnBoundary() || coord.getOnCountryBorder();
-				if(boundary && log.isInfoEnabled()) {
-					log.info("Way", debugWayName + "'s point #" + n, "at", coord.toOSMURL(), "is a boundary node");
+				Coord p = points.get(n);
+				CoordNode coordNode = nodeIdMap.get(p);
+				if(coordNode == null) {
+					// assign a unique node id > 0
+					int uniqueId = nodeIdMap.size() + 1;
+					coordNode = new CoordNode(p, uniqueId, p.getOnBoundary(), p.getOnCountryBorder());
+					nodeIdMap.put(p, coordNode);
 				}
-				points.set(n, thisCoordNode);
+				
+				if ((p.getOnBoundary() || p.getOnCountryBorder()) && log.isInfoEnabled()) {
+					log.info("Way", debugWayName + "'s point #" + n, "at", p.toOSMURL(), "is a boundary node");
+				}
+				points.set(n, coordNode);
 			}
 		}
 

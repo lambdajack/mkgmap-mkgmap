@@ -610,11 +610,10 @@ public class HousenumberGenerator {
 	
 	
 	/**
-	 * 
-	 * @param adder
-	 * @param naxNodeId the highest nodeId used before
+	 * Calculate number nodes for the collected roads  
+	 * @param adder 
 	 */
-	public void generate(LineAdder adder, int naxNodeId) {
+	public void generate(LineAdder adder) {
 		if (numbersEnabled) {
 			MultiHashMap<MapRoad,HousenumberMatch> initialHousesForRoads = findClosestRoadsToHouse();
 			identifyServiceRoads();
