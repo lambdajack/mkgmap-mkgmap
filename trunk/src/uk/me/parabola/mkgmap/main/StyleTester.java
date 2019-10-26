@@ -37,6 +37,8 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
+import org.xml.sax.SAXException;
+
 import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
@@ -78,8 +80,6 @@ import uk.me.parabola.mkgmap.scan.SyntaxException;
 import uk.me.parabola.mkgmap.scan.Token;
 import uk.me.parabola.mkgmap.scan.TokenScanner;
 import uk.me.parabola.util.EnhancedProperties;
-
-import org.xml.sax.SAXException;
 
 
 /**
@@ -392,7 +392,6 @@ public class StyleTester implements OsmConverter {
 	 */
 	private static List<String> formatResults(String prefix, List<MapElement> lines) {
 		List<String> result = new ArrayList<>();
-		int i = 0;
 		for (MapElement el : lines) {
 			String s;
 			// So we can run against versions that do not have toString() methods
@@ -839,9 +838,6 @@ public class StyleTester implements OsmConverter {
 		public int addRestriction(GeneralRouteRestriction grr) {
 			return 0;
 		}
-
-		public void addThroughRoute(int junctionNodeId, long roadIdA, long roadIdB) {
-		}
 	}
 
 	/**
@@ -881,9 +877,6 @@ public class StyleTester implements OsmConverter {
 
 		public int addRestriction(GeneralRouteRestriction grr) {
 			return 0;
-		}
-
-		public void addThroughRoute(int junctionNodeId, long roadIdA, long roadIdB) {
 		}
 
 		public long getStart() {
