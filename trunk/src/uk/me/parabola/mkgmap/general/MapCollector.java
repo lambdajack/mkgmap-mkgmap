@@ -76,10 +76,5 @@ public interface MapCollector {
 	 * @param exceptMask For exceptions eg. no-left-turn except for buses.
 	 */
 	public int addRestriction(GeneralRouteRestriction grr);
-
-	/**
-	 * Add a through route to the map. 
-	 *
-	 */
-	public void addThroughRoute(int junctionNodeId, long roadIdA, long roadIdB);
 }
+

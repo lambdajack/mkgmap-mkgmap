@@ -130,10 +130,6 @@ public class MapDetails implements MapCollector, MapDataSource {
 		return roadNetwork.addRestriction(grr);
 	}
 
-	public void addThroughRoute(int junctionNodeId, long roadIdA, long roadIdB) {
-		roadNetwork.addThroughRoute(junctionNodeId, roadIdA, roadIdB);
-	}
-
 	/**
 	 * Add the given point to the total bounds for the map.
 	 *
