@@ -700,13 +700,6 @@ public class RoadNetwork {
 		return added;
 	}
 	
-	public void addThroughRoute(int junctionNodeId, long roadIdA, long roadIdB) {
-		RouteNode node = nodes.get(junctionNodeId);
-		assert node != null :  "Can't find node with id " + junctionNodeId;
-
-		node.addThroughRoute(roadIdA, roadIdB);
-	}
-	
 	/**
 	 * Calculate the "angle" between to arcs. The arcs may not be connected.
 	 * We do this by "virtually" moving the toArc so that its source 

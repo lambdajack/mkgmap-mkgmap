@@ -67,7 +67,6 @@ public class RouteNode implements Comparable<RouteNode> {
 	private final CoordNode coord;
 	private int latOff;
 	private int lonOff;
-	private List<RouteArc[]> throughRoutes;
 
 	// contains the maximum of roads this node is on, written with the flags
 	// field. It is also used for the calculation of the destination class on
@@ -683,58 +682,6 @@ public class RouteNode implements Comparable<RouteNode> {
 				}
 			}
 		}
-	}
-
-	public void addThroughRoute(long roadIdA, long roadIdB) {
-		if(throughRoutes == null)
-			throughRoutes = new ArrayList<>();
-		boolean success = false;
-		for(RouteArc arc1 : arcs) {
-			if(arc1.getRoadDef().getId() == roadIdA) {
-				for(RouteArc arc2 : arcs) {
-					if(arc2.getRoadDef().getId() == roadIdB) {
-						throughRoutes.add(new RouteArc[] { arc1.getReverseArc(), arc2 });
-						success = true;
-						break;
-					}
-				}
-			}
-			else if(arc1.getRoadDef().getId() == roadIdB) {
-				for(RouteArc arc2 : arcs) {
-					if(arc2.getRoadDef().getId() == roadIdA) {
-						throughRoutes.add(new RouteArc[] { arc1.getReverseArc(), arc2 });
-						success = true;
-						break;
-					}
-				}
-			}
-		}
-		/*
-		for(RouteArc arc1 : incomingArcs) {
-			if(arc1.getRoadDef().getId() == roadIdA) {
-				for(RouteArc arc2 : arcs) {
-					if(arc2.getRoadDef().getId() == roadIdB) {
-						throughRoutes.add(new RouteArc[] { arc1, arc2 });
-						success = true;
-						break;
-					}
-				}
-			}
-			else if(arc1.getRoadDef().getId() == roadIdB) {
-				for(RouteArc arc2 : arcs) {
-					if(arc2.getRoadDef().getId() == roadIdA) {
-						throughRoutes.add(new RouteArc[] { arc1, arc2 });
-						success = true;
-						break;
-					}
-				}
-			}
-		}
-		*/
-		if(success)
-			log.info("Added through route between ways " + roadIdA + " and " + roadIdB + " at " + coord.toOSMURL());
-		else
-			log.warn("Failed to add through route between ways " + roadIdA + " and " + roadIdB + " at " + coord.toOSMURL() + " - perhaps they don't meet here?");
 	}
 
 	/**

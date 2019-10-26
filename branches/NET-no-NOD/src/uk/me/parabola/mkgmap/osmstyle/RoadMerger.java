@@ -27,10 +27,7 @@ import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.net.AccessTagsAndBits;
 import uk.me.parabola.log.Logger;
-import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.GType;
-import uk.me.parabola.mkgmap.reader.osm.Node;
-import uk.me.parabola.mkgmap.reader.osm.Relation;
 import uk.me.parabola.mkgmap.reader.osm.RestrictionRelation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.util.MultiIdentityHashMap;
@@ -109,40 +106,6 @@ public class RoadMerger {
 		}
 	}
 	
-	private void workoutThroughRoutes(List<Relation> throughRouteRelations) {
-		for (Relation relation : throughRouteRelations) {
-			processThroughRouteRelation(relation);
-		}
-	}
-
-	private void processThroughRouteRelation(Relation relation) {
-		Node node = null;
-		List<Way> ways = new ArrayList<>();
-		for (Map.Entry<String, Element> member : relation.getElements()) {
-			if (member.getValue() instanceof Node) {
-				if (node == null)
-					node = (Node) member.getValue();
-				else
-					log.warn("Through route relation", relation.toBrowseURL(), "has more than 1 node");
-			} else if (member.getValue() instanceof Way) {
-				ways.add((Way) member.getValue());
-			}
-		}
-		
-		String msg = null;
-		if (node == null)
-			msg = "is missing the junction node";
-		else if (ways.size() != 2)
-			msg = "should reference 2 ways that meet at the junction node";
-		
-		if (msg != null) {
-			log.warn("Through route relation", relation.toBrowseURL(), msg); 
-		} else {
-			restrictions.add(node.getLocation(), ways.get(0).getId());
-			restrictions.add(node.getLocation(), ways.get(1).getId());
-		}
-	}
-	
 	private boolean hasRestriction(Coord c, Way w) {
 		if (w.isViaWay())
 			return true;
@@ -200,8 +163,7 @@ public class RoadMerger {
 	 * @param resultingGTypes list for the merged (and not mergeable) GTypes
 	 */
 	public List<ConvertedWay>  merge(List<ConvertedWay> convertedWays,
-			List<RestrictionRelation> restrictions,
-			List<Relation> throughRouteRelations) {
+			List<RestrictionRelation> restrictions) {
 		List<ConvertedWay> result = new ArrayList<>();
 		List<ConvertedWay> roadsToMerge = new ArrayList<>(convertedWays.size());
 		for (int i = 0; i < convertedWays.size(); i++) {
@@ -233,7 +195,6 @@ public class RoadMerger {
 			endPoints.add(end, road);
 		}
 		workoutRestrictionRelations(restrictions);
-		workoutThroughRoutes(throughRouteRelations);
 
 		// a set of all points where no more merging is possible
 		Set<Coord> mergeCompletedPoints = Collections.newSetFromMap(new IdentityHashMap<Coord, Boolean>());

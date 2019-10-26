@@ -102,8 +102,6 @@ public class StyledConverter implements OsmConverter {
 	
 	private Map<Node, List<Way>> poiRestrictions = new LinkedHashMap<>();
 	 
-	private final List<Relation> throughRouteRelations = new ArrayList<>();
-
 	// limit line length to avoid problems with portions of really
 	// long lines being assigned to the wrong subdivision
 	private static final int MAX_LINE_LENGTH = 40000;
@@ -751,7 +749,7 @@ public class StyledConverter implements OsmConverter {
 		}
 		
 		RoadMerger merger = new RoadMerger();
-		roads = merger.merge(roads, restrictions, throughRouteRelations);
+		roads = merger.merge(roads, restrictions);
 	}
 	
 	public void end() {
@@ -827,56 +825,10 @@ public class StyledConverter implements OsmConverter {
 				rr.addRestriction(collector, nodeIdMap);
 			}
 		}
-		roads = null;
-		if (routable){
-			for(Relation relation : throughRouteRelations) {
-				Node node = null;
-				Way w1 = null;
-				Way w2 = null;
-				for(Map.Entry<String,Element> member : relation.getElements()) {
-					if(member.getValue() instanceof Node) {
-						if(node == null)
-							node = (Node)member.getValue();
-						else
-							log.warn("Through route relation", relation.toBrowseURL(), "has more than 1 node");
-					}
-					else if(member.getValue() instanceof Way) {
-						Way w = (Way)member.getValue();
-						if(w1 == null)
-							w1 = w;
-						else if(w2 == null)
-							w2 = w;
-						else
-							log.warn("Through route relation", relation.toBrowseURL(), "has more than 2 ways");
-					}
-				}
-
-				CoordNode coordNode = null;
-				if(node == null)
-					log.warn("Through route relation", relation.toBrowseURL(), "is missing the junction node");
-				else {
-					Coord junctionPoint = node.getLocation();
-					if(bbox != null && !bbox.contains(junctionPoint)) {
-						// junction is outside of the tile - ignore it
-						continue;
-					}
-					coordNode = nodeIdMap.get(junctionPoint);
-					if(coordNode == null)
-						log.warn("Through route relation", relation.toBrowseURL(), "junction node at", junctionPoint.toOSMURL(), "is not a routing node");
-				}
-
-				if(w1 == null || w2 == null)
-					log.warn("Through route relation", relation.toBrowseURL(), "should reference 2 ways that meet at the junction node");
-
-				if(coordNode != null && w1 != null && w2 != null)
-					collector.addThroughRoute(coordNode.getId(), w1.getId(), w2.getId());
-			}
-		}
 		// return memory to GC
+		roads = null;
 		nodeIdMap = null;
-		throughRouteRelations.clear();
 		restrictions.clear();
-		
 	}
 
 	/**
@@ -1118,9 +1070,6 @@ public class StyledConverter implements OsmConverter {
 				for (long id : rr.getWayIds())
 					wayRelMap.add(id, rr);
 			}
-		}
-		else if("through_route".equals(relation.getTag("type"))) {
-			throughRouteRelations.add(relation);
 		} else if (addBoundaryNodesAtAdminBoundaries) {
 			if (relation instanceof MultiPolygonRelation || "boundary".equals(relation.getTag("type"))) {
 				if (isNod3Border(relation)) {
