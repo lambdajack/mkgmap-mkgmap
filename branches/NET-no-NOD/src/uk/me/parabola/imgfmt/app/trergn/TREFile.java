@@ -17,7 +17,6 @@
 package uk.me.parabola.imgfmt.app.trergn;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -226,7 +225,7 @@ public class TREFile extends ImgFile implements Configurable {
 		header.setPointPos(position());
 		
 		// Point overview section
-		Collections.sort(pointOverviews);
+		pointOverviews.sort(null);
 		for (Overview ov : pointOverviews) {
 			if(!ov.hasExtType()) {
 				ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
@@ -237,7 +236,7 @@ public class TREFile extends ImgFile implements Configurable {
 
 		// Line overview section.
 		header.setPolylinePos(position());
-		Collections.sort(polylineOverviews);
+		polylineOverviews.sort(null);
 		for (Overview ov : polylineOverviews) {
 			if(!ov.hasExtType()) {
 				ov.setMaxLevel(decodeLevel(ov.getMinResolution()));
@@ -248,7 +247,7 @@ public class TREFile extends ImgFile implements Configurable {
 
 		// Polygon overview section
 		header.setPolygonPos(position());
-		Collections.sort(polygonOverviews);
+		polygonOverviews.sort(null);
 		for (Overview ov : polygonOverviews) {
 			if(!ov.hasExtType()) {
 				ov.setMaxLevel(decodeLevel(ov.getMinResolution()));

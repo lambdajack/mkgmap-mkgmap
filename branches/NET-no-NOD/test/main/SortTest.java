@@ -174,7 +174,7 @@ public class SortTest {
 			SortKey<String> key = sort.createSortKey(s, s);
 			keys.add(key);
 		}
-		Collections.sort(keys);
+		keys.sort(null);
 
 		long end = System.currentTimeMillis();
 
@@ -190,7 +190,7 @@ public class SortTest {
 	private List<String> sortWithCollator(List<String> list) {
 		long start = System.currentTimeMillis();
 		List<String> ret = new ArrayList<>(list);
-		Collections.sort(ret, sort.getCollator());
+		ret.sort(sort.getCollator());
 		System.out.println("time coll: " + (System.currentTimeMillis() - start) + "ms");
 		return ret;
 	}
@@ -210,7 +210,7 @@ public class SortTest {
 			CollationKey key = jcol.getCollationKey(s);
 			keys.add(key);
 		}
-		Collections.sort(keys);
+		keys.sort(null);
 
 		long end = System.currentTimeMillis();
 
@@ -236,7 +236,7 @@ public class SortTest {
 			return null;
 		}
 
-		Collections.sort(out, jcol);
+		out.sort(jcol);
 
 		System.out.println("time J collator: " + (System.currentTimeMillis() - start) + "ms");
 		return out;

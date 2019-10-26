@@ -269,7 +269,6 @@ public class StyledConverterTest {
 				return 0;
 			}
 
-			public void addThroughRoute(int junctionNodeId, long roadIdA, long roadIdB) { }
 		};
 
 		return new StyledConverter(style, coll, new EnhancedProperties());

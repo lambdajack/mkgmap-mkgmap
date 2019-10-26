@@ -825,7 +825,7 @@ public class HousenumberGenerator {
 		for (Entry<CityInfo, MultiHashMap<String, HousenumberMatch>> topEntry : cityPlaceHouseMap.entrySet()){
 			CityInfo cityInfo = topEntry.getKey();
 			List<String> placeNames = new ArrayList<>(topEntry.getValue().keySet());
-			Collections.sort(placeNames);
+			placeNames.sort(null);
 			for (String placeName : placeNames){
 				List<HousenumberMatch> placeHouses = topEntry.getValue().get(placeName);
 				HashSet<HousenumberRoad> roads = new LinkedHashSet<>();
@@ -1232,7 +1232,7 @@ public class HousenumberGenerator {
 			List<HousenumberRoad> roadsInCluster) {
 		if (houses.isEmpty())
 			return;
-		Collections.sort(houses, new HousenumberMatchByNumComparator());
+		houses.sort(new HousenumberMatchByNumComparator());
 		
 		HousenumberMatch prev = null;
 		for (HousenumberMatch house : houses) {
@@ -1267,7 +1267,7 @@ public class HousenumberGenerator {
 				// multiple roads, we assume that the closest is the best
 				// but we may have to check the alternatives as well
 				
-				Collections.sort(matches, new HousenumberGenerator.HousenumberMatchByDistComparator());
+				matches.sort(new HousenumberGenerator.HousenumberMatchByDistComparator());
 				closest  = matches.get(0);
 				best = checkAngle(closest, matches);	
 			}
@@ -1306,7 +1306,7 @@ public class HousenumberGenerator {
 	
 	private static void markSimpleDuplicates(String streetName, List<HousenumberMatch> housesNearCluster) {
 		List<HousenumberMatch> sortedHouses = new ArrayList<>(housesNearCluster);
-		Collections.sort(sortedHouses, new HousenumberMatchByNumComparator());
+		sortedHouses.sort(new HousenumberMatchByNumComparator());
 		int n = sortedHouses.size();
 		for (int i = 1; i < n; i++){
 			HousenumberMatch house1 = sortedHouses.get(i-1);
@@ -1472,9 +1472,9 @@ public class HousenumberGenerator {
 			if (o1 == o2) {
 				return 0;
 			}
-			if (o1.getRoad() == null || o2.getRoad() == null){
-				log.error("road is null in sort comparator",o1,o2);
-				throw new MapFailedException("internal error in housenumber processing"); 
+			if (o1.getRoad() == null || o2.getRoad() == null) {
+				log.error("road is null in sort comparator", o1, o2);
+				throw new MapFailedException("internal error in housenumber processing");
 			}
 			if (o1.getRoad() != o2.getRoad()) {
 				// should not happen
@@ -1527,7 +1527,7 @@ public class HousenumberGenerator {
 		}
 	}
 	/**
-	 * Sorts house numbers by distance. If eqaul, compare segment and road to produce
+	 * Sorts house numbers by distance. If equal, compare segment and road to produce
 	 * predictable results.  
 	 * @author Gerd Petermann
 	 */
@@ -1801,9 +1801,7 @@ public class HousenumberGenerator {
 			List<RoadPoint> closeRoadPoints = getCLoseRoadPoints(house);
 			if (closeRoadPoints.isEmpty())
 				return closest;
-			Collections.sort(closeRoadPoints, new Comparator<RoadPoint>() {
-				// sort by distance (smallest first)
-				public int compare(RoadPoint o1,  RoadPoint o2) {
+			closeRoadPoints.sort((o1,o2)-> {
 					if (o1 == o2)
 						return 0;
 					int d = Integer.compare(o1.r.getRoadId(), o2.r.getRoadId());
@@ -1814,7 +1812,7 @@ public class HousenumberGenerator {
 						return d; 
 					return Integer.compare(o1.partOfSeg, o2.partOfSeg);
 				}
-			});
+			);
 
 			List<HousenumberMatch> matches = new ArrayList<>(40);
 			BitSet testedSegments = new BitSet();
@@ -1855,7 +1853,7 @@ public class HousenumberGenerator {
 			if (matches.isEmpty())
 				return closest; // closest has not yet a road
 			
-			Collections.sort(matches, new HousenumberGenerator.HousenumberMatchByDistComparator());
+			matches.sort(new HousenumberGenerator.HousenumberMatchByDistComparator());
 			closest = matches.get(0);
 			closest = checkAngle(closest, matches);
 			closest.calcRoadSide();

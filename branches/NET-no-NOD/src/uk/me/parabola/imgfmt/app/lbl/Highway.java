@@ -17,7 +17,6 @@
 package uk.me.parabola.imgfmt.app.lbl;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
@@ -65,7 +64,7 @@ public class Highway {
 		if(extraData) {
 			writer.put1u(0);
 			writer.put2u(region == null? 0 : region.getIndex());
-			Collections.sort(exits);
+			exits.sort(null);
 			for(ExitPoint ep : exits) {
 				writer.put1u(ep.index);
 				writer.put2u(ep.div.getNumber());

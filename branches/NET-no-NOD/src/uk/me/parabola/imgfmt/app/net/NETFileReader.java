@@ -12,16 +12,14 @@
  */
 package uk.me.parabola.imgfmt.app.net;
 
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.BufferedImgFileReader;
 import uk.me.parabola.imgfmt.app.ImgFile;
@@ -287,7 +285,7 @@ public class NETFileReader extends ImgFile {
 		// Sort in address order in the hope of speeding up reading.
 		List<Integer> offsets = new ArrayList<>(allOffsets);
 		allOffsets = null;
-		Collections.sort(offsets);
+		offsets.sort(null);
 		return offsets;
 	}
 

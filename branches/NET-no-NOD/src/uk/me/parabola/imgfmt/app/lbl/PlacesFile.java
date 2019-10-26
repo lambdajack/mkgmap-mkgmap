@@ -17,7 +17,6 @@
 package uk.me.parabola.imgfmt.app.lbl;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -98,7 +97,7 @@ public class PlacesFile {
 					SortKey<POIIndex> sortKey = sort.createSortKey(index, index.getName());
 					sorted.add(sortKey);
 				}
-				Collections.sort(sorted);
+				sorted.sort(null);
 
 				for (SortKey<POIIndex> key : sorted) {
 					key.getObject().write(writer);
@@ -342,7 +341,7 @@ public class PlacesFile {
 			SortKey<Country> key = sort.createSortKey(c, c.getLabel());
 			keys.add(key);
 		}
-		Collections.sort(keys);
+		keys.sort(null);
 
 		countryList.clear();
 		int index = 1;
@@ -362,7 +361,7 @@ public class PlacesFile {
 			SortKey<Region> key = sort.createSortKey(r, r.getLabel(), r.getCountry().getIndex());
 			keys.add(key);
 		}
-		Collections.sort(keys);
+		keys.sort(null);
 
 		regionList.clear();
 		int index = 1;
@@ -383,7 +382,7 @@ public class PlacesFile {
 			sortKey = new CombinedSortKey<>(sortKey, c.getRegionNumber(), c.getCountryNumber());
 			keys.add(sortKey);
 		}
-		Collections.sort(keys);
+		keys.sort(null);
 
 		cityList.clear();
 		int index = 1;
@@ -400,7 +399,7 @@ public class PlacesFile {
 			SortKey<Zip> sortKey = sort.createSortKey(c, c.getLabel());
 			keys.add(sortKey);
 		}
-		Collections.sort(keys);
+		keys.sort(null);
 
 		zipList.clear();
 		int index = 1;

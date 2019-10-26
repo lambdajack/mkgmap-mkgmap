@@ -21,8 +21,6 @@ import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -37,7 +35,7 @@ public class MdxFile {
 	private final char familyId;
 	private final char productId;
 	
-	private final List<MapInfo> maps = new ArrayList<MapInfo>();
+	private final List<MapInfo> maps = new ArrayList<>();
 
 	/**
 	 * Create with default family and product ids.
@@ -99,16 +97,7 @@ public class MdxFile {
 
 	private void writeBody(WritableByteChannel chan, ByteBuffer buf) throws IOException {
 		// Sort the maps by the hex number.
-		Collections.sort(maps, new Comparator<MapInfo>() {
-			public int compare(MapInfo o1, MapInfo o2) {
-				if (o1.getHexMapname() == o2.getHexMapname())
-					return 0;
-				else if (o1.getHexMapname() < o2.getHexMapname())
-					return -1;
-				else
-					return 1;
-			}
-		});
+		maps.sort((o1, o2) -> Integer.compare(o1.getHexMapname(), o2.getHexMapname()));
 
 		for (MapInfo info : maps) {
 			// Although its not necessarily wrong for them to be zero, it probably

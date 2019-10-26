@@ -15,8 +15,6 @@ package uk.me.parabola.imgfmt.app.mdr;
 
 import java.text.Collator;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -50,13 +48,11 @@ public class Mdr20 extends Mdr2x {
 	 */
 	public void buildFromStreets(List<Mdr7Record> inStreets) {
 		ArrayList<Mdr7Record> sorted = new ArrayList<>(inStreets);
-		Collections.sort(sorted, new Comparator<Mdr7Record>() {
-			public int compare(Mdr7Record o1, Mdr7Record o2) {
-				int d = Integer.compare(o1.getCity().getMdr20SortPos(), o2.getCity().getMdr20SortPos());
-				if (d != 0)
-					return d;
-				return Integer.compare(o1.getIndex(), o2.getIndex());
-			}
+		sorted.sort((o1, o2) -> {
+			int d = Integer.compare(o1.getCity().getMdr20SortPos(), o2.getCity().getMdr20SortPos());
+			if (d != 0)
+				return d;
+			return Integer.compare(o1.getIndex(), o2.getIndex());
 		});
 
 		Collator collator = getConfig().getSort().getCollator();
@@ -96,9 +92,7 @@ public class Mdr20 extends Mdr2x {
 	 * Two streets are in the same group if they have the same mdr20 id.
 	 */
 	protected boolean sameGroup(Mdr7Record street1, Mdr7Record street2) {
-		if (street2 != null && street1.getCity().getMdr20() == street2.getCity().getMdr20())
-			return true;
-		return false;
+		return street2 != null && street1.getCity().getMdr20() == street2.getCity().getMdr20();
 	}
 
 	/**

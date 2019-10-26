@@ -76,7 +76,7 @@ public class HousenumberRoad {
 	}
 	
 	public void buildIntervals() {
-		Collections.sort(houseNumbers, new HousenumberMatchByNumComparator());
+		houseNumbers.sort(new HousenumberMatchByNumComparator());
 		if (log.isInfoEnabled())
 			log.info("Initial housenumbers for",road,"in",road.getCity(),houseNumbers);
 		
@@ -101,8 +101,8 @@ public class HousenumberRoad {
 			}
 		}
 		detectGroups(leftNumbers, rightNumbers);
-		Collections.sort(leftNumbers, new HousenumberMatchByPosComparator());
-		Collections.sort(rightNumbers, new HousenumberMatchByPosComparator());
+		leftNumbers.sort(new HousenumberMatchByPosComparator());
+		rightNumbers.sort(new HousenumberMatchByPosComparator());
 		
 		
 		int currNodePos = 0;

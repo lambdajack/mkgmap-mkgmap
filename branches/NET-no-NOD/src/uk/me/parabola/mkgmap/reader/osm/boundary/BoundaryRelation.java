@@ -15,7 +15,6 @@ package uk.me.parabola.mkgmap.reader.osm.boundary;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -356,12 +355,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 			} else {
 				// retrieve the connection with the minimum distance
 				ConnectionData minCon = Collections.min(coordPairs,
-						new Comparator<ConnectionData>() {
-							public int compare(ConnectionData o1,
-									ConnectionData o2) {
-								return Double.compare(o1.distance, o2.distance);
-							}
-						});
+						(o1, o2) -> Double.compare(o1.distance, o2.distance));
 				
 				if (minCon.distance < getMaxCloseDist()) {
 

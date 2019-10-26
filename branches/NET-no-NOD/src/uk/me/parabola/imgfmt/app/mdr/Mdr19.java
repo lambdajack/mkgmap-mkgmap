@@ -13,8 +13,6 @@
 package uk.me.parabola.imgfmt.app.mdr;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
@@ -26,7 +24,7 @@ import uk.me.parabola.imgfmt.app.ImgFileWriter;
  */
 public class Mdr19 extends MdrSection implements HasHeaderFlags {
 	private List<Mdr11Record> pois;
-	private final List<Mdr18Record> poiTypes = new ArrayList<Mdr18Record>();
+	private final List<Mdr18Record> poiTypes = new ArrayList<>();
 
 	public Mdr19(MdrConfig config) {
 		setConfig(config);
@@ -35,19 +33,12 @@ public class Mdr19 extends MdrSection implements HasHeaderFlags {
 	/**
 	 * Sort the pois by type.
 	 */
+	@Override
 	public void preWriteImpl() {
-		Collections.sort(pois, new Comparator<Mdr11Record>() {
-			public int compare(Mdr11Record o1, Mdr11Record o2) {
-				// For mainly historical reasons, we keep the element type in a number of different
-				// formats. Need to normalise it before sorting.
-				int t1 = MdrUtils.fullTypeToNaturalType(o1.getType());
-				int t2 = MdrUtils.fullTypeToNaturalType(o2.getType());
-
-				if (t1 == t2) return 0;
-				else if (t1 < t2) return -1;
-				else return 1;
-			}
-		});
+		// For mainly historical reasons, we keep the element type in a number
+		// of different formats. Need to normalise it before sorting.
+		pois.sort((o1, o2) -> Integer.compare(MdrUtils.fullTypeToNaturalType(o1.getType()),
+				MdrUtils.fullTypeToNaturalType(o2.getType())));
 	}
 
 	/**
@@ -92,6 +83,7 @@ public class Mdr19 extends MdrSection implements HasHeaderFlags {
 	 * Release the copy of the pois. The other index is small and not worth
 	 * worrying about.
 	 */
+	@Override
 	protected void releaseMemory() {
 		pois = null;
 	}

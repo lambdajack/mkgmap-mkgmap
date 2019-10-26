@@ -13,7 +13,6 @@
 package uk.me.parabola.imgfmt.app.mdr;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
@@ -45,7 +44,7 @@ public class Mdr25 extends MdrSection {
 			keys.add(key);
 		}
 
-		Collections.sort(keys);
+		keys.sort(null);
 
 		String lastName = null;
 		Mdr5Record lastCity = null;

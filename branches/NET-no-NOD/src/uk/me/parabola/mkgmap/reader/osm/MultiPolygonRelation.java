@@ -547,12 +547,7 @@ public class MultiPolygonRelation extends Relation {
 			} else {
 				// retrieve the connection with the minimum distance
 				ConnectionData minCon = Collections.min(coordPairs,
-						new Comparator<ConnectionData>() {
-							public int compare(ConnectionData o1,
-									ConnectionData o2) {
-								return Double.compare(o1.distance, o2.distance);
-							}
-						});
+						(o1, o2) -> Double.compare(o1.distance, o2.distance));
 
 				if (minCon.w1 == minCon.w2) {
 					log.debug("Close a gap in way",minCon.w1);
@@ -726,12 +721,10 @@ public class MultiPolygonRelation extends Relation {
 		// sort by role and then by number of points, this improves performance
 		// in the routines which add the polygons to areas
 		if (polygonStatusList.size() > 2){
-			Collections.sort(polygonStatusList, new Comparator<PolygonStatus>() {
-				public int compare(PolygonStatus o1, PolygonStatus o2) {
-					if (o1.outer != o2.outer)
-						return (o1.outer) ? -1 : 1;
-					return o1.polygon.getPoints().size() - o2.polygon.getPoints().size();
-				}
+			polygonStatusList.sort((o1, o2) -> {
+				if (o1.outer != o2.outer)
+					return (o1.outer) ? -1 : 1;
+				return o1.polygon.getPoints().size() - o2.polygon.getPoints().size();
 			});
 		}
 		return polygonStatusList;

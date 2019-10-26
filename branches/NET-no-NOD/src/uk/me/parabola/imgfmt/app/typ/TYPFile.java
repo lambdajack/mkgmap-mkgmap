@@ -22,7 +22,6 @@ import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetEncoder;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -101,7 +100,7 @@ public class TYPFile extends ImgFile {
 				keys.add(key);
 			}
 		}
-		Collections.sort(keys);
+		keys.sort(null);
 
 		// Offset 0 is reserved to mean no label.
 		writer.put1u(0);
@@ -160,7 +159,7 @@ public class TYPFile extends ImgFile {
 	private void writeSection(ImgFileWriter writer, Section dataSection, Section indexSection,
 			List<? extends TypElement> elementData)
 	{
-		Collections.sort(elementData);
+		elementData.sort(null);
 
 		SectionWriter subWriter = dataSection.makeSectionWriter(writer);
 		CharsetEncoder encoder = data.getEncoder();

@@ -271,8 +271,7 @@ public class BoundaryQuadTree {
 	private void sortBoundaryTagsMap(){
 		// make sure that the merged LinkedHashMap is sorted as mergeBoundaries() needs it
 		ArrayList<String> ids = new ArrayList<>(boundaryTags.keySet());
-		Collections.sort(ids, new AdminLevelCollator());
-		Collections.reverse(ids);
+		ids.sort(new AdminLevelCollator().reversed());
 		HashMap<String,Tags> tmp = new LinkedHashMap<>(boundaryTags);
 		boundaryTags.clear();
 		for (String id: ids){

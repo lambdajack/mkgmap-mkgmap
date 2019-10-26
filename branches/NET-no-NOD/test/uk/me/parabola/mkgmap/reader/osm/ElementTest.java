@@ -16,14 +16,14 @@
  */
 package uk.me.parabola.mkgmap.reader.osm;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 
 public class ElementTest {
@@ -43,8 +43,8 @@ public class ElementTest {
 			values.add(ent.getValue());
 		}
 
-		Collections.sort(keys);
-		Collections.sort(values);
+		keys.sort(null);
+		values.sort(null);
 
 		assertArrayEquals("list of keys",
 				new String[] {"a", "b", "c"},

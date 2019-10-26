@@ -68,7 +68,7 @@ public class Mdr5 extends MdrMapSection {
 			sortKey = new MultiSortKey<>(sortKey, regionKey, countryKey);
 			sortKeys.add(sortKey);
 		}
-		Collections.sort(sortKeys);
+		sortKeys.sort(null);
 
 		Collator collator = getConfig().getSort().getCollator();
 
@@ -121,7 +121,7 @@ public class Mdr5 extends MdrMapSection {
 			sortKey = new MultiSortKey<>(sortKey, regionKey, countryKey);
 			sortKeys.add(sortKey);
 		}
-		Collections.sort(sortKeys);
+		sortKeys.sort(null);
 
 		SortKey<Mdr5Record> lastKey = null;
 		int pos = 0;
@@ -147,7 +147,7 @@ public class Mdr5 extends MdrMapSection {
 			// Sort by region name.
 			sortKeys.add(sort.createSortKey(m, m.getRegionName()));
 		}
-		Collections.sort(sortKeys);
+		sortKeys.sort(null);
 
 		SortKey<Mdr5Record> lastKey = null;
 		int pos = 0;
@@ -175,7 +175,7 @@ public class Mdr5 extends MdrMapSection {
 			SortKey<Mdr5Record> countryKey = sort.createSortKey(m, m.getCountryName());
 			sortKeys.add(countryKey);
 		}
-		Collections.sort(sortKeys);
+		sortKeys.sort(null);
 
 		SortKey<Mdr5Record> lastKey = null;
 		int pos = 0;

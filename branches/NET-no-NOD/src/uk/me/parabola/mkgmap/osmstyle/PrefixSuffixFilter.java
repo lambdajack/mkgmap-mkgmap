@@ -19,7 +19,6 @@ import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -314,11 +313,6 @@ public class PrefixSuffixFilter {
 	 * @param strings
 	 */
 	private void sortByLength(List<String> strings) {
-		strings.sort(new Comparator<String>() {
-			@Override
-			public int compare(String o1, String o2) {
-				return Integer.compare(o2.length(), o1.length());
-			}
-		});
+		strings.sort((o1, o2) -> Integer.compare(o2.length(), o1.length()));
 	}
 }

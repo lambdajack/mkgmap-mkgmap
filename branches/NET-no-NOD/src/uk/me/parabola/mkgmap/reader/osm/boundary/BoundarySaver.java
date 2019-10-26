@@ -12,7 +12,6 @@
  */
 package uk.me.parabola.mkgmap.reader.osm.boundary;
 
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import java.awt.Shape;
 import java.awt.geom.PathIterator;
 import java.io.BufferedOutputStream;
@@ -23,8 +22,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -33,6 +30,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.Version;
 import uk.me.parabola.mkgmap.reader.osm.Tags;
@@ -177,12 +175,7 @@ public class BoundarySaver {
 			return;
 		}
 
-		Collections.sort(openStreams, new Comparator<StreamInfo>() {
-
-			public int compare(StreamInfo o1, StreamInfo o2) {
-				return o1.lastAccessNo - o2.lastAccessNo;
-			}
-		});
+		openStreams.sort((o1, o2) -> o1.lastAccessNo - o2.lastAccessNo);
 
 		log.debug(openStreams.size(), "open streams.");
 		List<StreamInfo> closingStreams = openStreams.subList(0,

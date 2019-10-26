@@ -19,7 +19,6 @@ package uk.me.parabola.imgfmt.app.trergn;
 import java.text.DecimalFormat;
 import java.text.ParsePosition;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -411,7 +410,7 @@ public class ExtTypeAttributes {
 					break;
 			}
 			// sort the lights by increasing sector start angle
-			Collections.sort(lights);
+			lights.sort(null);
 			// generate the descriptor string - each light is
 			// specified as color,range,sectorStartAngle
 			String light = null;

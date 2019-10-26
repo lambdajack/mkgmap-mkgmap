@@ -17,7 +17,6 @@
 package uk.me.parabola.imgfmt.app.net;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.app.BufferedImgFileReader;
@@ -181,7 +180,7 @@ public class NODFile extends ImgFile {
 		this.centers = centers;
 		this.roads = roads;
 		this.boundaryNodes = new ArrayList<>(boundary);
-		Collections.sort(this.boundaryNodes);
+		this.boundaryNodes.sort(null);
 	}
 
 	public void setDriveOnLeft(boolean dol) {
