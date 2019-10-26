@@ -18,7 +18,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -54,8 +53,8 @@ public class BoundaryMerger {
 		List<String> fl1 = BoundaryUtil.getBoundaryDirContent(dir1.getAbsolutePath());
 		List<String> fl2 = BoundaryUtil.getBoundaryDirContent(dir2.getAbsolutePath());
 		
-		Collections.sort(fl1);
-		Collections.sort(fl2);
+		fl1.sort(null);
+		fl2.sort(null);
 		
 		ListIterator<String> fl1Iter = fl1.listIterator();
 		ListIterator<String> fl2Iter = fl2.listIterator();

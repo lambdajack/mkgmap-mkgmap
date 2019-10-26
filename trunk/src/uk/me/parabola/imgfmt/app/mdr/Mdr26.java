@@ -13,7 +13,6 @@
 package uk.me.parabola.imgfmt.app.mdr;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
@@ -41,7 +40,7 @@ public class Mdr26 extends MdrSection {
 			SortKey<Mdr28Record> key = sort.createSortKey(mdr28, mdr28.getMdr14().getName(), ++record);
 			sortList.add(key);
 		}
-		Collections.sort(sortList);
+		sortList.sort(null);
 
 		addToIndex(sortList);
 	}

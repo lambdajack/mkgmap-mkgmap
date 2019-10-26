@@ -13,8 +13,6 @@
 package uk.me.parabola.imgfmt.app.net;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -150,15 +148,7 @@ public class AngleChecker {
 		if (n <= 1)
 			return;
 		// sort the arcs by initial heading 
-		Collections.sort(arcGroups, new Comparator<ArcGroup>() {
-				public int compare(ArcGroup ag1, ArcGroup ag2) {
-					if (ag1.initialHeading < ag2.initialHeading)
-						return -1;
-					if (ag1.initialHeading > ag2.initialHeading)
-						return 1;
-					return 0;
-				}
-			});
+		arcGroups.sort((ag1, ag2) -> Float.compare(ag1.initialHeading, ag2.initialHeading));
 		
 		class AngleAttr {
 			int angle;
@@ -360,22 +350,19 @@ public class AngleChecker {
 			return arcGroups; // should not happen
 		
 		// sort the arcs by initial heading 
-		Collections.sort(directArcs, new Comparator<RouteArc>() {
-				public int compare(RouteArc ra1, RouteArc ra2) {
-					if (ra1.getInitialHeading() < ra2.getInitialHeading())
-						return -1;
-					if (ra1.getInitialHeading() > ra2.getInitialHeading())
-						return 1;
-					int d = Integer.compare(ra1.getPointsHash(), ra2.getPointsHash());
-					if (d != 0)
-						return d;
-					d = Long.compare(ra1.getRoadDef().getId() , ra2.getRoadDef().getId());
-					if (d != 0)
-						return d;
-					return d;
-				}
-			});
-		
+		directArcs.sort((ra1,ra2) -> {
+			int d = Float.compare(ra1.getInitialHeading(), ra2.getInitialHeading());
+			if (d != 0)
+				return d;
+			d = Integer.compare(ra1.getPointsHash(), ra2.getPointsHash());
+			if (d != 0)
+				return d;
+			d = Long.compare(ra1.getRoadDef().getId() , ra2.getRoadDef().getId());
+			if (d != 0)
+				return d;
+			return d;
+		});
+
 		Iterator<RouteArc> iter = directArcs.listIterator();
 		RouteArc arc1 = iter.next();
 		boolean addArc1 = false;

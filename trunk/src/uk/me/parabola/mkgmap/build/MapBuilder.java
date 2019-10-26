@@ -24,13 +24,13 @@ import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.function.UnaryOperator;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.Utils;
@@ -104,7 +104,6 @@ import uk.me.parabola.mkgmap.reader.overview.OverviewMapDataSource;
 import uk.me.parabola.util.Configurable;
 import uk.me.parabola.util.EnhancedProperties;
 import uk.me.parabola.util.Java2DConverter;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 /**
  * This is the core of the code to translate from the general representation
@@ -1226,11 +1225,7 @@ public class MapBuilder implements Configurable {
 		
 		if (orderByDecreasingArea && shapes.size() > 1) {
 			// sort so that the shape with the largest area is processed first
-			Collections.sort(shapes, new Comparator<MapShape>() {
-				public int compare(MapShape s1, MapShape s2) {
-					return Long.compare(Math.abs(s2.getFullArea()), Math.abs(s1.getFullArea()));
-				}
-			});
+			shapes.sort((s1,s2) -> Long.compare(Math.abs(s2.getFullArea()), Math.abs(s1.getFullArea())));
 		}
 
 		preserveHorizontalAndVerticalLines(res, shapes);

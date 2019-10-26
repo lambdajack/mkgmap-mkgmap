@@ -13,7 +13,6 @@
 package uk.me.parabola.imgfmt.app.mdr;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,7 +69,7 @@ public class Mdr10 extends MdrMapSection {
 			if (poiGroup == null)
 				continue;
 			
-			Collections.sort(poiGroup);
+			poiGroup.sort(null);
 
 			String lastName = null;
 			int lastSub = -1;

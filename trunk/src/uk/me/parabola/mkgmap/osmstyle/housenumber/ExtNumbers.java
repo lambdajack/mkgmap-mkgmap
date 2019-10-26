@@ -557,7 +557,7 @@ public class ExtNumbers {
 		List<HousenumberMatch> testOrder = new ArrayList<>(); 
 		testOrder.add(house1);
 		testOrder.add(house2);
-		Collections.sort(testOrder, new HousenumberMatchByPosComparator());
+		testOrder.sort(new HousenumberMatchByPosComparator());
 		if (testOrder.get(0) != house1){
 			log.info("order indicates random case or missing road!",this);
 			housenumberRoad.setRandom(true);
@@ -1054,7 +1054,7 @@ public class ExtNumbers {
 			HousenumberGenerator.findClosestRoadSegment(house, getRoad(), startInRoad, endInRoad);
 		}
 		if (houses.size() > 1)
-			Collections.sort(houses, new HousenumberMatchByPosComparator());
+			houses.sort(new HousenumberMatchByPosComparator());
 	}
 	
 	
@@ -1457,7 +1457,7 @@ public class ExtNumbers {
 							from.housenumberRoad.getHouses().remove(bestMoveOrig);
 							fromHouses.remove(bestMoveOrig);
 							toHouses.add(bestMoveOrig);
-							Collections.sort(toHouses, new HousenumberMatchByPosComparator());
+							toHouses.sort(new HousenumberMatchByPosComparator());
 							en1.reset();
 							en2.reset();
 							en1.setNumbers(houses1, en1.startInRoad, en1.endInRoad, left1);

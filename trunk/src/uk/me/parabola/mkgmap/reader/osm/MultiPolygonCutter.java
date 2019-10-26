@@ -293,7 +293,7 @@ public class MultiPolygonCutter {
 			CutPoint edgeCutPoint = new CutPoint(axis, outerBounds);
 
 			// go through the inner polygon list and use all polygons that intersect the outer polygons bbox at the start
-			Collections.sort(innerStart, (axis == CoordinateAxis.LONGITUDE ? COMP_LONG_START: COMP_LAT_START));
+			innerStart.sort(axis == CoordinateAxis.LONGITUDE ? COMP_LONG_START: COMP_LAT_START);
 			for (Area anInnerStart : innerStart) {
 				if (axis.getStartHighPrec(anInnerStart) <= axis.getStartHighPrec(outerBounds)) {
 					// found a touching area
@@ -307,7 +307,7 @@ public class MultiPolygonCutter {
 				return edgeCutPoint;
 			}
 			
-			Collections.sort(innerStart, (axis == CoordinateAxis.LONGITUDE ? COMP_LONG_STOP: COMP_LAT_STOP));
+			innerStart.sort(axis == CoordinateAxis.LONGITUDE ? COMP_LONG_STOP: COMP_LAT_STOP);
 			// go through the inner polygon list and use all polygons that intersect the outer polygons bbox at the stop
 			for (Area anInnerStart : innerStart) {
 				if (axis.getStopHighPrec(anInnerStart) >= axis.getStopHighPrec(outerBounds)) {
@@ -329,7 +329,7 @@ public class MultiPolygonCutter {
 			CutPoint bestCutPoint = new CutPoint(axis, outerBounds);
 			CutPoint currentCutPoint = new CutPoint(axis, outerBounds);
 
-			Collections.sort(innerStart, (axis == CoordinateAxis.LONGITUDE ? COMP_LONG_START: COMP_LAT_START));
+			innerStart.sort(axis == CoordinateAxis.LONGITUDE ? COMP_LONG_START: COMP_LAT_START);
 
 			for (Area anInnerStart : innerStart) {
 				currentCutPoint.addArea(anInnerStart);
@@ -551,7 +551,7 @@ public class MultiPolygonCutter {
 			}
 
 			areas.add(area);
-			Collections.sort(areas, comparator);
+			areas.sort(comparator);
 			startPoinHp = axis.getStartHighPrec(Collections.max(areas,
 				(axis == CoordinateAxis.LONGITUDE ? COMP_LONG_START
 						: COMP_LAT_START)));

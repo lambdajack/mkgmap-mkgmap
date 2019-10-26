@@ -81,8 +81,8 @@ public class BoundaryDiff {
 		if (b1.size() == 0 && b2.size() == 0)
 			return;
 		
-		Collections.sort(b1);
-		Collections.sort(b2);
+		b1.sort(null);
+		b2.sort(null);
 
 		Queue<String> bounds1 = new LinkedList<>(b1);
 		Queue<String> bounds2 = new LinkedList<>(b2);

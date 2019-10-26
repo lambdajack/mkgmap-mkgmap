@@ -28,7 +28,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -604,26 +603,17 @@ public class Main implements ArgumentProcessor {
 		for (Combiner c : combiners)
 			c.init(args);
 
-		filenames.sort(new Comparator<FilenameTask>() {
-			public int compare(FilenameTask o1, FilenameTask o2) {
-				if (!o1.getFilename().endsWith(".img") || !o2.getFilename().endsWith(".img"))
-					return o1.getFilename().compareTo(o2.getFilename());
+		filenames.sort((o1, o2) -> {
+			if (!o1.getFilename().endsWith(".img") || !o2.getFilename().endsWith(".img"))
+				return o1.getFilename().compareTo(o2.getFilename());
 
-				// Both end in .img
-				try {
-					int id1 = FileInfo.getFileInfo(o1.getFilename()).getHexname();
-					int id2 = FileInfo.getFileInfo(o2.getFilename()).getHexname();
-					if (id1 == id2)
-						return 0;
-					else if (id1 < id2)
-						return -1;
-					else
-						return 1;
-				} catch (FileNotFoundException ignored) {
-				}
-				return 0;
+			// Both end in .img
+			try {
+				return Integer.compare(FileInfo.getFileInfo(o1.getFilename()).getHexname(),
+						FileInfo.getFileInfo(o2.getFilename()).getHexname());
+			} catch (FileNotFoundException ignored) {
 			}
-
+			return 0;
 		});
 
 		// will contain img files for which an additional ovm file was found

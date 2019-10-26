@@ -13,8 +13,6 @@
 package uk.me.parabola.imgfmt.app.mdr;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -42,15 +40,12 @@ public class Mdr21 extends Mdr2x {
 			if (street.getCity() != null && street.getCity().getMdrRegion() != null)
 				sorted.add(street);
 		}
-		Collections.sort(sorted, new Comparator<Mdr7Record>() {
-			public int compare(Mdr7Record o1, Mdr7Record o2) {
-				int d = Integer.compare(o1.getCity().getMdr21SortPos(), o2.getCity().getMdr21SortPos());
-				if (d != 0)
-					return d;
-				return Integer.compare(o1.getIndex(), o2.getIndex());
-			}
+		sorted.sort((o1, o2) -> {
+			int d = Integer.compare(o1.getCity().getMdr21SortPos(), o2.getCity().getMdr21SortPos());
+			if (d != 0)
+				return d;
+			return Integer.compare(o1.getIndex(), o2.getIndex());
 		});
-
 
 		int lastIndex = -1;
 		int record = 0;

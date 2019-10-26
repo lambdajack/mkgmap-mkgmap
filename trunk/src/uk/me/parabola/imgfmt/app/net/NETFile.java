@@ -17,8 +17,6 @@
 package uk.me.parabola.imgfmt.app.net;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -126,7 +124,7 @@ public class NETFile extends ImgFile {
 
 				// Sort by name, city, region/country and subdivision number.
 				LabeledRoadDef lrd = new LabeledRoadDef(label, rd);
-				SortKey<LabeledRoadDef> nameKey = new IntegerSortKey<NETFile.LabeledRoadDef>(lrd, label.getOffset(), 0);
+				SortKey<LabeledRoadDef> nameKey = new IntegerSortKey<>(lrd, label.getOffset(), 0);
 				// If there is a city add it to the sort.
 				City city = (rd.getCities().isEmpty() ? null : rd.getCities().get(0)); // what if we more than one?
 				SortKey<LabeledRoadDef> cityKey;
@@ -145,7 +143,7 @@ public class NETFile extends ImgFile {
 			}
 		}
 
-		Collections.sort(sortKeys);
+		sortKeys.sort(null);
 
 		List<LabeledRoadDef> out = new ArrayList<>(sortKeys.size());
 
@@ -194,7 +192,7 @@ public class NETFile extends ImgFile {
 			SortKey<LabeledRoadDef> sk2 = sort.createSortKey(null, lrd.label, 0, cacheFull);
 			sortKeys.add(new DoubleSortKey<>(sk1, sk2));
 		}
-		Collections.sort(sortKeys);
+		sortKeys.sort(null);
 		roads.clear();
 		for (SortKey<LabeledRoadDef> key : sortKeys) {
 			roads.add(key.getObject());
@@ -279,13 +277,7 @@ public class NETFile extends ImgFile {
 	 * @param out List to add the discovered groups.
 	 */
 	private void addDisconnectedLarge(List<LabeledRoadDef> in, List<LabeledRoadDef> out) {
-		Collections.sort(in, new Comparator<LabeledRoadDef>() {
-			public int compare(LabeledRoadDef o1, LabeledRoadDef o2) {
-				int i1 = o1.roadDef.getStartSubdivNumber();
-				int i2 = o2.roadDef.getStartSubdivNumber();
-				return Integer.compare(i1, i2);
-			}
-		});
+		in.sort((o1, o2) -> Integer.compare(o1.roadDef.getStartSubdivNumber(), o2.roadDef.getStartSubdivNumber()));
 
 		int lastDiv = 0;
 		List<LabeledRoadDef> dupes = new ArrayList<>();

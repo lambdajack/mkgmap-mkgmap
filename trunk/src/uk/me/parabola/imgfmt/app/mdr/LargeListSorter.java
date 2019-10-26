@@ -13,7 +13,6 @@
  package uk.me.parabola.imgfmt.app.mdr;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +65,7 @@ public abstract class LargeListSorter<T extends NamedRecord> {
 				keys.add(makeKey(list.get(i), sort, cache));
 			}
 			cache = null;
-			Collections.sort(keys);
+			keys.sort(null);
 			
 			for (int i = 0; i < keys.size(); i++){ 
 				SortKey<T> sk = keys.get(i);

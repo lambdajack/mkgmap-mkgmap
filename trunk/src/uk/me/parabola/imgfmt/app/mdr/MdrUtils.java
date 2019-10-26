@@ -13,7 +13,6 @@
 package uk.me.parabola.imgfmt.app.mdr;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.app.srt.Sort;
@@ -86,7 +85,7 @@ public class MdrUtils {
 	}
 
 	/**
-	 * Sort records that are sorted by a name.  They appropriate sort order will be used.
+	 * Sort records that are to be sorted by a name. The appropriate sort order will be used.
 	 * @param sort The sort to be applied.
 	 * @param list The list to be sorted.
 	 * @param <T> One of the Mdr?Record types that need to be sorted on a text field, eg street name.
@@ -94,12 +93,12 @@ public class MdrUtils {
 	 * by calling getObject().
 	 */
 	public static <T extends NamedRecord> List<SortKey<T>> sortList(Sort sort, List<T> list) {
-		List<SortKey<T>> toSort = new ArrayList<SortKey<T>>(list.size());
+		List<SortKey<T>> toSort = new ArrayList<>(list.size());
 		for (T m : list) {
 			SortKey<T> sortKey = sort.createSortKey(m, m.getName(), m.getMapIndex());
 			toSort.add(sortKey);
 		}
-		Collections.sort(toSort);
+		toSort.sort(null);
 		return toSort;
 	}
 

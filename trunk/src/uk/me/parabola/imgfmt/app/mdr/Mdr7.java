@@ -248,18 +248,6 @@ public class Mdr7 extends MdrMapSection {
 		// This sometimes presents search results in the wrong order. The partial sort fields allow to
 		// tell the right order.
 		
-//		LargeListSorter<Mdr7Record> initalPartSorter = new LargeListSorter<Mdr7Record>(sort) {
-//			@Override
-//			protected SortKey<Mdr7Record> makeKey(Mdr7Record r, Sort sort, Map<String, byte[]> cache) {
-//				return sort.createSortKey(r, r.getInitialPart(), r.getMapIndex(), cache);
-//			}
-//		};
-//		LargeListSorter<Mdr7Record> suffixSorter = new LargeListSorter<Mdr7Record>(sort) {
-//			@Override
-//			protected SortKey<Mdr7Record> makeKey(Mdr7Record r, Sort sort, Map<String, byte[]> cache) {
-//				return sort.createSortKey(r, r.getSuffix(), r.getMapIndex(), cache);
-//			}
-//		};
 		LargeListSorter<Mdr7Record> fullNameSorter = new LargeListSorter<Mdr7Record>(sort) {
 			@Override
 			protected SortKey<Mdr7Record> makeKey(Mdr7Record r, Sort sort, Map<String, byte[]> cache) {
@@ -268,59 +256,13 @@ public class Mdr7 extends MdrMapSection {
 		};
 		
 		
-//		List<Mdr7Record> sortedByInitial = new ArrayList<>(samePartial);
-//		List<Mdr7Record> sortedBySuffix = new ArrayList<>(samePartial);
-//		initalPartSorter.sort(sortedByInitial);
-//		suffixSorter.sort(sortedBySuffix);
-		
-//		Mdr7Record last = null;
-//		for (int i = 0; i < samePartial.size(); i++) {
-//			Mdr7Record r = samePartial.get(i);
-//			if (i > 0) {
-//				int repeat = r.checkRepeat(last, collator);
-//				int b = 0;
-//				if (repeat == 0) {
-//				} else if (repeat == 3) 
-//					b = last.getB();
-//				else if (repeat == 1) {
-//					b = last.getB() + 1;
-//				}
-//				if (b != 0) {
-//					if (b > maxPrefixCount)
-//						maxPrefixCount = b;
-//					r.setB(b);
-//				}
-//			}
-//			last = r;
-//		}
-//		suffixSorter.sort(samePartial);
-//		last = null;
-//		int s = 0;
-//		for (int i = 0; i < samePartial.size(); i++) {
-//			Mdr7Record r = samePartial.get(i);
-//			if (i > 0) {
-//				int cmp = collator.compare(last.getSuffix(), r.getSuffix());
-//				if (cmp == 0)
-//					s = last.getS();
-//				else 
-//					s = last.getS() + 1;
-//				if (s != 0) {
-//					if (s > maxSuffixCount)
-//						maxSuffixCount = s;
-//					r.setB(s);
-//				}
-//			}
-//			last = r;
-//		}
-//
-//		
 		fullNameSorter.sort(samePartial);
 		Mdr7Record last = null;
 		int recordNumber = streets.size();
 		
 		// list is now sorted by partial name, name, and map index
-//		// De-duplicate the street names so that there is only one entry
-//		// per map for the same name.
+		// De-duplicate the street names so that there is only one entry
+		// per map for the same name.
 		for (int i = 0; i < samePartial.size(); i++) {
 			Mdr7Record r = samePartial.get(i);
 			if (last != null && r.getMapIndex() == last.getMapIndex() && r.getName().equals(last.getName())) {
@@ -343,7 +285,6 @@ public class Mdr7 extends MdrMapSection {
 		boolean hasStrings = hasFlag(MDR7_HAS_STRING);
 		boolean hasNameOffset = hasFlag(MDR7_HAS_NAME_OFFSET);
 		Collator collator = sort.getCollator();
-//		int partialBShift = ((getExtraValue() >> 9) & 0xf);
 		collator.setStrength(Collator.SECONDARY); 
 		Mdr7Record last = null;
 		for (Mdr7Record s : streets) {
@@ -364,8 +305,6 @@ public class Mdr7 extends MdrMapSection {
 				writer.put1u(s.getOutNameOffset());
 			if (partialInfoSize > 0) {
 				int trailingFlags = ((rr & 1) == 0) ? 1 : 0;
-				// trailingFlags |= s.getB() << 1;
-				// trailingFlags |= s.getS() << (1 + partialBShift);
 				writer.putNu(partialInfoSize, trailingFlags);
 			}
 			last = s;
