@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -28,7 +29,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.CoordNode;
@@ -49,6 +49,9 @@ public class RoadNetwork {
 	private final static int MAX_RESTRICTIONS_ARCS = 7;
 	private final Map<Integer, RouteNode> nodes = new LinkedHashMap<>();
 
+	// boundary nodes
+	// a node should be in here if the nodes boundary flag is set
+	private final List<RouteNode> boundary = new ArrayList<>();
 	private final List<RoadDef> roadDefs = new ArrayList<>();
 	private List<RouteCenter> centers = new ArrayList<>();
 	private AngleChecker angleChecker = new AngleChecker();
@@ -259,6 +262,12 @@ public class RoadNetwork {
 	public List<RouteCenter> getCenters() {
 		if (routable && centers.isEmpty()){
 			checkRoutingIslands();
+			for (RouteNode n : nodes.values()) {
+				if (n.isBoundary()) {
+					boundary.add(n);
+				}
+			}
+			
 			angleChecker.check(nodes);
 			addArcsToMajorRoads();
 			splitCenters();
@@ -376,7 +385,7 @@ public class RoadNetwork {
 	 * Currently empty.
 	 */
 	public List<RouteNode> getBoundary() {
-		return nodes.values().stream().filter(RouteNode::isBoundary).collect(Collectors.toList());
+		return Collections.unmodifiableList(boundary);
 	}
 
 	/**
