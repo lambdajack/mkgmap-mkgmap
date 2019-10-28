@@ -34,7 +34,7 @@ public class RemoveObsoletePointsFilter implements MapFilter {
 
 	private boolean checkPreserved;
 	public void init(FilterConfig config) {
-		checkPreserved = config.getLevel() == 0 && config.isRoutable();
+		checkPreserved = config.getLevel() == 0 && config.hasNet();
 	}
 
 	/**

@@ -27,7 +27,7 @@ import uk.me.parabola.imgfmt.app.Area;
 public class FilterConfig {
 	private int resolution;
 	private int level;
-	private boolean routable;
+	private boolean hasNet;
 
 	protected int getResolution() {
 		return resolution;
@@ -58,11 +58,11 @@ public class FilterConfig {
 		this.level = level;
 	}
 
-	public boolean isRoutable() {
-		return routable;
+	public boolean hasNet() {
+		return hasNet;
 	}
 
-	public void setRoutable(boolean routable) {
-		this.routable = routable;
+	public void setHasNet(boolean flag) {
+		this.hasNet = flag;
 	}
 }

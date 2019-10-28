@@ -104,10 +104,6 @@ public class MapMaker implements MapProcessor {
 
 			MapBuilder builder = new MapBuilder();
 			builder.config(args.getProperties());
-			if(! OverviewBuilder.OVERVIEW_PREFIX.equals(mapNamePrefix)){
-				if (args.getProperties().containsKey("route") || args.getProperties().containsKey("net"))
-					builder.setDoRoads(true);
-			}
 			builder.makeMap(map, src);
 
 			// Collect information on map complete.

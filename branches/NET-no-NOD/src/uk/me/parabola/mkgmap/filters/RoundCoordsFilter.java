@@ -29,7 +29,7 @@ public class RoundCoordsFilter implements MapFilter {
 
 	public void init(FilterConfig config) {
 		shift = config.getShift();
-		checkRouting = config.getLevel() == 0 && config.isRoutable();
+		checkRouting = config.getLevel() == 0 && config.hasNet();
 		level = config.getLevel();
 	}
 

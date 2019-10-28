@@ -36,7 +36,7 @@ public class SizeFilter implements MapFilter {
 	public void init(FilterConfig config) {
 		minSize = size * (1<<config.getShift());
 		// don't remove roads on level 0
-		checkRouting = config.getLevel() == 0 && config.isRoutable() == true;
+		checkRouting = config.getLevel() == 0 && config.hasNet() == true;
 	}
 
 	/**
