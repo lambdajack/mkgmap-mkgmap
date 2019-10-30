@@ -349,10 +349,16 @@ public class ExtNumbers {
 		
 		List<Numbers> list = new ArrayList<>();
 		boolean headerWasReported = false;
+		
+		int nodeCount = 0;
 		for (ExtNumbers curr = this; curr != null; curr = curr.next){
-			if (curr.hasNumbers() == false)
-				continue;
-			list.add(curr.getNumbers());
+			Numbers cn = curr.getNumbers();
+			cn.setNodeNumber(nodeCount);
+			nodeCount++;
+			assert housenumberRoad.getRoad().getPoints().get(curr.startInRoad).isNumberNode();
+			if (!cn.isEmpty()) {
+				list.add(cn);
+			}
 			if (log.isInfoEnabled()) {
 				if (headerWasReported == false){
 					MapRoad road = curr.getRoad();
@@ -362,7 +368,6 @@ public class ExtNumbers {
 						log.info("final numbers for", road, "in", road.getCity());
 					headerWasReported = true;
 				}
-				Numbers cn = curr.getNumbers();
 				log.info("Left: ",cn.getLeftNumberStyle(),cn.getIndex(),"Start:",cn.getLeftStart(),"End:",cn.getLeftEnd(), "numbers "+curr.getHouses(Numbers.LEFT));
 				log.info("Right:",cn.getRightNumberStyle(),cn.getIndex(),"Start:",cn.getRightStart(),"End:",cn.getRightEnd(), "numbers "+curr.getHouses(Numbers.RIGHT));
 			}
