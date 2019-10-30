@@ -12,6 +12,8 @@
  */
 package uk.me.parabola.mkgmap.general;
 
+import java.util.Objects;
+
 import uk.me.parabola.imgfmt.app.lbl.City;
 
 public class CityInfo implements Comparable<CityInfo> {
@@ -72,27 +74,14 @@ public class CityInfo implements Comparable<CityInfo> {
 	public boolean equals(Object obj) {
 		if (this == obj)
 			return true;
-		if (obj == null)
-			return false;
 		if (!(obj instanceof CityInfo))
 			return false;
 		CityInfo other = (CityInfo) obj;
-		if (city == null) {
-			if (other.city != null)
-				return false;
-		} else if (!city.equals(other.city))
+		if (!Objects.equals(city, other.city))
 			return false;
-		if (country == null) {
-			if (other.country != null)
-				return false;
-		} else if (!country.equals(other.country))
+		if (!Objects.equals(country, other.country))
 			return false;
-		if (region == null) {
-			if (other.region != null)
-				return false;
-		} else if (!region.equals(other.region))
-			return false;
-		return true;
+		return Objects.equals(region, other.region);
 	}
 
 	@Override
