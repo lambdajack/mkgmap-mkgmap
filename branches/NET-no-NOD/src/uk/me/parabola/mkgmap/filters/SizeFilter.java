@@ -27,16 +27,16 @@ public class SizeFilter implements MapFilter {
 	private final int size;
 
 	private int minSize;
-	private boolean checkRouting;
+	private boolean keepRoads;
 
 	public SizeFilter(int s) {
 		size = s;
 	}
 	
 	public void init(FilterConfig config) {
-		minSize = size * (1<<config.getShift());
+		minSize = size * (1 << config.getShift());
 		// don't remove roads on level 0
-		checkRouting = config.getLevel() == 0 && config.hasNet() == true;
+		keepRoads = config.getLevel() == 0 && config.hasNet();
 	}
 
 	/**
@@ -49,10 +49,8 @@ public class SizeFilter implements MapFilter {
 	public void doFilter(MapElement element, MapFilterChain next) {
 		MapLine line = (MapLine) element;
 
-		if ((line.isSkipSizeFilter() || (checkRouting && line.isRoad())) == false){
-			if (line.getBounds().getMaxDimension() < minSize){
-				return;
-			}
+		if (!line.isSkipSizeFilter() && !(keepRoads && line.isRoad()) && line.getBounds().getMaxDimension() < minSize) {
+			return;
 		}
 		next.doFilter(line);
 	}
