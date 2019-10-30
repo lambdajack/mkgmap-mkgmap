@@ -237,7 +237,7 @@ public class Polyline extends MapObject {
 	 * @return true if this polyline contanins special nodes between the first and last node
 	 */
 	boolean hasInternalNodes() {
-		if (isRoad() && roaddef.hasHouseNumbers() || !roaddef.skipAddToNOD()) {
+		if (isRoad() && (roaddef.hasHouseNumbers() || !roaddef.skipAddToNOD())) {
 			// exclude first and last node
 			for (int i = 1; i < points.size() - 1; i++) {
 				Coord co = points.get(i);
