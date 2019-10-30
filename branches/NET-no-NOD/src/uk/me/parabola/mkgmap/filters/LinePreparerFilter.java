@@ -88,12 +88,11 @@ public class LinePreparerFilter implements MapFilter {
 			int dy = (lat - lastLat) << offset >> offset;
 			lastLong = lon;
 			lastLat = lat;
-			if (dx == 0 && dy == 0){
-				if(!line.isRoad() || (co.getId() == 0 && co.isNumberNode() == false))
-					continue;
+			if (dx == 0 && dy == 0 && !(line.isRoad() && co.isNumberNode())) {
+				continue;
 			}
 			++numPointsEncoded;
-			if (numPointsEncoded >= minPointsRequired && element instanceof MapShape == false)
+			if (numPointsEncoded >= minPointsRequired && !(element instanceof MapShape))
 				break;
 			// find out largest and 2nd largest delta for both dx and dy
 			for (int k = 0; k < 2; k++){

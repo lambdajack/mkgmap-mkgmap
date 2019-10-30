@@ -256,8 +256,9 @@ public class RoadDef {
 			if (len > 0){
 				cityBuf = numbers.cityWriter.getBuffer();
 				flag = Utils.numberToPointerSize(len) - 1;
-			} else 
+			} else {
 				flag = (city == null) ? 3 : 2;
+			}
 			code |= flag << 4;
 			
 			len = (numbers == null) ? 0 : numbers.fetchBitStream().getLength();
