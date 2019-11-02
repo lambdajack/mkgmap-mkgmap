@@ -17,6 +17,8 @@
 package uk.me.parabola.imgfmt.app.net;
 
 import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +29,7 @@ import uk.me.parabola.imgfmt.app.ImgFile;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
 import uk.me.parabola.imgfmt.app.Label;
 import uk.me.parabola.imgfmt.app.lbl.City;
+import uk.me.parabola.imgfmt.app.lbl.Zip;
 import uk.me.parabola.imgfmt.app.srt.DoubleSortKey;
 import uk.me.parabola.imgfmt.app.srt.IntegerSortKey;
 import uk.me.parabola.imgfmt.app.srt.MultiSortKey;
@@ -82,7 +85,8 @@ public class NETFile extends ImgFile {
 
 		ImgFileWriter writer = netHeader.makeSortedRoadWriter(getWriter());
 		try {
-			List<LabeledRoadDef> labeledRoadDefs = sortRoads();
+			List<LabeledRoadDef> labeledRoadDefs = deDupRoads();
+			sortByName(labeledRoadDefs);
 			for (LabeledRoadDef labeledRoadDef : labeledRoadDefs)
 				labeledRoadDef.roadDef.putSortedRoadEntry(writer, labeledRoadDef.label);
 		} finally {
@@ -94,26 +98,47 @@ public class NETFile extends ImgFile {
 
 	/**
 	 * Sort the roads by name and remove duplicates.
-	 *
-	 * We want a list of roads such that every entry in the list is a different road. Since in osm
-	 * roads are frequently chopped into small pieces we have to remove the duplicates.
-	 * This doesn't have to be perfect, it needs to be useful when searching for roads.
-	 *
-	 * So we have a separate entry if the road is in a different city. This would probably be enough
-	 * except that associating streets with cities is not always very good in OSM. So I also create an
-	 * extra entry for each subdivision. Finally there a search for disconnected roads within the subdivision
-	 * with the same name.
-	 *
-	 * Performance note: The previous implementation was very, very slow when there were a large number
-	 * of roads with the same name. Although this was an unusual situation, when it happened it appears
-	 * that mkgmap has hung. This implementation takes a fraction of a second even for large numbers of
-	 * same named roads.
-	 *
-	 * @return A sorted list of road labels that identify all the different roads.
+	 * <p>
+	 * We want a list of roads such that every entry in the list is a different
+	 * road. In some areas we have multiple roads with the same name, typically
+	 * connected to each other. For each group we find networks of connected
+	 * roads. We must store all roads with house numbers, else some numbers are
+	 * not found. For networks without any road with numbers we store only one
+	 * to reduce NET size.
+	 * <p>
+	 * Special case: With OSM data and certain styles all normally unnamed roads
+	 * get a name describing the type of road, e.g. all ways with tag
+	 * highway=footway get the name "fw". This can produce large groups of roads
+	 * with equal names.
+	 * 
+	 * @return A list of road labels that identify all the different roads
 	 */
-	private List<LabeledRoadDef> sortRoads() {
+	private List<LabeledRoadDef> deDupRoads() {
+		List<SortKey<LabeledRoadDef>> sortKeys = createSortKeysyNameAndCity();
+		sortKeys.sort(null);
+
+		List<LabeledRoadDef> out = new ArrayList<>(sortKeys.size());
+
+		List<LabeledRoadDef> dupes = new ArrayList<>();
+		SortKey<LabeledRoadDef> lastKey = null;
+
+		// Since they are sorted we can easily remove the duplicates.
+		// The duplicates are saved to the dupes list.
+		for (SortKey<LabeledRoadDef> key : sortKeys) {
+			if (lastKey == null || key.compareTo(lastKey) != 0) {
+				analyseRoadsOfCity(dupes, out);
+				dupes.clear();
+				lastKey = key;
+			}
+			dupes.add(key.getObject());
+		}
+		// Finish off the final set of duplicates.
+		analyseRoadsOfCity(dupes, out);
+		return out;
+	}
+
+	private List<SortKey<LabeledRoadDef>> createSortKeysyNameAndCity() {
 		List<SortKey<LabeledRoadDef>> sortKeys = new ArrayList<>(roads.size());
-		Map<Label, byte[]> cache = new HashMap<>();
 
 		for (RoadDef rd : roads) {
 			Label[] labels = rd.getLabels();
@@ -125,57 +150,27 @@ public class NETFile extends ImgFile {
 				// Sort by name, city, region/country and subdivision number.
 				LabeledRoadDef lrd = new LabeledRoadDef(label, rd);
 				SortKey<LabeledRoadDef> nameKey = new IntegerSortKey<>(lrd, label.getOffset(), 0);
+
 				// If there is a city add it to the sort.
-				City city = (rd.getCities().isEmpty() ? null : rd.getCities().get(0)); // what if we more than one?
+				City city = (rd.getCities().isEmpty() ? null : rd.getCities().get(0));
 				SortKey<LabeledRoadDef> cityKey;
 				if (city != null) {
 					int region = city.getRegionNumber();
 					int country = city.getCountryNumber();
-					cityKey = sort.createSortKey(null, city.getLabel(), (region & 0xffff) << 16 | (country & 0xffff),
-							cache);
+					cityKey = sort.createSortKey(null, city.getLabel(), (region & 0xffff) << 16 | (country & 0xffff));
 				} else {
-					cityKey = sort.createSortKey(null, Label.NULL_OUT_LABEL, 0, cache);
+					cityKey = sort.createSortKey(null, Label.NULL_OUT_LABEL, 0);
 				}
 
-				SortKey<LabeledRoadDef> sortKey = new MultiSortKey<>(nameKey, cityKey,
-						new IntegerSortKey<LabeledRoadDef>(null, rd.getStartSubdivNumber(), 0));
-				sortKeys.add(sortKey);
+				// If there is a zip code add it to the sort.
+				Zip zip = (rd.getCities().isEmpty() ? null : rd.getZips().get(0));
+				Label zipLabel = zip == null ?  Label.NULL_OUT_LABEL: zip.getLabel();
+				SortKey<LabeledRoadDef> zipKey = sort.createSortKey(null, zipLabel);
+				
+				sortKeys.add(new MultiSortKey<>(nameKey, cityKey, zipKey));
 			}
 		}
-
-		sortKeys.sort(null);
-
-		List<LabeledRoadDef> out = new ArrayList<>(sortKeys.size());
-
-		Label lastName = null;
-		City lastCity = null;
-		List<LabeledRoadDef> dupes = new ArrayList<>();
-
-		// Since they are sorted we can easily remove the duplicates.
-		// The duplicates are saved to the dupes list.
-		for (SortKey<LabeledRoadDef> key : sortKeys) {
-			LabeledRoadDef lrd = key.getObject();
-
-			Label name = lrd.label;
-			RoadDef road = lrd.roadDef;
-			City city = (road.getCities().isEmpty() ? null : road.getCities().get(0)); // what if we more than one?
-
-			if (road.hasHouseNumbers() || !name.equals(lastName) || city != lastCity) {
-
-				// process any previously collected duplicate road names and reset.
-				addDisconnected(dupes, out);
-				dupes = new ArrayList<>();
-
-				lastName = name;
-				lastCity = city;
-			}
-			dupes.add(lrd);
-		}
-
-		// Finish off the final set of duplicates.
-		addDisconnected(dupes, out);
-		sortByName(out);
-		return out;
+		return sortKeys;
 	}
 
 	/**
@@ -206,13 +201,13 @@ public class NETFile extends ImgFile {
 	 * @param in A list of duplicate roads.
 	 * @param out The list of sorted roads. Any new road is added to this.
 	 */
-	private void addDisconnected(List<LabeledRoadDef> in, List<LabeledRoadDef> out) {
+	private static void analyseRoadsOfCity(List<LabeledRoadDef> in, List<LabeledRoadDef> out) {
 		// switch out to different routines depending on the input size. A normal number of
 		// roads with the same name in the same city is a few tens.
 		if (in.size() > 200) {
-			addDisconnectedLarge(in, out);
+			analyseRoadsOfCityLarge(in, out);
 		} else {
-			addDisconnectedSmall(in, out);
+			analyseRoadsOfCitySmall(in, out);
 		}
 	}
 
@@ -222,42 +217,28 @@ public class NETFile extends ImgFile {
 	 * This is done in an accurate manner which is slow for large numbers (eg thousands) of items in the
 	 * input.
 	 *
-	 * @param in Input set of roads with the same name.
+	 * @param in Input set of roads with the same name and city.
 	 * @param out List to add the discovered groups.
 	 */
-	private void addDisconnectedSmall(List<LabeledRoadDef> in, List<LabeledRoadDef> out) {
-		// Each road starts out with a different group number
-		int[] groups = new int[in.size()];
-		for (int i = 0; i < groups.length; i++)
-			groups[i] = i;
+	private static void analyseRoadsOfCitySmall(List<LabeledRoadDef> in, List<LabeledRoadDef> out) {
+		if (in.size() < 2) {
+			out.addAll(in);
+		} else {
+			// sort so that roads with numbers and those with more than one city appear first 
+			in.sort((o1, o2) -> Boolean.compare(needed(o2), needed(o1)));
 
-		// Go through pairs of roads, any that are connected we mark with the same (lowest) group number.
-		boolean done;
-		do {
-			done = true;
-			for (int current = 0; current < groups.length; current++) {
-				RoadDef first = in.get(current).roadDef;
-
-				for (int i = current; i < groups.length; i++) {
-					// If the groups are already the same, then no need to test
-					if (groups[current] == groups[i])
-						continue;
-
-					if (first.connectedTo(in.get(i).roadDef)) {
-						groups[current] = groups[i] = Math.min(groups[current], groups[i]);
-						done = false;
-					}
+			// write all roads with numbers or multiple cities so that they are found in address search
+			int posOther = -1;
+			for (int i = 0; i < in.size(); i++) {
+				if (needed(in.get(i))) {
+					out.add(in.get(i));
+				} else {
+					posOther = i;
+					break;
 				}
 			}
-		} while (!done);
-
-		// Output the first road in each group
-		int last = -1;
-		for (int i = 0; i < groups.length; i++) {
-			if (groups[i] > last) {
-				LabeledRoadDef lrd = in.get(i);
-				out.add(lrd);
-				last = groups[i];
+			if (posOther >= 0) {
+				findRoadNetworks(in, posOther, out);
 			}
 		}
 	}
@@ -266,32 +247,85 @@ public class NETFile extends ImgFile {
 	 * Split the input set of roads into disconnected groups and output one member from each group.
 	 *
 	 * This is an modified algorithm for large numbers in the input set (eg thousands).
-	 * First sort into groups by subdivision and then call {@link #addDisconnectedSmall} on each
+	 * First sort into groups by subdivision and then call {@link #analyseRoadsOfCitySmall} on each
 	 * one. Since roads in the same subdivision are near each other this finds most connected roads, but
 	 * since there is a maximum number of roads in a subdivision, the test can be done very quickly.
 	 * You will get a few extra duplicate entries in the index.
 	 *
-	 * In normal cases this routine gives almost the same results as {@link #addDisconnectedSmall}.
+	 * In normal cases this routine gives almost the same results as {@link #analyseRoadsOfCitySmall}.
 	 *
 	 * @param in Input set of roads with the same name.
 	 * @param out List to add the discovered groups.
 	 */
-	private void addDisconnectedLarge(List<LabeledRoadDef> in, List<LabeledRoadDef> out) {
-		in.sort((o1, o2) -> Integer.compare(o1.roadDef.getStartSubdivNumber(), o2.roadDef.getStartSubdivNumber()));
-
+	private static void analyseRoadsOfCityLarge(List<LabeledRoadDef> in, List<LabeledRoadDef> out) {
+	    in.sort(Comparator.comparingInt(lr -> lr.roadDef.getStartSubdivNumber()));
+	
 		int lastDiv = 0;
 		List<LabeledRoadDef> dupes = new ArrayList<>();
 		for (LabeledRoadDef lrd : in) {
 			int sd = lrd.roadDef.getStartSubdivNumber();
 			if (sd != lastDiv) {
-				addDisconnectedSmall(dupes, out);
-				dupes = new ArrayList<>();
+				analyseRoadsOfCitySmall(dupes, out);
+				dupes.clear();
 				lastDiv = sd;
 			}
 			dupes.add(lrd);
 		}
+		// the rest
+		analyseRoadsOfCitySmall(dupes, out);
+	}
 
-		addDisconnectedSmall(dupes, out);
+	private static boolean needed (LabeledRoadDef lr) {
+		return lr.roadDef.hasHouseNumbers() || lr.roadDef.getCities().size() > 1;
+	}
+	
+	/**
+	 * Find road networks which are not connected to the roads with numbers, write one of each.
+	 * @param in Input set of roads with the same name, sorted so that roads with numbers appear first
+	 * @param posOther position of first road without numbers or multiple cities in input 
+	 * @param out List to add the discovered groups with roads not connected to the roads with numbers
+	 */
+	private static void findRoadNetworks(List<LabeledRoadDef> in, int posOther, List<LabeledRoadDef> out) {
+		// Each road starts out with a different group number
+		int inSize = in.size();
+		int[] groups = new int[inSize];
+		for (int i = 0; i < groups.length; i++)
+			groups[i] = i;
+
+		// cache for results of RoadDef#connectedTo(RoadDef) where result was false.
+		BitSet unconnected = new BitSet(inSize * inSize);
+		
+		// Go through pairs of roads, any that are connected we mark with the same (lowest) group number.
+		boolean done;
+		do {
+			done = true;
+			for (int current = 0; current < groups.length; current++) {
+				RoadDef first = in.get(current).roadDef;
+				
+				for (int i = current + 1; i < groups.length; i++) {
+					// If the groups are already the same or roads are known to be unconnected, then no need to test
+					if (groups[current] != groups[i] && !unconnected.get(current * inSize + i)) {
+						// we have to do the costly connectedTo() test
+						if (first.connectedTo(in.get(i).roadDef)) {
+							groups[current] = groups[i] = Math.min(groups[current], groups[i]);
+							done = false;
+						} else {
+							unconnected.set(current * inSize + i);
+						}
+					}
+				}
+			}
+		} while (!done);
+
+		// Output the first road in each group that was not yet added
+		int last = posOther - 1;
+		for (int i = posOther; i < groups.length; i++) {
+			if (groups[i] > last) {
+				LabeledRoadDef lrd = in.get(i);
+				out.add(lrd);
+				last = groups[i];
+			}
+		}
 	}
 
 	public void setNetwork(List<RoadDef> roads) {
