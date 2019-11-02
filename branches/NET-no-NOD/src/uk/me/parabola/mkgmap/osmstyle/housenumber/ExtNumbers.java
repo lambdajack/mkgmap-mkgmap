@@ -353,6 +353,9 @@ public class ExtNumbers {
 		int nodeCount = 0;
 		for (ExtNumbers curr = this; curr != null; curr = curr.next){
 			Numbers cn = curr.getNumbers();
+			if (cn.isEmpty() && !housenumberRoad.getRoad().getPoints().get(curr.startInRoad).isNumberNode()) {
+				continue; // TODO why do we get here?
+			}
 			cn.setNodeNumber(nodeCount);
 			nodeCount++;
 			assert housenumberRoad.getRoad().getPoints().get(curr.startInRoad).isNumberNode();
