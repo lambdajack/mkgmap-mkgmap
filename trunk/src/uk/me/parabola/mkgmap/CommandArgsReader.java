@@ -268,6 +268,7 @@ public class CommandArgsReader {
 					args.setProperty("mapname", mapname);
 			}
 
+			checkMapName();
 			// Now process the file
 			proc.processFilename(new CommandArgs(args), name);
 
@@ -286,6 +287,18 @@ public class CommandArgsReader {
 				fmt.close();
 			} catch (NumberFormatException e) {
 				// If the name is not a number then we just leave it alone...
+			}
+		}
+
+		private void checkMapName() {
+			try {
+				String mapname = args.getProperty("mapname");
+				int n = Integer.parseInt(mapname);
+				if (n > 99999999) {
+					throw new ExitException("Cannot calculate mapid for " + name);
+				}
+			} catch (NumberFormatException e) {
+				throw new ExitException("Cannot calculate mapid for " + name);
 			}
 		}
 
