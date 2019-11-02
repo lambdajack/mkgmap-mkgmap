@@ -163,7 +163,7 @@ public class NETFile extends ImgFile {
 				}
 
 				// If there is a zip code add it to the sort.
-				Zip zip = (rd.getCities().isEmpty() ? null : rd.getZips().get(0));
+				Zip zip = (rd.getZips().isEmpty() ? null : rd.getZips().get(0));
 				Label zipLabel = zip == null ?  Label.NULL_OUT_LABEL: zip.getLabel();
 				SortKey<LabeledRoadDef> zipKey = sort.createSortKey(null, zipLabel);
 				
