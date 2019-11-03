@@ -297,14 +297,13 @@ public class RoadNetwork {
 		// calculate all islands
 		List<List<RouteNode>> islands = searchIslands();
 		long t2 = System.currentTimeMillis();
-		log.error("search for routing islands found", islands.size(), "islands in", (t2 - t1), "ms");
+		log.info("Search for routing islands found", islands.size(), "islands in", (t2 - t1), "ms");
 		if (!islands.isEmpty()) {
 			analyseIslands(islands);
 		}
-		//TODO: change severity to info
 		if (maxSumRoadLenghts > 0) {
 			long t3 = System.currentTimeMillis();
-			log.error("routing island removal took", (t3 - t2), "ms");
+			log.info("routing island removal took", (t3 - t2), "ms");
 		}
 	}
 
@@ -339,8 +338,7 @@ public class RoadNetwork {
 			// compute size of island as sum of road lengths
 			Set<RoadDef> visitedRoads = new HashSet<>();
 			long sumOfRoadLenghts = calcIslandSize(island, nodeToRoadMap, visitedRoads);
-			//TODO: change severity to warning 
-			log.error("routing island at", island.get(0).getCoord().toDegreeString(), "with", island.size(),
+			log.info("Routing island at", island.get(0).getCoord().toDegreeString(), "with", island.size(),
 					"routing node(s) and total length of", sumOfRoadLenghts, "m");
 			if (sumOfRoadLenghts < maxSumRoadLenghts) {
 				// set discarded flag for all nodes of the island 

@@ -821,8 +821,7 @@ public class RoadDef {
 	public void skipAddToNOD(boolean skip) {
 		this.skipAddToNOD = skip;
 		if (hasNodInfo()) {
-			// TODO: change to info level
-			log.error("road", this, "is removed from NOD, length:", lenInMeter, "m");
+			log.info("road", this, "is removed from NOD, length:", lenInMeter, "m");
 			netFlags &= ~NET_FLAG_NODINFO;
 		}
 	}
