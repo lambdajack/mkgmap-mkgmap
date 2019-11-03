@@ -169,6 +169,8 @@ public class ExtNumbers {
 	 */
 	public int setNumbers(List<HousenumberMatch> housenumbers, int startSegment, int endSegment, boolean left) {
 		int assignedNumbers = 0;
+		startInRoad = startSegment;
+		endInRoad = endSegment;
 		if (housenumbers.isEmpty() == false) {
 			RoadSide rs = new RoadSide(); 
 			if (left)
@@ -191,15 +193,20 @@ public class ExtNumbers {
 			if (maxN >= 0) {
 				assignedNumbers = maxN + 1;
 				rs.houses = new ArrayList<>(housenumbers.subList(0, assignedNumbers));
-				startInRoad = startSegment;
-				endInRoad = endSegment;
-				assert startSegment < endSegment;
-				if (getRoad().getPoints().get(startInRoad).isNumberNode() == false || getRoad().getPoints().get(endInRoad).isNumberNode() == false){
-					log.error("internal error: start or end is not a number node", this);
-				}
+				assert startSegment < endSegment : this;
+				checkIfStartIsNumberNode();
 			}
 		}
 		return assignedNumbers;
+	}
+	
+	/**
+	 * Log an error if start is not a number node 
+	 */
+	private void checkIfStartIsNumberNode() {
+		if (!getRoad().getPoints().get(startInRoad).isNumberNode()) {
+			log.error("internal error: start is not a number node", this);
+		}
 	}
 	
 	/**
@@ -353,12 +360,9 @@ public class ExtNumbers {
 		int nodeCount = 0;
 		for (ExtNumbers curr = this; curr != null; curr = curr.next){
 			Numbers cn = curr.getNumbers();
-			if (cn.isEmpty() && !housenumberRoad.getRoad().getPoints().get(curr.startInRoad).isNumberNode()) {
-				continue; // TODO why do we get here?
-			}
+			checkIfStartIsNumberNode();
 			cn.setNodeNumber(nodeCount);
 			nodeCount++;
-			assert housenumberRoad.getRoad().getPoints().get(curr.startInRoad).isNumberNode();
 			if (!cn.isEmpty()) {
 				list.add(cn);
 			}
@@ -1120,12 +1124,12 @@ public class ExtNumbers {
 	 * @param startPos
 	 */
 	private void increaseNodeIndexes(int startPos){
-		if (hasNumbers() == false)
-			return;
 		if (startInRoad > startPos){
 			startInRoad++;
 			endInRoad++;
 		}
+		if (!hasNumbers())
+			return;
 		for (int side = 0; side < 2; side++){
 			boolean left = side == 0;
 			for (HousenumberMatch house : getHouses(left)){
