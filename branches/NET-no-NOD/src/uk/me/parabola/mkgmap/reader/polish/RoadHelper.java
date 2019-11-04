@@ -186,14 +186,17 @@ class RoadHelper {
 		}
 		
 		points.get(0).setNumberNode(true); 
-		int rNodNumber = 0;
+		int roadNodeNumber = 0;
 		for (int i = 0; i < points.size(); i++) {
 			if (points.get(i).isNumberNode()) {
 				Numbers nums = numbersMap.get(i);
 				if (nums != null) {
-					nums.setIndex(rNodNumber);
+					// we have numbers for this node
+					nums.setIndex(roadNodeNumber);
+				} else {
+					// no numbers given, default is the empty interval (N,-1,-1,N,-1,-1)
 				}
-				rNodNumber++;
+				roadNodeNumber++;
 			}
 		}
 		road.setNumbers(new ArrayList<>(numbersMap.values()));
@@ -210,7 +213,7 @@ class RoadHelper {
 	public void addNumbers(Numbers nums) {
 		if (numbersMap == null)
 			numbersMap = new TreeMap<>();
-		numbersMap.put(nums.getNodeNumber(),nums);
+		numbersMap.put(nums.getPolishIndex(),nums);
 	}
 
 	private static class NodeIndex {

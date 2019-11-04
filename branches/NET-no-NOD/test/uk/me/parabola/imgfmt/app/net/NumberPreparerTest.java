@@ -279,16 +279,16 @@ public class NumberPreparerTest {
 		nr.setNumberOfNodes(numbers.get(numbers.size()-1).getIndex() + 1);
 		List<Numbers> list = nr.readNumbers(swapped);
 		for (Numbers n : list)
-			n.setNodeNumber(n.getIndex());
+			n.setPolishIndex(n.getIndex());
 
 		return list;
 	}
 
 	private List<Numbers> createList(String[] specs) {
-		List<Numbers> numbers = new ArrayList<Numbers>();
+		List<Numbers> numbers = new ArrayList<>();
 		for (String s : specs) {
 			Numbers n = new Numbers(s);
-			n.setIndex(n.getNodeNumber());
+			n.setIndex(n.getPolishIndex());
 			numbers.add(n);
 		}
 		return numbers;

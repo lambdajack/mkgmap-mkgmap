@@ -340,48 +340,49 @@ public class ExtNumbers {
 
 	/**
 	 * Return the intervals in the format used for the writer routines
-	 * @return
+	 * @return list of numbers, might be empty but is never null
 	 */
 	public List<Numbers> getNumberList() {
-		// do we have numbers?
-		boolean foundNumbers = false;
-		for (ExtNumbers curr = this; curr != null; curr = curr.next){
-			if (curr.hasNumbers()){
-				foundNumbers = true;
-				break;
-			}
-		}
-		if (!foundNumbers)
-			return null;
-		
 		List<Numbers> list = new ArrayList<>();
-		boolean headerWasReported = false;
+		// do we have numbers?
+		if (!hasNumbersInChain()) 
+			return list;
 		
-		int nodeCount = 0;
-		for (ExtNumbers curr = this; curr != null; curr = curr.next){
+		boolean headerWasReported = false;
+
+		for (ExtNumbers curr = this; curr != null; curr = curr.next) {
 			Numbers cn = curr.getNumbers();
 			checkIfStartIsNumberNode();
-			cn.setNodeNumber(nodeCount);
-			nodeCount++;
 			if (!cn.isEmpty()) {
 				list.add(cn);
 			}
 			if (log.isInfoEnabled()) {
-				if (headerWasReported == false){
+				if (headerWasReported == false) {
 					MapRoad road = curr.getRoad();
 					if (road.getStreet() == null && road.getName() == null)
 						log.info("final numbers for", road, curr.housenumberRoad.getName(), "in", road.getCity());
-					else 
+					else
 						log.info("final numbers for", road, "in", road.getCity());
 					headerWasReported = true;
 				}
-				log.info("Left: ",cn.getLeftNumberStyle(),cn.getIndex(),"Start:",cn.getLeftStart(),"End:",cn.getLeftEnd(), "numbers "+curr.getHouses(Numbers.LEFT));
-				log.info("Right:",cn.getRightNumberStyle(),cn.getIndex(),"Start:",cn.getRightStart(),"End:",cn.getRightEnd(), "numbers "+curr.getHouses(Numbers.RIGHT));
+				log.info("Left: ", cn.getLeftNumberStyle(), cn.getIndex(), "Start:", cn.getLeftStart(), "End:",
+						cn.getLeftEnd(), "numbers " + curr.getHouses(Numbers.LEFT));
+				log.info("Right:", cn.getRightNumberStyle(), cn.getIndex(), "Start:", cn.getRightStart(), "End:",
+						cn.getRightEnd(), "numbers " + curr.getHouses(Numbers.RIGHT));
 			}
 		}
 		return list;
 	}
 	
+	private boolean hasNumbersInChain() {
+		for (ExtNumbers curr = this; curr != null; curr = curr.next){
+			if (curr.hasNumbers()){
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public ExtNumbers checkSingleChainSegments(String streetName, boolean removeGaps) {
 		ExtNumbers curr = this;
 		ExtNumbers head = this;

@@ -493,7 +493,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	public Numbers parseNumbers(String spec) {
 		Numbers nums = new Numbers();
 		String[] strings = spec.split(",");
-		nums.setNodeNumber(Integer.parseInt(strings[0]));
+		nums.setPolishIndex(Integer.parseInt(strings[0]));
 		NumberStyle numberStyle = NumberStyle.fromChar(strings[1]);
 		int start = Integer.parseInt(strings[2]);
 		int end = Integer.parseInt(strings[3]);

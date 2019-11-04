@@ -30,14 +30,14 @@ public class Numbers {
 	private static final int MAX_DELTA = 131071; // see NumberPreparer
 
 	/**
-	 * The number node in the road where these numbers apply. In the polish notation it is the
-	// node in the road, whereas in the NET file it is the index of the number node.
+	 * Polish format: The point in the road where these numbers apply. Not written to NET!
 	 */
-	private int nodeNumber;
+	private int polishPointIndex;
 	/**
-	 * the position in the list of Numbers (starting with 0). 
+	 * The position in the list of nodes (starting with 0). Negative value means it is not yet set. 
+	 * Identifies the node (not point) in the road. This is needed to encode the bitstream in NET.    
 	 */
-	private Integer indexNumber;
+	private int nodeIndex = -1;
 	
 	/** the data on side of the road */
 	private RoadSide leftSide,rightSide;
@@ -94,7 +94,7 @@ public class Numbers {
 	 */
 	public Numbers(String spec) {
 		String[] strings = spec.split(",");
-		nodeNumber = Integer.parseInt(strings[0]);
+		polishPointIndex = Integer.parseInt(strings[0]);
 		NumberStyle numberStyle = NumberStyle.fromChar(strings[1]);
 		int start = Integer.parseInt(strings[2]);
 		int end = Integer.parseInt(strings[3]);
@@ -197,31 +197,34 @@ public class Numbers {
 		return (left) ? leftSide : rightSide;
 	}
 
-	public int getNodeNumber() {
-		return nodeNumber;
+	public int getPolishIndex() {
+		return polishPointIndex;
 	}
 
-	public void setNodeNumber(int nodeNumber) {
-		this.nodeNumber = nodeNumber;
+	public void setPolishIndex(int n) {
+		this.polishPointIndex = n;
 	}
 
+	/**
+	 * @return The index of the nth number node where these numbers apply.  
+	 */
 	public int getIndex() {
-		if (indexNumber == null) {
-			log.error("WARNING: index not set!!");
-			return nodeNumber;
+		if (nodeIndex < 0) {
+			log.error("WARNING: node index not set!!");
+			return 0;
 		}
-		return indexNumber;
+		return nodeIndex;
 	}
 
 	public boolean hasIndex() {
-		return indexNumber != null;
+		return nodeIndex >= 0;
 	}
 
 	/**
 	 * @param index the nth number node 
 	 */
 	public void setIndex(int index) {
-		this.indexNumber = index;
+		this.nodeIndex = index;
 	}
 
 	private NumDesc getNumbers(boolean left) {
@@ -246,8 +249,8 @@ public class Numbers {
 
 	public String toString() {
 		String nodeStr = "0";
-		if (nodeNumber > 0)
-			nodeStr = Integer.toString(nodeNumber);
+		if (polishPointIndex > 0)
+			nodeStr = Integer.toString(polishPointIndex);
 		else if (getIndex() > 0)
 			nodeStr = String.format("(n%d)", getIndex());
 
