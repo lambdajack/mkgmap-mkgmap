@@ -151,8 +151,8 @@ public class StyleImpl implements Style {
 		
 		// read overlays before the style rules to be able to ignore overlaid "wrong" types. 
 		readOverlays(); 
-		
-		readRules();
+
+		readRules(props.getProperty("levels"));
 
 		ListIterator<StyleImpl> listIterator = baseStyles.listIterator(baseStyles.size());
 		while (listIterator.hasPrevious())
@@ -251,8 +251,9 @@ public class StyleImpl implements Style {
 		return set;
 	}
 
-	private void readRules() {
-		String l = generalOptions.get("levels");
+	private void readRules(String l) {
+		if (l == null)
+			l = generalOptions.get("levels");
 		if (l == null)
 			l = LevelInfo.DEFAULT_LEVELS;
 		LevelInfo[] levels = LevelInfo.createFromString(l);
