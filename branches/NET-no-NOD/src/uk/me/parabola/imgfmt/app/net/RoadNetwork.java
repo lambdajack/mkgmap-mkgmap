@@ -341,7 +341,7 @@ public class RoadNetwork {
 			log.info("Routing island at", island.get(0).getCoord().toDegreeString(), "with", island.size(),
 					"routing node(s) and total length of", sumOfRoadLenghts, "m");
 			if (sumOfRoadLenghts < maxSumRoadLenghts) {
-				// set discarded flag for all nodes of the island 
+				// set discarded flag for all nodes of the island
 				island.forEach(RouteNode::discard);
 				visitedRoads.forEach(rd -> rd.skipAddToNOD(true));
 				cleanNodes = true;
@@ -350,7 +350,13 @@ public class RoadNetwork {
 		
 		if (cleanNodes) {
 			// remove discarded nodes from map nodes
-			nodes.values().removeIf(RouteNode::isDiscarded);
+			Iterator<Entry<Integer, RouteNode>> iter = nodes.entrySet().iterator();
+			while (iter.hasNext()) {
+				RouteNode n = iter.next().getValue();
+				if (n.isDiscarded()) {
+					iter.remove();
+				}
+			}
 		}
 	}
 	
