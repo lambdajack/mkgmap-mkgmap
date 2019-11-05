@@ -71,7 +71,7 @@ public class RoadNetwork {
 		checkRoundaboutFlares = props.getProperty("check-roundabout-flares", false);
 		maxFlareLengthRatio = props.getProperty("max-flare-length-ratio", 0);
 		reportSimilarArcs = props.getProperty("report-similar-arcs", false);
-		maxSumRoadLenghts = props.getProperty("check-routing-island-len", 0);
+		maxSumRoadLenghts = props.getProperty("check-routing-island-len", -1);
 		routable = props.containsKey("route");
 		angleChecker.config(props);
 	}
@@ -291,7 +291,7 @@ public class RoadNetwork {
 	 */
 	private void checkRoutingIslands() {
 		if (maxSumRoadLenghts < 0)
-			return;
+			return; // island check is disabled
 		long t1 = System.currentTimeMillis();
 
 		// calculate all islands
