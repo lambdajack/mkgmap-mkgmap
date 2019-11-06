@@ -15,6 +15,7 @@ package uk.me.parabola.imgfmt.app.mdr;
 import java.util.ArrayList;
 import java.util.List;
 
+import uk.me.parabola.mkgmap.general.MapPoint;
 import uk.me.parabola.imgfmt.app.srt.Sort;
 import uk.me.parabola.imgfmt.app.srt.SortKey;
 
@@ -33,33 +34,38 @@ public class MdrUtils {
 	 *
 	 * Not entirely sure about how this works yet.
 	 * @param fullType The primary type of the object.
-	 * @return The group number.  This is a number between 1 and 9 (and later
-	 * perhaps higher numbers such as 0x40, so do not assume there are no
-	 * gaps).
-	 * Group / Filed under
-	 * 1 Cities
-	 * 2 Food & Drink
-	 * 3 Lodging
-	 * 4-5 Recreation / Entertainment / Attractions
-	 * 6 Shopping
-	 * 7 Auto Services
-	 * 8 Community
-	 * 9 ?
-	 * 
+	 * @return The group number.  This is a number between 1 and MAX_GROUP, later
+	 * might be as high as 0x40, so do not assume there are no gaps.
+	 *
+	 * Group Type   Filed under
+	 *  1    	Cities	(actual range defined by isCityType)
+	 *  2    0x2a   Food and Drink
+	 *  3    0x2b   Lodgings
+	 *  4    0x2c   Attractions/Recreation/Community
+	 *  5    0x2d   Entertainment/Recreation
+	 *  6    0x2e   Shopping
+	 *  7    0x2f   Auto/Transport/Community/Other
+	 *  8    0x30   Civic
+	 *  9    0x28   Island. Reason for having this is no longer known
+	 * 10  unused
+	 * 11    0x64   Geographic > Manmade Places
+	 * 12    0x65   Geographic > Water Features
+	 * 13    0x66   Geographic > Land Features
+	 *
+	 * display MdrCheck.java:toType() needs to be in-step with this
 	 */
 	public static int getGroupForPoi(int fullType) {
 		// We group pois based on their type.  This may not be the final thoughts on this.
 		int type = getTypeFromFullType(fullType);
 		int group = 0;
-		if (fullType <= 0xf)
+		if (MapPoint.isCityType(fullType))
 			group = 1;
-		else if (type >= 0x2a && type <= 0x30) { 
-			group = type - 0x28;
-		} else if (type == 0x28) {
+		else if (type >= 0x2a && type <= 0x30)
+			group = type - 0x2a + 2;
+		else if (type == 0x28)
 			group = 9;
-		} else if (type >= 0x64 && type <= 0x66) {
-			group = type - 0x59;
-		}
+		else if (type >= 0x64 && type <= 0x66)
+			group = type - 0x64 + 11;
 		assert group >= 0 && group <= MAX_GROUP : "invalid group " + Integer.toHexString(group);
 		return group;
 	}
@@ -69,10 +75,7 @@ public class MdrUtils {
 	}
 
 	public static int getTypeFromFullType(int fullType) {
-		if ((fullType & 0xfff00) > 0)
-			return (fullType>>8) & 0xfff;
-		else
-			return fullType & 0xff;
+		return (fullType>>8) & 0xfff;
 	}
 
 	/**
@@ -81,7 +84,7 @@ public class MdrUtils {
 	 * @return If there is a subtype, then it is returned, else 0.
 	 */
 	public static int getSubtypeFromFullType(int fullType) {
-		return fullType < 0xff ? 0 : fullType & 0xff;
+		return fullType & 0xff;
 	}
 
 	/**
@@ -114,10 +117,8 @@ public class MdrUtils {
 	 */
 	public static int fullTypeToNaturalType(int ftype) {
 		int type = getTypeFromFullType(ftype);
-		int sub = 0;
-		if ((ftype & ~0xff) != 0)
-			sub = ftype & 0x1f;
-
+		int sub = getSubtypeFromFullType(ftype);
+		assert sub <= 0x1f: "Subtype doesn't fit into 5 bits: " + uk.me.parabola.mkgmap.reader.osm.GType.formatType(ftype);
 		return type << 5 | sub;
 	}
 }

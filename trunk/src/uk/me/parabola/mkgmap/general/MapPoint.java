@@ -64,7 +64,7 @@ public class MapPoint extends MapElement implements Locatable{
 
 	public static boolean isCityType(int type)
 	{
-		return type >= 0x0100 && type <= 0x1100;
+		return type >= 0x0100 && type < 0x1100;
 	}
 
 	public boolean isExit() {

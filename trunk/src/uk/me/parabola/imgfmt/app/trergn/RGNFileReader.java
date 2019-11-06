@@ -127,13 +127,13 @@ public class RGNFileReader extends ImgReader {
 			p.setDeltaLong(reader.get2s());
 			p.setDeltaLat(reader.get2s());
 
+			t <<= 8;
 			if (hasSubtype) {
 				int st = reader.get1u();
-				p.setType((t << 8) | st);
+				t |= st;
 				//p.setHasSubtype(true);
-			} else {
-				p.setType(t);
 			}
+			p.setType(t);
 
 			p.setNumber(number++);
 			points.add(p);

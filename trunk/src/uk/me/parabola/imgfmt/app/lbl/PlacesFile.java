@@ -304,7 +304,7 @@ public class PlacesFile {
 		if (t < MIN_INDEXED_POI_TYPE || t > MAX_INDEXED_POI_TYPE) 
 			return;
 		
-		POIIndex pi = new POIIndex(name, index, group, type);
+		POIIndex pi = new POIIndex(name, index, group, type & 0xff);
 		if(poiIndex[t] == null)
 			poiIndex[t] = new ArrayList<POIIndex>();
 		poiIndex[t].add(pi);

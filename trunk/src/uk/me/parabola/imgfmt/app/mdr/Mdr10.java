@@ -55,7 +55,7 @@ public class Mdr10 extends MdrMapSection {
 		if (group == 0)
 			return;
 		if (group == 1)
-			t.setSubtype(fullType);
+			t.setSubtype(MdrUtils.getTypeFromFullType(fullType)); // cities
 		else {
 			t.setSubtype(MdrUtils.getSubtypeFromFullType(fullType));
 		}

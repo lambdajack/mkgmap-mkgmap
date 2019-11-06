@@ -21,6 +21,7 @@ import java.util.Formatter;
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.LevelInfo;
+import uk.me.parabola.mkgmap.general.MapPoint;
 
 /**
  * Holds the garmin type of an element and all the information that
@@ -66,7 +67,12 @@ public class GType {
 			else if (featureKind == FeatureKind.POLYGON && (type> 0x7f || type == 0x4a))
 				return false;
 			else if (featureKind == FeatureKind.POINT){
-				if (type < 0x0100 || (type & 0x00ff) > 0x1f) 
+				if (type < 0x0100)
+					return false;
+				int subtype = type & 0xff;
+ 				if (subtype > 0x1f)
+					return false;
+				if (MapPoint.isCityType(type) && subtype != 0)
 					return false;
 			}
 		}
