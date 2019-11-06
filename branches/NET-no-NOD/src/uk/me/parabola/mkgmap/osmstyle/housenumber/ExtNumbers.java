@@ -1883,41 +1883,6 @@ public class ExtNumbers {
 		return sortedByDistToLine;
 	}
 
-	/**
-	 * Use Bresemham algorithm to get the Garmin points which are close to the line
-	 * described by c1 and c2 and the point p.
-	 * @param c1
-	 * @param c2
-	 * @param p
-	 * @return the list of points
-	 */
-	public static List<Coord> rasterLineNearPoint3(Coord c1, Coord c2, double maxDistToLine){
-		int x0 = c1.getLongitude();
-		int y0 = c1.getLatitude();
-		int x1 = c2.getLongitude();
-		int y1 = c2.getLatitude();
-		Coord c1Dspl = c1.getDisplayedCoord();
-		Coord c2Dspl = c2.getDisplayedCoord();
-		int x = x0, y = y0;
-		int dx =  Math.abs(x1-x), sx = x<x1 ? 1 : -1;
-		int dy = -Math.abs(y1-y), sy = y<y1 ? 1 : -1;
-		int err = dx+dy, e2; /* error value e_xy */
-		
-		List<Coord> rendered = new ArrayList<>();
-		for(;;){  /* loop */
-			Coord t = new Coord(y, x);
-			double distLine = t.distToLineSegment(c1Dspl, c2Dspl);
-			if (distLine <= maxDistToLine)
-				rendered.add(t);
-			if (x==x1 && y==y1) 
-				break;
-			e2 = 2*err;
-			if (e2 > dy) { err += dy; x += sx; } /* e_xy+e_x > 0 */
-			if (e2 < dx) { err += dx; y += sy; } /* e_xy+e_y < 0 */
-		}
-		return rendered;
-	}
-
 	private static int countOccurence(List<HousenumberMatch> houses, int num){
 		int count = 0;
 		for (HousenumberMatch house : houses){
