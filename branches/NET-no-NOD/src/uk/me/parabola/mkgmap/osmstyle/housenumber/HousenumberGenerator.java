@@ -464,6 +464,7 @@ public class HousenumberGenerator {
 					}
 				} 
 				road.getPoints().get(0).setNumberNode(true);
+				road.getPoints().get(road.getPoints().size() - 1).setNumberNode(true);
 				firstRoadSameOSMWay = road;
 				String name = road.getStreet(); 
 				if (name != null && log.isDebugEnabled()) {
