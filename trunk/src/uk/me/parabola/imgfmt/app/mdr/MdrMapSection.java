@@ -51,8 +51,8 @@ public abstract class MdrMapSection extends MdrSection implements HasHeaderFlags
 			index.addPointer(mapNumber, recordNumber);
 	}
 
-	protected void putCityIndex(ImgFileWriter writer, int cityIndex, boolean isNew) {
-		int flag = (isNew && cityIndex > 0)? getSizes().getCityFlag(): 0;
+	protected void putCityIndex(ImgFileWriter writer, int cityIndex) {
+		int flag = cityIndex > 0 ? getSizes().getCityFlag() : 0;
 		writer.putNu(getSizes().getCitySizeFlagged(), cityIndex | flag);
 	}
 
