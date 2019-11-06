@@ -50,13 +50,11 @@ public class Point extends MapObject {
 		boolean hasSubtype = false;
 		int type = getType();
 		int subtype = 0;
-		if (type > 0xff) {
-			if((type & 0xff) != 0) {
-			    hasSubtype = true;
-			    subtype = type & 0xff;
-			}
-			type >>= 8;
+		if ((type & 0xff) != 0) {
+			hasSubtype = true;
+			subtype = type & 0xff;
 		}
+		type >>= 8;
 
 		file.put1u(type);
 

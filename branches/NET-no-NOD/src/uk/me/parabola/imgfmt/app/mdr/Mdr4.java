@@ -51,12 +51,9 @@ public class Mdr4 extends MdrSection implements HasHeaderFlags {
 
 	public void addType(int type) {
 		Mdr4Record r = new Mdr4Record();
-		if (type <= 0xff)
-			r.setType(type);
-		else {
-			r.setType((type >> 8) & 0xff);
-			r.setSubtype(type & 0xff);
-		}
+		r.setType((type >> 8) & 0xff);
+		r.setSubtype(type & 0xff);
+
 		r.setUnknown(0);
 
 		poiTypes.add(r);

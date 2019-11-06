@@ -46,6 +46,7 @@ import uk.me.parabola.imgfmt.fs.FileSystem;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.imgfmt.sys.ImgFS;
 import uk.me.parabola.mkgmap.CommandArgs;
+import uk.me.parabola.mkgmap.general.MapPoint;
 import uk.me.parabola.mkgmap.srt.SrtTextReader;
 
 /**
@@ -266,7 +267,7 @@ public class MdrBuilder implements Combiner {
 
 			Mdr5Record mdrCity = null;
 			boolean isCity;
-			if (p.getType() >= 0x1 && p.getType() <= 0x11) {
+			if (MapPoint.isCityType(p.getType())) {
 				// This is itself a city, it gets a reference to its own MDR 5 record.
 				// and we also use it to set the name of the city.
 				mdrCity = maps.cities.get((p.getSubdiv().getNumber() << 8) + p.getNumber());
