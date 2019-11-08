@@ -120,8 +120,8 @@ public class KdTree <T extends Locatable> {
 		set = null;
 		nextPoint = null;
 		
-		// false => first node is a latitude level
-		return findNextPoint(p.getLocation(), root, ROOT_NODE_USES_LONGITUDE);
+		findNextPoint(p.getLocation(), root, ROOT_NODE_USES_LONGITUDE);
+		return nextPoint;
 	}
 
 	/**
@@ -136,32 +136,29 @@ public class KdTree <T extends Locatable> {
 		this.maxDist = Math.pow(maxDist * 360 / Coord.U, 2); // convert maxDist in meter to distanceInDegreesSquared
 		nextPoint = null;
 		set = new LinkedHashSet<>();
-		// false => first node is a latitude level
 		findNextPoint(p.getLocation(), root, ROOT_NODE_USES_LONGITUDE);
 		return set;
 	}
 
 	/**
 	 * Recursive routine to find the closest point. If set is not null, all
-	 * elements within the range given by maxDist are collected.
+	 * elements within the range given by maxDist are collected. 
+	 * Closest point is in field nextPoint.
 	 * 
 	 * @param p the location of the given point
 	 * @param tree the sub tree
 	 * @param useLongitude gives the dimension to search in
-	 * @return the closest point
 	 */
-	private T findNextPoint(Coord p, KdNode tree, boolean useLongitude) {
+	private void findNextPoint(Coord p, KdNode tree, boolean useLongitude) {
 		if (tree == null)
-			return nextPoint;
-		
-		boolean smaller;
+			return;
 		
 		if (tree.left == null && tree.right == null) {
 			processNode(tree, p);
-			return nextPoint;
+			return;
 		}
-		smaller = isSmaller(useLongitude, p, tree.point.getLocation());
-		nextPoint = findNextPoint(p, smaller ? tree.left : tree.right, !useLongitude);
+		boolean smaller = isSmaller(useLongitude, p, tree.point.getLocation());
+		findNextPoint(p, smaller ? tree.left : tree.right, !useLongitude);
 
 		processNode(tree, p);
 		// do we have to search the other part of the tree?
@@ -169,9 +166,8 @@ public class KdTree <T extends Locatable> {
 		int testLon =  useLongitude ? tree.point.getLocation().getHighPrecLon() : p.getHighPrecLon();
 		Coord test = Coord.makeHighPrecCoord(testLat, testLon);
 		if (test.distanceInDegreesSquared(p) < minDist) {
-			nextPoint = findNextPoint(p, smaller ? tree.right : tree.left, !useLongitude);
+			findNextPoint(p, smaller ? tree.right : tree.left, !useLongitude);
 		}
-		return nextPoint;
 	}
 	
 	private void processNode(KdNode node, Coord p) {
