@@ -39,10 +39,13 @@ import uk.me.parabola.mkgmap.reader.osm.GType;
  * variables BASE_LAT and BASE_LONG set to something just SW of where you
  * are then the map generated will be located near where you are.  Otherwise
  * the default location is at (51.7, 0.24).
-*  Options --x-base-lat and --x-base-long have the same effect. 
+ * Options --x-base-lat and --x-base-long have the same effect.
+ *
+ * The map doesn't have a standard background and so flags have to be set to
+ * say it is transparent. This is done in ./ElementTestDataSource.java
  *
  * To run, something like:
- * java -jar mkgmap.jar --gmapsupp test-map:all-elements ...
+ * java -jar mkgmap/mkgmap.jar --verbose --gmapsupp --order-by-decreasing-area test-map:all-elements
  *
  * You can then use the find facility of your GPS to
  * show the near-by points.  When viewing a category the menu key will allow
@@ -97,14 +100,19 @@ class AllElements {
 		
 		drawTestMap(mapper, baseLat, baseLong, false);
 // do same again but on different background without labels
+// Some devices will tell you the default name for the selected object if it is unnamed
 		baseLat += (MAX_POINT_SUB_TYPE + 4) * ELEMENT_SPACING;  // assume taller than lines and areas
 		drawBackground(mapper, baseLat, baseLong, MAX_POINT_SUB_TYPE + 3, MAX_POINT_TYPE + MAX_LINE_TYPE_X + MAX_SHAPE_TYPE_X + 4);
 		drawTestMap(mapper, baseLat, baseLong, true);
 	}
 
-        private void drawBackground(MapCollector mapper, double startLat, double startLong, int nUp, int nAcross) {
+	private static String makeName(int type, boolean pointType) {
+		return 'x' + String.format(pointType ? "%04x" : "%02x", type);
+	}
+
+	private void drawBackground(MapCollector mapper, double startLat, double startLong, int nUp, int nAcross) {
 		MapShape shape = new MapShape();
-		int type = 0x1b; // Area - Green // 0x4d; // glacier-white
+		int type = 0x1b; // Area - Green. NB default _draworder of this is low on some devices
 		shape.setMinResolution(10);
 		shape.setName("background");
 
@@ -160,18 +168,11 @@ class AllElements {
 		double lat = slat + 0.004;
 		double lon = slon + 0.002;
 		
-		for (int maintype = 0; maintype <= MAX_POINT_TYPE; maintype++) {
-//			for (int subtype = 0; subtype <= MAX_POINT_SUB_TYPE; subtype++) {
-			for (int subtype = -1; subtype <= MAX_POINT_SUB_TYPE; subtype++) {
-				// if maintype is zero, the subtype will be treated as the type
-			    	// use subtype -1 to indicate no subtype and draw, say
-			    	// point 0x23 under 0x2300 to check they are the same
-				// The zero column is just for just to see 0x00
-			    	int type;  // = (maintype << 8) + subtype;
-				if (subtype < 0)
-					type = maintype;
-				else
-					type = (maintype << 8) + subtype;
+		for (int maintype = 1; maintype <= MAX_POINT_TYPE; maintype++) {
+			for (int subtype = 0; subtype <= MAX_POINT_SUB_TYPE; subtype++) {
+				if (MapPoint.isCityType(maintype << 8) && subtype != 0x00)
+					continue;
+				int type = (maintype << 8) + subtype;
 
 				MapPoint point = new MapPoint();
 
@@ -179,18 +180,17 @@ class AllElements {
 				double baseLong = lon + maintype * ELEMENT_SPACING;
 
 				point.setMinResolution(10);
-				if (subtype < 0 ? hasBackground : !hasBackground)
-					point.setName(GType.formatType(type));
+				if (!hasBackground)
+					point.setName(makeName(type, true));
 				point.setLocation(new Coord(baseLat, baseLong));
 				point.setType(type);
 
 				mapper.addPoint(point);
-				
+
 				if (configProps.containsKey("verbose"))
-					System.out.println("Generated POI " + GType.formatType(type) + " at " + point.getLocation().toDegreeString()); 
+					System.out.println("Generated POI " + GType.formatType(type) + " at "
+							+ point.getLocation().toDegreeString() + " " + point.getName());
 				mapper.addToBounds(point.getLocation()); // XXX shouldn't be needed.
-				if (maintype == 0)
-				    break;
 			}
 		}
 	}
@@ -206,7 +206,7 @@ class AllElements {
 				MapLine line = new MapLine();
 				line.setMinResolution(10);
 				if (!hasBackground)
-					line.setName(GType.formatType(type));
+					line.setName(makeName(type, false));
 
 				double baseLat = lat + y * ELEMENT_SPACING;
 				double baseLong = lon + x * ELEMENT_SPACING;
@@ -216,13 +216,13 @@ class AllElements {
 				coords.add(co);
 				mapper.addToBounds(co);
 				if (configProps.containsKey("verbose"))
-					System.out.println("Generated line " + GType.formatType(type) + " at " + co.toDegreeString());
+					System.out.println("Generated line " + GType.formatType(type) + " at " + co.toDegreeString() + " " + line.getName());
 
 				co = new Coord(baseLat + ELEMENT_SIZE, baseLong + ELEMENT_SIZE);
 				coords.add(co);
 				mapper.addToBounds(co);
 
-				co = new Coord(baseLat + ELEMENT_SIZE, baseLong +	 ELEMENT_SIZE + ELEMENT_SIZE/2);
+				co = new Coord(baseLat + ELEMENT_SIZE, baseLong + ELEMENT_SIZE + ELEMENT_SIZE/2);
 				coords.add(co);
 				mapper.addToBounds(co);
 
@@ -248,8 +248,8 @@ class AllElements {
 
 				MapShape shape = new MapShape();
 				shape.setMinResolution(10);
-				if (hasBackground)
-					shape.setName(GType.formatType(type));
+				if (!hasBackground)
+					shape.setName(makeName(type, false));
 
 				double baseLat = lat + y * ELEMENT_SPACING;
 				double baseLong = lon + x * ELEMENT_SPACING;
@@ -261,7 +261,7 @@ class AllElements {
 				coords.add(co);
 				mapper.addToBounds(co);
 				if (configProps.containsKey("verbose"))
-					System.out.println("Generated polygon " + GType.formatType(type) + " at " + co.toDegreeString());
+					System.out.println("Generated polygon " + GType.formatType(type) + " at " + co.toDegreeString() + " " + shape.getName());
 				
 				co = new Coord(baseLat + ELEMENT_SIZE, baseLong);
 				coords.add(co);

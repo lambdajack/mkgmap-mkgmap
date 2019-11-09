@@ -100,6 +100,7 @@ import uk.me.parabola.mkgmap.reader.MapperBasedMapDataSource;
 import uk.me.parabola.mkgmap.reader.hgt.HGTConverter;
 import uk.me.parabola.mkgmap.reader.hgt.HGTConverter.InterpolationMethod;
 import uk.me.parabola.mkgmap.reader.hgt.HGTReader;
+import uk.me.parabola.mkgmap.reader.osm.GType;
 import uk.me.parabola.mkgmap.reader.overview.OverviewMapDataSource;
 import uk.me.parabola.util.Configurable;
 import uk.me.parabola.util.EnhancedProperties;
@@ -1113,7 +1114,9 @@ public class MapBuilder implements Configurable {
 				String name = point.getName();
 
 				Point p = div.createPoint(name);
-				p.setType(point.getType());
+				int fullType = point.getType();
+				assert (fullType & 0xff) == 0 : "indPoint " + GType.formatType(fullType) + " has subtype";
+				p.setType(fullType);
 
 				Coord coord = point.getLocation();
 				try {
