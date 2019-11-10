@@ -38,9 +38,7 @@ public class UnusedElementsRemoverHook extends OsmReadingHooksAdaptor {
 	/** node with tags of this list must not be removed */
 	private List<Entry<String,String>> areasToPoiNodeTags;
 	
-	public UnusedElementsRemoverHook() {
-	}
-
+	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
 		this.saver = saver;
 		
@@ -55,6 +53,7 @@ public class UnusedElementsRemoverHook extends OsmReadingHooksAdaptor {
 		return true;
 	}
 	
+	@Override
 	public void end() {
 		long t1 = System.currentTimeMillis();
 		log.info("Removing unused elements");
@@ -73,20 +72,18 @@ public class UnusedElementsRemoverHook extends OsmReadingHooksAdaptor {
 			}
 			
 			// check if the node is within the tile bounding box 
-			if (bbox.contains(node.getLocation()) == false) {
+			if (!bbox.contains(node.getLocation())) {
 				boolean removeNode = true;
 				
 				for (Entry<String, String> tag : areasToPoiNodeTags) {
 					// check if the node has a tag used by the POIGeneratorHook
 					String val = node.getTag(tag.getKey());
-					if (val != null) {
-						if (tag.getValue() == null || val.equals(tag.getValue())) {
-							// the node contains one tag that might be
-							// interesting for the POIGeneratorHook
-							// do not remove it
-							removeNode = false;
-							break;
-						}
+					if (val != null && (tag.getValue() == null || val.equals(tag.getValue()))) {
+						// the node contains one tag that might be
+						// interesting for the POIGeneratorHook
+						// do not remove it
+						removeNode = false;
+						break;
 					}
 				}
 				if (removeNode) {
@@ -126,22 +123,21 @@ public class UnusedElementsRemoverHook extends OsmReadingHooksAdaptor {
 				if (bbox.contains(c)) {
 					coordInBbox = true;
 					break;
-				} else if (prevC != null) {
-					// check if the line intersects the bounding box
-					if (bboxRect.intersectsLine(prevC.getLongitude(), prevC.getLatitude(), c.getLongitude(), c.getLatitude())) {
-						if (log.isDebugEnabled()) {
-							log.debug("Intersection!");
-							log.debug("Bbox:", bbox);
-							log.debug("Way coords:", prevC, c);
-						}
-						coordInBbox = true;
-						break;
+				} else if (prevC != null &&
+						bboxRect.intersectsLine(prevC.getLongitude(), prevC.getLatitude(), c.getLongitude(), c.getLatitude())) {
+					// the line intersects the bounding box
+					if (log.isDebugEnabled()) {
+						log.debug("Intersection!");
+						log.debug("Bbox:", bbox);
+						log.debug("Way coords:", prevC, c);
 					}
+					coordInBbox = true;
+					break;
 				}
 				
 				prevC = c;
 			}
-			if (coordInBbox==false) {
+			if (!coordInBbox) {
 				// no coord of the way is within the bounding box
 				// check if the way possibly covers the bounding box completely
 				Area wayBbox = Area.getBBox(way.getPoints());
