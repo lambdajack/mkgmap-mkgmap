@@ -102,13 +102,8 @@ public class RGNFileReader extends ImgReader {
 
 			int t = reader.get1u();
 			int val = reader.get3u();
-			boolean hasSubtype = false;
-			if ((val & 0x800000) != 0)
-				hasSubtype = true;
-
-			boolean hasPoi = false;
-			if ((val & 0x400000) != 0)
-				hasPoi = true;
+			boolean hasSubtype = (val & 0x800000) != 0;
+			boolean hasPoi = (val & 0x400000) != 0;
 
 			Label l;
 			int labelOffset = val & 0x3fffff;
