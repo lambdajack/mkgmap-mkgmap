@@ -31,7 +31,6 @@ public class HousenumberHooks extends OsmReadingHooksAdaptor {
 	private static final Logger log = Logger.getLogger(HousenumberHooks.class);
 	
 	private ElementSaver saver;
-	private Node currentNodeInWay;
 	private final List<Node> nodes = new ArrayList<>();
 	private boolean clearNodes;
 	
@@ -43,7 +42,7 @@ public class HousenumberHooks extends OsmReadingHooksAdaptor {
 	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
 		this.saver = saver;
-		if (props.getProperty("addr-interpolation", true) == false)
+		if (!props.getProperty("addr-interpolation", true))
 			return false;
 		return (props.getProperty("housenumbers", false));
 	}
@@ -64,10 +63,8 @@ public class HousenumberHooks extends OsmReadingHooksAdaptor {
 			nodes.clear();
 			clearNodes = false;
 		}
-		currentNodeInWay = saver.getNode(id);
-		if (currentNodeInWay == null)
-			return;
-		if (currentNodeInWay.getTag(addrHousenumberTagKey) == null)
+		Node currentNodeInWay = saver.getNode(id);
+		if (currentNodeInWay == null || currentNodeInWay.getTag(addrHousenumberTagKey) == null)
 			return;
 		// this node might be part of a way that has the addr:interpolation tag
 		nodes.add(currentNodeInWay);

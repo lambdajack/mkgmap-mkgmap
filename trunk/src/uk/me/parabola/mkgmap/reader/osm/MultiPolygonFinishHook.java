@@ -21,15 +21,14 @@ public class MultiPolygonFinishHook extends OsmReadingHooksAdaptor {
 	private static final Logger log = Logger.getLogger(MultiPolygonFinishHook.class);
 	
 	private ElementSaver saver;
-	
-	public MultiPolygonFinishHook() {
-	}
 
+	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
 		this.saver = saver;
 		return true;
 	}
 
+	@Override
 	public void end() {
 		long t1 = System.currentTimeMillis();
 		log.info("Finishing multipolygons");

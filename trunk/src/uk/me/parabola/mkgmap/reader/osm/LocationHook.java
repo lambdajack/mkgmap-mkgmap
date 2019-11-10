@@ -53,6 +53,7 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 	
 	private EnhancedProperties props;
 
+	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
 		boundaryDirName = props.getProperty("bounds");
 		
@@ -70,7 +71,7 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 			// checking of the boundary dir is expensive
 			// check once only and reuse the result
 			if (boundaryDirName.equals(checkedBoundaryDirName)) {
-				if (checkBoundaryDirOk == false) {
+				if (!checkBoundaryDirOk) {
 					log.error("Disable LocationHook because bounds directory is unusable. Dir: "+boundaryDirName);
 					return false;
 				}
@@ -79,7 +80,7 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 				checkBoundaryDirOk = false;
 
 				List<String> boundaryFiles = BoundaryUtil.getBoundaryDirContent(boundaryDirName);
-				if (boundaryFiles == null || boundaryFiles.size() == 0) {
+				if (boundaryFiles == null || boundaryFiles.isEmpty()) {
 					log.error("LocationHook is disabled because no bounds files are available. Dir: "
 							+ boundaryDirName);
 					return false;
@@ -92,6 +93,7 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 		return true;
 	}
 
+	@Override
 	public void end() {
 		long t1 = System.currentTimeMillis();
 		log.info("Starting with location hook");
@@ -120,12 +122,10 @@ public class LocationHook extends OsmReadingHooksAdaptor {
 	private void processLocationRelevantElements() {
 		// process all nodes that might be converted to a garmin node (tagcount > 0)
 		for (Node node : saver.getNodes().values()) {
-			if (node.getTagCount() > 0) {
-				if (saver.getBoundingBox().contains(node.getLocation())){
-					processElem(node);
-					if (resultLog.isDebugEnabled())
-						resultLog.debug("N", node.getId(), locationTagsToString(node));
-				}
+			if (node.getTagCount() > 0 && saver.getBoundingBox().contains(node.getLocation())) {
+				processElem(node);
+				if (resultLog.isDebugEnabled())
+					resultLog.debug("N", node.getId(), locationTagsToString(node));
 			}
 		}
 

@@ -42,6 +42,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 
 	private Node currentNodeInWay;
 
+	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
 		this.saver = saver;
 		if(props.getProperty("make-all-cycleways", false)) {
@@ -74,6 +75,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 		return usedTags;
 	}
 	
+	@Override
 	public void onAddNode(Node node) {
 		String val = node.getTag("highway");
 		if (val != null && (val.equals("motorway_junction") || val.equals("services"))) {
@@ -82,6 +84,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 		}
 	}
 
+	@Override
 	public void onCoordAddedToWay(Way way, long id, Coord co) {
 		if (!linkPOIsToWays)
 			return;
@@ -131,40 +134,34 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 		}
 	}
 
+	@Override
 	public void onAddWay(Way way) {
 		String highway = way.getTag("highway");
 		if (highway != null || "ferry".equals(way.getTag("route"))) {
 			// if the way is a roundabout but isn't already
 			// flagged as "oneway", flag it here
-			if ("roundabout".equals(way.getTag("junction"))) {
-				if (way.getTag("oneway") == null) {
-					way.addTag("oneway", "yes");
-				}
+			if ("roundabout".equals(way.getTag("junction")) && way.getTag("oneway") == null) {
+				way.addTag("oneway", "yes");
 			}
 
 			if (makeOppositeCycleways && !"cycleway".equals(highway)){
 				String onewayTag = way.getTag("oneway");
 				boolean oneway = way.tagIsLikeYes("oneway");
-				if (!oneway & onewayTag != null && ("-1".equals(onewayTag) || "reverse".equals(onewayTag)))
+				if (!oneway && onewayTag != null && ("-1".equals(onewayTag) || "reverse".equals(onewayTag)))
 					oneway = true;
 				if (oneway){
 					String cycleway = way.getTag("cycleway");
-					boolean addCycleWay = false;
 					// we have a oneway street, check if it allows bicycles to travel in opposite direction
-					if ("no".equals(way.getTag("oneway:bicycle")) || "no".equals(way.getTag("bicycle:oneway"))){
-						addCycleWay = true;
-					}
-					else if (cycleway != null && ("opposite".equals(cycleway) || "opposite_lane".equals(cycleway) || "opposite_track".equals(cycleway))){
-						addCycleWay = true;	
-					}
-					else if ("opposite_lane".equals(way.getTag("cycleway:left")) || "opposite_lane".equals(way.getTag("cycleway:right"))){
-						addCycleWay = true;
-					}
-					else if ("opposite_track".equals(way.getTag("cycleway:left")) || "opposite_track".equals(way.getTag("cycleway:right"))){
-						addCycleWay = true;
-					}
-					if (addCycleWay)
+					if ("no".equals(way.getTag("oneway:bicycle")) 
+							|| "no".equals(way.getTag("bicycle:oneway"))
+							|| "opposite".equals(cycleway) || "opposite_lane".equals(cycleway)
+							|| "opposite_track".equals(cycleway) 
+							|| "opposite_lane".equals(way.getTag("cycleway:left"))
+							|| "opposite_lane".equals(way.getTag("cycleway:right"))
+							|| "opposite_track".equals(way.getTag("cycleway:left"))
+							|| "opposite_track".equals(way.getTag("cycleway:right"))) {
 						way.addTag("mkgmap:make-cycle-way", "yes");
+					}
 				} 
 			}
 		}
@@ -173,6 +170,7 @@ public class HighwayHooks extends OsmReadingHooksAdaptor {
 			motorways.add(way);
 	}
 
+	@Override
 	public void end() {
 		finishExits();
 		exits.clear();
