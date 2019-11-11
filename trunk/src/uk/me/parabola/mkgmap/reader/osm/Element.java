@@ -16,7 +16,6 @@
 package uk.me.parabola.mkgmap.reader.osm;
 
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.Map;
 
 import uk.me.parabola.imgfmt.app.Label;
@@ -52,25 +51,25 @@ public abstract class Element {
 	 * @param val Its value.
 	 */
 	public void addTagFromRawOSM(String key, String val) {
-		if (val != null){
-			val = val.trim();
-			if (val.isEmpty() == false){
-				// remove duplicated spaces within value
-				String squashed = Label.squashSpaces(val);
-				if (val.equals(squashed) == false) {
-					if (log.isInfoEnabled())
-						log.info(this.toBrowseURL(),"obsolete blanks removed from tag", key, " '" + val + "' -> '" + squashed + "'");
-					val = squashed;
-				}
-				squashed = Label.squashDel(val);
-				if (val.equals(squashed) == false) {
-					if (log.isInfoEnabled())
-						log.info(this.toBrowseURL(),"DEL character (0x7f) removed from tag", key, " '" + val + "' -> '" + squashed + "'");
-					val = squashed;
-				}
+		if (val == null)
+			return;
+		val = val.trim();
+		if (!val.isEmpty()){
+			// remove duplicated spaces within value
+			String squashed = Label.squashSpaces(val);
+			if (!val.equals(squashed)) {
+				if (log.isInfoEnabled())
+					log.info(this.toBrowseURL(),"obsolete blanks removed from tag", key, " '" + val + "' -> '" + squashed + "'");
+				val = squashed;
 			}
-			addTag(key, val.intern());
+			squashed = Label.squashDel(val);
+			if (!val.equals(squashed)) {
+				if (log.isInfoEnabled())
+					log.info(this.toBrowseURL(),"DEL character (0x7f) removed from tag", key, " '" + val + "' -> '" + squashed + "'");
+				val = squashed;
+			}
 		}
+		addTag(key, val.intern());
 	}
 
 	/**
@@ -162,14 +161,8 @@ public abstract class Element {
 	 * @return <code>true</code> if the tag value is a boolean tag with a "positive" value
 	 */
 	public boolean tagIsLikeYes(short tagKey) {
-		String val = getTag(tagKey);
-		if (val == null)
-			return false;
-
-		if (val.equals("yes") || val.equals("true") ||  val.equals("1"))
-			return true;
-
-		return false;
+		final String val = getTag(tagKey);
+		return val != null && ("yes".equals(val) || "true".equals(val) ||  "1".equals(val));
 	}
 
 	/**
@@ -199,14 +192,8 @@ public abstract class Element {
 	 * @return <code>true</code> if the tag value is a boolean tag with a "negative" value
 	 */
 	public boolean tagIsLikeNo(short tagKey) {
-		String val = getTag(tagKey);
-		if (val == null)
-			return false;
-
-		if (val.equals("no") || val.equals("false") || val.equals("0"))
-			return true;
-
-		return false;
+		final String val = getTag(tagKey);
+		return val != null && ("no".equals(val) || "false".equals(val) ||  "0".equals(val));
 	}
 	
 	public long getId() {
@@ -273,30 +260,17 @@ public abstract class Element {
 	}
 
 	/**
-	 * @return a Map iterator for the key + value pairs  
+	 * @return a Map iterator for the key + value pairs
 	 */
-	
 	public Iterable<Map.Entry<String, String>> getTagEntryIterator() {
-		return new Iterable<Map.Entry<String, String>>() {
-			public Iterator<Map.Entry<String, String>> iterator() {
-				if (tags == null)
-					return Collections.emptyIterator();
-				return tags.entryIterator();
-			}
-		};
+		return () -> tags == null ? Collections.emptyIterator() : tags.entryIterator();
 	}
 
 	/**
 	 * @return a Map iterator for the key + value pairs  
 	 */
 	public Iterable<Map.Entry<Short, String>> getFastTagEntryIterator() {
-		return new Iterable<Map.Entry<Short, String>>() {
-			public Iterator<Map.Entry<Short, String>> iterator() {
-				if (tags == null)
-					return Collections.emptyIterator();
-				return tags.entryShortIterator();
-			}
-		};
+		return () -> tags == null ? Collections.emptyIterator() : tags.entryShortIterator();
 	}
 
 	protected String kind() {

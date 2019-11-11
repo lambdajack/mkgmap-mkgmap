@@ -234,7 +234,7 @@ public class Way extends Element {
 		
 		if(points.size() < 3 || !points.get(0).equals(points.get(points.size() - 1)))
 			return false;
-		if (points.get(0).highPrecEquals(points.get(points.size() - 1)) == false){
+		if (!points.get(0).highPrecEquals(points.get(points.size() - 1))) {
 			log.error("Way.clockwise was called for way that is not closed in high precision");
 		}
 		

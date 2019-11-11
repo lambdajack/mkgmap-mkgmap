@@ -11,7 +11,7 @@ import java.util.Map;
  * @author Rene_A
  */
 public abstract class Relation extends Element {
-	private final List<Map.Entry<String,Element>> elements = new ArrayList<Map.Entry<String,Element>>();
+	private final List<Map.Entry<String,Element>> elements = new ArrayList<>();
 	// if set, one or more tags were ignored because they are not used in the style or in mkgmap 
 	private boolean tagsIncomplete;
 
@@ -36,6 +36,7 @@ public abstract class Relation extends Element {
 		return elements;
 	}
 
+	@Override
 	public String kind() {
 		return "relation";
 	}

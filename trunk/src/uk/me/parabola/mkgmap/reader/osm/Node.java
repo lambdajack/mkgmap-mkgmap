@@ -40,10 +40,12 @@ public class Node extends Element {
 		return "NODE: " + getId() + " @ " + location.toDegreeString();
 	}
 
+	@Override
 	public String kind() {
 		return "node";
 	}
 
+	@Override
 	public Node copy() {
 		Node dup = new Node(getId(), location);
 		dup.copyIds(this);
