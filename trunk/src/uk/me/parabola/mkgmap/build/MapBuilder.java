@@ -128,7 +128,7 @@ public class MapBuilder implements Configurable {
 	private List<String> mapInfo = new ArrayList<>();
 	private List<String> copyrights = new ArrayList<>();
 
-	private boolean doRoads;
+	private boolean doRoads; 
 	private Boolean driveOnLeft; // needs to be Boolean for later test:	if (driveOnLeft == null){
 	private Locator locator;
 
@@ -265,7 +265,9 @@ public class MapBuilder implements Configurable {
 		lblFile = map.getLblFile();
 		NETFile netFile = map.getNetFile();
 		DEMFile demFile = map.getDemFile();
-
+		
+		doRoads = netFile != null;
+		
 		if(routeCenterBoundaryType != 0 &&
 		   netFile != null &&
 		   src instanceof MapperBasedMapDataSource) {
@@ -1170,7 +1172,7 @@ public class MapBuilder implements Configurable {
 		FilterConfig config = new FilterConfig();
 		config.setResolution(res);
 		config.setLevel(div.getZoom().getLevel());
-		config.setRoutable(doRoads);
+		config.setHasNet(doRoads);
 
 		//TODO: Maybe this is the wrong place to do merging.
 		// Maybe more efficient if merging before creating subdivisions.
@@ -1189,7 +1191,7 @@ public class MapBuilder implements Configurable {
 		filters.addFilter(new RemoveEmpty());
 		filters.addFilter(new RemoveObsoletePointsFilter());
 		filters.addFilter(new LinePreparerFilter(div));
-		filters.addFilter(new LineAddFilter(div, map, doRoads));
+		filters.addFilter(new LineAddFilter(div, map));
 		
 		for (MapLine line : lines) {
 			if (line.getMinResolution() > res)
@@ -1218,7 +1220,7 @@ public class MapBuilder implements Configurable {
 		FilterConfig config = new FilterConfig();
 		config.setResolution(res);
 		config.setLevel(div.getZoom().getLevel());
-		config.setRoutable(doRoads);
+		config.setHasNet(doRoads);
 		
 		if (mergeShapes){
 			ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea);
@@ -1340,14 +1342,6 @@ public class MapBuilder implements Configurable {
 		return 24 - minShift;
 	}
 
-	/**
-	 * Enable/disable the creation of a routable map 
-	 * @param doRoads 
-	 */
-	public void setDoRoads(boolean doRoads) {
-		this.doRoads = doRoads;
-	}
-
 	public void setEnableLineCleanFilters(boolean enable) {
 		this.enableLineCleanFilters = enable;
 	}
@@ -1424,12 +1418,10 @@ public class MapBuilder implements Configurable {
 	private class LineAddFilter extends BaseFilter implements MapFilter {
 		private final Subdivision div;
 		private final Map map;
-		private final boolean doRoads;
 
-		LineAddFilter(Subdivision div, Map map, boolean doRoads) {
+		LineAddFilter(Subdivision div, Map map) {
 			this.div = div;
 			this.map = map;
-			this.doRoads = doRoads;
 		}
 
 		public void doFilter(MapElement element, MapFilterChain next) {
@@ -1451,19 +1443,17 @@ public class MapBuilder implements Configurable {
 			pl.addCoords(line.getPoints());
 
 			pl.setType(line.getType());
-			if (doRoads){
-				if (line instanceof MapRoad) {
-					if (log.isDebugEnabled())
-						log.debug("adding road def: " + line.getName());
-					MapRoad road = (MapRoad) line;
-					RoadDef roaddef = road.getRoadDef();
+			if (map.getNetFile() != null && line instanceof MapRoad) {
+				if (log.isDebugEnabled())
+					log.debug("adding road def: " + line.getName());
+				MapRoad road = (MapRoad) line;
+				RoadDef roaddef = road.getRoadDef();
 
-					pl.setRoadDef(roaddef);
-					if (road.hasSegmentsFollowing() )
-						pl.setLastSegment(false);
-					
-					roaddef.addPolylineRef(pl);
-				}
+				pl.setRoadDef(roaddef);
+				if (road.hasSegmentsFollowing() )
+					pl.setLastSegment(false);
+
+				roaddef.addPolylineRef(pl);
 			}
 			map.addMapObject(pl);
 		}

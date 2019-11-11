@@ -576,6 +576,24 @@ and that no more than one connecting highway joins at each node.
 : 	Check that roundabout flare roads point in the correct
 direction, are one-way and don't extend too far.
 <p>
+--check-routing-island-len=INTEGER
+: 	Routing islands are small road networks which are not connected to other
+roads. A typical case is a footway that is not connected to the main road
+network, or a small set of ways on the inner courtyard of a large building
+:	These islands can cause problems if you try to calculate a route and the GPS
+selects a point on the island as a start or end. It will fail to calculate the
+route even if a major road is only a few steps away. If this option is
+specified, then mkgmap will detect these islands. If the value is set to zero,
+mkgmap will simply report the islands (you will need to set
+uk.me.parabola.imgfmt.app.net.RoadNetwork.level=INFO to activate logging of
+the message). If the value is greater than zero, mkgmap will mark islands with
+a total length less than the specified value in metres as not routable.
+Reasonable values are 500 or higher. The default is for the check to not take
+place. If any of the roads forming the island touches a tile boundary or a
+country border the island is ignored, as it may be connected to other roads in
+a different tile.
+:	See also option --add-boundary-nodes-at-admin-boundaries.
+<p>
 ;--max-flare-length-ratio=NUM
 : 	When checking flare roads, ignore roads whose length is
 greater than NUM (an integer) times the distance between the

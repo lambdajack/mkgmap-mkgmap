@@ -111,6 +111,17 @@ public class NumberPreparerTest {
 	}
 
 	@Test
+	public void testMultipleNodesWithSkip() {
+		List<Numbers> numbers = createList(new String[]{
+				"0,O,1,9,E,2,12",
+				"2,O,11,17,E,14,20",
+				"3,O,21,31,E,26,36",
+		});
+		List<Numbers> output = writeAndRead(numbers);
+		assertEquals(numbers, output);
+	}
+
+	@Test
 	public void testMultipleWithReverse() {
 		run("0,E,2,2,O,1,5", "1,E,2,10,O,5,17");
 	}
@@ -268,16 +279,16 @@ public class NumberPreparerTest {
 		nr.setNumberOfNodes(numbers.get(numbers.size()-1).getIndex() + 1);
 		List<Numbers> list = nr.readNumbers(swapped);
 		for (Numbers n : list)
-			n.setNodeNumber(n.getIndex());
+			n.setPolishIndex(n.getIndex());
 
 		return list;
 	}
 
 	private List<Numbers> createList(String[] specs) {
-		List<Numbers> numbers = new ArrayList<Numbers>();
+		List<Numbers> numbers = new ArrayList<>();
 		for (String s : specs) {
 			Numbers n = new Numbers(s);
-			n.setIndex(n.getNodeNumber());
+			n.setIndex(n.getPolishIndex());
 			numbers.add(n);
 		}
 		return numbers;

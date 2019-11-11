@@ -12,6 +12,8 @@
  */
 package uk.me.parabola.imgfmt.app.net;
 
+import java.util.Objects;
+
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.CityInfo;
 import uk.me.parabola.mkgmap.general.ZipCodeInfo;
@@ -27,11 +29,17 @@ public class Numbers {
 
 	private static final int MAX_DELTA = 131071; // see NumberPreparer
 
-	// The node in the road where these numbers apply.  In the polish notation it is the
-	// node in the road, whereas in the NET file it is the index of the number node.
-	private int nodeNumber; // node in road index
-	private Integer indexNumber; // the position in the list of Numbers (starting with 0)
-	// the data on side of the road
+	/**
+	 * Polish format: The point in the road where these numbers apply. Not written to NET!
+	 */
+	private int polishPointIndex;
+	/**
+	 * The position in the list of nodes (starting with 0). Negative value means it is not yet set. 
+	 * Identifies the node (not point) in the road. This is needed to encode the bitstream in NET.    
+	 */
+	private int nodeIndex = -1;
+	
+	/** the data on side of the road */
 	private RoadSide leftSide,rightSide;
 
 	private class RoadSide {
@@ -46,25 +54,23 @@ public class Numbers {
 
 	private class NumDesc{
 		NumberStyle numberStyle;
-		int start,end;
+		int start, end;
 
 		public NumDesc(NumberStyle numberStyle, int start, int end) {
 			this.numberStyle = numberStyle;
 			this.start = start;
 			this.end = end;
 		}
-		public boolean contained(int hn){
+
+		public boolean contained(int hn) {
 			boolean isEven = (hn % 2 == 0);
-			if (numberStyle == NumberStyle.BOTH
+			if (numberStyle == NumberStyle.BOTH 
 					|| numberStyle == NumberStyle.EVEN && isEven
-					|| numberStyle == NumberStyle.ODD && !isEven){
+					|| numberStyle == NumberStyle.ODD && !isEven) {
 				if (start <= end) {
-					if (start <= hn && hn <= end)
-						return true;
-				}
-				else { 
-					if (end <= hn && hn <= start)
-						return true;
+					return start <= hn && hn <= end;
+				} else {
+					return end <= hn && hn <= start;
 				}
 			}
 			return false;
@@ -88,54 +94,55 @@ public class Numbers {
 	 */
 	public Numbers(String spec) {
 		String[] strings = spec.split(",");
-		nodeNumber = Integer.valueOf(strings[0]);
+		polishPointIndex = Integer.parseInt(strings[0]);
 		NumberStyle numberStyle = NumberStyle.fromChar(strings[1]);
-		int start = Integer.valueOf(strings[2]);
-		int end = Integer.valueOf(strings[3]);
+		int start = Integer.parseInt(strings[2]);
+		int end = Integer.parseInt(strings[3]);
 		setNumbers(LEFT, numberStyle, start, end);
 		numberStyle = NumberStyle.fromChar(strings[4]);
-		start = Integer.valueOf(strings[5]);
-		end = Integer.valueOf(strings[6]);
+		start = Integer.parseInt(strings[5]);
+		end = Integer.parseInt(strings[6]);
 		setNumbers(RIGHT, numberStyle, start, end);
 
 		if (strings.length > 8){
 			// zip codes 
 			String zip = strings[7];
-			if ("-1".equals(zip) == false)
+			if (!"-1".equals(zip))
 				setZipCode(LEFT, new ZipCodeInfo(zip));
 			zip = strings[8];
-			if ("-1".equals(zip) == false)
+			if (!"-1".equals(zip))
 				setZipCode(RIGHT, new ZipCodeInfo(zip));
 		}
-		if (strings.length > 9){
-			String city,region,country;
+		if (strings.length > 9) {
+			String city, region, country;
 			int nextPos = 9;
 			city = strings[nextPos];
-			if ("-1".equals(city) == false){
+			if (!"-1".equals(city)) {
 				region = strings[nextPos + 1];
 				country = strings[nextPos + 2];
 				setCityInfo(LEFT, new CityInfo(city, region, country));
 				nextPos = 12;
-			} else 
+			} else {
 				nextPos = 10;
+			}
 			city = strings[nextPos];
-			if ("-1".equals(city) == false){
+			if (!"-1".equals(city)) {
 				region = strings[nextPos + 1];
 				country = strings[nextPos + 2];
 				setCityInfo(RIGHT, new CityInfo(city, region, country));
-			} 			
-		} 		
+			}
+		}
 	}
 
-	public void setNumbers(boolean left, NumberStyle numberStyle, int start, int end){
+	public void setNumbers(boolean useLeft, NumberStyle numberStyle, int start, int end){
 		if (numberStyle != NumberStyle.NONE || start != -1 || end != -1){
-			RoadSide rs = assureSideIsAllocated(left);
+			RoadSide rs = assureSideIsAllocated(useLeft);
 			rs.numbers = new NumDesc(numberStyle, start, end);
 		} else {
-			RoadSide rs = (left) ? leftSide : rightSide;
+			RoadSide rs = (useLeft) ? leftSide : rightSide;
 			if (rs != null)
 				rs.numbers = null;
-			removeIfEmpty(left);
+			removeIfEmpty(useLeft);
 		}
 	}
 
@@ -190,31 +197,34 @@ public class Numbers {
 		return (left) ? leftSide : rightSide;
 	}
 
-	public int getNodeNumber() {
-		return nodeNumber;
+	public int getPolishIndex() {
+		return polishPointIndex;
 	}
 
-	public void setNodeNumber(int nodeNumber) {
-		this.nodeNumber = nodeNumber;
+	public void setPolishIndex(int n) {
+		this.polishPointIndex = n;
 	}
 
+	/**
+	 * @return The index of the nth number node where these numbers apply.  
+	 */
 	public int getIndex() {
-		if (indexNumber == null) {
-			log.error("WARNING: index not set!!");
-			return nodeNumber;
+		if (nodeIndex < 0) {
+			log.error("WARNING: node index not set!!");
+			return 0;
 		}
-		return indexNumber;
+		return nodeIndex;
 	}
 
 	public boolean hasIndex() {
-		return indexNumber != null;
+		return nodeIndex >= 0;
 	}
 
 	/**
 	 * @param index the nth number node 
 	 */
 	public void setIndex(int index) {
-		this.indexNumber = index;
+		this.nodeIndex = index;
 	}
 
 	private NumDesc getNumbers(boolean left) {
@@ -239,8 +249,8 @@ public class Numbers {
 
 	public String toString() {
 		String nodeStr = "0";
-		if (nodeNumber > 0)
-			nodeStr = String.valueOf(nodeNumber);
+		if (polishPointIndex > 0)
+			nodeStr = Integer.toString(polishPointIndex);
 		else if (getIndex() > 0)
 			nodeStr = String.format("(n%d)", getIndex());
 
@@ -301,30 +311,29 @@ public class Numbers {
 			return false;
 		if (!isPlausible(getRightNumberStyle(), getRightStart(), getRightEnd()))
 			return false;
-		if (getLeftNumberStyle() == NumberStyle.NONE
-				|| getRightNumberStyle() == NumberStyle.NONE)
+		if (getLeftNumberStyle() == NumberStyle.NONE || getRightNumberStyle() == NumberStyle.NONE) {
+			return true; // no need to compare values of road sides
+		}
+		if (!Objects.equals(getCityInfo(LEFT), getCityInfo(RIGHT))) {
 			return true;
-		if (getCityInfo(LEFT) != null){
-			if (getCityInfo(LEFT).equals(getCityInfo(RIGHT)) == false)
-				return true;
-		} else if (getCityInfo(RIGHT) != null)
+		}
+		if (!Objects.equals(getZipCodeInfo(LEFT), getZipCodeInfo(RIGHT))) {
 			return true;
-		if (getZipCodeInfo(LEFT) != null){
-			if (getZipCodeInfo(LEFT).equals(getZipCodeInfo(RIGHT)) == false)
-				return true;
-		} else if (getCityInfo(RIGHT) != null)
-			return true;
-		if (getLeftNumberStyle() == getRightNumberStyle() || getLeftNumberStyle() == NumberStyle.BOTH || getRightNumberStyle()==NumberStyle.BOTH){
+		}
+		// city and zip codes say that the intervals of numbers should not overlap
+		if (getLeftNumberStyle() == getRightNumberStyle() 
+				|| getLeftNumberStyle() == NumberStyle.BOTH 
+				|| getRightNumberStyle() == NumberStyle.BOTH) {
 			// check if intervals are overlapping
-			int start1, start2,end1,end2;
-			if (getLeftStart() < getLeftEnd()){
+			int start1, start2, end1, end2;
+			if (getLeftStart() < getLeftEnd()) {
 				start1 = getLeftStart();
 				end1 = getLeftEnd();
 			} else {
 				start1 = getLeftEnd();
 				end1 = getLeftStart();
 			}
-			if (getRightStart() < getRightEnd()){
+			if (getRightStart() < getRightEnd()) {
 				start2 = getRightStart();
 				end2 = getRightEnd();
 			} else {
@@ -333,10 +342,9 @@ public class Numbers {
 			}
 			if (start2 > end1 || end2 < start1)
 				return true;
-			if (getLeftStart() == getLeftEnd() && getRightStart() == getRightEnd() && getLeftStart() == getRightStart())
-				return true; // single number on both sides of the road 
-
-			return false;
+			// single number on both sides of the road?
+			return getLeftStart() == getLeftEnd() && getRightStart() == getRightEnd()
+					&& getLeftStart() == getRightStart();
 		}
 
 		return true;
@@ -352,8 +360,8 @@ public class Numbers {
 		return true;
 	}
 
-	public boolean isContained(int hn, boolean left){
-		RoadSide rs = left ? leftSide : rightSide;
+	public boolean isContained(int hn, boolean useLeft){
+		RoadSide rs = useLeft ? leftSide : rightSide;
 		if (rs == null || rs.numbers == null)
 			return false;
 		return rs.numbers.contained(hn);
@@ -370,9 +378,8 @@ public class Numbers {
 			matches++;
 		if (isContained(hn, RIGHT))
 			matches++;
-		if (matches > 1){
-			if (getLeftStart() == getLeftEnd() && getRightStart() == getRightEnd())
-				matches = 1; // single number on both sides of the road 
+		if (matches > 1 && getLeftStart() == getLeftEnd() && getRightStart() == getRightEnd()) {
+			matches = 1; // single number on both sides of the road 
 		}
 		return matches;
 	}
@@ -385,12 +392,12 @@ public class Numbers {
 	public boolean isSimilar(Numbers other){
 		if (other == null)
 			return false;
-		if (getLeftNumberStyle() != other.getLeftNumberStyle()
-				|| getLeftStart() != other.getLeftStart() || getLeftEnd() != other.getLeftEnd()
+		return !(getLeftNumberStyle() != other.getLeftNumberStyle() 
+				|| getLeftStart() != other.getLeftStart()
+				|| getLeftEnd() != other.getLeftEnd() 
 				|| getRightNumberStyle() != other.getRightNumberStyle()
-				|| getRightStart() != other.getRightStart() || getRightEnd() != other.getRightEnd())
-			return false;
-		return true;
+				|| getRightStart() != other.getRightStart() 
+				|| getRightEnd() != other.getRightEnd());
 
 	}
 

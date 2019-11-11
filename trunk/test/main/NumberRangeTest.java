@@ -72,7 +72,7 @@ public class NumberRangeTest {
 		List<Numbers> numbers = new ArrayList<Numbers>();
 		for (String s : strings) {
 			Numbers n = new Numbers(s);
-			n.setIndex(n.getNodeNumber());
+			n.setIndex(n.getPolishIndex());
 			numbers.add(n);
 		}
 
@@ -89,7 +89,7 @@ public class NumberRangeTest {
 
 		// Have to fix up the node numbers
 		for (Numbers n : list) {
-			n.setNodeNumber(n.getIndex());
+			n.setPolishIndex(n.getIndex());
 		}
 
 		// Test that they are the same.

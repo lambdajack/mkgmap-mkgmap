@@ -91,7 +91,17 @@ public class TypeReader {
 				throw new SyntaxException(ts, "Unrecognised type command '" + w + '\'');
 			}
 		}
-
+		
+		int maxResLevel0 = toResolution(0);
+		if (gt.getMaxResolution() > maxResLevel0 && gt.getMinResolution() > maxResLevel0) {
+			String msg = "Cannot use type " + gt + " with level 0 at resolution " + maxResLevel0
+					+ " in style file " + ts.getFileName() + ", line " + ts.getLinenumber(); 
+			if (performChecks) {
+				log.error(msg);
+			} else { 
+				throw new SyntaxException(msg);
+			}
+		}
 		gt.fixLevels(levels);
 		if ("lines".equals(ts.getFileName())){
 			if(gt.getRoadClass() < 0 || gt.getRoadClass() > 4)

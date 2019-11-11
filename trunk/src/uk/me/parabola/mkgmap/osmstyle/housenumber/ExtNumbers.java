@@ -169,6 +169,8 @@ public class ExtNumbers {
 	 */
 	public int setNumbers(List<HousenumberMatch> housenumbers, int startSegment, int endSegment, boolean left) {
 		int assignedNumbers = 0;
+		startInRoad = startSegment;
+		endInRoad = endSegment;
 		if (housenumbers.isEmpty() == false) {
 			RoadSide rs = new RoadSide(); 
 			if (left)
@@ -191,15 +193,20 @@ public class ExtNumbers {
 			if (maxN >= 0) {
 				assignedNumbers = maxN + 1;
 				rs.houses = new ArrayList<>(housenumbers.subList(0, assignedNumbers));
-				startInRoad = startSegment;
-				endInRoad = endSegment;
-				assert startSegment < endSegment;
-				if (getRoad().getPoints().get(startInRoad).isNumberNode() == false || getRoad().getPoints().get(endInRoad).isNumberNode() == false){
-					log.error("internal error: start or end is not a number node", this);
-				}
+				assert startSegment < endSegment : this;
+				checkIfStartIsNumberNode();
 			}
 		}
 		return assignedNumbers;
+	}
+	
+	/**
+	 * Log an error if start is not a number node 
+	 */
+	private void checkIfStartIsNumberNode() {
+		if (!getRoad().getPoints().get(startInRoad).isNumberNode()) {
+			log.error("internal error: start is not a number node", this);
+		}
 	}
 	
 	/**
@@ -333,43 +340,49 @@ public class ExtNumbers {
 
 	/**
 	 * Return the intervals in the format used for the writer routines
-	 * @return
+	 * @return list of numbers, might be empty but is never null
 	 */
 	public List<Numbers> getNumberList() {
-		// do we have numbers?
-		boolean foundNumbers = false;
-		for (ExtNumbers curr = this; curr != null; curr = curr.next){
-			if (curr.hasNumbers()){
-				foundNumbers = true;
-				break;
-			}
-		}
-		if (!foundNumbers)
-			return null;
-		
 		List<Numbers> list = new ArrayList<>();
+		// do we have numbers?
+		if (!hasNumbersInChain()) 
+			return list;
+		
 		boolean headerWasReported = false;
-		for (ExtNumbers curr = this; curr != null; curr = curr.next){
-			if (curr.hasNumbers() == false)
-				continue;
-			list.add(curr.getNumbers());
+
+		for (ExtNumbers curr = this; curr != null; curr = curr.next) {
+			Numbers cn = curr.getNumbers();
+			checkIfStartIsNumberNode();
+			if (!cn.isEmpty()) {
+				list.add(cn);
+			}
 			if (log.isInfoEnabled()) {
-				if (headerWasReported == false){
+				if (headerWasReported == false) {
 					MapRoad road = curr.getRoad();
 					if (road.getStreet() == null && road.getName() == null)
 						log.info("final numbers for", road, curr.housenumberRoad.getName(), "in", road.getCity());
-					else 
+					else
 						log.info("final numbers for", road, "in", road.getCity());
 					headerWasReported = true;
 				}
-				Numbers cn = curr.getNumbers();
-				log.info("Left: ",cn.getLeftNumberStyle(),cn.getIndex(),"Start:",cn.getLeftStart(),"End:",cn.getLeftEnd(), "numbers "+curr.getHouses(Numbers.LEFT));
-				log.info("Right:",cn.getRightNumberStyle(),cn.getIndex(),"Start:",cn.getRightStart(),"End:",cn.getRightEnd(), "numbers "+curr.getHouses(Numbers.RIGHT));
+				log.info("Left: ", cn.getLeftNumberStyle(), cn.getIndex(), "Start:", cn.getLeftStart(), "End:",
+						cn.getLeftEnd(), "numbers " + curr.getHouses(Numbers.LEFT));
+				log.info("Right:", cn.getRightNumberStyle(), cn.getIndex(), "Start:", cn.getRightStart(), "End:",
+						cn.getRightEnd(), "numbers " + curr.getHouses(Numbers.RIGHT));
 			}
 		}
 		return list;
 	}
 	
+	private boolean hasNumbersInChain() {
+		for (ExtNumbers curr = this; curr != null; curr = curr.next){
+			if (curr.hasNumbers()){
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public ExtNumbers checkSingleChainSegments(String streetName, boolean removeGaps) {
 		ExtNumbers curr = this;
 		ExtNumbers head = this;
@@ -1112,12 +1125,12 @@ public class ExtNumbers {
 	 * @param startPos
 	 */
 	private void increaseNodeIndexes(int startPos){
-		if (hasNumbers() == false)
-			return;
 		if (startInRoad > startPos){
 			startInRoad++;
 			endInRoad++;
 		}
+		if (!hasNumbers())
+			return;
 		for (int side = 0; side < 2; side++){
 			boolean left = side == 0;
 			for (HousenumberMatch house : getHouses(left)){
@@ -1868,41 +1881,6 @@ public class ExtNumbers {
 			if (e2 < dx) { err += dx; y += sy; } /* e_xy+e_y < 0 */
 		}
 		return sortedByDistToLine;
-	}
-
-	/**
-	 * Use Bresemham algorithm to get the Garmin points which are close to the line
-	 * described by c1 and c2 and the point p.
-	 * @param c1
-	 * @param c2
-	 * @param p
-	 * @return the list of points
-	 */
-	public static List<Coord> rasterLineNearPoint3(Coord c1, Coord c2, double maxDistToLine){
-		int x0 = c1.getLongitude();
-		int y0 = c1.getLatitude();
-		int x1 = c2.getLongitude();
-		int y1 = c2.getLatitude();
-		Coord c1Dspl = c1.getDisplayedCoord();
-		Coord c2Dspl = c2.getDisplayedCoord();
-		int x = x0, y = y0;
-		int dx =  Math.abs(x1-x), sx = x<x1 ? 1 : -1;
-		int dy = -Math.abs(y1-y), sy = y<y1 ? 1 : -1;
-		int err = dx+dy, e2; /* error value e_xy */
-		
-		List<Coord> rendered = new ArrayList<>();
-		for(;;){  /* loop */
-			Coord t = new Coord(y, x);
-			double distLine = t.distToLineSegment(c1Dspl, c2Dspl);
-			if (distLine <= maxDistToLine)
-				rendered.add(t);
-			if (x==x1 && y==y1) 
-				break;
-			e2 = 2*err;
-			if (e2 > dy) { err += dy; x += sx; } /* e_xy+e_x > 0 */
-			if (e2 < dx) { err += dx; y += sy; } /* e_xy+e_y < 0 */
-		}
-		return rendered;
 	}
 
 	private static int countOccurence(List<HousenumberMatch> houses, int num){

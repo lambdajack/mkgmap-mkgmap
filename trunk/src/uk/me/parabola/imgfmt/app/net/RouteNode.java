@@ -14,13 +14,14 @@
  */
 package uk.me.parabola.imgfmt.app.net;
 
-import it.unimi.dsi.fastutil.ints.IntArrayList;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.CoordNode;
@@ -112,14 +113,13 @@ public class RouteNode implements Comparable<RouteNode> {
 	 * get all direct arcs to the given node and the given way id
 	 * @param otherNode
 	 * @param roadId
-	 * @return
+	 * @return list with the direct arcs
 	 */
 	public List<RouteArc> getDirectArcsTo(RouteNode otherNode, long roadId) {
 		List<RouteArc> result = new ArrayList<>();
-		for(RouteArc a : arcs){
-			if(a.isDirect() && a.getDest() == otherNode){
-				if(a.getRoadDef().getId() == roadId)
-					result.add(a);
+		for (RouteArc a : arcs) {
+			if (a.isDirect() && a.getDest() == otherNode && a.getRoadDef().getId() == roadId) {
+				result.add(a);
 			}
 		}
 		return result;
@@ -128,14 +128,13 @@ public class RouteNode implements Comparable<RouteNode> {
 	/**
 	 * get all direct arcs on a given way id  
 	 * @param roadId
-	 * @return
+	 * @return @return list with the direct arcs
 	 */
 	public List<RouteArc> getDirectArcsOnWay(long roadId) {
 		List<RouteArc> result = new ArrayList<>();
-		for(RouteArc a : arcs){
-			if(a.isDirect()){
-				if(a.getRoadDef().getId() == roadId)
-					result.add(a);
+		for (RouteArc a : arcs) {
+			if (a.isDirect() && a.getRoadDef().getId() == roadId) {
+				result.add(a);
 			}
 		}
 		return result;
@@ -148,10 +147,9 @@ public class RouteNode implements Comparable<RouteNode> {
 	 * @return
 	 */
 	public RouteArc getDirectArcTo(RouteNode otherNode, RoadDef roadDef) {
-		for(RouteArc a : arcs){
-			if(a.isDirect() && a.getDest() == otherNode){
-				if(a.getRoadDef()== roadDef)
-					return a;
+		for (RouteArc a : arcs) {
+			if (a.isDirect() && a.getDest() == otherNode && a.getRoadDef() == roadDef) {
+				return a;
 			}
 		}
 		return null;
@@ -229,12 +227,10 @@ public class RouteNode implements Comparable<RouteNode> {
 			int index = 0;
 			for (RouteArc arc: arcs){
 				Byte compactedDir = null;
-				if (useCompactDirs){
-					if (lastArc == null || lastArc.getIndexA() != arc.getIndexA() || lastArc.isForward() != arc.isForward()){
-						if (index % 2 == 0)
-							compactedDir = (byte) ((initialHeadings.get(index) >> 4) | initialHeadings.getInt(index+1));
-						index++;
-					}
+				if (useCompactDirs && (lastArc == null || lastArc.getIndexA() != arc.getIndexA() || lastArc.isForward() != arc.isForward())){
+					if (index % 2 == 0)
+						compactedDir = (byte) ((initialHeadings.get(index) >> 4) | initialHeadings.getInt(index+1));
+					index++;
 				}
 				arc.write(writer, lastArc, useCompactDirs, compactedDir);
 				lastArc = arc;
@@ -262,6 +258,13 @@ public class RouteNode implements Comparable<RouteNode> {
 	public void discard() {
 		// mark the node as having been discarded
 		flags |= F_DISCARDED;
+		if (isBoundary()) {
+			log.error("intermal error? boundary node at",coord.toDegreeString(), "is discarded");
+		}
+	}
+
+	public boolean isDiscarded() {
+		return (flags &  F_DISCARDED) != 0;
 	}
 
 	public int getOffsetNod1() {
@@ -322,12 +325,8 @@ public class RouteNode implements Comparable<RouteNode> {
 		return nodeClass;
 	}
 
-	public Iterable<? extends RouteArc> arcsIteration() {
-		return new Iterable<RouteArc>() {
-			public Iterator<RouteArc> iterator() {
-				return arcs.iterator();
-			}
-		};
+	public Iterable<RouteArc> arcsIteration() {
+		return () -> arcs.iterator();
 	}
 
 	public List<RouteRestriction> getRestrictions() {
@@ -660,11 +659,11 @@ public class RouteNode implements Comparable<RouteNode> {
 	public void reportSimilarArcs() {
 		for(int i = 0; i < arcs.size(); ++i) {
 			RouteArc arci = arcs.get(i);
-			if (arci.isDirect() == false)
+			if (!arci.isDirect())
 				continue;
 			for(int j = i + 1; j < arcs.size(); ++j) {
 				RouteArc arcj = arcs.get(j);
-				if (arcj.isDirect() == false)
+				if (!arcj.isDirect())
 					continue;
 				if(arci.getDest() == arcj.getDest() &&
 				   arci.getLength() == arcj.getLength() &&
@@ -707,19 +706,17 @@ public class RouteNode implements Comparable<RouteNode> {
 			RouteNode next = null;
 			for (int i = 0; i < current.arcs.size(); i++){
 				RouteArc arc = current.arcs.get(i);
-				if (arc.getRoadDef() == road){
-					if (arc.isDirect()){
-						if (arc.isForward()){
-							next = arc.getDest();
-							nodes.add(next);
-							forwardArcs.add(arc);
-							forwardArcPositions.add(i);
-						} else {
-							reverseArcPositions.add(i);
-							reverseArcs.add(arc);
-						}
+				if (arc.getRoadDef() == road && arc.isDirect()){
+					if (arc.isForward()){
+						next = arc.getDest();
+						nodes.add(next);
+						forwardArcs.add(arc);
+						forwardArcPositions.add(i);
+					} else {
+						reverseArcPositions.add(i);
+						reverseArcs.add(arc);
 					}
-				} 
+				}
 			}
 			current = next;
 		}
@@ -818,6 +815,10 @@ public class RouteNode implements Comparable<RouteNode> {
 	 */
 	public int getGroup() {
 		if (nodeGroup < 0){
+			if (arcs.isEmpty()) {
+				nodeGroup = 0;
+				return nodeGroup;
+			}
 			HashSet<RoadDef> roads = new HashSet<>();
 			for (RouteArc arc: arcs){
 				roads.add(arc.getRoadDef());
@@ -857,9 +858,10 @@ public class RouteNode implements Comparable<RouteNode> {
 	public List<RouteArc> getArcs() {
 		return arcs;
 	}
-
-	public int hashCode(){
-		return getCoord().getId();
+	
+	@Override
+	public int hashCode() {
+		return getCoord().getId();	
 	}
 
 	public List<RouteArc> getDirectArcsBetween(RouteNode otherNode) {
@@ -872,5 +874,25 @@ public class RouteNode implements Comparable<RouteNode> {
 		return result;
 	}
 
+	/** used to find routing island, but may also be used for other checks */
+	private int visitId;
 	
+	public int getVisitID() {
+		return visitId;
+	}
+
+	public void visitNet(int visitId, List<RouteNode> visited) {
+		if (this.visitId != visitId) {
+			Deque<RouteNode> toVisit = new ArrayDeque<>();
+			toVisit.add(this);
+			while(!toVisit.isEmpty()) {
+				RouteNode n = toVisit.pop();
+				if (n.visitId != visitId) {
+					n.arcs.forEach(a -> toVisit.addLast(a.getDest()));
+					visited.add(n);
+					n.visitId = visitId;
+				}
+			}
+		}
+	}
 }

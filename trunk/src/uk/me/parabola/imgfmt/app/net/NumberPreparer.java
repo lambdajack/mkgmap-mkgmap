@@ -13,6 +13,7 @@
 package uk.me.parabola.imgfmt.app.net;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.Utils;
@@ -49,7 +50,7 @@ public class NumberPreparer {
 	CityZipWriter cityWriter;
 
 	public NumberPreparer(List<Numbers> numbers) {
-		this.numbers = numbers;
+		this.numbers = new ArrayList<>(numbers);
 		this.zipWriter = new CityZipWriter("zip", 0, 0);
 		this.cityWriter = new CityZipWriter("city", 0, 0);
 	}
@@ -158,7 +159,7 @@ public class NumberPreparer {
 		int lastNode = -1;
 		for (Numbers n : numbers) {
 			if (!n.hasIndex())
-				throw new Abandon("no r node set");
+				throw new Abandon("no index set");
 			// See if we need to skip some nodes
 			if (n.getIndex() != lastNode + 1)
 				state.writeSkip(bw, n.getIndex() - lastNode - 2);

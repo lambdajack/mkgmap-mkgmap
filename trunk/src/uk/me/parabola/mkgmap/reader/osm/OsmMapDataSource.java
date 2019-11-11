@@ -332,8 +332,7 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 	 */
 	protected void createConverter() {
 		EnhancedProperties props = getConfig();
-		Style style = StyleImpl.readStyle(props);
-		setStyle(style);
+		setStyle(StyleImpl.readStyle(props));
 
 		usedTags.addAll(style.getUsedTags());
 		usedTags.addAll(NameFinder.getNameTags(props));

@@ -34,7 +34,7 @@ public class RemoveObsoletePointsFilter implements MapFilter {
 
 	private boolean checkPreserved;
 	public void init(FilterConfig config) {
-		checkPreserved = config.getLevel() == 0 && config.isRoutable();
+		checkPreserved = config.getLevel() == 0 && config.hasNet();
 	}
 
 	/**
@@ -49,7 +49,7 @@ public class RemoveObsoletePointsFilter implements MapFilter {
 			return;
 		}
 		int requiredPoints = (line instanceof MapShape ) ? 4:2; 
-		List<Coord> newPoints = new ArrayList<Coord>(numPoints);
+		List<Coord> newPoints = new ArrayList<>(numPoints);
 		while (true){
 			boolean removedSpike = false;
 			numPoints = points.size();
@@ -57,7 +57,7 @@ public class RemoveObsoletePointsFilter implements MapFilter {
 
 			Coord lastP = points.get(0);
 			newPoints.add(lastP);
-			for(int i = 1; i < numPoints; i++) {
+			for (int i = 1; i < numPoints; i++) {
 				Coord newP = points.get(i);
 				int last = newPoints.size()-1;
 				lastP = newPoints.get(last);
@@ -65,13 +65,14 @@ public class RemoveObsoletePointsFilter implements MapFilter {
 					// only add the new point if it has different
 					// coordinates to the last point or is preserved
 					if (checkPreserved && line.isRoad()){
-						if (newP.preserved() == false)
+						if (!newP.preserved()) {
 							continue;
-						else if (lastP.preserved() == false){
+						} else if (!lastP.preserved()){
 							newPoints.set(last, newP); // replace last
 						} 
-					} else  
+					} else {  
 						continue;
+					}
 				}
 				if (newPoints.size() > 1) {
 					switch (Utils.isStraight(newPoints.get(last-1), lastP, newP)){
@@ -103,7 +104,7 @@ public class RemoveObsoletePointsFilter implements MapFilter {
 			if (!removedSpike || newPoints.size() < requiredPoints)
 				break;
 			points = newPoints;
-			newPoints = new ArrayList<Coord>(points.size());
+			newPoints = new ArrayList<>(points.size());
 		}
 		if (line instanceof MapShape){
 			// Check special cases caused by the fact that the first and last point 

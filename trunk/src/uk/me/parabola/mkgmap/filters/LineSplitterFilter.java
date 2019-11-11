@@ -45,7 +45,7 @@ public class LineSplitterFilter implements MapFilter {
 	private boolean isRoutable;
 	public void init(FilterConfig config) {
 		this.level = config.getLevel();
-		this.isRoutable = config.isRoutable();
+		this.isRoutable = config.hasNet();
 	}
 
 	

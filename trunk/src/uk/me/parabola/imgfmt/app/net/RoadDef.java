@@ -153,11 +153,17 @@ public class RoadDef {
 	// for diagnostic purposes
 	private final long id;
 	private final String name;
+	
+	// road/address search data from (house) numbers
 	private List<Numbers> numbersList;
 	private List<City> cityList;
 	private List<Zip> zipList;
-	private int nodeCount;
-
+	
+	/** cumulative number of special nodes between first and last node of line segments */
+	private int nodeCountInner;
+	
+	private int lenInMeter; 
+	
 	public RoadDef(long id, String name) {
 		this.id = id;
 		this.name = name;
@@ -179,11 +185,7 @@ public class RoadDef {
 	// for diagnostic purposes
 	public String toString() {
 		// assumes id is an OSM id
-		String browseURL = "http://www.openstreetmap.org/browse/way/" + id;
-		//if(getName() != null)
-		//	return "(" + getName() + ", " + browseURL + ")";
-		//else
-			return "(" + browseURL + ")";
+		return "(" + "http://www.openstreetmap.org/browse/way/" + id + ")";
 	}
 
 	public String getName() {
@@ -231,13 +233,13 @@ public class RoadDef {
 		writeLevelDivs(writer, maxlevel);
 
 		if((netFlags & NET_FLAG_ADDRINFO) != 0) {
-			nodeCount--;
-			if (nodeCount + 2 != nnodes){
-				log.error("internal error? The nodeCount doesn't match value calculated by RoadNetWork:",this);
+			if (!hasHouseNumbers() && skipAddToNOD()) {
+				// no need to write node info (decreases bitstream length)
+				nodeCountInner = 0;
 			}
-			writer.put1u(nodeCount & 0xff); // lo bits of node count
+			writer.put1u(nodeCountInner & 0xff); // lo bits of node count
 
-			int code = (nodeCount >> 8) & 0x3; // top bits of node count
+			int code = (nodeCountInner >> 8) & 0x3; // top bits of node count
 			int len, flag;
 			
 			ByteArrayOutputStream zipBuf = null, cityBuf = null;
@@ -245,27 +247,29 @@ public class RoadDef {
 			if (len > 0){
 				zipBuf = numbers.zipWriter.getBuffer();
 				flag = Utils.numberToPointerSize(len) - 1;
-			} else 
+			} else {  
 				flag = (zip == null) ? 3 : 2;
+			}
 			code |= flag << 2;
 			
 			len = (numbers == null)  ? 0: numbers.cityWriter.getBuffer().size();
 			if (len > 0){
 				cityBuf = numbers.cityWriter.getBuffer();
 				flag = Utils.numberToPointerSize(len) - 1;
-			} else 
+			} else {
 				flag = (city == null) ? 3 : 2;
+			}
 			code |= flag << 4;
 			
 			len = (numbers == null) ? 0 : numbers.fetchBitStream().getLength();
 			if (len > 0){
 				flag = Utils.numberToPointerSize(len) - 1;
-			} else 
+			} else { 
 				flag = 3;
+			}
 			code |= flag << 6;
 			
 			writer.put1u(code);
-//			System.out.printf("%d %d %d\n", (code >> 2 & 0x3), (code >> 4 & 0x3), (code >> 6 & 0x3));  
 			
 			if (zipBuf != null){
 				len = zipBuf.size();
@@ -382,15 +386,10 @@ public class RoadDef {
 		if(log.isDebugEnabled())
 			log.debug("adding polyline ref", this, pl.getSubdiv());
 		int level = pl.getSubdiv().getZoom().getLevel();
-		List<RoadIndex> l = roadIndexes.get(level);
-		if (l == null) {
-			l = new ArrayList<>();
-			roadIndexes.put(level, l);
-		}
-		l.add(new RoadIndex(pl));
+		roadIndexes.computeIfAbsent(level, k -> new ArrayList<>()).add(new RoadIndex(pl));
 
 		if (level == 0) {
-			nodeCount += pl.getNodeCount(hasHouseNumbers());
+			nodeCountInner += pl.getNodeCount(hasHouseNumbers());
 		}
 	}
 
@@ -427,6 +426,7 @@ public class RoadDef {
 	 * Set the road length (in meters).
 	 */
 	public void setLength(double lenInMeter) {
+		this.lenInMeter = (int) Math.round(lenInMeter);
 		roadLength = NODHeader.metersToRaw(lenInMeter);
 	}
 
@@ -481,22 +481,6 @@ public class RoadDef {
 			rgn.position(off.getPosition());
 			rgn.put3u(offsetNet1 | off.getFlags());
 		}
-	}
-
-	private boolean internalNodes;
-
-	/**
-	 * Does the road have any nodes besides start and end?
-	 * These can be number nodes or routing nodes.
-	 * This affects whether we need to write extra bits in
-	 * the bitstream in RGN.
-	 */
-	public boolean hasInternalNodes() {
-		return internalNodes;
-	}
-
-	public void setInternalNodes(boolean n) {
-		internalNodes = n;
 	}
 
 	/**
@@ -574,16 +558,15 @@ public class RoadDef {
 		// If the road has house numbers, we count also
 		// the number nodes, and these get a 0 in the bit stream. 
 		int nbits = nnodes;
-		if (!startsWithNode)
+		if (!startsWithNode && !hasHouseNumbers())
 			nbits++;
 		writer.put2u(nbits);
 		boolean[] bits = new boolean[nbits];
 		
 		if (hasHouseNumbers()){
-			int off = startsWithNode ? 0 :1;
 			for (int i = 0; i < bits.length; i++){
 				if (nod2BitSet.get(i))
-					bits[i+off] = true;
+					bits[i] = true;
 			}
 		} else { 
 			for (int i = 0; i < bits.length; i++)
@@ -593,9 +576,10 @@ public class RoadDef {
 		}
 		for (int i = 0; i < bits.length; i += 8) {
 			int b = 0;
-            for (int j = 0; j < 8 && j < bits.length - i; j++)
+            for (int j = 0; j < 8 && j < bits.length - i; j++) {
 				if (bits[i+j])
 					b |= 1 << j;
+            }
 			writer.put1u(b);
 		}
 	}
@@ -746,7 +730,7 @@ public class RoadDef {
 		if (cityList == null){
 			cityList = new ArrayList<>(2);
 		}
-		if (cityList.contains(city) == false)
+		if (!cityList.contains(city))
 			cityList.add(city);
 	}
 
@@ -759,7 +743,7 @@ public class RoadDef {
 		if (zipList == null){
 			zipList = new ArrayList<>(2);
 		}
-		if (zipList.contains(zip) == false)
+		if (!zipList.contains(zip))
 			zipList.add(zip);
 	}
 
@@ -836,6 +820,10 @@ public class RoadDef {
 
 	public void skipAddToNOD(boolean skip) {
 		this.skipAddToNOD = skip;
+		if (hasNodInfo()) {
+			log.info("road", this, "is removed from NOD, length:", lenInMeter, "m");
+			netFlags &= ~NET_FLAG_NODINFO;
+		}
 	}
 
 	public void resetImgData() {
@@ -854,6 +842,10 @@ public class RoadDef {
 				}
 			}
 		}
+	}
+
+	public double getLenInMeter() {
+		return lenInMeter;
 	}
 	
 }

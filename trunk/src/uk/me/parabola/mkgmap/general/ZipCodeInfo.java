@@ -12,6 +12,8 @@
  */
 package uk.me.parabola.mkgmap.general;
 
+import java.util.Objects;
+
 import uk.me.parabola.imgfmt.app.lbl.Zip;
 
 public class ZipCodeInfo implements Comparable<ZipCodeInfo> {
@@ -50,17 +52,10 @@ public class ZipCodeInfo implements Comparable<ZipCodeInfo> {
 	public boolean equals(Object obj) {
 		if (this == obj)
 			return true;
-		if (obj == null)
-			return false;
 		if (!(obj instanceof ZipCodeInfo))
 			return false;
 		ZipCodeInfo other = (ZipCodeInfo) obj;
-		if (zipCode == null) {
-			if (other.zipCode != null)
-				return false;
-		} else if (!zipCode.equals(other.zipCode))
-			return false;
-		return true;
+		return Objects.equals(zipCode, other.zipCode);
 	}
 
 	@Override

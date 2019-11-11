@@ -109,7 +109,10 @@ public class StyledConverter implements OsmConverter {
 	// limit arc lengths to what can be handled by RouteArc
 	private static final int MAX_ARC_LENGTH = 20450000; // (1 << 22) * 16 / 3.2808 ~ 20455030*/
 
-	private static final int MAX_NODES_IN_WAY = 64; // possibly could be increased
+	/** Number of routing nodes in way, possibly could be increased, not a hard limit in IMG format.
+	 * See also RoadDef.MAX_NUMBER_NODES. 
+	 */
+	private static final int MAX_NODES_IN_WAY = 64;  
 
 	// nodeIdMap maps a Coord into a CoordNode
 	private IdentityHashMap<Coord, CoordNode> nodeIdMap = new IdentityHashMap<>();
@@ -128,7 +131,6 @@ public class StyledConverter implements OsmConverter {
 	private HashMap<Long, ConvertedWay> modifiedRoads = new HashMap<>();
 	private HashSet<Long> deletedRoads = new HashSet<>();
 
-	private int nextNodeId = 1;
 	private int nextRoadId = 1;
 	
 	private HousenumberGenerator housenumberGenerator;
@@ -812,7 +814,7 @@ public class StyledConverter implements OsmConverter {
 			if (cw.isValid())
 				addRoad(cw);
 		}
-		housenumberGenerator.generate(lineAdder, nextNodeId);
+		housenumberGenerator.generate(lineAdder);
 		housenumberGenerator = null;
 		
 		if (routable)
@@ -1329,8 +1331,7 @@ public class StyledConverter implements OsmConverter {
 	/**
 	 * Add a way to the road network. May call itself recursively and
 	 * might truncate the way if splitting is required. 
-	 * @param way the way
-	 * @param gt the type assigned by the style
+	 * @param cw the converted way
 	 */
 	private void addRoad(ConvertedWay cw) {
 		Way way = cw.getWay();
@@ -1392,8 +1393,8 @@ public class StyledConverter implements OsmConverter {
 									splitPoint = prev.makeBetweenPoint(splitPoint, neededLength / dist);
 									double newDist = splitPoint.distance(prev);
 									segmentLength += newDist - dist;
-									splitPoint.incHighwayCount();
 									points.add(splitPos, splitPoint);
+									splitPoint.incHighwayCount(); // new point is on highway
 								}
 								if ((splitPos + 1) < points.size()
 										&& safeToSplitWay(points, splitPos, i, points.size() - 1)) {
@@ -1403,12 +1404,14 @@ public class StyledConverter implements OsmConverter {
 								}
 							}
 							boolean classChanged = cw.recalcRoadClass(node);
-							if (classChanged && log.isInfoEnabled()){
-								log.info("POI changing road class of", way.toBrowseURL(), "to", cw.getRoadClass(), "at", points.get(0).toOSMURL()); 								
+							if (classChanged && log.isInfoEnabled()) {
+								log.info("POI changing road class of", way.toBrowseURL(), "to", cw.getRoadClass(), "at",
+										points.get(0).toOSMURL());
 							}
 							boolean speedChanged = cw.recalcRoadSpeed(node);
-							if (speedChanged && log.isInfoEnabled()){
-								log.info("POI changing road speed of", way.toBrowseURL(), "to", cw.getRoadSpeed(), "at" , points.get(0).toOSMURL());
+							if (speedChanged && log.isInfoEnabled()) {
+								log.info("POI changing road speed of", way.toBrowseURL(), "to", cw.getRoadSpeed(), "at",
+										points.get(0).toOSMURL());
 							}
 						}
 					}
@@ -1446,9 +1449,9 @@ public class StyledConverter implements OsmConverter {
 								double neededLength = stubSegmentLength - (segmentLength - dist);
 								splitPoint = prev.makeBetweenPoint(splitPoint, neededLength / dist);
 								segmentLength += splitPoint.distance(prev) - dist;
-								splitPoint.incHighwayCount();
 								splitPos++;
 								points.add(splitPos, splitPoint);
+								splitPoint.incHighwayCount(); // new point is on highway
 							}
 							if(splitPos > 0 &&
 									safeToSplitWay(points, splitPos, 0, points.size()-1)) {
@@ -1502,12 +1505,13 @@ public class StyledConverter implements OsmConverter {
 		}
 	}
 
+	/**
+	 * Split way so that it does not self intersect. 
+	 * TODO: Maybe avoid if map is not routable?
+	 * @param cw the converted way
+	 */
 	private void addRoadAfterSplittingLoops(ConvertedWay cw) {
 		Way way = cw.getWay();
-		// make sure the way has nodes at each end
-		way.getFirstPoint().incHighwayCount();
-		way.getLastPoint().incHighwayCount();
-
 		// check if the way is a loop or intersects with itself
 
 		boolean wayWasSplit = true; // aka rescan required
@@ -1750,17 +1754,10 @@ public class StyledConverter implements OsmConverter {
 					arcLength += d;
 				}
 			}
-			if(p.getHighwayCount() > 1 || p.getOnCountryBorder()) {
+			if(p.getHighwayCount() > 1 || (routable && p.getOnCountryBorder())) {
 				// this point is a node connecting highways
-				CoordNode coordNode = nodeIdMap.get(p);
-				if(coordNode == null) {
-					// assign a node id
-					coordNode = new CoordNode(p, nextNodeId++, p.getOnBoundary(), p.getOnCountryBorder());
-					nodeIdMap.put(p, coordNode);
-				}
-				
 				if (p instanceof CoordPOI){
-					// check if this poi should be converted to a route restriction
+					// check if this POI should be converted to a route restriction
 					CoordPOI cp = (CoordPOI) p;
 					if (cp.getConvertToViaInRouteRestriction()){
 						String wayPOI = way.getTag(WAY_POI_NODE_IDS);
@@ -1801,8 +1798,9 @@ public class StyledConverter implements OsmConverter {
 		elementSetup(line, cw.getGType(), way);
 		line.setPoints(points);
 		MapRoad road = new MapRoad(nextRoadId++, way.getId(), line);
-		if (routable == false)
+		if (!routable) {
 			road.skipAddToNOD(true);
+		}
 		
 		boolean doFlareCheck = true;
 		
@@ -1855,6 +1853,11 @@ public class StyledConverter implements OsmConverter {
 		if(cw.isFerry())
 			road.ferry(true);
 
+		if (routable && nodeIndices.isEmpty()) {
+			// this is a road not connected to other roads, make sure that its first node will be a routing node 
+			nodeIndices.add(0);
+		}
+		
 		int numNodes = nodeIndices.size();
 		if (way.isViaWay() && numNodes > 2){
 			List<RestrictionRelation> rrList = wayRelMap.get(way.getId());
@@ -1867,14 +1870,19 @@ public class StyledConverter implements OsmConverter {
 			// replace Coords that are nodes with CoordNodes
 			for(int i = 0; i < numNodes; ++i) {
 				int n = nodeIndices.get(i);
-				Coord coord = points.get(n);
-				CoordNode thisCoordNode = nodeIdMap.get(coord);
-				assert thisCoordNode != null : "Way " + debugWayName + " node " + i + " (point index " + n + ") at " + coord.toOSMURL() + " yields a null coord node";
-				boolean boundary = coord.getOnBoundary() || coord.getOnCountryBorder();
-				if(boundary && log.isInfoEnabled()) {
-					log.info("Way", debugWayName + "'s point #" + n, "at", coord.toOSMURL(), "is a boundary node");
+				Coord p = points.get(n);
+				CoordNode coordNode = nodeIdMap.get(p);
+				if(coordNode == null) {
+					// assign a unique node id > 0
+					int uniqueId = nodeIdMap.size() + 1;
+					coordNode = new CoordNode(p, uniqueId, p.getOnBoundary(), p.getOnCountryBorder());
+					nodeIdMap.put(p, coordNode);
 				}
-				points.set(n, thisCoordNode);
+				
+				if ((p.getOnBoundary() || p.getOnCountryBorder()) && log.isInfoEnabled()) {
+					log.info("Way", debugWayName + "'s point #" + n, "at", p.toOSMURL(), "is a boundary node");
+				}
+				points.set(n, coordNode);
 			}
 		}
 

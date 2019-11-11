@@ -20,12 +20,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.CoordNode;
 import uk.me.parabola.imgfmt.app.net.AccessTagsAndBits;
-import uk.me.parabola.imgfmt.app.net.NumberStyle;
 import uk.me.parabola.imgfmt.app.net.Numbers;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.MapLine;
@@ -55,7 +56,7 @@ class RoadHelper {
 	private boolean toll;
 
 	private byte mkgmapAccess;
-	private List<Numbers> numbers;
+	private SortedMap<Integer, Numbers> numbersMap;
 
 	public RoadHelper() {
 		clear();
@@ -69,7 +70,7 @@ class RoadHelper {
 		roadClass = 0;
 		oneway = false;
 		toll = false;
-		numbers = null;
+		numbersMap = null;
 	}
 
 	public void setRoadId(int roadId) {
@@ -98,8 +99,8 @@ class RoadHelper {
 			roadClass = 0;
 		if (roadClass > 4)
 			roadClass = 4;
-		oneway = (f.length > 2) ? Integer.parseInt(f[2]) > 0: false;
-		toll = (f.length > 3) ? Integer.parseInt(f[3]) > 0: false;
+		oneway = f.length > 2 && Integer.parseInt(f[2]) > 0;
+		toll = f.length > 3 && Integer.parseInt(f[3]) > 0;
 		byte noAccess = 0;
 		for (int j = 0; j < f.length - 4; j++){
 			if (Integer.parseInt(f[4+j]) == 0)
@@ -134,13 +135,7 @@ class RoadHelper {
 			road.setToll();
 		road.setAccess(mkgmapAccess);
 
-		if (numbers != null && !numbers.isEmpty()) {
-			convertNodesForHouseNumbers(road);
-			road.setNumbers(numbers);
-		}
-
 		List<Coord> points = road.getPoints();
-
 		for (NodeIndex ni : nodes) {
 			int n = ni.index;
 			if (log.isDebugEnabled())
@@ -161,23 +156,50 @@ class RoadHelper {
 				log.warn("Inconsistant node ids");
 			}
 		}
+		if (numbersMap != null) {
+			if (numbersMap.values().stream().anyMatch(n -> !n.isEmpty())) {
+				convertNodesForHouseNumbers(road);
+			} else { 
+				numbersMap = null;
+			}
+		}
 
 		return road;
 	}
 
 	/**
-	 * Make sure that each node that is referenced by the house
+	 * Make sure that each node which is referenced by the house
 	 * numbers is a number node. Some of them will later be changed
 	 * to routing nodes.
 	 * Only called if numbers is non-null and not empty.
 	 */
 	private void convertNodesForHouseNumbers(MapRoad road) {
-		int rNodNumber = 0;
-		for (Numbers n : numbers) {
-			int node = n.getNodeNumber();
-			n.setIndex(rNodNumber++);
-			road.getPoints().get(node).setNumberNode(true);
+		List<Coord> points = road.getPoints();
+		if (points.isEmpty())
+			return;
+		// make sure all number nodes are marked as such
+		for (Integer idx : numbersMap.keySet()) {
+			if (idx < 0 || idx >= points.size()) {
+				throw new MapFailedException("bad number node index " + idx + " in road id " + roadId);
+			}
+			road.getPoints().get(idx).setNumberNode(true);
 		}
+		
+		points.get(0).setNumberNode(true); 
+		int roadNodeNumber = 0;
+		for (int i = 0; i < points.size(); i++) {
+			if (points.get(i).isNumberNode()) {
+				Numbers nums = numbersMap.get(i);
+				if (nums != null) {
+					// we have numbers for this node
+					nums.setIndex(roadNodeNumber);
+				} else {
+					// no numbers given, default is the empty interval (N,-1,-1,N,-1,-1)
+				}
+				roadNodeNumber++;
+			}
+		}
+		road.setNumbers(new ArrayList<>(numbersMap.values()));
 	}
 
 	public boolean isRoad() {
@@ -189,10 +211,9 @@ class RoadHelper {
 	}
 
 	public void addNumbers(Numbers nums) {
-		if (numbers == null)
-			numbers = new ArrayList<>();
-		if (nums.getLeftNumberStyle() != NumberStyle.NONE || nums.getRightNumberStyle() != NumberStyle.NONE)
-			numbers.add(nums);
+		if (numbersMap == null)
+			numbersMap = new TreeMap<>();
+		numbersMap.put(nums.getPolishIndex(),nums);
 	}
 
 	private static class NodeIndex {

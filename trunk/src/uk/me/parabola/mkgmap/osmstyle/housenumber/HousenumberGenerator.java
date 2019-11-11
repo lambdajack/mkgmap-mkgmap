@@ -463,11 +463,12 @@ public class HousenumberGenerator {
 						}
 					}
 				} 
+				road.getPoints().get(0).setNumberNode(true);
+				road.getPoints().get(road.getPoints().size() - 1).setNumberNode(true);
 				firstRoadSameOSMWay = road;
 				String name = road.getStreet(); 
-				if (name != null) {
-					if (log.isDebugEnabled())
-						log.debug("Housenumber - Streetname:", name, "Way:",osmRoad.getId(),osmRoad.toTagString());
+				if (name != null && log.isDebugEnabled()) {
+					log.debug("Housenumber - Streetname:", name, "Way:",osmRoad.getId(),osmRoad.toTagString());
 				}
 			}
 		} 
@@ -608,11 +609,10 @@ public class HousenumberGenerator {
 	
 	
 	/**
-	 * 
-	 * @param adder
-	 * @param naxNodeId the highest nodeId used before
+	 * Calculate number nodes for the collected roads  
+	 * @param adder 
 	 */
-	public void generate(LineAdder adder, int naxNodeId) {
+	public void generate(LineAdder adder) {
 		if (numbersEnabled) {
 			MultiHashMap<MapRoad,HousenumberMatch> initialHousesForRoads = findClosestRoadsToHouse();
 			identifyServiceRoads();

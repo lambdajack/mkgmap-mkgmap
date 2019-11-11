@@ -31,7 +31,8 @@ public class LinePreparer {
 	// These are our inputs.
 	private final Polyline polyline;
 
-	private boolean extraBit;
+	/** if true, we must write the extraBits which allow to find out which points are nodes */ 
+	private final boolean extraBit;
 	private final boolean extTypeLine;
 	private boolean xSameSign;
 	private boolean xSignNegative;     // Set if all negative
@@ -47,19 +48,11 @@ public class LinePreparer {
 	private int[] deltas;
 	private boolean[] nodes;
 
-	private boolean ignoreNumberOnlyNodes;
+	private final boolean ignoreNumberOnlyNodes;
 
 	LinePreparer(Polyline line) {
-		if (line.isRoad() && 
-			line.getSubdiv().getZoom().getLevel() == 0 &&
-			line.roadHasInternalNodes()) {
-			// it might be safe to write the extra bits regardless,
-			// but who knows
-			extraBit = true;
-		}
-		if (!line.hasHouseNumbers())
-			ignoreNumberOnlyNodes = true;
-
+		extraBit = line.isRoad() && line.getSubdiv().getZoom().getLevel() == 0 && line.hasInternalNodes();
+		ignoreNumberOnlyNodes = !line.hasHouseNumbers();
 		extTypeLine = line.hasExtendedType();
 
 		polyline = line;
@@ -275,22 +268,15 @@ public class LinePreparer {
 			int lon = subdiv.roundLonToLocalShifted(co.getLongitude());
 			if (log.isDebugEnabled())
 				log.debug("shifted pos", lat, lon);
-			if (first) {
-				lastLat = lat;
-				lastLong = lon;
-				first = false;
-				continue;
-			}
 
 			int dx = lon - lastLong;
 			int dy = lat - lastLat;
 			lastLong = lon;
 			lastLat = lat;
-			boolean isSpecialNode = false;
-			if (co.getId() > 0 || (co.isNumberNode() && ignoreNumberOnlyNodes == false))
-				isSpecialNode = true;
-			if (dx != 0 || dy != 0 || extraBit && isSpecialNode)
-				firstsame = i;
+			if (first) {
+				first = false;
+				continue;
+			}
 
 			/*
 			 * Current thought is that the node indicator is set when
@@ -301,6 +287,9 @@ public class LinePreparer {
 			 * polyline making up the road.
 			 */
 			if (extraBit) {
+				boolean isSpecialNode = co.getId() > 0 || (!ignoreNumberOnlyNodes && co.isNumberNode());
+				if (dx != 0 || dy != 0 || isSpecialNode)
+					firstsame = i;
 				boolean extra = false;
 				if (isSpecialNode) {
 					if (i < nodes.length - 1)

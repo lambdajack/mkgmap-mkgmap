@@ -16,9 +16,6 @@
  */
 package uk.me.parabola.mkgmap.reader.polish;
 
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-
-
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -38,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 
 import uk.me.parabola.imgfmt.FormatException;
+import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
@@ -54,10 +52,12 @@ import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 import uk.me.parabola.mkgmap.general.MapElement;
 import uk.me.parabola.mkgmap.general.MapLine;
 import uk.me.parabola.mkgmap.general.MapPoint;
+import uk.me.parabola.mkgmap.general.MapRoad;
 import uk.me.parabola.mkgmap.general.MapShape;
 import uk.me.parabola.mkgmap.general.ZipCodeInfo;
 import uk.me.parabola.mkgmap.reader.MapperBasedMapDataSource;
 import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
+import uk.me.parabola.mkgmap.reader.osm.GType;
 import uk.me.parabola.mkgmap.reader.osm.GeneralRelation;
 import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
@@ -113,10 +113,13 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 
 	private boolean havePolygon4B;
 
+	/** if false, assume that lines with routable types are roads and create corresponding NET data */ 
+	private boolean routing;
+	private int roadIdGenerated;
+
 	// Use to decode labels if they are not in cp1252
 	private CharsetDecoder dec;
 
-	Long2ObjectOpenHashMap<Coord> coordMap = new Long2ObjectOpenHashMap<>();
 	public boolean isFileSupported(String name) {
 		// Supported if the extension is .mp
 		return name.endsWith(".mp") || name.endsWith(".MP") || name.endsWith(".mp.gz");
@@ -163,7 +166,6 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 
 		if (addBackground && !havePolygon4B)
 			addBackground();
-		coordMap = null;
 	}
 
 	public LevelInfo[] mapLevels() {
@@ -235,7 +237,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
             section = S_RESTRICTION;
         }
 		else
-			System.out.println("Ignoring unrecognised section: " + name);
+			log.info("Ignoring unrecognised section: " + name);
 	}
 
 	/**
@@ -249,10 +251,15 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			break;
 
 		case S_POINT:
-			if(extraAttributes != null && point.hasExtendedType())
-				point.setExtTypeAttributes(makeExtTypeAttributes());
-			mapper.addToBounds(point.getLocation());
-			mapper.addPoint(point);
+			if (point.getLocation() != null) {
+				if(extraAttributes != null && point.hasExtendedType())
+					point.setExtTypeAttributes(makeExtTypeAttributes());
+				mapper.addToBounds(point.getLocation());
+				mapper.addPoint(point);
+			} else {
+				log.error("skipping POI without coordinates near line " + lineNo );
+			}
+				
 			break;
 		case S_POLYLINE:
 			if (!lineStringMap.isEmpty()) {
@@ -263,9 +270,16 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 					setResolution(origPolyline, level);
 					for (List<Coord> points : entry.getValue()) {
 						polyline = origPolyline.copy();
+						if (!routing && GType.isRoutableLineType(polyline.getType())) {
+							roadHelper.setRoadId(++roadIdGenerated);
+						}
 						if (roadHelper.isRoad() && level == 0) {
 							polyline.setPoints(points);
-							mapper.addRoad(roadHelper.makeRoad(polyline));
+							MapRoad r = roadHelper.makeRoad(polyline);
+							if (!routing) {
+								r.skipAddToNOD(true);
+							}
+							mapper.addRoad(r);
 						}
 						else {
 							if(extraAttributes != null && polyline.hasExtendedType())
@@ -453,6 +467,8 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 				fixElevation();
 			}
 		} else if (name.equals("RoadID")) {
+			if (!routing && roadIdGenerated > 0)
+				throw new MapFailedException("found RoadID without Routing=Y in [IMG ID] section in line " + lineNo);
 			roadHelper.setRoadId(Integer.parseInt(value));
 		} else if (name.startsWith("Nod")) {
 			roadHelper.addNode(value);
@@ -478,7 +494,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	public Numbers parseNumbers(String spec) {
 		Numbers nums = new Numbers();
 		String[] strings = spec.split(",");
-		nums.setNodeNumber(Integer.parseInt(strings[0]));
+		nums.setPolishIndex(Integer.parseInt(strings[0]));
 		NumberStyle numberStyle = NumberStyle.fromChar(strings[1]);
 		int start = Integer.parseInt(strings[2]);
 		int end = Integer.parseInt(strings[3]);
@@ -823,13 +839,15 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 		} else if ("Numbering".equals(name)) {
 			// ignore
 		} else if ("Routing".equals(name)) {
-			// ignore
+			if ("Y".equals(value)) {
+				routing = true; // don't generate roadid
+			}
 		} else if ("CountryName".equalsIgnoreCase(name)) {
 			defaultCountry = value;
 		} else if ("RegionName".equalsIgnoreCase(name)) {
 			defaultRegion = value;
 		} else {
-			System.out.println("'IMG ID' section: ignoring " + name + " " + value);
+			log.info("'IMG ID' section: ignoring " + name + " " + value);
 		}
 		
 	}
@@ -849,13 +867,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 
 		Double f1 = Double.valueOf(fields[i]);
 		Double f2 = Double.valueOf(fields[i+1]);
-		Coord co = new Coord(f1, f2);
-		long key = Utils.coord2Long(co);
-		Coord co2 = coordMap.get(key);
-		if (co2 != null)
-			return co2;
-		coordMap.put(key, co);
-		return co;
+		return new Coord(f1, f2);
 	}
 
 	private ExtTypeAttributes makeExtTypeAttributes() {

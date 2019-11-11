@@ -19,17 +19,22 @@ package uk.me.parabola.imgfmt.app.net;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeMap;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.CoordNode;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.util.EnhancedProperties;
+import uk.me.parabola.util.MultiHashMap;
 
 /**
  * This holds the road network.  That is all the roads and the nodes
@@ -41,7 +46,7 @@ import uk.me.parabola.util.EnhancedProperties;
 public class RoadNetwork {
 	private static final Logger log = Logger.getLogger(RoadNetwork.class);
 
-	private final static int MAX_RESTRICTIONS_ARCS = 7;
+	private static final int MAX_RESTRICTIONS_ARCS = 7;
 	private final Map<Integer, RouteNode> nodes = new LinkedHashMap<>();
 
 	// boundary nodes
@@ -55,172 +60,169 @@ public class RoadNetwork {
 	private boolean checkRoundaboutFlares;
 	private int maxFlareLengthRatio ;
 	private boolean reportSimilarArcs;
+	private boolean routable;
+
+	private long maxSumRoadLenghts;
+	/** for route island search */
+	private int visitId;  
 
 	public void config(EnhancedProperties props) {
 		checkRoundabouts = props.getProperty("check-roundabouts", false);
 		checkRoundaboutFlares = props.getProperty("check-roundabout-flares", false);
 		maxFlareLengthRatio = props.getProperty("max-flare-length-ratio", 0);
 		reportSimilarArcs = props.getProperty("report-similar-arcs", false);
+		maxSumRoadLenghts = props.getProperty("check-routing-island-len", -1);
+		routable = props.containsKey("route");
 		angleChecker.config(props);
 	}
 
 	public void addRoad(RoadDef roadDef, List<Coord> coordList) {
 		roadDefs.add(roadDef);
 
-		CoordNode lastCoord = null;
-		int lastIndex = 0;
+		int lastNodePos = -1;
 		double roadLength = 0;
 		double arcLength = 0;
 		int pointsHash = 0;
 
 		int npoints = coordList.size();
 		int numCoordNodes = 0;
-		boolean hasInternalNodes = false;
 		int numNumberNodes = 0;
 		BitSet nodeFlags = new BitSet();
 		for (int index = 0; index < npoints; index++) {
 			Coord co = coordList.get(index);
-			int id = co.getId();
+			pointsHash += co.hashCode();
+			if (index > 0) {
+				double segLenth = co.distance(coordList.get(index - 1));
+				arcLength += segLenth;
+				roadLength += segLenth;
+			}
 
-			if (id != 0){
+			if (co.getId() > 0) {
+				// we will create a RouteNode for this point if routable
 				nodeFlags.set(numNumberNodes);
 				++numCoordNodes;
-				if(index > 0 && index < npoints - 1)
-					hasInternalNodes = true;
+
+				if (!roadDef.skipAddToNOD()) {
+					if (lastNodePos < 0) {
+						// This is the first node in the road
+						roadDef.setNode(getOrAddNode(co.getId(), co));
+					} else {
+						createDirectArcs(roadDef, coordList, lastNodePos, index, roadLength, arcLength, pointsHash);
+					}
+
+					lastNodePos = index;
+					arcLength = 0;
+					pointsHash = co.hashCode();
+				}
 			}
 			if (co.isNumberNode())
 				++numNumberNodes;
-			if (index == 0){
-				if (id == 0)
-					roadDef.setStartsWithNode(false);
-				
-			} else { 
-				double d = co.distance(coordList.get(index-1));
-				arcLength += d;
-				roadLength += d;
-			}
-			if (roadDef.skipAddToNOD())
-				continue;
-			
-			pointsHash += co.hashCode();
-
-			if (id == 0)
-				// not a routing node
-				continue;
-
-			// The next coord determines the heading
-			// If this is the not the first node, then create an arc from
-			// the previous node to this one (and back again).
-			if (lastCoord != null) {
-				int lastId = lastCoord.getId();
-				if(log.isDebugEnabled()) {
-					log.debug("lastId = " + lastId + " curId = " + id);
-					log.debug("from " + lastCoord.toDegreeString() 
-							  + " to " + co.toDegreeString());
-					log.debug("arclength=" + arcLength + " roadlength=" + roadLength);
-				}
-
-				RouteNode node1 = getOrAddNode(lastId, lastCoord);
-				RouteNode node2 = getOrAddNode(id, co);
-				if(node1 == node2)
-					log.error("Road " + roadDef + " contains consecutive identical nodes at " + co.toOSMURL() + " - routing will be broken");
-				else if(arcLength == 0)
-					log.warn("Road " + roadDef + " contains zero length arc at " + co.toOSMURL());
-
-				Coord forwardBearingPoint = coordList.get(lastIndex + 1);
-				if(lastCoord.equals(forwardBearingPoint) || forwardBearingPoint.isAddedNumberNode()) {
-					// bearing point is too close to last node to be
-					// useful - try some more points
-					for(int bi = lastIndex + 2; bi <= index; ++bi) {
-						Coord coTest = coordList.get(bi);
-						if (coTest.isAddedNumberNode() || lastCoord.equals(coTest))
-							continue;
-						forwardBearingPoint = coTest;
-						break;
-					}
-				}
-				Coord reverseBearingPoint = coordList.get(index - 1);
-				if(co.equals(reverseBearingPoint) || reverseBearingPoint.isAddedNumberNode()) {
-					// bearing point is too close to this node to be
-					// useful - try some more points
-					for(int bi = index - 2; bi >= lastIndex; --bi) {
-						Coord coTest = coordList.get(bi);
-						if (coTest.isAddedNumberNode() || co.equals(coTest))
-							continue;
-						reverseBearingPoint = coTest;
-						break;
-					}
-				}
-				
-				double forwardInitialBearing = lastCoord.bearingTo(forwardBearingPoint);
-				double forwardDirectBearing = (co == forwardBearingPoint) ? forwardInitialBearing: lastCoord.bearingTo(co); 
-
-				double reverseInitialBearing = co.bearingTo(reverseBearingPoint);
-				double directLength = (lastIndex + 1 == index) ? arcLength : lastCoord.distance(co);
-				double reverseDirectBearing = 0;
-				if (directLength > 0){
-					// bearing on rhumb line is a constant, so we can simply revert
-					reverseDirectBearing = (forwardDirectBearing <= 0) ? 180 + forwardDirectBearing: -(180 - forwardDirectBearing) % 180.0;
-				}
-				// Create forward arc from node1 to node2
-				RouteArc arc = new RouteArc(roadDef,
-											node1,
-											node2,
-											forwardInitialBearing,
-											forwardDirectBearing,
-											arcLength,
-											arcLength,
-											directLength,
-											pointsHash);
-				arc.setForward();
-				node1.addArc(arc);
-				
-				// Create the reverse arc
-				RouteArc reverseArc = new RouteArc(roadDef,
-								   node2, node1,
-								   reverseInitialBearing,
-								   reverseDirectBearing,
-								   arcLength,
-								   arcLength,
-								   directLength,
-								   pointsHash);
-				node2.addArc(reverseArc);
-				// link the two arcs
-				arc.setReverseArc(reverseArc);
-				reverseArc.setReverseArc(arc);
-			} else {
-				// This is the first node in the road
-				roadDef.setNode(getOrAddNode(id, co));
-			}
-
-			lastCoord = (CoordNode) co;
-			lastIndex = index;
-			arcLength = 0;
-			pointsHash = co.hashCode();
 		}
 		if (roadDef.hasHouseNumbers()){
-			// we ignore number nodes when we have no house numbers
-			if (numCoordNodes < numNumberNodes)
-				hasInternalNodes = true;
 			roadDef.setNumNodes(numNumberNodes);
 			roadDef.setNod2BitSet(nodeFlags);
 		} else {
+			// we ignore number nodes when we have no house numbers 
 			roadDef.setNumNodes(numCoordNodes);
 		}
-		if (hasInternalNodes)
-			roadDef.setInternalNodes(true);
 		roadDef.setLength(roadLength);
+		if (coordList.get(0).getId() == 0) {
+			roadDef.setStartsWithNode(false);
+		}
 	}
 
-	private RouteNode getOrAddNode(int id, Coord coord) {
-		RouteNode node = nodes.get(id);
-		if (node == null) {
-			node = new RouteNode(coord);
-			nodes.put(id, node);
-			if (node.isBoundary())
-				boundary.add(node);
+	/**
+	 * Create forward arc and reverse arc between current and last node. They are stored with the nodes.
+	 */
+	private void createDirectArcs(RoadDef roadDef, List<Coord> coordList, int prevPos, int currPos, double roadLength, double arcLength,
+			int pointsHash) {
+
+		Coord prevNode = coordList.get(prevPos);
+		Coord currNode = coordList.get(currPos);
+		int lastId = prevNode.getId();
+		int currId = currNode.getId();
+		
+		if(log.isDebugEnabled()) {
+			log.debug("lastId = " + lastId + " curId = " + currId);
+			log.debug("from " + prevNode.toDegreeString() 
+					  + " to " + currNode.toDegreeString());
+			log.debug("arclength=" + arcLength + " roadlength=" + roadLength);
 		}
-		return node;
+
+		RouteNode node1 = getOrAddNode(lastId, prevNode);
+		RouteNode node2 = getOrAddNode(currId, currNode);
+		if(node1 == node2)
+			log.error("Road " + roadDef + " contains consecutive identical nodes at " + currNode.toOSMURL() + " - routing will be broken");
+		else if(arcLength == 0)
+			log.warn("Road " + roadDef + " contains zero length arc at " + currNode.toOSMURL());
+
+		double directLength = (prevPos + 1 == currPos) ? arcLength : prevNode.distance(currNode);
+
+		// calculate forward bearing
+		Coord forwardBearingPoint = coordList.get(prevPos + 1);
+		if(prevNode.equals(forwardBearingPoint) || forwardBearingPoint.isAddedNumberNode()) {
+			// bearing point is too close to last node to be
+			// useful - try some more points
+			for (int bi = prevPos + 2; bi <= currPos; ++bi) {
+				Coord coTest = coordList.get(bi);
+				if (!(coTest.isAddedNumberNode() || prevNode.equals(coTest))) {
+					forwardBearingPoint = coTest;
+					break;
+				}
+			}
+		}
+		double forwardInitialBearing = prevNode.bearingTo(forwardBearingPoint);
+		double forwardDirectBearing = (currNode == forwardBearingPoint) ? forwardInitialBearing: prevNode.bearingTo(currNode); 
+		
+
+		// Create forward arc from node1 to node2
+		RouteArc arc = new RouteArc(roadDef,
+									node1, node2,
+									forwardInitialBearing,
+									forwardDirectBearing,
+									arcLength,
+									arcLength,
+									directLength,
+									pointsHash);
+		arc.setForward(); 
+		node1.addArc(arc);
+		
+		// Create the reverse arc
+		Coord reverseBearingPoint = coordList.get(currPos - 1);
+		if(currNode.equals(reverseBearingPoint) || reverseBearingPoint.isAddedNumberNode()) {
+			// bearing point is too close to this node to be
+			// useful - try some more points
+			for (int bi = currPos - 2; bi >= prevPos; --bi) {
+				Coord coTest = coordList.get(bi);
+				if (!(coTest.isAddedNumberNode() || currNode.equals(coTest))) {
+					reverseBearingPoint = coTest;
+					break;
+				}
+			}
+		}
+		double reverseInitialBearing = currNode.bearingTo(reverseBearingPoint);
+		double reverseDirectBearing = 0;
+		if (directLength > 0){
+			// bearing on rhumb line is a constant, so we can simply revert
+			reverseDirectBearing = (forwardDirectBearing <= 0) ? 180 + forwardDirectBearing: -(180 - forwardDirectBearing) % 180.0;
+		}
+		RouteArc reverseArc = new RouteArc(roadDef,
+						   node2, node1,
+						   reverseInitialBearing,
+						   reverseDirectBearing,
+						   arcLength,
+						   arcLength,
+						   directLength,
+						   pointsHash);
+		node2.addArc(reverseArc);
+		
+		// link the two arcs
+		arc.setReverseArc(reverseArc);
+		reverseArc.setReverseArc(arc);
+	} 
+	
+	private RouteNode getOrAddNode(int id, Coord coord) {
+		return nodes.computeIfAbsent(id, key -> new RouteNode(coord));
 	}
 
 	public List<RoadDef> getRoadDefs() {
@@ -228,7 +230,7 @@ public class RoadNetwork {
 	}
 
 	/**
-	 * Split the network into RouteCenters.
+	 * Split the network into RouteCenters, calls nodes.clear().
 	 *
 	 * The resulting centers must satisfy several constraints,
 	 * documented in NOD1Part.
@@ -245,32 +247,145 @@ public class RoadNetwork {
 			NOD1Part nod1 = new NOD1Part();
 			int n = 0;
 			for (RouteNode node : nodeList) {
-				if (node.getGroup() != group)
-					continue;
-				if(!node.isBoundary()) {
-					if(checkRoundabouts)
-						node.checkRoundabouts();
-					if(checkRoundaboutFlares)
-						node.checkRoundaboutFlares(maxFlareLengthRatio);
-					if(reportSimilarArcs)
-						node.reportSimilarArcs();
+				if (node.getGroup() == group) {
+					performChecks(node);
+
+					nod1.addNode(node);
+					n++;
 				}
-				
-				nod1.addNode(node);
-				n++;
 			}
 			if (n > 0)
 				centers.addAll(nod1.subdivide());
 		}
 	}
 
+	private void performChecks(RouteNode node) {
+		if(!node.isBoundary()) {
+			if(checkRoundabouts)
+				node.checkRoundabouts();
+			if(checkRoundaboutFlares)
+				node.checkRoundaboutFlares(maxFlareLengthRatio);
+			if(reportSimilarArcs)
+				node.reportSimilarArcs();
+		}
+	}
+
 	public List<RouteCenter> getCenters() {
-		if (centers.isEmpty()){
+		if (routable && centers.isEmpty()){
+			checkRoutingIslands();
+			for (RouteNode n : nodes.values()) {
+				if (n.isBoundary()) {
+					boundary.add(n);
+				}
+			}
+			
 			angleChecker.check(nodes);
 			addArcsToMajorRoads();
 			splitCenters();
 		}
 		return centers;
+	}
+
+	/**
+	 * report routing islands and maybe remove them from NOD.  
+	 */
+	private void checkRoutingIslands() {
+		if (maxSumRoadLenghts < 0)
+			return; // island check is disabled
+		long t1 = System.currentTimeMillis();
+
+		// calculate all islands
+		List<List<RouteNode>> islands = searchIslands();
+		long t2 = System.currentTimeMillis();
+		log.info("Search for routing islands found", islands.size(), "islands in", (t2 - t1), "ms");
+		if (!islands.isEmpty()) {
+			analyseIslands(islands);
+		}
+		if (maxSumRoadLenghts > 0) {
+			long t3 = System.currentTimeMillis();
+			log.info("routing island removal took", (t3 - t2), "ms");
+		}
+	}
+
+
+	private List<List<RouteNode>> searchIslands() {
+		final int myVisitId = ++visitId;
+		List<List<RouteNode>> islands = new ArrayList<>();
+		for (RouteNode firstNode : nodes.values()) {
+			if (firstNode.getVisitID() != myVisitId) {
+				List<RouteNode> island = new ArrayList<>();
+				firstNode.visitNet(myVisitId, island);
+				// we ignore islands which have boundary nodes
+				if (island.stream().noneMatch(RouteNode::isBoundary)) {
+					islands.add(island);
+				}
+			}
+		}
+		return islands;
+	}
+	
+	private void analyseIslands (List<List<RouteNode>> islands) {
+		// index : maps first node in road to the road 
+		MultiHashMap<RouteNode, RoadDef> nodeToRoadMap = new MultiHashMap<>();
+		roadDefs.forEach(rd -> {
+			if (rd.getNode() != null) {
+				nodeToRoadMap.add(rd.getNode(), rd);
+			}
+		});
+		
+		boolean cleanNodes = false;
+		for (List<RouteNode> island : islands) {
+			// compute size of island as sum of road lengths
+			Set<RoadDef> visitedRoads = new HashSet<>();
+			long sumOfRoadLenghts = calcIslandSize(island, nodeToRoadMap, visitedRoads);
+			log.info("Routing island at", island.get(0).getCoord().toDegreeString(), "with", island.size(),
+					"routing node(s) and total length of", sumOfRoadLenghts, "m");
+			if (sumOfRoadLenghts < maxSumRoadLenghts) {
+				// set discarded flag for all nodes of the island
+				island.forEach(RouteNode::discard);
+				visitedRoads.forEach(rd -> rd.skipAddToNOD(true));
+				cleanNodes = true;
+			}
+		}
+		
+		if (cleanNodes) {
+			// remove discarded nodes from map nodes
+			Iterator<Entry<Integer, RouteNode>> iter = nodes.entrySet().iterator();
+			while (iter.hasNext()) {
+				RouteNode n = iter.next().getValue();
+				if (n.isDiscarded()) {
+					iter.remove();
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Calculate sum of road lengths for the routing island described by the routing nodes.
+	 * @param islandNodes the nodes that form the island
+	 * @param nodeToRoadMap maps first routing node in RoadDef to RoadDef 
+	 * @param visitedRoads set that will be filled with the roads seen in this island 
+	 * @return the rounded sum of lengths in meters 
+	 */
+	private long calcIslandSize(Collection<RouteNode> islandNodes, MultiHashMap<RouteNode, RoadDef> nodeToRoadMap,
+			Set<RoadDef> visitedRoads) {
+		double sumLen = 0;
+		for (RouteNode node : islandNodes) {
+			for (RouteArc arc : node.arcsIteration()) {
+				if (arc.isDirect() && arc.isForward()) {
+					visitedRoads.add(arc.getRoadDef());
+				}
+			}
+			// we also have to check the first node of a each road, there might
+			// be no arc for it in the node
+			for (RoadDef rd : nodeToRoadMap.get(node)) {
+				visitedRoads.add(rd);
+			}
+		}
+		for (RoadDef rd : visitedRoads) {
+			sumLen += rd.getLenInMeter();
+		}
+		return Math.round(sumLen);
 	}
 
 	/**
@@ -294,7 +409,7 @@ public class RoadNetwork {
 	 * Currently empty.
 	 */
 	public List<RouteNode> getBoundary() {
-		return boundary;
+		return Collections.unmodifiableList(boundary);
 	}
 
 	/**
@@ -480,17 +595,14 @@ public class RoadNetwork {
 			List<RouteArc> arcs =  arcLists.get(i);
 			int countNoEffect = 0;
 			int countOneway= 0;
-			for (int j = arcs.size()-1; j >= 0; --j){
+			for (int j = arcs.size() - 1; j >= 0; --j) {
 				RouteArc arc = arcs.get(j);
-				if (isUsable(arc.getRoadDef().getAccess(), grr.getExceptionMask()) == false){
+				if (!isUsable(arc.getRoadDef().getAccess(), grr.getExceptionMask())) {
 					countNoEffect++;
 					arcs.remove(j);
-				}
-				else if (arc.getRoadDef().isOneway()){
-					if (!arc.isForward()){
-						countOneway++;
-						arcs.remove(j);
-					}
+				} else if (arc.getRoadDef().isOneway() && !arc.isForward()) {
+					countOneway++;
+					arcs.remove(j);
 				}
 			}
 			String arcType = null;
@@ -506,7 +618,7 @@ public class RoadNetwork {
 				else 
 					arcType = "via way is";
 				String reason;
-				if (countNoEffect > 0 & countOneway > 0)
+				if (countNoEffect > 0 && countOneway > 0)
 					reason = "wrong direction in oneway or not accessible for restricted vehicles";
 				else if (countNoEffect > 0)
 					reason = "not accessible for restricted vehicles";
@@ -538,7 +650,7 @@ public class RoadNetwork {
 				byte pathNoAccessMask = 0;
 				for (int j = 0; j < indexes.length; j++){
 					RouteArc arc = arcLists.get(j).get(indexes[j]);
-					if (arc.getDest() == vn || viaNodeFound == false){
+					if (!viaNodeFound || arc.getDest() == vn){
 						arc = arc.getReverseArc();
 					}
 					if (arc.getSource() == vn)
@@ -577,15 +689,13 @@ public class RoadNetwork {
 	}
 
 	/**
-	 * Compare the disallowed vehicles for the path with the exceptions from the restriction
-	 * @param roadNoAccess
-	 * @param exceptionMask
-	 * @return
+	 * Compare the allowed vehicles for the path with the exceptions from the restriction
+	 * @param roadAccess access of the road
+	 * @param exceptionMask exceptions for the restriction
+	 * @return false if no allowed vehicle is concerned by this restriction
 	 */
 	private static boolean isUsable(byte roadAccess, byte exceptionMask) {
-		if ((roadAccess & (byte) ~exceptionMask) == 0)
-			return false; // no allowed vehicle is concerned by this restriction
-		return true;
+		return (roadAccess & (byte) ~exceptionMask) != 0;
 	}
 
 	private int addNoThroughRoute(GeneralRouteRestriction grr) {
@@ -599,19 +709,18 @@ public class RoadNetwork {
 		}
 		int added = 0;
 		
-		for (RouteArc out: vn.arcsIteration()){
+		for (RouteArc out : vn.arcsIteration()) {
 			if (!out.isDirect())
 				continue;
-			for (RouteArc in: vn.arcsIteration()){
+			for (RouteArc in : vn.arcsIteration()) {
 				if (!in.isDirect() || in == out || in.getDest() == out.getDest())
 					continue;
 				byte pathAccessMask = (byte) (out.getRoadDef().getAccess() & in.getRoadDef().getAccess());
-				if (isUsable(pathAccessMask, grr.getExceptionMask())){
-					vn.addRestriction(new RouteRestriction(vn, Arrays.asList(in,out), grr.getExceptionMask()));
+				if (isUsable(pathAccessMask, grr.getExceptionMask())) {
+					vn.addRestriction(new RouteRestriction(vn, Arrays.asList(in, out), grr.getExceptionMask()));
 					added++;
-				} else {
-					if (log.isDebugEnabled())
-						log.debug(grr.getSourceDesc(),"ignored no-through-route",in,"to",out);
+				} else if (log.isDebugEnabled()) {
+					log.debug(grr.getSourceDesc(), "ignored no-through-route", in, "to", out);
 				}
 			}
 		}
@@ -649,27 +758,27 @@ public class RoadNetwork {
 	 * @return
 	 */
 	private static Integer getBetterAngle (Integer angle1, Integer angle2, char dirIndicator){
-		switch (dirIndicator){
+		switch (dirIndicator) {
 		case 'l':
-			if (Math.abs(-90-angle2) < Math.abs(-90-angle1))
+			if (Math.abs(-90 - angle2) < Math.abs(-90 - angle1))
 				return angle2; // closer to -90
 			break;
 		case 'r':
-			if (Math.abs(90-angle2) < Math.abs(90-angle1))
+			if (Math.abs(90 - angle2) < Math.abs(90 - angle1))
 				return angle2; // closer to 90
 			break;
-		case 'u': 
-			double d1 = (angle1 < 0 ) ? -180-angle1 : 180-angle1; 
-			double d2 = (angle2 < 0 ) ? -180-angle2 : 180-angle2; 
+		case 'u':
+			double d1 = (angle1 < 0) ? -180 - angle1 : 180 - angle1;
+			double d2 = (angle2 < 0) ? -180 - angle2 : 180 - angle2;
 			if (Math.abs(d2) < Math.abs(d1))
 				return angle2; // closer to -180
 			break;
-		case 's': 
+		case 's':
 			if (Math.abs(angle2) < Math.abs(angle1))
 				return angle2; // closer to 0
 			break;
+		default:
 		}
-		
 		return angle1;
 	}
 	
@@ -680,9 +789,9 @@ public class RoadNetwork {
 	 * @return
 	 */
 	private static boolean matchDirectionInfo (float angle, char dirIndicator){
-		switch (dirIndicator){
+		switch (dirIndicator) {
 		case 'l':
-			if (angle < -3 && angle > - 177)
+			if (angle < -3 && angle > -177)
 				return true;
 			break;
 		case 'r':
@@ -701,7 +810,6 @@ public class RoadNetwork {
 			return true;
 		}
 		return false;
-	}
-	
+	}	
 	
 }

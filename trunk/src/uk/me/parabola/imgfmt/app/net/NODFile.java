@@ -52,9 +52,9 @@ public class NODFile extends ImgFile {
 
 	private final NODHeader nodHeader = new NODHeader();
 
-	private List<RouteCenter> centers = new ArrayList<RouteCenter>();
-	private List<RoadDef> roads = new ArrayList<RoadDef>();
-	private List<RouteNode> boundary = new ArrayList<RouteNode>();
+	private List<RouteCenter> centers = new ArrayList<>();
+	private List<RoadDef> roads = new ArrayList<>();
+	private List<RouteNode> boundaryNodes = new ArrayList<>();
 
 	public NODFile(ImgChannel chan, boolean write) {
 		setHeader(nodHeader);
@@ -134,12 +134,10 @@ public class NODFile extends ImgFile {
 	private void writeBoundary() {
 		log.info("writeBoundary");
 
-		boundary.sort(null);
-
 		ImgFileWriter writer = new SectionWriter(getWriter(), nodHeader.getBoundarySection());
 
 		boolean debug = log.isDebugEnabled();
-		for (RouteNode node : boundary) {
+		for (RouteNode node : boundaryNodes) {
 			if(debug)
 				log.debug("wrting nod3", writer.position());
 			node.writeNod3OrNod4(writer);
@@ -166,7 +164,7 @@ public class NODFile extends ImgFile {
 		ImgFileWriter writer = new SectionWriter(getWriter(), section);
 		
 		boolean debug = log.isDebugEnabled();
-		for (RouteNode node : boundary) {
+		for (RouteNode node : boundaryNodes) {
 			if (node.getNodeClass() == 0)
 				continue;
 			if(debug)
@@ -181,7 +179,8 @@ public class NODFile extends ImgFile {
 	public void setNetwork(List<RouteCenter> centers, List<RoadDef> roads, List<RouteNode> boundary) {
 		this.centers = centers;
 		this.roads = roads;
-		this.boundary = boundary;
+		this.boundaryNodes = new ArrayList<>(boundary);
+		this.boundaryNodes.sort(null);
 	}
 
 	public void setDriveOnLeft(boolean dol) {
