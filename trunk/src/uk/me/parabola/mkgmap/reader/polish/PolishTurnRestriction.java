@@ -48,7 +48,7 @@ public class PolishTurnRestriction {
 
     @Override
     public String toString() {
-        return "TurnRestriction" + trafficNodes;
+        return "TurnRestriction" + Arrays.toString(trafficNodes);
     }
 
 	public void setTrafficPoints(String idsList) {

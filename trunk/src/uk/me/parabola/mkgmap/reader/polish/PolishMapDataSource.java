@@ -948,7 +948,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
                 } else if (name.equalsIgnoreCase("RestrParam")) {
                     restriction.setExceptMask(getRestrictionExceptionMask(value));
                 } else if (name.equalsIgnoreCase("Time")) {
-                    // Do nothing for now
+                	log.info("Time in restriction definition is ignored " + restriction);
                 }
             }
         } catch (NumberFormatException ex) { // This exception means that this restriction is not properly defined.
