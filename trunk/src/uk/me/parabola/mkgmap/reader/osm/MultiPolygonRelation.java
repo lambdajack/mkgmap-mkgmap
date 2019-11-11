@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -56,9 +55,10 @@ public class MultiPolygonRelation extends Relation {
 	public static final String STYLE_FILTER_LINE = "polyline";
 	public static final String STYLE_FILTER_POLYGON = "polygon";
 	
-	/** A tag that is set with value true on each polygon that is created by the mp processing */
-	public static final String MP_CREATED_TAG = "mkgmap:mp_created";
-	
+	/** A tag that is set with value true on each polygon that is created by the mp processing. */
+	public static final short MP_CREATED_TAG_KEY = TagDict.getInstance().xlate("mkgmap:mp_created");
+	private static final short MP_ROLE_TAG_KEY = TagDict.getInstance().xlate("mkgmap:mp_role");
+	private static final short CACHE_AREA_SIZE_TAG_KEY = TagDict.getInstance().xlate("mkgmap:cache_area_size");
 	private final Map<Long, Way> tileWayMap;
 	private final Map<Long, String> roleMap = new HashMap<>();
  
@@ -193,12 +193,10 @@ public class MultiPolygonRelation extends Relation {
 			joinable = true;
 		} else if (joinWay.getLastPoint() == tempWay.getFirstPoint()) {
 			insIdx = joinWay.getPoints().size();
-			reverseTempWay = false;
 			firstTmpIdx = 1;
 			joinable = true;
 		} else if (joinWay.getFirstPoint() == tempWay.getLastPoint()) {
 			insIdx = 0; 
-			reverseTempWay = false;
 			firstTmpIdx = 0;
 			joinable = true;
 		} else if (joinWay.getLastPoint() == tempWay.getLastPoint()) {
@@ -238,8 +236,7 @@ public class MultiPolygonRelation extends Relation {
 	 * @return a list of closed ways
 	 */
 	protected ArrayList<JoinedWay> joinWays(List<Way> segments) {
-		// TODO check if the closed polygon is valid and implement a
-		// backtracking algorithm to get other combinations
+		// TODO check if the closed polygon is valid and implement a backtracking algorithm to get other combinations
 
 		ArrayList<JoinedWay> joinedWays = new ArrayList<>();
 		if (segments == null || segments.isEmpty()) {
@@ -253,7 +250,7 @@ public class MultiPolygonRelation extends Relation {
 			JoinedWay jw = new JoinedWay(orgSegment);
 			roleMap.put(jw.getId(), getRole(orgSegment));
 			if (orgSegment.isClosed()) {
-				if (orgSegment.isComplete() == false) {
+				if (!orgSegment.isComplete()) {
 					// the way is closed in planet but some points are missing in this tile
 					// we can close it artificially
 					if (log.isDebugEnabled())
@@ -299,10 +296,8 @@ public class MultiPolygonRelation extends Relation {
 				// if a role is not 'inner' or 'outer' then it is used as
 				// universal
 				// check if the roles of the ways are matching
-				if ((!"outer".equals(joinRole) && !"inner"
-						.equals(joinRole))
-						|| (!"outer".equals(tempRole) && !"inner"
-						.equals(tempRole))
+				if ((!"outer".equals(joinRole) && !"inner".equals(joinRole))
+						|| (!"outer".equals(tempRole) && !"inner".equals(tempRole))
 						|| (joinRole != null && joinRole.equals(tempRole))) {
 					// the roles are matching => try to join both ways
 					joined = joinWays(joinWay, tempWay, false);
@@ -314,14 +309,11 @@ public class MultiPolygonRelation extends Relation {
 					// role
 					// or if the alternative way is shorter then check if
 					// the way with the wrong role could be joined
-					if (wrongRoleWay == null
-							|| wrongRoleWay.getPoints().size() < tempWay
-									.getPoints().size()) {
-						if (joinWays(joinWay, tempWay, true)) {
-							// save this way => maybe we will use it in the end
-							// if we don't find any other way
-							wrongRoleWay = tempWay;
-						}
+					if (wrongRoleWay == null || wrongRoleWay.getPoints().size() < tempWay.getPoints().size()
+							&& joinWays(joinWay, tempWay, true)) {
+						// save this way => maybe we will use it in the end
+						// if we don't find any other way
+						wrongRoleWay = tempWay;
 					}
 				}
 
@@ -375,6 +367,8 @@ public class MultiPolygonRelation extends Relation {
 	 * 
 	 * @param wayList
 	 *            a list of ways
+	 * @param maxCloseDist max distance between ends for artificial close
+	 * 
 	 */
 	protected void closeWays(ArrayList<JoinedWay> wayList, double maxCloseDist) {
 		for (JoinedWay way : wayList) {
@@ -384,28 +378,20 @@ public class MultiPolygonRelation extends Relation {
 			Coord p1 = way.getFirstPoint();
 			Coord p2 = way.getLastPoint();
 
-			if (tileBounds.insideBoundary(p1) == false
-					&& tileBounds.insideBoundary(p2) == false) {
-				// both points lie outside the bbox or on the bbox
-
-				// check if both points are on the same side of the bounding box
-				if ((p1.getLatitude() <= tileBounds.getMinLat() && p2.getLatitude() <= tileBounds
-						.getMinLat())
-						|| (p1.getLatitude() >= tileBounds.getMaxLat() && p2
-								.getLatitude() >= tileBounds.getMaxLat())
-						|| (p1.getLongitude() <= tileBounds.getMinLong() && p2
-								.getLongitude() <= tileBounds.getMinLong())
-						|| (p1.getLongitude() >= tileBounds.getMaxLong() && p2
-								.getLongitude() >= tileBounds.getMaxLong())) {
-					// they are on the same side outside of the bbox
-					// so just close them without worrying about if
-					// they intersect itself because the intersection also
-					// is outside the bbox
-					way.closeWayArtificially();
-					log.info("Endpoints of way", way,
-							"are both outside the bbox. Closing it directly.");
-					continue;
-				}
+			if (!tileBounds.insideBoundary(p1) && !tileBounds.insideBoundary(p2)
+			// both points lie outside the bbox or on the bbox
+			// check if both points are on the same side of the bounding box
+					&& (p1.getLatitude() <= tileBounds.getMinLat() && p2.getLatitude() <= tileBounds.getMinLat())
+					|| (p1.getLatitude() >= tileBounds.getMaxLat() && p2.getLatitude() >= tileBounds.getMaxLat())
+					|| (p1.getLongitude() <= tileBounds.getMinLong() && p2.getLongitude() <= tileBounds.getMinLong())
+					|| (p1.getLongitude() >= tileBounds.getMaxLong() && p2.getLongitude() >= tileBounds.getMaxLong())) {
+				// they are on the same side outside of the bbox
+				// so just close them without worrying about if
+				// they intersect itself because the intersection also
+				// is outside the bbox
+				way.closeWayArtificially();
+				log.info("Endpoints of way", way, "are both outside the bbox. Closing it directly.");
+				continue;
 			}
 			
 			Line2D closingLine = new Line2D.Float(p1.getLongitude(), p1
@@ -416,15 +402,11 @@ public class MultiPolygonRelation extends Relation {
 			// don't use the first and the last point
 			// the closing line can intersect only in one point or complete.
 			// Both isn't interesting for this check
-			for (Coord thisPoint : way.getPoints().subList(1,
-					way.getPoints().size() - 1)) {
-				if (lastPoint != null) {
-					if (closingLine.intersectsLine(lastPoint.getLongitude(),
-							lastPoint.getLatitude(), thisPoint.getLongitude(),
-							thisPoint.getLatitude())) {
-						intersects = true;
-						break;
-					}
+			for (Coord thisPoint : way.getPoints().subList(1, way.getPoints().size() - 1)) {
+				if (lastPoint != null && closingLine.intersectsLine(lastPoint.getLongitude(), lastPoint.getLatitude(),
+						thisPoint.getLongitude(), thisPoint.getLatitude())) {
+					intersects = true;
+					break;
 				}
 				lastPoint = thisPoint;
 			}
@@ -460,7 +442,6 @@ public class MultiPolygonRelation extends Relation {
 		// sometimes the connection of both points cannot be done directly but with an intermediate point 
 		public Coord imC;
 		public double distance;
-		
 		public ConnectionData() {
 			
 		}
@@ -470,32 +451,32 @@ public class MultiPolygonRelation extends Relation {
 		List<JoinedWay> unclosed = new ArrayList<>();
 
 		for (JoinedWay w : allWays) {
-			if (w.hasIdenticalEndPoints() == false) {
+			if (!w.hasIdenticalEndPoints()) {
 				unclosed.add(w);
 			}
 		}
 		// try to connect ways lying outside or on the bbox
 		if (unclosed.size() >= 2) {
-			log.debug("Checking",unclosed.size(),"unclosed ways for connections outside the bbox");
+			log.debug("Checking", unclosed.size(), "unclosed ways for connections outside the bbox");
 			Map<Coord, JoinedWay> outOfBboxPoints = new IdentityHashMap<>();
 			
 			// check all ways for endpoints outside or on the bbox
 			for (JoinedWay w : unclosed) {
 				Coord c1 = w.getFirstPoint();
 				Coord c2 = w.getLastPoint();
-				if (tileBounds.insideBoundary(c1)==false) {
-					log.debug("Point",c1,"of way",w.getId(),"outside bbox");
+				if (!tileBounds.insideBoundary(c1)) {
+					log.debug("Point", c1, "of way", w.getId(), "outside bbox");
 					outOfBboxPoints.put(c1, w);
 				}
 
-				if (tileBounds.insideBoundary(c2)==false) {
-					log.debug("Point",c2,"of way",w.getId(),"outside bbox");
+				if (!tileBounds.insideBoundary(c2)) {
+					log.debug("Point", c2, "of way", w.getId(), "outside bbox");
 					outOfBboxPoints.put(c2, w);
 				}
 			}
 			
 			if (outOfBboxPoints.size() < 2) {
-				log.debug(outOfBboxPoints.size(),"point outside the bbox. No connection possible.");
+				log.debug(outOfBboxPoints.size(), "point outside the bbox. No connection possible.");
 				return false;
 			}
 			
@@ -509,7 +490,7 @@ public class MultiPolygonRelation extends Relation {
 					cd.w1 = outOfBboxPoints.get(cd.c1);					
 					cd.w2 = outOfBboxPoints.get(cd.c2);					
 					
-					if (lineCutsBbox(cd.c1, cd.c2 )) {
+					if (lineCutsBbox(cd.c1, cd.c2)) {
 						// Check if the way can be closed with one additional point
 						// outside the bounding box.
 						// The additional point is combination of the coords of both endpoints.
@@ -517,16 +498,12 @@ public class MultiPolygonRelation extends Relation {
 						// not cut the bounding box.
 						// This can be removed when the splitter guarantees to provide logical complete
 						// multi-polygons.
-						Coord edgePoint1 = new Coord(cd.c1.getLatitude(), cd.c2
-								.getLongitude());
-						Coord edgePoint2 = new Coord(cd.c2.getLatitude(), cd.c1
-								.getLongitude());
+						Coord edgePoint1 = new Coord(cd.c1.getLatitude(), cd.c2.getLongitude());
+						Coord edgePoint2 = new Coord(cd.c2.getLatitude(), cd.c1.getLongitude());
 
-						if (lineCutsBbox(cd.c1, edgePoint1) == false
-								&& lineCutsBbox(edgePoint1, cd.c2) == false) {
+						if (!lineCutsBbox(cd.c1, edgePoint1) && !lineCutsBbox(edgePoint1, cd.c2)) {
 							cd.imC = edgePoint1;
-						} else if (lineCutsBbox(cd.c1, edgePoint2) == false
-								&& lineCutsBbox(edgePoint2, cd.c2) == false) {
+						} else if (!lineCutsBbox(cd.c1, edgePoint2) && !lineCutsBbox(edgePoint2, cd.c2)) {
 							cd.imC = edgePoint1;
 						} else {
 							// both endpoints are on opposite sides of the bounding box
@@ -550,7 +527,7 @@ public class MultiPolygonRelation extends Relation {
 						(o1, o2) -> Double.compare(o1.distance, o2.distance));
 
 				if (minCon.w1 == minCon.w2) {
-					log.debug("Close a gap in way",minCon.w1);
+					log.debug("Close a gap in way", minCon.w1);
 					if (minCon.imC != null)
 						minCon.w1.getPoints().add(minCon.imC);
 					minCon.w1.closeWayArtificially();
@@ -576,7 +553,7 @@ public class MultiPolygonRelation extends Relation {
 
 	
 	/**
-	 * Removes all ways non closed ways from the given list (
+	 * Removes all non closed ways from the given list.
 	 * <code>{@link Way#hasIdenticalEndPoints()} == false</code>)
 	 * 
 	 * @param wayList
@@ -633,11 +610,9 @@ public class MultiPolygonRelation extends Relation {
 				}
 			}
 
-			if (remove) {
-				// check if the polygon contains the complete bounding box
-				if (w.getBounds().contains(tileArea.getBounds())) {
-					remove = false;
-				}
+			// check if the polygon contains the complete bounding box
+			if (remove && w.getBounds().contains(tileArea.getBounds())) {
+				remove = false;
 			}
 			
 			if (remove) {
@@ -720,7 +695,7 @@ public class MultiPolygonRelation extends Relation {
 		}
 		// sort by role and then by number of points, this improves performance
 		// in the routines which add the polygons to areas
-		if (polygonStatusList.size() > 2){
+		if (polygonStatusList.size() > 2) {
 			polygonStatusList.sort((o1, o2) -> {
 				if (o1.outer != o2.outer)
 					return (o1.outer) ? -1 : 1;
@@ -737,16 +712,17 @@ public class MultiPolygonRelation extends Relation {
 	protected List<Way> getSourceWays() {
 		ArrayList<Way> allWays = new ArrayList<>();
 
-		for (Map.Entry<String, Element> r_e : getElements()) {
-			if (r_e.getValue() instanceof Way) {
-				if (((Way)r_e.getValue()).getPoints().isEmpty()) {
-					log.warn("Way",r_e.getValue(),"has no points and cannot be used for the multipolygon",toBrowseURL());
+		for (Map.Entry<String, Element> entry : getElements()) {
+			if (entry.getValue() instanceof Way) {
+				if (((Way) entry.getValue()).getPoints().isEmpty()) {
+					log.warn("Way", entry.getValue(), "has no points and cannot be used for the multipolygon",
+							toBrowseURL());
 				} else {
-					allWays.add((Way) r_e.getValue());
+					allWays.add((Way) entry.getValue());
 				}
-			} else if (r_e.getValue() instanceof Node == false || 
-					("admin_centre".equals(r_e.getKey()) == false && "label".equals(r_e.getKey()) == false)) {
-				log.warn("Non way member in role", r_e.getKey(), r_e.getValue().toBrowseURL(),
+			} else if (!(entry.getValue() instanceof Node)
+					|| (!"admin_centre".equals(entry.getKey()) && !"label".equals(entry.getKey()))) {
+				log.warn("Non way member in role", entry.getKey(), entry.getValue().toBrowseURL(),
 						"in multipolygon", toBrowseURL(), toTagString());
 			}
 		}
@@ -773,8 +749,8 @@ public class MultiPolygonRelation extends Relation {
 		List<Way> allWays = getSourceWays();
 		
 		// check if it makes sense to process the mp 
-		if (isMpProcessable(allWays) == false) {
-			log.info("Do not process multipolygon",getId(),"because it has no style relevant tags.");
+		if (!isMpProcessable(allWays)) {
+			log.info("Do not process multipolygon", getId(), "because it has no style relevant tags.");
 			return;
 		}
 
@@ -801,11 +777,9 @@ public class MultiPolygonRelation extends Relation {
 		if (polygons.isEmpty()) {
 			// do nothing
 			if (log.isInfoEnabled()) {
-				if (hasPolygons)
-					log.info("Multipolygon", toBrowseURL(),
-							"is completely outside the bounding box. It is not processed.");
-				else
-					log.info("Multipolygon " + toBrowseURL() + " does not contain a closed polygon.");
+				log.info("Multipolygon", toBrowseURL(),
+						hasPolygons ? "is completely outside the bounding box. It is not processed."
+								: "does not contain a closed polygon.");
 			}
 			tagOuterWays();
 			cleanup();
@@ -940,8 +914,7 @@ public class MultiPolygonRelation extends Relation {
 				}
 			} while (!holesOk);
 
-			ArrayList<PolygonStatus> holes = getPolygonStatus(holeIndexes, 
-				(currentPolygon.outer ? "inner" : "outer"));
+			ArrayList<PolygonStatus> holes = getPolygonStatus(holeIndexes, (currentPolygon.outer ? "inner" : "outer"));
 
 			// these polygons must all be checked for holes
 			polygonWorkingQueue.addAll(holes);
@@ -968,8 +941,7 @@ public class MultiPolygonRelation extends Relation {
 			
 			// check if the polygon is an outer polygon or 
 			// if there are some holes
-			boolean processPolygon = currentPolygon.outer
-					|| (holes.isEmpty()==false);
+			boolean processPolygon = currentPolygon.outer || (!holes.isEmpty());
 
 			if (processPolygon) {
 				List<Way> singularOuterPolygons;
@@ -986,7 +958,7 @@ public class MultiPolygonRelation extends Relation {
 					singularOuterPolygons = cutter.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
 				}
 				
-				if (singularOuterPolygons.isEmpty()==false) {
+				if (!singularOuterPolygons.isEmpty()) {
 					// handle the tagging 
 					if (currentPolygon.outer && hasStyleRelevantTags(this)) {
 						// use the tags of the multipolygon
@@ -1025,19 +997,19 @@ public class MultiPolygonRelation extends Relation {
 						// put the cut out polygons to the
 						// final way map
 						if (log.isDebugEnabled())
-							log.debug(mpWay.getId(),mpWay.toTagString());
+							log.debug(mpWay.getId(), mpWay.toTagString());
 					
 						mpWay.setFullArea(fullArea);
 						// mark this polygons so that only polygon style rules are applied
 						mpWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_POLYGON);
-						mpWay.addTag(MP_CREATED_TAG, "true");
+						mpWay.addTag(MP_CREATED_TAG_KEY, "true");
 						
 						if (currentPolygon.outer) {
-							mpWay.addTag("mkgmap:mp_role", "outer");
+							mpWay.addTag(MP_ROLE_TAG_KEY, "outer");
 							if (isAreaSizeCalculated())
 								mpAreaSize += calcAreaSize(mpWay.getPoints());
 						} else {
-							mpWay.addTag("mkgmap:mp_role", "inner");
+							mpWay.addTag(MP_ROLE_TAG_KEY, "inner");
 						}
 						
 						getMpPolygons().put(mpWay.getId(), mpWay);
@@ -1046,8 +1018,8 @@ public class MultiPolygonRelation extends Relation {
 			}
 		}
 		
-		if (log.isLoggable(Level.WARNING) && 
-				(outmostInnerPolygons.cardinality()+unfinishedPolygons.cardinality()+nestedOuterPolygons.cardinality()+nestedInnerPolygons.cardinality() >= 1)) {
+		if (log.isLoggable(Level.WARNING) && (outmostInnerPolygons.cardinality() + unfinishedPolygons.cardinality()
+				+ nestedOuterPolygons.cardinality() + nestedInnerPolygons.cardinality() >= 1)) {
 			log.warn("Multipolygon", toBrowseURL(), toTagString(), "contains errors.");
 
 			BitSet outerUnusedPolys = new BitSet();
@@ -1080,7 +1052,7 @@ public class MultiPolygonRelation extends Relation {
 			}
 		}
 
-		if (hasStyleRelevantTags(this) == false) {
+		if (!hasStyleRelevantTags(this)) {
 			// add tags to the multipolygon that are taken from the outer ways
 			// they may be required by some hooks (e.g. Area2POIHook)
 			for (Entry<String, String> tags : outerTags.entrySet()) {
@@ -1100,10 +1072,10 @@ public class MultiPolygonRelation extends Relation {
 			Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
 			lineTagWay.setFakeId();
 			lineTagWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
-			lineTagWay.addTag(MP_CREATED_TAG, "true");
+			lineTagWay.addTag(MP_CREATED_TAG_KEY, "true");
 			if (mpAreaSizeStr != null) {
 				// assign the area size of the whole multipolygon to all outer polygons
-				lineTagWay.addTag("mkgmap:cache_area_size", mpAreaSizeStr);
+				lineTagWay.addTag(CACHE_AREA_SIZE_TAG_KEY, mpAreaSizeStr);
 			}
 			for (Entry<String,String> tag : outerTags.entrySet()) {
 				lineTagWay.addTag(tag.getKey(), tag.getValue());
@@ -1133,10 +1105,10 @@ public class MultiPolygonRelation extends Relation {
 		if (isAreaSizeCalculated()) {
 			// assign the area size of the whole multipolygon to all outer polygons
 			String mpAreaSizeStr = String.format(Locale.US, "%.3f", mpAreaSize); 
-			addTag("mkgmap:cache_area_size", mpAreaSizeStr);
+			addTag(CACHE_AREA_SIZE_TAG_KEY, mpAreaSizeStr);
 			for (Way w : mpPolygons.values()) {
-				if ("outer".equals(w.getTag("mkgmap:mp_role"))) {
-					w.addTag("mkgmap:cache_area_size", mpAreaSizeStr);
+				if ("outer".equals(w.getTag(MP_ROLE_TAG_KEY))) {
+					w.addTag(CACHE_AREA_SIZE_TAG_KEY, mpAreaSizeStr);
 				}
 			}
 		}
@@ -1149,12 +1121,12 @@ public class MultiPolygonRelation extends Relation {
 		
 		if (largestOuterPolygon != null) {
 			// check if the mp contains a node with role "label" 
-			for (Map.Entry<String, Element> r_e : getElements()) {
-				if (r_e.getValue() instanceof Node && "label".equals(r_e.getKey())) {
+			for (Map.Entry<String, Element> entry : getElements()) {
+				if (entry.getValue() instanceof Node && "label".equals(entry.getKey())) {
 					// yes => use the label node as reference point
-					cOfG = ((Node)r_e.getValue()).getLocation();
+					cOfG = ((Node) entry.getValue()).getLocation();
 					break;
-				} 
+				}
 			}
 			
 			if (cOfG == null) {
@@ -1232,8 +1204,7 @@ public class MultiPolygonRelation extends Relation {
 		}
 	}
 
-	private void runWrongInnerPolygonCheck(BitSet unfinishedPolygons,
-			BitSet innerPolygons) {
+	private void runWrongInnerPolygonCheck(BitSet unfinishedPolygons, BitSet innerPolygons) {
 		// find all unfinished inner polygons that are not contained by any
 		BitSet wrongInnerPolygons = findOutmostPolygons(unfinishedPolygons, innerPolygons);
 		if (log.isDebugEnabled()) {
@@ -1304,18 +1275,16 @@ public class MultiPolygonRelation extends Relation {
 	 * @return <code>true</code> has style relevant tags
 	 */
 	protected boolean hasStyleRelevantTags(Element element) {
-		if (element instanceof MultiPolygonRelation) {
-			if (((MultiPolygonRelation) element).getTagsIncomplete()) {
-				return true;
-			}
+		if (element instanceof MultiPolygonRelation && ((MultiPolygonRelation) element).getTagsIncomplete()) {
+			return true;
 		}
 		
 		for (Map.Entry<String, String> tagEntry : element.getTagEntryIterator()) {
 			String tagName = tagEntry.getKey();
 			// all tags are style relevant
 			// except: type (for relations), mkgmap:* 
-			boolean isStyleRelevant = (element instanceof Relation && tagName.equals("type")) == false
-					&& tagName.startsWith("mkgmap:") == false;
+			boolean isStyleRelevant = !(element instanceof Relation && "typ".equals(tagName))
+					&& !tagName.startsWith("mkgmap:");
 			if (isStyleRelevant) {
 				return true;
 			}
@@ -1431,7 +1400,7 @@ public class MultiPolygonRelation extends Relation {
 			int i = 0;
 			boolean noContained = true;
 			for (BitSet b : containsMatrix) {
-				if (b.isEmpty()==false) {
+				if (!b.isEmpty()) {
 					log.debug(i,"contains",b);
 					noContained = false;
 				}
@@ -1512,15 +1481,10 @@ public class MultiPolygonRelation extends Relation {
 					allOnLine = false;
 					break;
 				}
-			} else if (tileBounds.contains(px)) {
-				// we have to check if the point is on one line of the polygon1
-				
-				if (!locatedOnLine(px, polygon1.getWay().getPoints())) {
-					// there's one point that is not in polygon1 but inside the
-					// bounding box => polygon1 does not contain polygon2
-					//allOnLine = false;
-					return false;
-				}
+			} else if (tileBounds.contains(px) && !locatedOnLine(px, polygon1.getWay().getPoints())) {
+				// there's one point that is not in polygon1 but inside the
+				// bounding box => polygon1 does not contain polygon2
+				return false;
 			}
 		}
 		
@@ -1544,14 +1508,10 @@ public class MultiPolygonRelation extends Relation {
 					// box => polygon1 may contain polygon2
 					onePointContained = true;
 					break;
-				} else if (tileBounds.contains(px)) {
-					// we have to check if the point is on one line of the polygon1
-					
-					if (!locatedOnLine(px, polygon1.getWay().getPoints())) {
-						// there's one point that is not in polygon1 but inside the
-						// bounding box => polygon1 does not contain polygon2
-						return false;
-					} 
+				} else if (tileBounds.contains(px) && !locatedOnLine(px, polygon1.getWay().getPoints())) {
+					// there's one point that is not in polygon1 but inside the
+					// bounding box => polygon1 does not contain polygon2
+					return false;
 				}
 			}			
 		}
@@ -1562,57 +1522,53 @@ public class MultiPolygonRelation extends Relation {
 		}
 		
 		Iterator<Coord> it1 = polygon1.getWay().getPoints().iterator();
-		Coord p1_1 = it1.next();
+		Coord p11 = it1.next();
 
 		while (it1.hasNext()) {
-			Coord p1_2 = p1_1;
-			p1_1 = it1.next();
+			Coord p12 = p11;
+			p11 = it1.next();
 
-			if (!polygon2.linePossiblyIntersectsWay(p1_1, p1_2)) {
+			if (!polygon2.linePossiblyIntersectsWay(p11, p12)) {
 				// don't check it - this segment of the outer polygon
 				// definitely does not intersect the way
 				continue;
 			}
 
-			int lonMin = Math.min(p1_1.getLongitude(), p1_2.getLongitude());
-			int lonMax = Math.max(p1_1.getLongitude(), p1_2.getLongitude());
-			int latMin = Math.min(p1_1.getLatitude(), p1_2.getLatitude());
-			int latMax = Math.max(p1_1.getLatitude(), p1_2.getLatitude());
+			int lonMin = Math.min(p11.getLongitude(), p12.getLongitude());
+			int lonMax = Math.max(p11.getLongitude(), p12.getLongitude());
+			int latMin = Math.min(p11.getLatitude(), p12.getLatitude());
+			int latMax = Math.max(p11.getLatitude(), p12.getLatitude());
 
 			// check all lines of way1 and way2 for intersections
 			Iterator<Coord> it2 = polygon2.getPoints().iterator();
-			Coord p2_1 = it2.next();
+			Coord p21 = it2.next();
 
 			// for speedup we divide the area around the second line into
 			// a 3x3 matrix with lon(-1,0,1) and lat(-1,0,1).
 			// -1 means below min lon/lat of bbox line p1_1-p1_2
 			// 0 means inside the bounding box of the line p1_1-p1_2
 			// 1 means above max lon/lat of bbox line p1_1-p1_2
-			int lonField = p2_1.getLongitude() < lonMin ? -1 : p2_1
-					.getLongitude() > lonMax ? 1 : 0;
-			int latField = p2_1.getLatitude() < latMin ? -1 : p2_1
-					.getLatitude() > latMax ? 1 : 0;
+			int lonField = p21.getLongitude() < lonMin ? -1 : p21.getLongitude() > lonMax ? 1 : 0;
+			int latField = p21.getLatitude() < latMin ? -1 : p21.getLatitude() > latMax ? 1 : 0;
 
 			int prevLonField = lonField;
 			int prevLatField = latField;
 
 			while (it2.hasNext()) {
-				Coord p2_2 = p2_1;
-				p2_1 = it2.next();
+				Coord p22 = p21;
+				p21 = it2.next();
 
 				int changes = 0;
 				// check if the field of the 3x3 matrix has changed
-				if ((lonField >= 0 && p1_1.getLongitude() < lonMin)
-						|| (lonField <= 0 && p1_1.getLongitude() > lonMax)) {
+				if ((lonField >= 0 && p11.getLongitude() < lonMin)
+						|| (lonField <= 0 && p11.getLongitude() > lonMax)) {
 					changes++;
-					lonField = p1_1.getLongitude() < lonMin ? -1 : p1_1
-							.getLongitude() > lonMax ? 1 : 0;
+					lonField = p11.getLongitude() < lonMin ? -1 : p11.getLongitude() > lonMax ? 1 : 0;
 				}
-				if ((latField >= 0 && p1_1.getLatitude() < latMin)
-						|| (latField <= 0 && p1_1.getLatitude() > latMax)) {
+				if ((latField >= 0 && p11.getLatitude() < latMin)
+						|| (latField <= 0 && p11.getLatitude() > latMax)) {
 					changes++;
-					latField = p1_1.getLatitude() < latMin ? -1 : p1_1
-							.getLatitude() > latMax ? 1 : 0;
+					latField = p11.getLatitude() < latMin ? -1 : p11.getLatitude() > latMax ? 1 : 0;
 				}
 
 				// an intersection is possible if
@@ -1622,8 +1578,7 @@ public class MultiPolygonRelation extends Relation {
 						|| (latField == 0 && lonField == 0)
 						|| (prevLatField == 0 && prevLonField == 0);
 
-				boolean intersects = intersectionPossible
-					&& linesCutEachOther(p1_1, p1_2, p2_1, p2_2);
+				boolean intersects = intersectionPossible && linesCutEachOther(p11, p12, p21, p22);
 				
 				if (intersects) {
 					if ((polygon1.getWay().isClosedArtificially() && !it1.hasNext())
@@ -1633,10 +1588,10 @@ public class MultiPolygonRelation extends Relation {
 						// closing segment causes the intersection
 						log.info("Polygon", polygon1, "may contain polygon", polygon2,
 							". Ignoring artificial generated intersection.");
-					} else if ((!tileBounds.contains(p1_1))
-							|| (!tileBounds.contains(p1_2))
-							|| (!tileBounds.contains(p2_1))
-							|| (!tileBounds.contains(p2_2))) {
+					} else if ((!tileBounds.contains(p11))
+							|| (!tileBounds.contains(p12))
+							|| (!tileBounds.contains(p21))
+							|| (!tileBounds.contains(p22))) {
 						// at least one point is outside the bounding box
 						// we ignore the intersection because the ways may not
 						// be complete
@@ -1677,21 +1632,11 @@ public class MultiPolygonRelation extends Relation {
 			}
 
 			try {
-				if (cp1 == null) {
-					// first init
-					continue;
-				}
-				
-				if (p.getHighPrecLon() < Math.min(cp1.getHighPrecLon(), cp2.getHighPrecLon())) {
-					continue;
-				}
-				if (p.getHighPrecLon() > Math.max(cp1.getHighPrecLon(), cp2.getHighPrecLon())) {
-					continue;
-				}
-				if (p.getHighPrecLat() < Math.min(cp1.getHighPrecLat(), cp2.getHighPrecLat())) {
-					continue;
-				}
-				if (p.getHighPrecLat() > Math.max(cp1.getHighPrecLat(), cp2.getHighPrecLat())) {
+				if (cp1 == null // first init
+						|| p.getHighPrecLon() < Math.min(cp1.getHighPrecLon(), cp2.getHighPrecLon())
+						|| p.getHighPrecLon() > Math.max(cp1.getHighPrecLon(), cp2.getHighPrecLon())
+						|| p.getHighPrecLat() < Math.min(cp1.getHighPrecLat(), cp2.getHighPrecLat())
+						|| p.getHighPrecLat() > Math.max(cp1.getHighPrecLat(), cp2.getHighPrecLat())) {
 					continue;
 				}
 
@@ -1711,15 +1656,15 @@ public class MultiPolygonRelation extends Relation {
 		return false;
 	}
 
-	private boolean lineCutsBbox(Coord p1_1, Coord p1_2) {
+	private boolean lineCutsBbox(Coord p1, Coord p2) {
 		Coord nw = new Coord(tileBounds.getMaxLat(), tileBounds.getMinLong());
 		Coord sw = new Coord(tileBounds.getMinLat(), tileBounds.getMinLong());
 		Coord se = new Coord(tileBounds.getMinLat(), tileBounds.getMaxLong());
 		Coord ne = new Coord(tileBounds.getMaxLat(), tileBounds.getMaxLong());
-		return linesCutEachOther(nw, sw, p1_1, p1_2)
-				|| linesCutEachOther(sw, se, p1_1, p1_2)
-				|| linesCutEachOther(se, ne, p1_1, p1_2)
-				|| linesCutEachOther(ne, nw, p1_1, p1_2);
+		return linesCutEachOther(nw, sw, p1, p2)
+				|| linesCutEachOther(sw, se, p1, p2)
+				|| linesCutEachOther(se, ne, p1, p2)
+				|| linesCutEachOther(ne, nw, p1, p2);
 	}
 
 	/**
@@ -1727,18 +1672,18 @@ public class MultiPolygonRelation extends Relation {
 	 * Check if the line p1_1 to p1_2 cuts line p2_1 to p2_2 in two pieces and vice versa.
 	 * This is a form of intersection check where it is allowed that one line ends on the
 	 * other line or that the two lines overlap.
-	 * @param p1_1 first point of line 1
-	 * @param p1_2 second point of line 1
-	 * @param p2_1 first point of line 2
-	 * @param p2_2 second point of line 2
+	 * @param p11 first point of line 1
+	 * @param p12 second point of line 1
+	 * @param p21 first point of line 2
+	 * @param p22 second point of line 2
 	 * @return true if both lines intersect somewhere in the middle of each other
 	 */
-	private static boolean linesCutEachOther(Coord p1_1, Coord p1_2, Coord p2_1, Coord p2_2) {
-		long width1 = p1_2.getHighPrecLon() - p1_1.getHighPrecLon();
-		long width2 = p2_2.getHighPrecLon() - p2_1.getHighPrecLon();
+	private static boolean linesCutEachOther(Coord p11, Coord p12, Coord p21, Coord p22) {
+		long width1 = (long) p12.getHighPrecLon() - p11.getHighPrecLon();
+		long width2 = (long) p22.getHighPrecLon() - p21.getHighPrecLon();
 
-		long height1 = p1_2.getHighPrecLat() - p1_1.getHighPrecLat();
-		long height2 = p2_2.getHighPrecLat() - p2_1.getHighPrecLat();
+		long height1 = (long) p12.getHighPrecLat() - p11.getHighPrecLat();
+		long height2 = (long) p22.getHighPrecLat() - p21.getHighPrecLat();
 
 		long denominator = ((height2 * width1) - (width2 * height1));
 		if (denominator == 0) {
@@ -1747,22 +1692,17 @@ public class MultiPolygonRelation extends Relation {
 			return false;
 		}
 		
-		long x1Mx3 = p1_1.getHighPrecLon() - p2_1.getHighPrecLon();
-		long y1My3 = p1_1.getHighPrecLat() - p2_1.getHighPrecLat();
+		long x1Mx3 = (long) p11.getHighPrecLon() - p21.getHighPrecLon();
+		long y1My3 = (long) p11.getHighPrecLat() - p21.getHighPrecLat();
 
-		double isx = (double)((width2 * y1My3) - (height2 * x1Mx3))
-				/ denominator;
+		double isx = (double) ((width2 * y1My3) - (height2 * x1Mx3)) / denominator;
 		if (isx <= 0 || isx >= 1) {
 			return false;
 		}
 		
-		double isy = (double)((width1 * y1My3) - (height1 * x1Mx3))
-				/ denominator;
+		double isy = (double) ((width1 * y1My3) - (height1 * x1Mx3)) / denominator;
 
-		if (isy <= 0 || isy >= 1) {
-			return false;
-		}
-		return true;
+		return (isy > 0 &&  isy < 1);
 	}
 
 	private List<JoinedWay> getWaysFromPolygonList(BitSet selection) {
@@ -1809,12 +1749,12 @@ public class MultiPolygonRelation extends Relation {
 	 * @param fakeWay a way composed by other ways with faked ids
 	 */
 	private void logFakeWayDetails(Level logLevel, JoinedWay fakeWay) {
-		if (log.isLoggable(logLevel) == false) {
+		if (!log.isLoggable(logLevel)) {
 			return;
 		}
 		
 		// only log if this is an artificial multipolygon
-		if (FakeIdGenerator.isFakeId(getId()) == false) {
+		if (!FakeIdGenerator.isFakeId(getId())) {
 			return;
 		}
 		
@@ -1825,7 +1765,7 @@ public class MultiPolygonRelation extends Relation {
 			}
 		}
 		
-		if (containsOrgFakeWay == false) {
+		if (!containsOrgFakeWay) {
 			return;
 		}
 		
@@ -1868,8 +1808,8 @@ public class MultiPolygonRelation extends Relation {
 			Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
 			lineTagWay.setFakeId();
 			lineTagWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
-			lineTagWay.addTag(MP_CREATED_TAG, "true");
-			for (Entry<String,String> tag : tags.entrySet()) {
+			lineTagWay.addTag(MP_CREATED_TAG_KEY, "true");
+			for (Entry<String, String> tag : tags.entrySet()) {
 				lineTagWay.addTag(tag.getKey(), tag.getValue());
 				
 				// remove the tag from the original way if it has the same value
@@ -1910,8 +1850,7 @@ public class MultiPolygonRelation extends Relation {
 	 * @param tagvalue
 	 *            the value of the tag to be removed
 	 */
-	private void removeTagInOrgWays(JoinedWay way, String tagname,
-			String tagvalue) {
+	private void removeTagInOrgWays(JoinedWay way, String tagname, String tagvalue) {
 		for (Way w : way.getOriginalWays()) {
 			if (w instanceof JoinedWay) {
 				// remove the tags recursively
@@ -1978,7 +1917,7 @@ public class MultiPolygonRelation extends Relation {
 	 * @return the size of the area (unitless)
 	 */
 	public static double calcAreaSize(List<Coord> polygon) {
-		if (polygon.size() < 4 || polygon.get(0) != polygon.get(polygon.size()-1)) {
+		if (polygon.size() < 4 || polygon.get(0) != polygon.get(polygon.size() - 1)) {
 			return 0; // line or not closed
 		}
 		long area = 0;
@@ -1991,7 +1930,7 @@ public class MultiPolygonRelation extends Relation {
 					* (c1.getHighPrecLat() - c2.getHighPrecLat());
 		}
 		//  convert from high prec to value in map units
-		double areaSize = (double) area / (2 * (1<<Coord.DELTA_SHIFT) * (1<<Coord.DELTA_SHIFT));  
+		double areaSize = (double) area / (2 * (1 << Coord.DELTA_SHIFT) * (1 << Coord.DELTA_SHIFT));  
 		return Math.abs(areaSize);
 	}
 
@@ -2029,6 +1968,7 @@ public class MultiPolygonRelation extends Relation {
 			updateBounds(point);
 		}
 
+		@Override
 		public void addPoint(Coord point) {
 			super.addPoint(point);
 			updateBounds(point);
@@ -2036,11 +1976,11 @@ public class MultiPolygonRelation extends Relation {
 
 		private void updateBounds(List<Coord> pointList) {
 			for (Coord c : pointList) {
-				updateBounds(c.getLatitude(),c.getLongitude());
+				updateBounds(c.getLatitude(), c.getLongitude());
 			}
 		}
 
-		private void updateBounds (JoinedWay other){
+		private void updateBounds(JoinedWay other) {
 			updateBounds(other.minLat,other.minLon);
 			updateBounds(other.maxLat,other.maxLon);
 		}
@@ -2078,10 +2018,10 @@ public class MultiPolygonRelation extends Relation {
 		 *         bounding box; <code>false</code> else
 		 */
 		public boolean intersects(uk.me.parabola.imgfmt.app.Area bbox) {
-			return (maxLat >= bbox.getMinLat() && 
-					minLat <= bbox.getMaxLat() && 
-					maxLon >= bbox.getMinLong() && 
-					minLon <= bbox.getMaxLong());
+			return (maxLat >= bbox.getMinLat() 
+					&& minLat <= bbox.getMaxLat() 
+					&& maxLon >= bbox.getMinLong()
+					&& minLon <= bbox.getMaxLong());
 		}
 
 		public Rectangle getBounds() {
@@ -2106,7 +2046,7 @@ public class MultiPolygonRelation extends Relation {
 				for (Way w : ((JoinedWay) way).getOriginalWays()) {
 					addWay(w);
 				}
-				updateBounds((JoinedWay)way);
+				updateBounds((JoinedWay) way);
 			} else {
 				if (log.isDebugEnabled()) {
 					log.debug("Joined", this.getId(), "with", way.getId());
@@ -2124,8 +2064,8 @@ public class MultiPolygonRelation extends Relation {
 			return closedArtificially;
 		}
 
-		public static Map<String,String> getMergedTags(Collection<Way> ways) {
-			Map<String,String> mergedTags = new HashMap<>();
+		public static Map<String, String> getMergedTags(Collection<Way> ways) {
+			Map<String, String> mergedTags = new HashMap<>();
 			boolean first = true;
 			for (Way way : ways) {
 				if (first) {
@@ -2139,17 +2079,15 @@ public class MultiPolygonRelation extends Relation {
 					ArrayList<String> tagsToRemove = null;
 					for (Map.Entry<String, String> tag : mergedTags.entrySet()) {
 						String wayTagValue = way.getTag(tag.getKey());
-						if (!tag.getValue().equals(wayTagValue)) {
+						if (wayTagValue != null && !tag.getValue().equals(wayTagValue)) {
 							// the tags are different
-							if (wayTagValue!= null) {
-								if (tagsToRemove == null) {
-									tagsToRemove=new ArrayList<>();
-								}
-								tagsToRemove.add(tag.getKey());
+							if (tagsToRemove == null) {
+								tagsToRemove = new ArrayList<>();
 							}
+							tagsToRemove.add(tag.getKey());
 						}
 					}
-					if (tagsToRemove!=null) {
+					if (tagsToRemove != null) {
 						for (String tag : tagsToRemove) {
 							mergedTags.remove(tag);
 						}
@@ -2164,13 +2102,13 @@ public class MultiPolygonRelation extends Relation {
 		 */
 		public void mergeTagsFromOrgWays() {
 			if (log.isDebugEnabled()) {
-				log.debug("Way",getId(),"merge tags from",getOriginalWays().size(),"ways");
+				log.debug("Way", getId(), "merge tags from", getOriginalWays().size(), "ways");
 			}
 			removeAllTags();
 			
-			Map<String,String> mergedTags = getMergedTags(getOriginalWays());
-			for (Entry<String,String> tag : mergedTags.entrySet()) {
-				addTag(tag.getKey(),tag.getValue());
+			Map<String, String> mergedTags = getMergedTags(getOriginalWays());
+			for (Entry<String, String> tag : mergedTags.entrySet()) {
+				addTag(tag.getKey(), tag.getValue());
 			}
 		}
 
@@ -2188,6 +2126,7 @@ public class MultiPolygonRelation extends Relation {
 			return MultiPolygonRelation.calcAreaSize(getPoints());
 		}
 
+		@Override
 		public String toString() {
 			StringBuilder sb = new StringBuilder(200);
 			sb.append(getId());
@@ -2223,7 +2162,7 @@ public class MultiPolygonRelation extends Relation {
 		}
 		
 		public String toString() {
-			return polygon+"_"+outer;
+			return polygon + "_" + outer;
 		}
 	}
 }
