@@ -576,7 +576,7 @@ and that no more than one connecting highway joins at each node.
 : 	Check that roundabout flare roads point in the correct
 direction, are one-way and don't extend too far.
 <p>
---check-routing-island-len=INTEGER
+;--check-routing-island-len=INTEGER
 : 	Routing islands are small road networks which are not connected to other
 roads. A typical case is a footway that is not connected to the main road
 network, or a small set of ways on the inner courtyard of a large building
