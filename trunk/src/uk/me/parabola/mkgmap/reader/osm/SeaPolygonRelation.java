@@ -71,16 +71,13 @@ public class SeaPolygonRelation extends MultiPolygonRelation {
 	private void fillQuadTrees() {
 		final AtomicBoolean isLand = new AtomicBoolean(false);
 		final AtomicBoolean isSea = new AtomicBoolean(false);
-		TypeResult fakedType = new TypeResult() {
-			@Override
-			public void add(Element el, GType type) {
-				if (log.isDebugEnabled())
-					log.debug(el.getId(),type);
-				if (type.getType() == 0x01) {
-					isLand.set(true);
-				} else if (type.getType() == 0x02) {
-					isSea.set(true);
-				}
+		TypeResult fakedType = (el, type) -> {
+			if (log.isDebugEnabled())
+				log.debug(el.getId(), type);
+			if (type.getType() == 0x01) {
+				isLand.set(true);
+			} else if (type.getType() == 0x02) {
+				isSea.set(true);
 			}
 		};
 		for (Way way : getTileWayMap().values()) {

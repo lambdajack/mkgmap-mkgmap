@@ -31,8 +31,7 @@ public interface TypeResult {
 	 * Use this if you don't want to save the results.  Only likely to be
 	 * used for the test cases.
 	 */
-	public static TypeResult NULL_RESULT = new TypeResult() {
-		public void add(Element el, GType type) {
-		}
+	public static TypeResult NULL_RESULT = (el, type) -> {
+		// do nothing
 	};
 }

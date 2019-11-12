@@ -46,11 +46,9 @@ public class ActionRule implements Rule {
 	private long numTrue; // count how often the evaluation returned true
 
 	/** Finalize rules must not have an element type definition so the add method must never be called. */
-	private final static TypeResult finalizeTypeResult = new TypeResult() {
-		public void add(Element el, GType type) {
-			throw new UnsupportedOperationException("Finalize rules must not contain an element type definition.");
-		}
-	};	
+	private static final TypeResult finalizeTypeResult = (el, t) -> {
+		throw new UnsupportedOperationException("Finalize rules must not contain an element type definition.");
+	};
 	
 	public ActionRule(Op expression, List<Action> actions, GType type) {
 		assert actions != null;

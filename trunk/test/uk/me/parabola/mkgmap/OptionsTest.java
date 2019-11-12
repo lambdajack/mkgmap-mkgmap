@@ -29,11 +29,11 @@ public class OptionsTest {
 		"pool", "ocean"
 	};
 
-	String PATH_SEP = System.getProperty("file.separator");
+	static final String PATH_SEP = System.getProperty("file.separator");
 
-	private final List<Option> found = new ArrayList<Option>();
-	private final List<String> options = new ArrayList<String>();
-	private final List<String> values = new ArrayList<String>();
+	private final List<Option> found = new ArrayList<>();
+	private final List<String> options = new ArrayList<>();
+	private final List<String> values = new ArrayList<>();
 
 	/**
 	 * You can have options with values separated by either a ':' or an
@@ -119,8 +119,7 @@ public class OptionsTest {
 	public void testRelativeFilenamesInFile() {
 		String s = "input-file: foo\n";
 
-		OptionProcessor proc = new MyOptionProcessor();
-		Options opts = new Options(proc);
+		Options opts = new Options(myOptionProcessor);
 		Reader r = new StringReader(s);
 
 		opts.readOptionFile(r, "/bar/string.args");
@@ -147,8 +146,7 @@ public class OptionsTest {
 			exp_dir = "/home";
 		}
 
-		OptionProcessor proc = new MyOptionProcessor();
-		Options opts = new Options(proc);
+		Options opts = new Options(myOptionProcessor);
 		Reader r = new StringReader(s);
 
 		opts.readOptionFile(r, "/bar/string.args");
@@ -167,18 +165,15 @@ public class OptionsTest {
 	}
 
 	private void readOptionsFromString(String s) {
-		OptionProcessor proc = new MyOptionProcessor();
-		Options opts = new Options(proc);
+		Options opts = new Options(myOptionProcessor);
 		Reader r = new StringReader(s);
 
 		opts.readOptionFile(r, "from-string");
 	}
 
-	private class MyOptionProcessor implements OptionProcessor {
-		public void processOption(Option opt) {
-			found.add(opt);
-			options.add(opt.getOption());
-			values.add(opt.getValue());
-		}
-	}
+	private OptionProcessor myOptionProcessor = opt -> {
+		found.add(opt);
+		options.add(opt.getOption());
+		values.add(opt.getValue());
+	};
 }

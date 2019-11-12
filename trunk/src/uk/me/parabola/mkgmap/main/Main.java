@@ -250,7 +250,10 @@ public class Main implements ArgumentProcessor {
 	}
 
 	public void startOptions() {
-		MapProcessor saver = new NameSaver();
+		/**
+		 * A null implementation that just returns the input name as the output.
+		 */
+		MapProcessor saver = (args, filename) -> filename;
 		processMap.put("img", saver);
 		processMap.put("mdx", saver);
 
@@ -752,15 +755,6 @@ public class Main implements ArgumentProcessor {
 	 */
 	public Sort getSort(CommandArgs args) {
 		return SrtTextReader.sortForCodepage(args.getCodePage());
-	}
-
-	/**
-	 * A null implementation that just returns the input name as the output.
-	 */
-	private static class NameSaver implements MapProcessor {
-		public String makeMap(CommandArgs args, String filename) {
-			return filename;
-		}
 	}
 
 	private static class FilenameTask extends FutureTask<String> {

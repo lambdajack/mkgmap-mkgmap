@@ -53,7 +53,8 @@ public class CommandArgsReader {
 	private final EnhancedProperties args = new EnhancedProperties();
 	private Set<String> validOptions;
 
-	{
+	public CommandArgsReader(ArgumentProcessor proc) {
+		this.proc = proc;
 		// Set some default values.  It is as if these were on the command
 		// line before any user supplied options.
 		add(new CommandOption("mapname", "63240001"));
@@ -62,10 +63,6 @@ public class CommandArgsReader {
 		add(new CommandOption("overview-mapnumber", "63240000"));
 		add(new CommandOption("poi-address", ""));
 		add(new CommandOption("merge-lines", ""));
-	}
-
-	public CommandArgsReader(ArgumentProcessor proc) {
-		this.proc = proc;
 	}
 
 	/**
@@ -219,11 +216,9 @@ public class CommandArgsReader {
 	 * @param filename The filename to obtain options from.
 	 */
 	private void readConfigFile(String filename) {
-		Options opts = new Options(new OptionProcessor() {
-			public void processOption(Option opt) {
-				log.debug("incoming opt", opt.getOption(), opt.getValue());
-				addOption(new CommandOption(opt));
-			}
+		Options opts = new Options(opt -> {
+			log.debug("incoming opt", opt.getOption(), opt.getValue());
+			addOption(new CommandOption(opt));
 		});
 		try {
 			opts.readOptionFile(filename);
@@ -275,8 +270,7 @@ public class CommandArgsReader {
 			// Increase the name number.  If the next arg sets it then that
 			// will override this new name.
 			mapname = args.getProperty("mapname");
-			try {
-				Formatter fmt = new Formatter();
+			try (Formatter fmt = new Formatter()) {
 				try {
 					int n = Integer.parseInt(mapname);
 					fmt.format("%08d", ++n);
@@ -284,7 +278,6 @@ public class CommandArgsReader {
 					fmt.format("%8.8s", mapname);
 				}
 				args.setProperty("mapname", fmt.toString());
-				fmt.close();
 			} catch (NumberFormatException e) {
 				// If the name is not a number then we just leave it alone...
 			}
@@ -362,7 +355,7 @@ public class CommandArgsReader {
 		private int filenameCount;
 
 		ArgList() {
-			alist = new ArrayList<ArgType>();
+			alist = new ArrayList<>();
 		}
 
 		protected void add(CommandOption option) {

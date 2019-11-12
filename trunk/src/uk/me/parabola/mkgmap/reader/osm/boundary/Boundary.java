@@ -21,7 +21,7 @@ public class Boundary  {
 	private String id;	// the id of the OSM relation (was kept in tag "mkgmap:boundaryid")
 
 	private final Tags tags;
-	private transient Area area;
+	private Area area;
 
 	public Boundary(Area area, Tags tags, String id) {
 		this.area = new Area(area);

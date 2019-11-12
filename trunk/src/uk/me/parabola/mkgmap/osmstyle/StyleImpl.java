@@ -40,12 +40,9 @@ import java.util.regex.Pattern;
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.log.Logger;
-import uk.me.parabola.mkgmap.Option;
-import uk.me.parabola.mkgmap.OptionProcessor;
 import uk.me.parabola.mkgmap.Options;
 import uk.me.parabola.mkgmap.general.LevelInfo;
 import uk.me.parabola.mkgmap.general.LineAdder;
-import uk.me.parabola.mkgmap.general.MapLine;
 import uk.me.parabola.mkgmap.reader.osm.FeatureKind;
 import uk.me.parabola.mkgmap.reader.osm.Rule;
 import uk.me.parabola.mkgmap.reader.osm.Style;
@@ -74,7 +71,7 @@ public class StyleImpl implements Style {
 	private static final int VERSION = 1;
 
 	// General options just have a value and don't need any special processing.
-	private static final Collection<String> OPTION_LIST = new ArrayList<String>(
+	private static final Collection<String> OPTION_LIST = new ArrayList<>(
 			Arrays.asList("levels", "overview-levels", "extra-used-tags"));
 
 	// File names
@@ -94,10 +91,10 @@ public class StyleImpl implements Style {
 	private StyleInfo info = new StyleInfo();
 
 	// Set if this style is based on another one.
-	private final List<StyleImpl> baseStyles = new ArrayList<StyleImpl>();
+	private final List<StyleImpl> baseStyles = new ArrayList<>();
 
 	// Options from the option file that are used outside this file.
-	private final Map<String, String> generalOptions = new HashMap<String, String>();
+	private final Map<String, String> generalOptions = new HashMap<>();
 
 	private final RuleSet lines = new RuleSet();
 	private final RuleSet polygons = new RuleSet();
@@ -203,17 +200,13 @@ public class StyleImpl implements Style {
 		LineAdder adder = null;
 
 		if (overlays != null) {
-			adder = new LineAdder() {
-				public void add(MapLine element) {
-					overlays.addLine(element, lineAdder);
-				}
-			};
+			adder = element -> overlays.addLine(element, lineAdder);
 		}
 		return adder;
 	}
 
 	public Set<String> getUsedTags() {
-		Set<String> set = new HashSet<String>();
+		Set<String> set = new HashSet<>();
 		set.addAll(relations.getUsedTags());
 		set.addAll(lines.getUsedTags());
 		set.addAll(polygons.getUsedTags());
@@ -224,29 +217,26 @@ public class StyleImpl implements Style {
 		// around situations that we haven't thought of - the style is expected
 		// to get it right for itself.
 		String s = getOption("extra-used-tags");
-		if (s != null && s.trim().isEmpty() == false)
+		if (s != null && !s.trim().isEmpty())
 			set.addAll(Arrays.asList(COMMA_OR_SPACE_PATTERN.split(s)));
 
 		// There are a lot of tags that are used within mkgmap that 
-		InputStream is = this.getClass().getResourceAsStream("/styles/builtin-tag-list");
-		try {
+		try (InputStream is = this.getClass().getResourceAsStream("/styles/builtin-tag-list");) {
 			if (is != null) {
 				BufferedReader br = new BufferedReader(new InputStreamReader(is));
-				//System.out.println("Got built in list");
+				// System.out.println("Got built in list");
 				String line;
 				while ((line = br.readLine()) != null) {
 					line = line.trim();
 					if (line.startsWith("#"))
 						continue;
-					//System.out.println("adding " + line);
+					// System.out.println("adding " + line);
 					set.add(line);
 				}
 			}
 		} catch (IOException e) {
 			// the file doesn't exist, this is ok but unlikely
 			System.err.println("warning: built in tag list not found");
-		} finally {
-			Utils.closeFile(is);
 		}
 		return set;
 	}
@@ -257,10 +247,8 @@ public class StyleImpl implements Style {
 		if (l == null)
 			l = LevelInfo.DEFAULT_LEVELS;
 		LevelInfo[] levels = LevelInfo.createFromString(l);
-		if (performChecks){
-			if (levels[0].getBits() <= 10){
-				System.err.println("Warning: Resolution values <= 10 may confuse MapSource: " + l);
-			}
+		if (performChecks && levels[0].getBits() <= 10) {
+			System.err.println("Warning: Resolution values <= 10 may confuse MapSource: " + l);
 		}
 		l = generalOptions.get("overview-levels");
 		if (l != null){
@@ -274,7 +262,7 @@ public class StyleImpl implements Style {
 					System.err.println("Warning: Overview level not higher than highest normal level. " + l);
 				}
 			}
-			List<LevelInfo> tmp = new ArrayList<LevelInfo>();
+			List<LevelInfo> tmp = new ArrayList<>();
 			tmp.addAll(Arrays.asList(levels));
 			tmp.addAll(Arrays.asList(ovLevels));
 			levels = tmp.toArray(new LevelInfo[tmp.size()]);
@@ -321,20 +309,18 @@ public class StyleImpl implements Style {
 	private void readOptions() {
 		try {
 			Reader r = fileLoader.open(FILE_OPTIONS);
-			Options opts = new Options(new OptionProcessor() {
-				public void processOption(Option opt) {
-					String key = opt.getOption();
-					String val = opt.getValue();
-					if (key.equals("name-tag-list")) {
-						if ("name".equals(val) == false){
-							System.err.println("Warning: option name-tag-list used in the style options is ignored. "  
-									+ "Please use only the command line option to specify this value." );
-						}
-					} else if (OPTION_LIST.contains(key)) {
-						// Simple options that have string value.  Perhaps we should allow
-						// anything here?
-						generalOptions.put(key, val);
+			Options opts = new Options(opt -> {
+				String key = opt.getOption();
+				String val = opt.getValue();
+				if (key.equals("name-tag-list")) {
+					if (!"name".equals(val)) {
+						System.err.println("Warning: option name-tag-list used in the style options is ignored. "
+								+ "Please use only the command line option to specify this value.");
 					}
+				} else if (OPTION_LIST.contains(key)) {
+					// Simple options that have string value. Perhaps we should allow
+					// anything here?
+					generalOptions.put(key, val);
 				}
 			});
 
@@ -353,20 +339,17 @@ public class StyleImpl implements Style {
 			Reader br = new BufferedReader(fileLoader.open(FILE_INFO));
 			info = new StyleInfo();
 
-			Options opts = new Options(new OptionProcessor() {
-				public void processOption(Option opt) {
-					String word = opt.getOption();
-					String value = opt.getValue();
-					if (word.equals("summary"))
-						info.setSummary(value);
-					else if (word.equals("version")) {
-						info.setVersion(value);
-					} else if (word.equals("base-style")) {
-						info.addBaseStyleName(value);
-					} else if (word.equals("description")) {
-						info.setLongDescription(value);
-					}
-
+			Options opts = new Options(opt -> {
+				String word = opt.getOption();
+				String value = opt.getValue();
+				if (word.equals("summary"))
+					info.setSummary(value);
+				else if (word.equals("version")) {
+					info.setVersion(value);
+				} else if (word.equals("base-style")) {
+					info.addBaseStyleName(value);
+				} else if (word.equals("description")) {
+					info.setLongDescription(value);
 				}
 			});
 

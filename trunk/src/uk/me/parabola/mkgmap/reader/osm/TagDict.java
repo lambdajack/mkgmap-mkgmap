@@ -25,7 +25,7 @@ import uk.me.parabola.imgfmt.MapFailedException;
  *
  */
 public class TagDict{
-	private final static TagDict INSTANCE = new TagDict();
+	private static final TagDict INSTANCE = new TagDict();
 	private final HashMap<String,Short>  map = new HashMap<>();
 	private final ArrayList<String>  list = new ArrayList<>();
 
@@ -63,7 +63,6 @@ public class TagDict{
 			}
 			String s = keyString;
 			map.put(s, size);
-			//System.out.println(""+x + ":" +   s);
 			list.add(s);
 			return size;
 		}

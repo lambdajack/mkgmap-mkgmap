@@ -1220,11 +1220,7 @@ public class RuleFileReaderTest {
 	 */
 	private GType getFirstType(Rule rs, Element el) {
 		final List<GType> types = new ArrayList<>();
-		rs.resolveType(el, new TypeResult() {
-			public void add(Element el, GType type) {
-				types.add(type);
-			}
-		});
+		rs.resolveType(el, (element, type) -> types.add(type));
 		if (types.isEmpty())
 			return null;
 		else

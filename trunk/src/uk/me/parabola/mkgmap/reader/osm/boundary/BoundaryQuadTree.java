@@ -72,10 +72,10 @@ public class BoundaryQuadTree {
 	private final Node root;
 	// the bounding box of the quadtree
 	private final Rectangle bbox;
-	private final String bbox_key; 
+	private final String bboxKey; 
 	
 	// tags that can be returned in the get method
-	public final static String[] mkgmapTagsArray =  {
+	public static final String[] mkgmapTagsArray =  {
 		"mkgmap:admin_level1",
 		"mkgmap:admin_level2",
 		"mkgmap:admin_level3",
@@ -91,9 +91,9 @@ public class BoundaryQuadTree {
 		"mkgmap:other" // for use in residential hook
 	};
 	// 11: the position of "mkgmap:postcode" in the above array
-	public final static short POSTCODE_ONLY = 1 << 11;   
+	public static final short POSTCODE_ONLY = 1 << 11;   
 	// 12: the position of "mkgmap:other" in the above array
-	public final static short NAME_ONLY = 1 << 12;   
+	public static final short NAME_ONLY = 1 << 12;   
 	
 	/**
 	 * Create a quadtree with the data in an open stream. 
@@ -112,7 +112,7 @@ public class BoundaryQuadTree {
 		this.bbox = new Rectangle(fileBbox.getMinLong(), fileBbox.getMinLat(),
 				fileBbox.getMaxLong() - fileBbox.getMinLong(), fileBbox.getMaxLat()
 				- fileBbox.getMinLat());
-		this.bbox_key = BoundaryUtil.getKey(this.bbox.y, this.bbox.x);
+		this.bboxKey = BoundaryUtil.getKey(this.bbox.y, this.bbox.x);
 		root = new Node(this.bbox);
 		
 		readStreamQuadTreeFormat(inpStream,searchBbox);
@@ -133,12 +133,12 @@ public class BoundaryQuadTree {
 		this.bbox = new Rectangle(givenBbox.getMinLong(), givenBbox.getMinLat(),
 				givenBbox.getMaxLong() - givenBbox.getMinLong(), 
 				givenBbox.getMaxLat() - givenBbox.getMinLat());
-		this.bbox_key = BoundaryUtil.getKey(this.bbox.y, this.bbox.x);
+		this.bboxKey = BoundaryUtil.getKey(this.bbox.y, this.bbox.x);
 		
 		root = new Node(this.bbox);
 		// extract the location relevant tags
 		preparedLocationInfo = preparer.getPreparedLocationInfo(boundaries);
-		if (boundaries == null || boundaries.size() == 0)
+		if (boundaries == null || boundaries.isEmpty())
 			return;
 		
 
@@ -211,18 +211,18 @@ public class BoundaryQuadTree {
 	 * @param other the other instance of BoundaryQuadTree
 	 */
 	public void merge(BoundaryQuadTree other){
-		if (bbox.equals(other.bbox) == false){
+		if (!bbox.equals(other.bbox)){
 			log.error("Cannot merge tree with different bounding box");
 			return;
 		}
 		for (Entry <String, BoundaryLocationInfo> entry : other.preparedLocationInfo.entrySet()){
-			if (this.preparedLocationInfo.containsKey(entry.getKey()) == false){
+			if (!this.preparedLocationInfo.containsKey(entry.getKey())){
 				this.preparedLocationInfo.put(entry.getKey(),entry.getValue());
 			}
 		}
 		// add the others tags
 		for (Entry <String, Tags> entry : other.boundaryTags.entrySet()){
-			if (this.boundaryTags.containsKey(entry.getKey()) == false){
+			if (!this.boundaryTags.containsKey(entry.getKey())){
 				this.boundaryTags.put(entry.getKey(),entry.getValue());
 			}
 		}
@@ -363,7 +363,7 @@ public class BoundaryQuadTree {
 							refs = null;
 						Area area = BoundaryUtil.readAreaAsPath(inpStream);
 						
-						if (area != null && area.isEmpty() == false)
+						if (area != null && !area.isEmpty())
 							root.add(area, refs, id, treePath);
 						else {
 							log.warn(refs,id,treePath,"invalid or empty or too small area");
@@ -379,7 +379,6 @@ public class BoundaryQuadTree {
 			}
 		} catch (EOFException exp) {
 			// it's always thrown at the end of the file
-			//				log.error("Got EOF at the end of the file");
 		}
 	}
 
@@ -465,21 +464,18 @@ public class BoundaryQuadTree {
 		 * Sample: r1184826;6:r62579;4:r62372;2:r51477  
 		 */
 		private String getBoundaryNames(Coord co) {
-			if (this.bounds.contains(co) == false)
+			if (!this.bounds.contains(co))
 				return null;
 			if (isLeaf){
-				if (nodes == null || nodes.size() == 0)
+				if (nodes == null || nodes.isEmpty())
 					return null;
 				int lon = co.getLongitude();
 				int lat = co.getLatitude();
-				for (NodeElem nodeElem: nodes){
-					if (nodeElem.tagMask > 0){	
-						if (nodeElem.getArea().contains(lon,lat)){
-							String res = new String (nodeElem.boundaryId);
-							if (nodeElem.locationDataSrc != null)
-								res += ";" + nodeElem.locationDataSrc;
-							return res;
-						}
+				for (NodeElem nodeElem : nodes) {
+					if (nodeElem.tagMask > 0 && nodeElem.getArea().contains(lon, lat)) {
+						if (nodeElem.locationDataSrc != null)
+							return nodeElem.boundaryId + ";" + nodeElem.locationDataSrc;
+						return nodeElem.boundaryId;
 					}
 				}
 			}
@@ -500,18 +496,16 @@ public class BoundaryQuadTree {
 		 * The returned Tags must not be modified by the caller.   
 		 */
 		private Tags get(Coord co/*, String treePath*/){
-			if (this.bounds.contains(co) == false)
+			if (!this.bounds.contains(co))
 				return null;
 			if (isLeaf){
-				if (nodes == null || nodes.size() == 0)
+				if (nodes == null || nodes.isEmpty())
 					return null;
 				int lon = co.getLongitude();
 				int lat = co.getLatitude();
-				for (NodeElem nodeElem: nodes){
-					if (nodeElem.tagMask > 0){	
-						if (nodeElem.getArea().contains(lon,lat)){
-							return nodeElem.locTags;
-						}
+				for (NodeElem nodeElem : nodes) {
+					if (nodeElem.tagMask > 0 && nodeElem.getArea().contains(lon, lat)) {
+						return nodeElem.locTags;
 					}
 				}
 			}
@@ -536,14 +530,15 @@ public class BoundaryQuadTree {
 				if (treePath.equals(DEBUG_TREEPATH)){
 					nodeElem.saveGPX(prefix,treePath);
 				}
-				String res = new String();
-				for (int i = mkgmapTagsArray.length-1; i >= 0 ; --i){
-					String tagVal = nodeElem.locTags.get(mkgmapTagsArray[i] );
-					if (tagVal != null){
-						res += i+1 + "=" + tagVal + ";";
+				StringBuilder sb = new StringBuilder();
+				for (int i = mkgmapTagsArray.length - 1; i >= 0; --i) {
+					String tagVal = nodeElem.locTags.get(mkgmapTagsArray[i]);
+					if (tagVal != null) {
+						sb.append(i + 1).append('=').append(tagVal).append(';');
 					}
 				}
-				System.out.println(prefix + " " + treePath + " " +  n + ":" + nodeElem.boundaryId + " " + nodeElem.tagMask + " " + res );
+				System.out.println(prefix + " " + treePath + " " + n + ":" + nodeElem.boundaryId + " "
+						+ nodeElem.tagMask + " " + sb.toString());
 				++n;
 			}
 		}
@@ -580,11 +575,11 @@ public class BoundaryQuadTree {
 					tmpNodeElem.saveGPX("intersection_rect",treePath);
 				}
 			}
-			if (DEBUG){
-				if (!ok){
-					for (NodeElem nodeElem: nodes){
-						nodeElem.saveGPX("not_distinct",treePath);
-					}				
+			if (DEBUG) {
+				if (!ok) {
+					for (NodeElem nodeElem : nodes) {
+						nodeElem.saveGPX("not_distinct", treePath);
+					}
 				}
 			}
 			return ok;
@@ -601,7 +596,7 @@ public class BoundaryQuadTree {
 		private void add(Area area, String refs, String boundaryId, String treePath){
 			Node node = this;
 			String path = treePath;
-			while(path.isEmpty() == false){
+			while (!path.isEmpty()) {
 				int idx = Integer.parseInt(path.substring(0, 1));
 				path = path.substring(1);
 				if (node.childs == null)
@@ -687,15 +682,14 @@ public class BoundaryQuadTree {
 		private Area getCoveredArea(Integer admLevel, String treePath){
 			HashMap<String,List<Area>> areas = new HashMap<>();
 			this.getAreas(areas, treePath, admLevel);
-			if (areas.isEmpty() == false){
+			if (!areas.isEmpty()) {
 				Path2D.Double path = new Path2D.Double(PathIterator.WIND_NON_ZERO, 1024 * 1024);
 				for (Entry <String, List<Area>> entry : areas.entrySet()){
 					for (Area area: entry.getValue()){
 						path.append(area, false);
 					}
 				}
-				Area combinedArea = new Area(path);
-				return combinedArea;
+				return new Area(path);
 			}
 			return new Area();
 		}
@@ -708,12 +702,12 @@ public class BoundaryQuadTree {
 		 */
 		private void getAreas(Map<String, List<Area>> areas, String treePath, Integer admLevel){
 			if (!this.isLeaf ){
-				for (int i = 0; i < 4; i++){
-					childs[i].getAreas(areas, treePath+i, admLevel);
+				for (int i = 0; i < 4; i++) {
+					childs[i].getAreas(areas, treePath + i, admLevel);
 				}
 				return;
 			}
-			if (nodes == null || nodes.size() == 0)
+			if (nodes == null || nodes.isEmpty())
 				return;
 			
 			Short testMask = null;
@@ -723,13 +717,8 @@ public class BoundaryQuadTree {
 				String id = nodeElem.boundaryId;
 				if (testMask != null && (nodeElem.tagMask & testMask) == 0)
 					continue;
-				List<Area> aList = areas.get(id);
 				Area a = new Area(nodeElem.getArea());
-				if (aList == null){
-					aList = new ArrayList<>(4);
-					areas.put(id, aList);
-				}
-				aList.add(a);
+				areas.computeIfAbsent(id, k -> new ArrayList<>(4)).add(a);
 				if (testMask != null)
 					continue;
 				
@@ -743,13 +732,8 @@ public class BoundaryQuadTree {
 							continue;
 						}
 						id = relParts[1];
-						aList = areas.get(id);
 						a = new Area(nodeElem.getArea());
-						if (aList == null){
-							aList = new ArrayList<>(4);
-							areas.put(id, aList);
-						}
-						aList.add(a);
+						areas.computeIfAbsent(id, k -> new ArrayList<>(4)).add(a);
 					}
 				}
 			}
@@ -764,7 +748,7 @@ public class BoundaryQuadTree {
 		 * @param treePath Identifies the position in the tree
 		 */
 		private void makeDistinct(String treePath){
-			if (isLeaf == false || nodes == null || nodes.size() <= 1)
+			if (!isLeaf || nodes == null || nodes.size() <= 1)
 				return;
 			if (DEBUG){
 				printNodes("start", treePath);
@@ -788,15 +772,15 @@ public class BoundaryQuadTree {
 			// detect intersection of areas, merge tag info
 			for (int i=0; i < nodes.size(); i++){
 				NodeElem toAdd = nodes.get(i);
-				if (DEBUG){
-					if (treePath.equals(DEBUG_TREEPATH) || DEBUG_TREEPATH.equals("all")){
-						for (NodeElem nodeElem: reworked){
-							nodeElem.saveGPX("debug"+i,treePath);
-						}			
+				if (DEBUG) {
+					if (treePath.equals(DEBUG_TREEPATH) || DEBUG_TREEPATH.equals("all")) {
+						for (NodeElem nodeElem : reworked) {
+							nodeElem.saveGPX("debug" + i, treePath);
+						}
 					}
 				}
-				for (int j=0; j < reworked.size(); j++){
-					if (toAdd.isValid() == false)
+				for (int j = 0; j < reworked.size(); j++) {
+					if (!toAdd.isValid())
 						break;
 					NodeElem currElem = reworked.get(j);
 					if (currElem.srcPos == i || currElem.getArea().isEmpty())
@@ -819,25 +803,24 @@ public class BoundaryQuadTree {
 					Area toAddMinusCurr = new Area(toAdd.getArea());
 					toAddMinusCurr.subtract(currElem.getArea());
 
-					if (toAddMinusCurr.isEmpty()){
+					if (toAddMinusCurr.isEmpty() &&
+							toAdd.tagMask == POSTCODE_ONLY) {
 						// toadd is fully covered by curr
-						if (toAdd.tagMask == POSTCODE_ONLY){
-							// if we get here, toAdd has only zip code that is already known 
-							// in larger or equal area of currElem
-							toAdd.getArea().reset(); // ignore this
-							break;
-						}
+						// if we get here, toAdd has only zip code that is already known
+						// in larger or equal area of currElem
+						toAdd.getArea().reset(); // ignore this
+						break;
 					}
 
 					// test if toAdd contains usable tag(s)
 					String chkMsg = currElem.checkAddTags(toAdd, bounds);
 					// warning: intersection of areas with equal levels   
-					if (chkMsg != null){
-						if (DEBUG){
-							// save debug GPX for areas that wiil 
-							// appear in warning message below 
-							toAdd.saveGPX("warn_toAdd",treePath);
-							currElem.saveGPX("warn_curr",treePath);
+					if (chkMsg != null) {
+						if (DEBUG) {
+							// save debug GPX for areas that wiil
+							// appear in warning message below
+							toAdd.saveGPX("warn_toAdd", treePath);
+							currElem.saveGPX("warn_curr", treePath);
 						}
 						log.warn(chkMsg);
 					}
@@ -877,11 +860,11 @@ public class BoundaryQuadTree {
 			}
 			nodes = reworked;
 			// free memory for nodes with empty or too small areas
-			removeEmptyAreas(treePath);
+			removeEmptyAreas();
 
 			long dt = System.currentTimeMillis()-t1;
 			if (dt  > 1000){
-				log.info(bbox_key, " : makeDistinct required long time:", dt, "ms");
+				log.info(bboxKey, " : makeDistinct required long time:", dt, "ms");
 			}
 			if (DEBUG)
 				printNodes("end", treePath);
@@ -922,7 +905,8 @@ public class BoundaryQuadTree {
 				NodeElem lastNode = nodes.get(nodes.size()-1);
 				NodeElem prevNode = nodes.get(nodes.size()-2);
 				// don't merge admin_level tags into zip-code only boundary
-				if (prevNode.tagMask != POSTCODE_ONLY && lastNode.getArea().isRectangular() && prevNode.getArea().isRectangular()){
+				if (prevNode.tagMask != POSTCODE_ONLY && lastNode.getArea().isRectangular()
+						&& prevNode.getArea().isRectangular()) {
 					// two areas are rectangles, it is likely that they are equal to the bounding box
 					// In this case we add the tags to the existing area instead of creating a new one
 					if (prevNode.getArea().equals(lastNode.getArea())){
@@ -938,23 +922,22 @@ public class BoundaryQuadTree {
 		 * The mergeBoundaries() algorithm can create empty
 		 * areas (points, lines, or extremely small intersections). 
 		 * These are removed here.
-		 * @param treePath
 		 */
-		private void removeEmptyAreas(String treePath){
+		private void removeEmptyAreas() {
 			for (int j = nodes.size()-1; j >= 0 ; j--){
 				boolean removeThis = false;
 				NodeElem chkRemove = nodes.get(j);
-				if (chkRemove.isValid() == false)
+				if (!chkRemove.isValid())
 					removeThis = true;
-				else if (this.bbox.intersects(chkRemove.getArea().getBounds2D()) == false){
+				else if (!this.bbox.intersects(chkRemove.getArea().getBounds2D())) {
 					// we might get here because of errors in java.awt.geom.Area
 					// sometimes, Area.subtract() seems to produce an area which 
 					// lies outside of original areas
 					removeThis = true;
-				}else if (!isWritable(chkRemove.getArea())){
+				} else if (!isWritable(chkRemove.getArea())) {
 					removeThis = true;
 				}
-				if (removeThis){
+				if (removeThis) {
 					nodes.remove(j);
 				}
 			}			 		
@@ -987,7 +970,7 @@ public class BoundaryQuadTree {
 		 * distribute the data.
 		 */
 		private void split(String treePath){
-			if (isLeaf == true){
+			if (isLeaf) {
 				if  (nodes == null)
 					return;
 				if (DEBUG){
@@ -1001,11 +984,10 @@ public class BoundaryQuadTree {
 					return ;
 				}
 
-//				mergeLastRectangles();
 				allocChilds();
-				for (NodeElem nodeElem: nodes){
+				for (NodeElem nodeElem : nodes) {
 					Rectangle shapeBBox = nodeElem.shape.getBounds();
-					for (int i = 0; i < 4; i++){
+					for (int i = 0; i < 4; i++) {
 						if (childs[i].bbox.intersects(shapeBBox))
 							childs[i].add(nodeElem.shape, nodeElem.boundaryId, nodeElem.locationDataSrc, DO_CLIP);
 					}
@@ -1088,22 +1070,22 @@ public class BoundaryQuadTree {
 		 * @return false if either the area is not usable or 
 		 * the tags should be ignored.
 		 */
-		private boolean isValid(){
+		private boolean isValid() {
 			if (tagMask == 0)
 				return false;
 			Area checkArea = getArea();
-			if (checkArea == null || checkArea.isEmpty()
-					|| checkArea.getBounds2D().getWidth() <= BoundaryUtil.MIN_DIMENSION && checkArea.getBounds2D().getHeight() <= BoundaryUtil.MIN_DIMENSION)
-				return false;
-			return true;
+			return checkArea != null && !checkArea.isEmpty()
+					&& (checkArea.getBounds2D().getWidth() > BoundaryUtil.MIN_DIMENSION
+							|| checkArea.getBounds2D().getHeight() > BoundaryUtil.MIN_DIMENSION);
 		}
+
 		/**
 		 * Add the location relevant data of another NodeElem
 		 * @param toAdd the other NodeElem
 		 */
-		private void addLocInfo(NodeElem toAdd){
+		private void addLocInfo(NodeElem toAdd) {
 			addLocationDataString(toAdd);
-			addMissingTags(toAdd.locTags); 
+			addMissingTags(toAdd.locTags);
 			tagMask |= toAdd.tagMask;
 		}
 		
@@ -1118,21 +1100,21 @@ public class BoundaryQuadTree {
 			locTags = new Tags();
 			tagMask = 0;
 			BoundaryLocationInfo bInfo  = preparedLocationInfo.get(boundaryId);
-			if (bInfo == null){
+			if (bInfo == null) {
 				log.error("unknown boundaryId " + boundaryId);
 				return;
 			}
-			if (bInfo.getZip() != null){
-				locTags.put("mkgmap:postcode",bInfo.getZip());
+			if (bInfo.getZip() != null) {
+				locTags.put("mkgmap:postcode", bInfo.getZip());
 			}
-			
-			if (bInfo.getAdmLevel() != BoundaryLocationPreparer.UNSET_ADMIN_LEVEL){
-				locTags.put(BoundaryQuadTree.mkgmapTagsArray[bInfo.getAdmLevel()-1], bInfo.getName());
+
+			if (bInfo.getAdmLevel() != BoundaryLocationPreparer.UNSET_ADMIN_LEVEL) {
+				locTags.put(BoundaryQuadTree.mkgmapTagsArray[bInfo.getAdmLevel() - 1], bInfo.getName());
 			}
 			if (locTags.size() == 0 && bInfo.getName() != null) {
 				locTags.put("mkgmap:other", bInfo.getName());
 			}
-			if (locationDataSrc != null && locationDataSrc.isEmpty() == false){
+			if (locationDataSrc != null && !locationDataSrc.isEmpty()) {
 				// the common format of refInfo is 
 				// 2:r19884;4:r20039;6:r998818
 				String[] relBounds = locationDataSrc.split(Pattern.quote(";"));
@@ -1155,13 +1137,11 @@ public class BoundaryQuadTree {
 					}
 					String addZip = addInfo.getZip();
 
-					if (addAdmName != null){
-						if (locTags.get(BoundaryQuadTree.mkgmapTagsArray[addAdmLevel-1]) == null)
-							locTags.put(BoundaryQuadTree.mkgmapTagsArray[addAdmLevel-1], addAdmName);
+					if (addAdmName != null && locTags.get(BoundaryQuadTree.mkgmapTagsArray[addAdmLevel - 1]) == null) {
+						locTags.put(BoundaryQuadTree.mkgmapTagsArray[addAdmLevel - 1], addAdmName);
 					}
-					if (addZip != null){
-						if (locTags.get("mkgmap:postcode") == null)
-							locTags.put("mkgmap:postcode", addZip);
+					if (addZip != null && locTags.get("mkgmap:postcode") == null) {
+						locTags.put("mkgmap:postcode", addZip);
 					}
 				}
 			}
@@ -1292,30 +1272,31 @@ public class BoundaryQuadTree {
 			String errMsg = null;
 			int errAdmLevel = 0;
 			// case c) toAdd area is fully covered by currElem area
-			for (int k = 0; k < mkgmapTagsArray.length; k++){
+			for (int k = 0; k < mkgmapTagsArray.length; k++) {
 				int testMask = 1 << k;
-				if ((testMask & other.tagMask) != 0 && (this.tagMask & testMask) != 0){
-					if (testMask == POSTCODE_ONLY){
+				if ((testMask & other.tagMask) != 0 && (this.tagMask & testMask) != 0) {
+					if (testMask == POSTCODE_ONLY) {
 						String zipKey = mkgmapTagsArray[k];
-						if (other.locTags.get(zipKey).equals(this.locTags.get(zipKey)) == false){
+						if (!other.locTags.get(zipKey).equals(this.locTags.get(zipKey))) {
 							errMsg = "different " + zipKey;
 							break;
 						}
 					} else if (testMask == NAME_ONLY) {
 						break; // happens with ResidentialHook, silently ignore it
 					} else {
-						errAdmLevel = k+1;
-						errMsg = new String ("same admin_level (" + errAdmLevel + ")");
+						errAdmLevel = k + 1;
+						errMsg = "same admin_level (" + errAdmLevel + ")";
 						break;
 					}
 				}
 			}
-			if (errMsg != null){
+			if (errMsg != null) {
 				String url = bounds.getCenter().toOSMURL() + "&";
 				url += (other.boundaryId.startsWith("w")) ? "way" : "relation";
 				url += "=" + other.boundaryId.substring(1);
-				//http://www.openstreetmap.org/?lat=49.394988&lon=6.551425&zoom=18&layers=M&relation=122907
-				errMsg= "incorrect data: " + url + " intersection of boundaries with " + errMsg + " " + other.boundaryId + " " + this.boundaryId + " " ;
+				// http://www.openstreetmap.org/?lat=49.394988&lon=6.551425&zoom=18&layers=M&relation=122907
+				errMsg = "incorrect data: " + url + " intersection of boundaries with " + errMsg + " "
+						+ other.boundaryId + " " + this.boundaryId + " ";
 				if (errAdmLevel != 0 && this.locationDataSrc != null)
 					errMsg += this.locationDataSrc;
 			}
@@ -1392,9 +1373,6 @@ public class BoundaryQuadTree {
 			return false;
 		Path2D.Double path = new Path2D.Double(area);
 		Area testArea = new Area(path);
-		if (testArea.isEmpty()){
-			return false;  
-		}
-		return true;
+		return !testArea.isEmpty();
 	}
 }
