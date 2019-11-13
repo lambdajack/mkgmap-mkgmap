@@ -1129,8 +1129,6 @@ public class ExtNumbers {
 			startInRoad++;
 			endInRoad++;
 		}
-		if (!hasNumbers())
-			return;
 		for (int side = 0; side < 2; side++){
 			boolean left = side == 0;
 			for (HousenumberMatch house : getHouses(left)){
