@@ -54,12 +54,12 @@ import uk.me.parabola.util.GpxCreator;
 public class WrongAngleFixer {
 	private static final Logger log = Logger.getLogger(WrongAngleFixer.class);
 
-	static private final double MAX_BEARING_ERROR = 15;
-	static private final double MAX_BEARING_ERROR_HALF = MAX_BEARING_ERROR / 2;
-	static private final double MAX_DIFF_ANGLE_STRAIGHT_LINE = 3;
+	private static final double MAX_BEARING_ERROR = 15;
+	private static final double MAX_BEARING_ERROR_HALF = MAX_BEARING_ERROR / 2;
+	private static final double MAX_DIFF_ANGLE_STRAIGHT_LINE = 3;
 	
 	private final Area bbox;
-	private final static String DEBUG_PATH = null;
+	private static final String DEBUG_PATH = null;
 	static final int MODE_ROADS = 0;
 	static final int MODE_LINES = 1;
 	private int mode = MODE_ROADS;
@@ -68,16 +68,14 @@ public class WrongAngleFixer {
 	
 	public WrongAngleFixer(Area bbox) {
 		this.bbox = bbox;
-		if (DEBUG_PATH != null && bbox != null){
-			if ((long) bbox.getWidth() * (long) bbox.getHeight() < 100000) {
-				List<Coord> grid = new ArrayList<>();
-				for (int lat = bbox.getMinLat(); lat < bbox.getMaxLat(); lat++){
-					for (int lon = bbox.getMinLong(); lon < bbox.getMaxLong(); lon++){
-						grid.add(new Coord(lat,lon));
-					}
+		if (DEBUG_PATH != null && bbox != null && (long) bbox.getWidth() * bbox.getHeight() < 100000) {
+			List<Coord> grid = new ArrayList<>();
+			for (int lat = bbox.getMinLat(); lat < bbox.getMaxLat(); lat++) {
+				for (int lon = bbox.getMinLong(); lon < bbox.getMaxLong(); lon++) {
+					grid.add(new Coord(lat, lon));
 				}
-				GpxCreator.createGpx(Utils.joinPath(DEBUG_PATH, "grid"), bbox.toCoords(), grid);
 			}
+			GpxCreator.createGpx(Utils.joinPath(DEBUG_PATH, "grid"), bbox.toCoords(), grid);
 		}
 	}
 
@@ -91,7 +89,8 @@ public class WrongAngleFixer {
 	 * @param deletedRoads Will be enlarged by all roads in roads that were set to null by this method 
 	 * @param restrictions Map with restriction relations 
 	 */
-	public void optimizeWays(List<ConvertedWay> roads, List<ConvertedWay> lines, HashMap<Long, ConvertedWay> modifiedRoads, HashSet<Long> deletedRoads, List<RestrictionRelation> restrictions ) {
+	public void optimizeWays(List<ConvertedWay> roads, List<ConvertedWay> lines, Map<Long, ConvertedWay> modifiedRoads,
+			Set<Long> deletedRoads, List<RestrictionRelation> restrictions) {
 		printBadAngles("bad_angles_start", roads);
 		writeOSM("roads_orig", roads);
 		writeOSM("lines_orig", lines);
@@ -117,9 +116,10 @@ public class WrongAngleFixer {
 	 * @param convertedWays
 	 * @param coordMap
 	 */
-	private void replaceDuplicateBoundaryNodes(List<ConvertedWay> convertedWays, Long2ObjectOpenHashMap<Coord> coordMap) {
+	private static void replaceDuplicateBoundaryNodes(List<ConvertedWay> convertedWays,
+			Long2ObjectOpenHashMap<Coord> coordMap) {
 		for (ConvertedWay cw : convertedWays) {
-			if (!cw.isValid() || cw.isOverlay()) 
+			if (!cw.isValid() || cw.isOverlay())
 				continue;
 			Way way = cw.getWay();
 			List<Coord> points = way.getPoints();
@@ -132,7 +132,7 @@ public class WrongAngleFixer {
 					coordMap.put(Utils.coord2Long(co), co);
 				else {
 					if (!co.isAddedByClipper() && repl.isAddedByClipper()) {
-						log.debug("check replaced original boundary node at",co);
+						log.debug("check replaced original boundary node at", co);
 					}
 					points.set(i, repl);
 				}
@@ -140,45 +140,6 @@ public class WrongAngleFixer {
 		}
 	}
 
-	private static void replaceCoord(Coord toRepl, Coord replacement, Map<Coord, Coord> replacements) {
-		assert toRepl != replacement;
-		if (toRepl.getOnBoundary()){
-			if (replacement.equals(toRepl) == false){
-				log.error("boundary node is replaced by node with non-equal coordinates at", toRepl.toOSMURL());
-				assert false : "boundary node is replaced" ;
-			}
-			replacement.setOnBoundary(true);
-		}
-		if (toRepl.getOnCountryBorder()){
-			if (replacement.equals(toRepl) == false){
-				log.warn("country boundary node is replaced by node with non-equal coordinates at", toRepl.toOSMURL());
-//				assert false : "country boundary node is replaced" ;
-			}
-			replacement.setOnCountryBorder(true);
-		}
-		toRepl.setReplaced(true);
-		if (toRepl instanceof CoordPOI) {
-			CoordPOI cp = (CoordPOI) toRepl;
-			if (cp.isUsed()){
-				replacement = new CoordPOI(replacement);
-				((CoordPOI) replacement).setNode(cp.getNode());
-				((CoordPOI) replacement).setUsed(true);
-				((CoordPOI) replacement).setConvertToViaInRouteRestriction(cp.getConvertToViaInRouteRestriction());
-				if (replacement.highPrecEquals(cp.getNode().getLocation()) == false){
-					log.error("CoordPOI node is replaced with non-equal coordinates at", toRepl.toOSMURL());
-				}
-			}
-		}
-		if (toRepl.isViaNodeOfRestriction())
-			replacement.setViaNodeOfRestriction(true);
-		replacements.put(toRepl, replacement);
-		while (toRepl.getHighwayCount() > replacement.getHighwayCount())
-			replacement.incHighwayCount();
-		if (toRepl.isEndOfWay() ){
-			replacement.setEndOfWay(true);
-		}
-	}
-	
 	/**
 	 * Common code to handle replacements of points in ways. Checks for special 
 	 * cases regarding CoordPOI.
@@ -188,8 +149,7 @@ public class WrongAngleFixer {
 	 * @param replacements the Map containing the replaced points
 	 * @return the replacement
 	 */
-	private static Coord getReplacement(Coord p, Way way,
-			Map<Coord, Coord> replacements) {
+	private static Coord getReplacement(Coord p, Way way, Map<Coord, Coord> replacements) {
 		// check if this point is to be replaced because
 		// it was previously merged into another point
 		if (p.isReplaced()) {
@@ -205,33 +165,29 @@ public class WrongAngleFixer {
 					Node node = cp.getNode();
 					if (cp.isUsed() && way != null && way.getId() != 0) {
 						String wayPOI = way.getTag(StyledConverter.WAY_POI_NODE_IDS);
-						if (wayPOI != null && wayPOI.contains("["+node.getId()+"]")){
+						if (wayPOI != null && wayPOI.contains("[" + node.getId() + "]")) {
 							if (replacement instanceof CoordPOI) {
 								Node rNode = ((CoordPOI) replacement).getNode();
 								if (rNode.getId() != node.getId()) {
-									if (wayPOI.contains("["+ rNode.getId() + "]")){
-										log.warn("CoordPOI", node.getId(),
-												"replaced by CoordPOI",
-												rNode.getId(), "in way",
-												way.toBrowseURL());
+									if (wayPOI.contains("[" + rNode.getId() + "]")) {
+										log.warn("CoordPOI", node.getId(), "replaced by CoordPOI", rNode.getId(),
+												"in way", way.toBrowseURL());
+									} else {
+										log.warn("CoordPOI", node.getId(), "replaced by ignored CoordPOI",
+												rNode.getId(), "in way", way.toBrowseURL());
 									}
-									else
-										log.warn("CoordPOI", node.getId(),
-												"replaced by ignored CoordPOI",
-												rNode.getId(), "in way",
-												way.toBrowseURL());
 								}
-							} else
-								log.warn("CoordPOI", node.getId(),
-										"replaced by simple coord in way",
+							} else {
+								log.warn("CoordPOI", node.getId(), "replaced by simple coord in way",
 										way.toBrowseURL());
+							}
 						}
 					}
 				}
 				return replacement;
-			} 
+			}
 			log.error("replacement not found for point " + p.toOSMURL());
-			
+
 		}
 		return p;
 	}
@@ -245,7 +201,8 @@ public class WrongAngleFixer {
 	 * @param deletedRoads set of ids of deleted routable ways (modified by this routine)
 	 * @param restrictions Map with restriction relations. The restriction relations may be modified by this routine 
 	 */
-	private void removeWrongAngles(List<ConvertedWay> roads, List<ConvertedWay> lines, HashMap<Long, ConvertedWay> modifiedRoads, HashSet<Long> deletedRoads, List<RestrictionRelation> restrictions) {
+	private void removeWrongAngles(List<ConvertedWay> roads, List<ConvertedWay> lines,
+			Map<Long, ConvertedWay> modifiedRoads, Set<Long> deletedRoads, List<RestrictionRelation> restrictions) {
 		// replacements maps those nodes that have been replaced to
 		// the node that replaces them
 		Map<Coord, Coord> replacements = new IdentityHashMap<>();
@@ -268,41 +225,41 @@ public class WrongAngleFixer {
 				break;
 			anotherPassRequired = false;
 			log.info("Removing wrong angles - PASS", pass);
-			writeOSM(((mode==MODE_LINES) ? "lines" : "roads") + "_pass_" + pass, convertedWays);
+			writeOSM(((mode == MODE_LINES) ? "lines" : "roads") + "_pass_" + pass, convertedWays);
 			
 			// Step 1: detect points which are parts of line segments with wrong bearings
 			lastWay = null;
 			for (ConvertedWay cw : convertedWays) {
-				if (!cw.isValid() || cw.isOverlay()) 
+				if (!cw.isValid() || cw.isOverlay())
 					continue;
 				Way way = cw.getWay();
-				if (way.equals(lastWay)) 
+				if (way.equals(lastWay))
 					continue;
-				if (pass != 1 && waysWithBearingErrors.contains(way) == false)
+				if (pass != 1 && !waysWithBearingErrors.contains(way))
 					continue;
 				lastWay = way;
 				List<Coord> points = way.getPoints();
-				
+
 				// scan through the way's points looking for line segments with big 
 				// bearing errors 
 				Coord prev = null;
-				if (points.get(0) == points.get(points.size()-1) && points.size() >= 2)
-					prev = points.get(points.size()-2);
+				if (points.get(0) == points.get(points.size() - 1) && points.size() >= 2)
+					prev = points.get(points.size() - 2);
 				boolean hasNonEqualPoints = false;
 				for (int i = 0; i < points.size(); ++i) {
 					Coord p = points.get(i);
 					if (pass == 1)
 						p.setRemove(false);
 					p = getReplacement(p, way, replacements);
-					if (i == 0 || i == points.size()-1){
+					if (i == 0 || i == points.size() - 1) {
 						p.setEndOfWay(true);
 					}
-					
+
 					if (prev != null) {
-						if (pass == 1 && p.equals(prev) == false)
+						if (pass == 1 && !p.equals(prev))
 							hasNonEqualPoints = true;
-						double err = calcBearingError(p,prev);
-						if (err >= MAX_BEARING_ERROR){
+						double err = calcBearingError(p, prev);
+						if (err >= MAX_BEARING_ERROR) {
 							// bearing error is big
 							p.setPartOfBadAngle(true);
 							prev.setPartOfBadAngle(true);
@@ -310,24 +267,22 @@ public class WrongAngleFixer {
 					}
 					prev = p;
 				}
-				if (pass == 1 && hasNonEqualPoints == false){
+				if (pass == 1 && !hasNonEqualPoints) {
 					waysThatMapToOnePoint.add(way.getId());
-					log.info("all points of way",way.toBrowseURL(),"are rounded to equal map units" );
+					log.info("all points of way", way.toBrowseURL(), "are rounded to equal map units");
 				}
 			}
 			// Step 2: collect the line segments that are connected to critical points
 			IdentityHashMap<Coord, CenterOfAngle> centerMap = new IdentityHashMap<>();
 			List<CenterOfAngle> centers = new ArrayList<>(); // needed for ordered processing
-			Map<Coord,Set<Way>> overlaps = new HashMap<>();
-				
+			Map<Coord, Set<Way>> overlaps = new HashMap<>();
+
 			lastWay = null;
 			for (ConvertedWay cw : convertedWays) {
-				if (!cw.isValid() || cw.isOverlay()) 
+				if (!cw.isValid() || cw.isOverlay() || cw.getWay().equals(lastWay))
 					continue;
 				Way way = cw.getWay();
-				if (way.equals(lastWay)) 
-					continue;
-				if (pass != 1 && waysWithBearingErrors.contains(way) == false)
+				if (pass != 1 && !waysWithBearingErrors.contains(way))
 					continue;
 				lastWay = way;
 
@@ -336,12 +291,12 @@ public class WrongAngleFixer {
 				// scan through the way's points looking for line segments with big 
 				// bearing errors
 				Coord prev = null;
-				if (points.get(0) == points.get(points.size()-1) && points.size() >= 2)
-					prev = points.get(points.size()-2);
+				if (points.get(0) == points.get(points.size() - 1) && points.size() >= 2)
+					prev = points.get(points.size() - 2);
 				for (int i = 0; i < points.size(); ++i) {
 					Coord p = points.get(i);
 					if (prev != null) {
-						if (p == prev){
+						if (p == prev) {
 							points.remove(i);
 							--i;
 							if (mode == MODE_ROADS)
@@ -361,13 +316,10 @@ public class WrongAngleFixer {
 								// way has only two points, don't merge them
 								coa1.addBadMergeCandidate(coa2);
 							}
-							if (mode == MODE_ROADS){
-								if (p1.getHighwayCount() >= 2 && p2.getHighwayCount() >= 2){
-									if (cw.isRoundabout()) {
-										// avoid to merge exits of roundabouts
-										coa1.addBadMergeCandidate(coa2);
-									}
-								}
+							if (mode == MODE_ROADS && p1.getHighwayCount() >= 2 && p2.getHighwayCount() >= 2
+									&& cw.isRoundabout()) {
+								// avoid to merge exits of roundabouts
+								coa1.addBadMergeCandidate(coa2);
 							}
 						}
 					}
@@ -376,28 +328,24 @@ public class WrongAngleFixer {
 				if (pass == 1 && wayHasSpecialPoints)
 					waysWithBearingErrors.add(way);
 			}
-			markOverlaps(overlaps,centers);
+			markOverlaps(overlaps, centers);
 			overlaps.clear();
 			// Step 3: Update list of ways with bearing errors or points next to them 
 			lastWay = null;
 			for (ConvertedWay cw : convertedWays) {
-				if (!cw.isValid() || cw.isOverlay())
+				if (!cw.isValid() || cw.isOverlay() || cw.getWay().equals(lastWay))
 					continue;
 				Way way = cw.getWay();
-				if (way.equals(lastWay)) 
-					continue;
 				lastWay = way;
-				if (waysWithBearingErrors.contains(way))
-					continue;
-				List<Coord> points = way.getPoints();
+				if (!waysWithBearingErrors.contains(way)) {
+					List<Coord> points = way.getPoints();
 				// scan through the way's points looking for line segments with big 
-				// bearing errors 
-				for (Coord p: points) {
-					if (p.getHighwayCount() < 2)
-						continue;
-					if (centerMap.containsKey(p)){
-						waysWithBearingErrors.add(way);
-						break;
+					// bearing errors
+					for (Coord p : points) {
+						if (p.getHighwayCount() >= 2 && centerMap.containsKey(p)) {
+							waysWithBearingErrors.add(way);
+							break;
+						}
 					}
 				}
 			}
@@ -406,15 +354,15 @@ public class WrongAngleFixer {
 			// Step 4: try to correct the errors
 			List<CenterOfAngle> checkAgainList = null;
 			boolean tryMerge = false;
-			while (true){
+			while (true) {
 				checkAgainList = new ArrayList<>();
 				for (CenterOfAngle coa : centers) {
 					coa.center.setPartOfBadAngle(false); // reset flag for next pass
 					if (coa.getCurrentLocation(replacements) == null)
 						continue; // removed center
-					if (coa.isOK(replacements) == false) {
+					if (!coa.isOK(replacements)) {
 						boolean changed = coa.tryChange(replacements, tryMerge);
-						if (changed){
+						if (changed) {
 							if (DEBUG_PATH != null)
 								changedPlaces.add(coa.center);
 							continue;
@@ -433,14 +381,12 @@ public class WrongAngleFixer {
 			boolean lastWayModified = false;
 			ConvertedWay lastConvertedWay = null;
 			for (ConvertedWay cw : convertedWays) {
-				if (!cw.isValid() || cw.isOverlay())
+				if (!cw.isValid() || cw.isOverlay() || !waysWithBearingErrors.contains(cw.getWay()))
 					continue;
 				Way way = cw.getWay();
-				if (waysWithBearingErrors.contains(way) == false)
-					continue;
 				List<Coord> points = way.getPoints();
 				if (way.equals(lastWay)) {
-					if (lastWayModified){
+					if (lastWayModified) {
 						points.clear();
 						points.addAll(lastWay.getPoints());
 						if (cw.isReversed() != lastConvertedWay.isReversed())
@@ -461,20 +407,19 @@ public class WrongAngleFixer {
 						points.remove(i);
 						anotherPassRequired = true;
 						lastWayModified = true;
-						if (i > 0 && i < points.size()) {
+						if (i > 0 && i < points.size() && points.get(i - 1) == points.get(i)) {
 							// special case: handle micro loop
-							if (points.get(i - 1) == points.get(i))
-								points.remove(i);
-							}
+							points.remove(i);
+						}
 						continue;
 					}
 					// check if this point is to be replaced because
 					// it was previously moved
 					Coord replacement = getReplacement(p, way, replacements);
-					if (p == replacement) 
+					if (p == replacement)
 						continue;
 					
-					if (p.isViaNodeOfRestriction()){
+					if (p.isViaNodeOfRestriction()) {
 						// make sure that we find the restriction with the new coord instance
 						replacement.setViaNodeOfRestriction(true);
 						p.setViaNodeOfRestriction(false);
@@ -492,12 +437,12 @@ public class WrongAngleFixer {
 						points.remove(i);
 						anotherPassRequired = true;
 					}
-					if (i -1 >= 0 && points.get(i-1) == p){
+					if (i - 1 >= 0 && points.get(i - 1) == p) {
 						points.remove(i);
 						anotherPassRequired = true;
 					}
 				}
-				if (lastWayModified && mode == MODE_ROADS){
+				if (lastWayModified && mode == MODE_ROADS) {
 					modifiedRoads.put(way.getId(), cw);
 				}
 			}
@@ -533,8 +478,9 @@ public class WrongAngleFixer {
 			if (points.size() < 2) {
 				if (log.isInfoEnabled())
 					log.info("  Way " + way.getTag("name") + " (" + way.toBrowseURL() + ") has less than 2 points - deleting it");
-				if (mode == MODE_LINES && waysThatMapToOnePoint.contains(way.getId()) == false)
-					log.warn("non-routable way " ,way.getId(),"was removed");
+				if (mode == MODE_LINES && !waysThatMapToOnePoint.contains(way.getId())) {
+					log.warn("non-routable way ", way.getId(), "was removed");
+				}
 				
 				if (mode == MODE_ROADS)
 					deletedRoads.add(way.getId());
@@ -542,12 +488,12 @@ public class WrongAngleFixer {
 				continue;
 			}
 			if (way.equals(lastWay)) {
-				if (lastWayModified){
+				if (lastWayModified) {
 					points.clear();
 					points.addAll(lastWay.getPoints());
 					if (cw.isReversed() != lastConvertedWay.isReversed())
 						Collections.reverse(points);
-					
+
 				}
 				continue;
 			}
@@ -558,18 +504,14 @@ public class WrongAngleFixer {
 			// loop backwards because we may delete points
 			for (int i = points.size() - 2; i >= 0; i--) {
 				Coord p = points.get(i);
-				if (p == prev){
+				if (p == prev) {
 					points.remove(i);
 					lastWayModified = true;
 				}
-//				if (p.equals(prev) && (p.getHighwayCount() < 2 || prev.getHighwayCount() < 2)){
-//					// not an error, but should not happen
-//					log.warn("way " + way.getId() + " still has consecutive equal points at " + p.toOSMURL()); 
-//				}
 				prev = p;
 			}
 		}
-		if (mode == MODE_ROADS){
+		if (mode == MODE_ROADS) {
 			// treat special case: non-routable ways may be connected to moved
 			// points in roads
 			for (ConvertedWay cw : lines) {
@@ -591,10 +533,10 @@ public class WrongAngleFixer {
 				}
 			}
 		
-			for (RestrictionRelation rr: restrictions){
-				for (Coord p: rr.getViaCoords()){ 
+			for (RestrictionRelation rr : restrictions) {
+				for (Coord p : rr.getViaCoords()) {
 					Coord replacement = getReplacement(p, null, replacements);
-					if (p != replacement){
+					if (p != replacement) {
 						rr.replaceViaCoord(p, replacement);
 					}
 				}
@@ -608,35 +550,30 @@ public class WrongAngleFixer {
 		}
 		if (anotherPassRequired) {
 			log.warn("Removing wrong angles - didn't finish in " + pass + " passes, giving up!");
+		} else {
+			log.info("Removing wrong angles - finished in", pass, "passes (", numNodesMerged, "nodes merged,",
+					numWaysDeleted, "ways deleted)");
 		}
-		else
-			log.info("Removing wrong angles - finished in", pass, "passes (", numNodesMerged, "nodes merged,", numWaysDeleted, "ways deleted)"); 		
 	}
 
-	private CenterOfAngle getOrCreateCenter(Coord p, Way way, IdentityHashMap<Coord, CenterOfAngle> centerMap, List<CenterOfAngle> centers, Map<Coord, Set<Way>> overlaps) {
+	private CenterOfAngle getOrCreateCenter(Coord p, Way way, IdentityHashMap<Coord, CenterOfAngle> centerMap,
+			List<CenterOfAngle> centers, Map<Coord, Set<Way>> overlaps) {
 		CenterOfAngle coa = centerMap.get(p);
 		if (coa == null) {
 			coa = new CenterOfAngle(p, centerMap.size() + 1);
 			centerMap.put(p, coa);
 			centers.add(coa);
 			if (mode == MODE_ROADS && pass > 1) {
-				Set<Way> set = overlaps.get(p);
-				if (set == null) {
-					set = new HashSet<>();
-					overlaps.put(p, set);
-				}
-				set.add(way);
+				overlaps.computeIfAbsent(p, k -> new HashSet<>()).add(way);
 			}
-			
 		}
 		return coa;
 	}
 
 	private void markOverlaps(Map<Coord, Set<Way>> overlaps, List<CenterOfAngle> centers) {
-		for ( Entry<Coord, Set<Way>> entry: overlaps.entrySet()) {
+		for (Entry<Coord, Set<Way>> entry : overlaps.entrySet()) {
 			if (entry.getValue().size() > 1) {
 				Coord p = entry.getKey();
-//				log.error("roads",mode==MODE_ROADS,"pass",pass,p,p.toDegreeString());
 				for (CenterOfAngle coa : centers) {
 					if (coa.center.equals(p)) {
 						// two different centres are on the same Garmin point and they
@@ -647,7 +584,7 @@ public class WrongAngleFixer {
 			}
 		}
 	}
-	
+
 	/** 
 	 * remove obsolete points in ways. Obsolete are points which are
 	 * very close to 180 degrees angles in the real line or wrong points. 
@@ -656,7 +593,7 @@ public class WrongAngleFixer {
 	 * @param convertedWays 
 	 * @param modifiedRoads 
 	 */
-	private void removeObsoletePoints(List<ConvertedWay> convertedWays, HashMap<Long, ConvertedWay> modifiedRoads){
+	private void removeObsoletePoints(List<ConvertedWay> convertedWays, Map<Long, ConvertedWay> modifiedRoads) {
 		ConvertedWay lastConvertedWay = null;
 		int numPointsRemoved = 0;
 		boolean lastWasModified = false;
@@ -669,7 +606,7 @@ public class WrongAngleFixer {
 				continue;
 			Way way = cw.getWay();
 			if (lastConvertedWay != null && way.equals(lastConvertedWay.getWay())) {
-				if (lastWasModified){
+				if (lastWasModified) {
 					List<Coord> points = way.getPoints();
 					points.clear();
 					points.addAll(lastConvertedWay.getPoints());
@@ -689,81 +626,83 @@ public class WrongAngleFixer {
 
 			// scan through the way's points looking for points which are
 			// on almost straight line and therefore obsolete
-			for (int i = 1; i+1 < points.size(); i++) {
+			for (int i = 1; i + 1 < points.size(); i++) {
 				Coord cm = points.get(i);
-				if (allowedToRemove(cm) == false){
+				if (!allowedToRemove(cm)) {
 					modifiedPoints.add(cm);
 					continue;
 				}
-				Coord c1 = modifiedPoints.get(modifiedPoints.size()-1);
-				Coord c2 = points.get(i+1);
-				if (c1 == c2){
+				Coord c1 = modifiedPoints.get(modifiedPoints.size() - 1);
+				Coord c2 = points.get(i + 1);
+				if (c1 == c2) {
 					// loop, handled by split routine
 					modifiedPoints.add(cm);
-					continue; 
+					continue;
 				}
 				
 				boolean keepThis = true;
 				double realAngle = Utils.getAngle(c1, cm, c2);
-				if (Math.abs(realAngle) < MAX_DIFF_ANGLE_STRAIGHT_LINE){ 
+				if (Math.abs(realAngle) < MAX_DIFF_ANGLE_STRAIGHT_LINE) {
 					double distance = cm.distToLineSegment(c1, c2);
-					if (distance >= maxErrorDistance){
+					if (distance >= maxErrorDistance) {
 						modifiedPoints.add(cm);
 						continue;
 					}
 					keepThis = false;
 				} else {
 					double displayedAngle = Utils.getDisplayedAngle(c1, cm, c2);
-					if (displayedAngle < 0 && realAngle > 0 || displayedAngle > 0 && realAngle < 0){
-						// straight line is closer to real angle 
+					if (displayedAngle < 0 && realAngle > 0 || displayedAngle > 0 && realAngle < 0) {
+						// straight line is closer to real angle
 						keepThis = false;
-					} else if (Math.abs(displayedAngle) < 1){ 
+					} else if (Math.abs(displayedAngle) < 1) {
 						// displayed line is nearly straight
-						if (c1.getHighwayCount() < 2 && c2.getHighwayCount() < 2){
+						if (c1.getHighwayCount() < 2 && c2.getHighwayCount() < 2) {
 							// we can remove the point
 							keepThis = false;
 						}
-					} else if (Math.abs(realAngle-displayedAngle) > 2 * Math.abs(realAngle) && Math.abs(realAngle) < MAX_BEARING_ERROR_HALF){
-						// displayed angle is much sharper than wanted, straight line is closer to real angle
+					} else if (Math.abs(realAngle - displayedAngle) > 2 * Math.abs(realAngle)
+							&& Math.abs(realAngle) < MAX_BEARING_ERROR_HALF) {
+						// displayed angle is much sharper than wanted, straight line is closer to real
+						// angle
 						keepThis = false;
 					} else if (c1.equals(c2)) {
 						// spike / overlap
-						log.debug("pass",pass,"roads=" + (mode == MODE_ROADS), "extra remove to remove spike or overlap near", cm.toDegreeString());
+						log.debug("pass", pass, "roads=" + (mode == MODE_ROADS),
+								"extra remove to remove spike or overlap near", cm.toDegreeString());
 						keepThis = false;
-						
+
 					}
 				}
-				if (keepThis){
+				if (keepThis) {
 					modifiedPoints.add(cm);
 					continue;
 				}
-				if (log.isDebugEnabled())
-					log.debug("removing obsolete point on almost straight segment in way ",way.toBrowseURL(),"at",cm.toOSMURL());
-				if (DEBUG_PATH != null){
+				if (log.isDebugEnabled()) {
+					log.debug("removing obsolete point on almost straight segment in way ", way.toBrowseURL(), "at",
+							cm.toOSMURL());
+				}
+				if (DEBUG_PATH != null) {
 					obsoletePoints.add(cm);
 					removedInWay.add(cm);
 				}
 				numPointsRemoved++;
 				lastWasModified = true;
-				
+
 			}
-			if (lastWasModified){
-				modifiedPoints.add(points.get(points.size()-1));
+			if (lastWasModified) {
+				modifiedPoints.add(points.get(points.size() - 1));
 				points.clear();
 				points.addAll(modifiedPoints);
 				if (mode == MODE_ROADS)
 					modifiedRoads.put(way.getId(), cw);
-				if (DEBUG_PATH != null){
-					if (draw || cw.isRoundabout()) {
-						GpxCreator.createGpx(Utils.joinPath(DEBUG_PATH, way.getId() + "_dpmod"), points, removedInWay);
-					}
+				if (DEBUG_PATH != null && (draw || cw.isRoundabout())) {
+					GpxCreator.createGpx(Utils.joinPath(DEBUG_PATH, way.getId() + "_dpmod"), points, removedInWay);
 				}
 			}
 		}
-		if (DEBUG_PATH != null){
-			GpxCreator.createGpx(Utils.joinPath(DEBUG_PATH, (mode==MODE_ROADS ? "roads" : "lines")+"_obsolete" ), bbox.toCoords(),
-					new ArrayList<>(obsoletePoints));
-			
+		if (DEBUG_PATH != null) {
+			GpxCreator.createGpx(Utils.joinPath(DEBUG_PATH, (mode == MODE_ROADS ? "roads" : "lines") + "_obsolete"),
+					bbox.toCoords(), new ArrayList<>(obsoletePoints));
 		}
 		log.info("Removed", numPointsRemoved, "obsolete points in lines"); 
 	}
@@ -793,38 +732,36 @@ public class WrongAngleFixer {
 			// on almost straight line and therefore obsolete
 			for (int i = points.size() - 2; i >= 1; --i) {
 				Coord cm = points.get(i);
-				Coord c1 = points.get(i-1);
-				Coord c2 = points.get(i+1);
-				if (c1 == c2){
+				Coord c1 = points.get(i - 1);
+				Coord c2 = points.get(i + 1);
+				if (c1 == c2) {
 					// loop, handled by split routine
-					continue; 
+					continue;
 				}
 				double realAngle = Utils.getAngle(c1, cm, c2);
 				double displayedAngle = Utils.getDisplayedAngle(c1, cm, c2);
-				if (Math.abs(displayedAngle-realAngle) > 30){
+				if (Math.abs(displayedAngle - realAngle) > 30) {
 					badAngles.add(cm);
 					hasBadAngles = true;
-					//						badAngles.addAll(cm.getAlternativePositions());
 				}
 
 			}
-			if (points.size() > 2){
+			if (points.size() > 2) {
 				Coord p0 = points.get(0);
-				Coord plast = points.get(points.size()-1);
-				if (p0 == plast){
+				Coord plast = points.get(points.size() - 1);
+				if (p0 == plast) {
 					Coord cm = points.get(0);
-					Coord c1 = points.get(points.size()-2);
+					Coord c1 = points.get(points.size() - 2);
 					Coord c2 = points.get(1);
-					if (c1 == c2){
+					if (c1 == c2) {
 						// loop, handled by split routine
-						continue; 
+						continue;
 					}
 					double realAngle = Utils.getAngle(c1, cm, c2);
 					double displayedAngle = Utils.getDisplayedAngle(c1, cm, c2);
-					if (Math.abs(displayedAngle-realAngle) > 30){
+					if (Math.abs(displayedAngle - realAngle) > 30) {
 						badAngles.add(cm);
 						hasBadAngles = true;
-						//						badAngles.addAll(cm.getAlternativePositions());
 					}
 				}
 			}
@@ -845,22 +782,17 @@ public class WrongAngleFixer {
 			return false;
 		if (mode == MODE_LINES && p.isEndOfWay())
 			return false;
-		if (p instanceof CoordPOI){
-			if (((CoordPOI) p).isUsed()){
+		if (p instanceof CoordPOI && ((CoordPOI) p).isUsed()){
 				return false;
-			}
 		}
-		if (p.getHighwayCount() >= 2 || p.isViaNodeOfRestriction()) {
-			return false;
-		}
-		return true;
+		return p.getHighwayCount() < 2 && !p.isViaNodeOfRestriction();
 	}
 	
 	/**
 	 * helper class
 	 */
 	private class CenterOfAngle {
-		public boolean forceChange;
+		boolean forceChange;
 		final Coord center;
 		final List<CenterOfAngle> neighbours;
 		final int id; // debugging aid
@@ -870,14 +802,15 @@ public class WrongAngleFixer {
 		
 		public CenterOfAngle(Coord center, int id) {
 			this.center = center;
-			assert center.isReplaced() == false;
+			assert !center.isReplaced();
 			this.id = id;
 			neighbours = new ArrayList<>();
 		}
 
 		@Override
 		public String toString() {
-			return "CenterOfAngle [id=" + id + " " + center.toString() + " " + center.toDegreeString() + ", wasMerged=" + wasMerged + ", num Neighbours="+neighbours.size()+"]";
+			return "CenterOfAngle [id=" + id + " " + center.toString() + " " + center.toDegreeString() + ", wasMerged="
+					+ wasMerged + ", num Neighbours=" + neighbours.size() + "]";
 		}
 
 		/**
@@ -885,7 +818,7 @@ public class WrongAngleFixer {
 		 * @param replacements
 		 * @return
 		 */
-		public Coord getCurrentLocation(Map<Coord, Coord> replacements){
+		public Coord getCurrentLocation(Map<Coord, Coord> replacements) {
 			Coord c = getReplacement(center, null, replacements); 
 			if (c.isToRemove())
 				return null;
@@ -903,8 +836,8 @@ public class WrongAngleFixer {
 		}
 
 		public void addNeighbour(CenterOfAngle other) {
-			if (this == other){
-				log.error("neighbour is equal" );
+			if (this == other) {
+				log.error("neighbour is equal");
 			}
 			boolean isNew = true;
 			// we want only different Coord instances here
@@ -926,7 +859,7 @@ public class WrongAngleFixer {
 		public boolean isOK(Map<Coord, Coord> replacements) {
 			if (forceChange)
 				return false;
-			Coord c = getCurrentLocation (replacements);
+			Coord c = getCurrentLocation(replacements);
 			if (c == null)
 				return true; // removed center: nothing to do
 			for (CenterOfAngle neighbour : neighbours) {
@@ -940,6 +873,46 @@ public class WrongAngleFixer {
 			return true;
 		}
 		
+		private void replaceCoord(Coord toRepl, Coord replacement, Map<Coord, Coord> replacements) {
+			assert toRepl != replacement;
+			if (toRepl.getOnBoundary()) {
+				if (!replacement.equals(toRepl)) {
+					log.error("boundary node is replaced by node with non-equal coordinates at", toRepl.toOSMURL());
+					assert false : "boundary node is replaced";
+				}
+				replacement.setOnBoundary(true);
+			}
+			if (toRepl.getOnCountryBorder()) {
+				if (!replacement.equals(toRepl)) {
+					log.warn("country boundary node is replaced by node with non-equal coordinates at",
+							toRepl.toOSMURL());
+				}
+				replacement.setOnCountryBorder(true);
+			}
+			toRepl.setReplaced(true);
+			if (toRepl instanceof CoordPOI) {
+				CoordPOI cp = (CoordPOI) toRepl;
+				if (cp.isUsed()) {
+					replacement = new CoordPOI(replacement);
+					((CoordPOI) replacement).setNode(cp.getNode());
+					((CoordPOI) replacement).setUsed(true);
+					((CoordPOI) replacement).setConvertToViaInRouteRestriction(cp.getConvertToViaInRouteRestriction());
+					if (!replacement.highPrecEquals(cp.getNode().getLocation())) {
+						log.error("CoordPOI node is replaced with non-equal coordinates at", toRepl.toOSMURL());
+					}
+				}
+			}
+			if (toRepl.isViaNodeOfRestriction())
+				replacement.setViaNodeOfRestriction(true);
+			replacements.put(toRepl, replacement);
+			while (toRepl.getHighwayCount() > replacement.getHighwayCount()) {
+				replacement.incHighwayCount();
+			}
+			if (toRepl.isEndOfWay()) {
+				replacement.setEndOfWay(true);
+			}
+		}
+		
 		/**
 		 * Try whether a move or remove or merge of this centre
 		 * fixes bearing problems.
@@ -948,7 +921,7 @@ public class WrongAngleFixer {
 		 * @return true if something was changed
 		 */
 		public boolean tryChange(Map<Coord, Coord> replacements, boolean tryAlsoMerge) {
-			if (wasMerged ) {
+			if (wasMerged) {
 				return false;
 			}
 			Coord currentCenter = getCurrentLocation(replacements);
@@ -967,13 +940,13 @@ public class WrongAngleFixer {
 				if (!dupCheck.add(n)) {
 					hasDups = true;
 				}
-				if (currentCenter.highPrecEquals(n)){
-					if (currentCenter == n){
+				if (currentCenter.highPrecEquals(n)) {
+					if (currentCenter == n) {
 						log.error(id + ": bad neighbour " + neighbour.id + " zero distance");
 					}
-					if (badMergeCandidates != null && badMergeCandidates.contains(neighbour )
+					if (badMergeCandidates != null && badMergeCandidates.contains(neighbour)
 							|| neighbour.badMergeCandidates != null && neighbour.badMergeCandidates.contains(this)) {
-						//not allowed to merge
+						// not allowed to merge
 					} else {
 						replaceCoord(currentCenter, n, replacements);
 						neighbour.wasMerged = wasMerged = true;
@@ -992,7 +965,7 @@ public class WrongAngleFixer {
 			if (initialMaxError < MAX_BEARING_ERROR)
 				return false;
 			double removeErr = calcRemoveError(replacements);
-			if (removeErr == 0){
+			if (removeErr == 0) {
 				currentCenter.setRemove(true);
 				return true;
 			}
@@ -1000,9 +973,10 @@ public class WrongAngleFixer {
 				if (extraPass && tryAlsoMerge && currentCenter.getHighwayCount() > 1) {
 					// spike
 					List<Coord> altPositions = currentCenter.getAlternativePositions();
-					for (Coord altCenter : altPositions){
+					for (Coord altCenter : altPositions) {
 						if (dupCheck.contains(altCenter)) {
-							log.debug("pass",pass,"roads=" + (mode == MODE_ROADS), "extra move to remove spike or overlap near", currentCenter.toDegreeString());
+							log.debug("pass", pass, "roads=" + (mode == MODE_ROADS),
+									"extra move to remove spike or overlap near", currentCenter.toDegreeString());
 							replaceCoord(currentCenter, altCenter, replacements);
 							return true;
 						}
@@ -1019,53 +993,55 @@ public class WrongAngleFixer {
 			double bestReplErr = initialMaxError; 
 			Coord bestCenterReplacement = null;
 			List<Coord> altPositions = currentCenter.getAlternativePositions();
-			for (Coord altCenter : altPositions){
+			for (Coord altCenter : altPositions) {
 				double err = calcBearingError(altCenter, worstNP);
 				if (err >= bestReplErr)
 					continue;
 				// alt. position is improvement, check all neighbours
 				double errMax = calcMaxError(replacements, currentCenter, altCenter);
-				if (errMax >= initialMaxError)
-					continue;
-				bestReplErr = err;
-				bestCenterReplacement = altCenter;
+				if (errMax < initialMaxError) {
+					bestReplErr = err;
+					bestCenterReplacement = altCenter;
+				}
 			}
 			Coord bestNeighbourReplacement = null;
 			// calculate effect when both this and the worst neighbour are changed.
-			if (worstNP.hasAlternativePos()){
-				for (Coord altCenter : altPositions){
+			if (worstNP.hasAlternativePos()) {
+				for (Coord altCenter : altPositions) {
 					replaceCoord(currentCenter, altCenter, replacements);
-					for (Coord altN: worstNP.getAlternativePositions()){
+					for (Coord altN : worstNP.getAlternativePositions()) {
 						double err = calcBearingError(altCenter, altN);
 						if (err >= bestReplErr)
 							continue;
 						double errNeighbour = worstNeighbour.calcMaxError(replacements, worstNP, altN);
-						if (errNeighbour >= bestReplErr)
-							continue;
-						bestReplErr = err;
-						bestCenterReplacement = altCenter;
-						bestNeighbourReplacement = altN;
+						if (errNeighbour < bestReplErr) {
+							bestReplErr = err;
+							bestCenterReplacement = altCenter;
+							bestNeighbourReplacement = altN;
+						}
 					}
 					replacements.remove(currentCenter);
 					currentCenter.setReplaced(false);
 				}
 			}
 			boolean specialChange = false;
-			if (extraPass && bestReplErr >= MAX_BEARING_ERROR && bestCenterReplacement != null && bestReplErr * 2 < initialMaxError && initialMaxError < 180) {
+			if (extraPass && bestReplErr >= MAX_BEARING_ERROR && bestCenterReplacement != null
+					&& bestReplErr * 2 < initialMaxError && initialMaxError < 180) {
 				specialChange = true;
 			}
-			if (bestReplErr < MAX_BEARING_ERROR || specialChange){
-				if (removeErr < bestReplErr && initialMaxError - removeErr >= MAX_BEARING_ERROR_HALF && removeErr < MAX_BEARING_ERROR_HALF){
+			if (bestReplErr < MAX_BEARING_ERROR || specialChange) {
+				if (removeErr < bestReplErr && initialMaxError - removeErr >= MAX_BEARING_ERROR_HALF
+						&& removeErr < MAX_BEARING_ERROR_HALF) {
 					bestCenterReplacement = null;
 				}
-				if (bestCenterReplacement != null){
+				if (bestCenterReplacement != null) {
 					replaceCoord(currentCenter, bestCenterReplacement, replacements);
 					if (bestNeighbourReplacement != null)
 						replaceCoord(worstNP, bestNeighbourReplacement, replacements);
 					double modifiedSumErr = calcSumOfErrors(replacements);
-					if (modifiedSumErr < initialSumErr){
+					if (modifiedSumErr < initialSumErr) {
 						if (specialChange)
-							log.debug("pass",pass,"special repl",this);
+							log.debug("pass", pass, "special repl", this);
 						return true;
 					}
 					// revert changes
@@ -1073,10 +1049,9 @@ public class WrongAngleFixer {
 					currentCenter.setReplaced(false);
 					replacements.remove(worstNP);
 					worstNP.setReplaced(false);
-					bestCenterReplacement = null;
 				}
 			}
-			if (removeErr < MAX_BEARING_ERROR){
+			if (removeErr < MAX_BEARING_ERROR) {
 //				createGPX(gpxPath+id+"_rem", replacements);
 				currentCenter.setRemove(true);
 				return true;
@@ -1101,7 +1076,7 @@ public class WrongAngleFixer {
 		 * @return true if merge is okay
 		 */
 		private boolean tryMerge(double initialMaxError, CenterOfAngle neighbour, Map<Coord, Coord> replacements) {
-			if (badMergeCandidates != null && badMergeCandidates.contains(neighbour )
+			if (badMergeCandidates != null && badMergeCandidates.contains(neighbour)
 					|| neighbour.badMergeCandidates != null && neighbour.badMergeCandidates.contains(this)) {
 				return false; // not allowed to merge
 			}
@@ -1111,15 +1086,10 @@ public class WrongAngleFixer {
 			// 1) both points are via nodes 
 			// 2) both nodes are boundary nodes with non-equal coords
 			// 3) one point is via node and the other is a boundary node, the result could be that the restriction is ignored.
-			if (c.getOnBoundary()){
-				if (n.isViaNodeOfRestriction() || n.getOnBoundary() && c.equals(n) == false)
-					return false; 
-			}
-			if (c.isViaNodeOfRestriction() && (n.isViaNodeOfRestriction() || n.getOnBoundary()))
-				 return false;
-			if (c instanceof CoordPOI && (n instanceof CoordPOI || n.getOnBoundary()))
-				return false;
-			if (n instanceof CoordPOI && (c instanceof CoordPOI || c.getOnBoundary()))
+			if (c.getOnBoundary() && (n.isViaNodeOfRestriction() || (n.getOnBoundary() && !c.equals(n)))
+					|| (c.isViaNodeOfRestriction() && (n.isViaNodeOfRestriction() || n.getOnBoundary()))
+					|| (c instanceof CoordPOI && (n instanceof CoordPOI || n.getOnBoundary()))
+					|| (n instanceof CoordPOI && (c instanceof CoordPOI || c.getOnBoundary())))
 				return false;
 			Coord mergePoint;
 			
@@ -1133,14 +1103,14 @@ public class WrongAngleFixer {
 				mergePoint = c.makeBetweenPoint(n, 0.5);
 			double err = 0;
 			
-			if (c.equals(n) == false){
+			if (!c.equals(n)) {
 				err = calcMergeErr(neighbour, mergePoint, replacements);
-				if (err == Double.MAX_VALUE && initialMaxError == Double.MAX_VALUE){
-					log.warn("still equal neighbour after merge",c.toOSMURL());
-				} else { 
+				if (err == Double.MAX_VALUE && initialMaxError == Double.MAX_VALUE) {
+					log.warn("still equal neighbour after merge", c.toOSMURL());
+				} else {
 					if (err >= MAX_BEARING_ERROR)
 						return false;
-					if (initialMaxError - err < MAX_BEARING_ERROR_HALF && err > MAX_BEARING_ERROR_HALF){
+					if (initialMaxError - err < MAX_BEARING_ERROR_HALF && err > MAX_BEARING_ERROR_HALF) {
 						return false; // improvement too small
 					}
 				}
@@ -1154,14 +1124,15 @@ public class WrongAngleFixer {
 				}
 			}
 			int hwc = c.getHighwayCount() + n.getHighwayCount() - 1;
-			for (int i = mergePoint.getHighwayCount(); i < hwc; i++)
+			for (int i = mergePoint.getHighwayCount(); i < hwc; i++) {
 				mergePoint.incHighwayCount();
+			}
 			if (c != mergePoint)
 				replaceCoord(c, mergePoint, replacements);
-			if (n != mergePoint){
+			if (n != mergePoint) {
 				replaceCoord(n, mergePoint, replacements);
 			}
-//			createGPX(gpxPath+id+"_merged", replacements);
+			//			createGPX(gpxPath+id+"_merged", replacements);
 //			neighbour.createGPX(gpxPath+neighbour.id+"_merged_w_"+id, replacements);
 			neighbour.wasMerged = wasMerged = true;
 			return true;
@@ -1175,23 +1146,22 @@ public class WrongAngleFixer {
 		 * @param replacements s
 		 * @return true if a nearly straight line exists
 		 */
-		private boolean checkNearlyStraight(double bearing, CenterOfAngle other,
-				Map<Coord, Coord> replacements) {
+		private boolean checkNearlyStraight(double bearing, CenterOfAngle other, Map<Coord, Coord> replacements) {
 			Coord c = getCurrentLocation(replacements);
 			for (CenterOfAngle neighbour : neighbours) {
-				if (neighbour == other) 
+				if (neighbour == other)
 					continue;
 				Coord n = neighbour.getCurrentLocation(replacements);
-				if (n == null)
-					continue;
-				double bearing2 = c.bearingTo(n);
-				double angle = bearing2 - (bearing - 180);
-				while(angle > 180)
-					angle -= 360;
-				while(angle < -180)
-					angle += 360;
-				if (Math.abs(angle) < 10) // tolerate small angle
-					return true;
+				if (n != null) {
+					double bearing2 = c.bearingTo(n);
+					double angle = bearing2 - (bearing - 180);
+					while (angle > 180)
+						angle -= 360;
+					while (angle < -180)
+						angle += 360;
+					if (Math.abs(angle) < 10) // tolerate small angle
+						return true;
+				}
 			}
 			return false;
 		}
@@ -1206,20 +1176,20 @@ public class WrongAngleFixer {
 		private double calcMergeErr(CenterOfAngle other, Coord mergePoint, Map<Coord, Coord> replacements) {
 			double maxErr = 0;
 			for (CenterOfAngle neighbour : neighbours) {
-				if (neighbour == other) 
+				if (neighbour == other)
 					continue;
 				Coord n = neighbour.getCurrentLocation(replacements);
-				if (n != null){
+				if (n != null) {
 					double err = calcBearingError(mergePoint, n);
 					if (err > maxErr)
 						maxErr = err;
 				}
 			}
 			for (CenterOfAngle othersNeighbour : other.neighbours) {
-				if (othersNeighbour == this) 
+				if (othersNeighbour == this)
 					continue;
 				Coord n = othersNeighbour.getCurrentLocation(replacements);
-				if (n != null){
+				if (n != null) {
 					double err = calcBearingError(mergePoint, n);
 					if (err > maxErr)
 						maxErr = err;
@@ -1235,8 +1205,7 @@ public class WrongAngleFixer {
 		 * @param replacement see toRepl
 		 * @return error [0..180] or Double.MAX_VALUE in case of equal points
 		 */
-		private double calcMaxError(Map<Coord, Coord> replacements,
-				Coord toRepl, Coord replacement) {
+		private double calcMaxError(Map<Coord, Coord> replacements, Coord toRepl, Coord replacement) {
 			double maxErr = 0;
 			Coord c = getCurrentLocation(replacements);
 			for (CenterOfAngle neighbour : neighbours) {
@@ -1248,7 +1217,7 @@ public class WrongAngleFixer {
 					err = calcBearingError(replacement, n);
 				else if (n == toRepl)
 					err = calcBearingError(c, replacement);
-				else 
+				else
 					err = calcBearingError(c, n);
 				if (err == Double.MAX_VALUE)
 					return err;
@@ -1264,7 +1233,7 @@ public class WrongAngleFixer {
 		 * @return
 		 */
 		private double calcSumOfErrors(Map<Coord, Coord> replacements) {
-			double SumErr = 0;
+			double sumErr = 0;
 			Coord c = getCurrentLocation(replacements);
 			for (CenterOfAngle neighbour : neighbours) {
 				Coord n = neighbour.getCurrentLocation(replacements);
@@ -1273,9 +1242,9 @@ public class WrongAngleFixer {
 				double err = calcBearingError(c, n);
 				if (err == Double.MAX_VALUE)
 					return err;
-				SumErr += err;
+				sumErr += err;
 			}
-			return SumErr;
+			return sumErr;
 		}
 
 		/**
@@ -1284,7 +1253,7 @@ public class WrongAngleFixer {
 		 * @return Double.MAX_VALUE if centre must not be deleted, else [0..180]
 		 */
 		private double calcRemoveError(Map<Coord, Coord> replacements) {
-			if (allowedToRemove(center) == false)
+			if (!allowedToRemove(center))
 				return Double.MAX_VALUE;
 			if (neighbours.size() > 2)
 				return Double.MAX_VALUE;
@@ -1295,17 +1264,16 @@ public class WrongAngleFixer {
 				Coord n = neighbour.getCurrentLocation(replacements);
 				if (n == null)
 					return Double.MAX_VALUE;
-				if (c.equals(n)){
-					if (!allowedToRemove(neighbour.center))
-						return 0;
-					if (c.getDistToDisplayedPoint() >= n.getDistToDisplayedPoint()) {
+				if (c.equals(n)) {
+					if (!allowedToRemove(neighbour.center)
+							|| c.getDistToDisplayedPoint() >= n.getDistToDisplayedPoint()) {
 						return 0;
 					}
 					return Double.MAX_VALUE;
 				}
 				outerPoints[i] = n;
 			}
-			if (neighbours.size() < 2 )
+			if (neighbours.size() < 2)
 				return Double.MAX_VALUE;
 			
 			for (int i = 0; i < neighbours.size(); i++) {
@@ -1318,8 +1286,7 @@ public class WrongAngleFixer {
 			if (Math.abs( dsplAngle ) < 3)
 				return Double.MAX_VALUE;
 			double realAngle = Utils.getAngle(outerPoints[0], c, outerPoints[1]);
-			double err = Math.abs(realAngle) / 2;
-			return err;
+			return Math.abs(realAngle) / 2;
 		}
 
 		@SuppressWarnings("unused")
@@ -1336,52 +1303,48 @@ public class WrongAngleFixer {
 				Coord nc = getReplacement(n.center, null, replacements);
 				if (nc == null)
 					continue; // skip removed neighbour
-				if (i == 0 && alternatives.isEmpty() == false) {
-					GpxCreator.createGpx(gpxName + "_" + i,
-							Arrays.asList(c, nc), alternatives);
-				} else
-					GpxCreator.createGpx(gpxName + "_" + i,
-							Arrays.asList(c, nc));
+				if (i == 0 && !alternatives.isEmpty()) {
+					GpxCreator.createGpx(gpxName + "_" + i, Arrays.asList(c, nc), alternatives);
+				} else {
+					GpxCreator.createGpx(gpxName + "_" + i, Arrays.asList(c, nc));
+				}
 			}
-			if (neighbours.isEmpty())
-				GpxCreator.createGpx(gpxName + "_empty", Arrays.asList(c, c),
-						alternatives);
+			if (neighbours.isEmpty()) {
+				GpxCreator.createGpx(gpxName + "_empty", Arrays.asList(c, c), alternatives);
+			}
 		}
-
 	}
 	
-	private void writeOSM(String name, List<ConvertedWay> convertedWays){
+	private void writeOSM(String name, List<ConvertedWay> convertedWays) {
 		if (DEBUG_PATH != null) {
 			//TODO: comment before release
 //			uk.me.parabola.mkgmap.osmstyle.optional.DebugWriter.writeOSM(bbox, DEBUG_PATH, name, convertedWays);
 		}
 	}
 	
-	private static double calcBearingError(Coord p1, Coord p2){
+	private static double calcBearingError(Coord p1, Coord p2) {
 		if (p1.equals(p2) || p1.highPrecEquals(p2)) {
 			return Double.MAX_VALUE;
 		}
 		double realBearing = p1.bearingTo(p2);
 		double displayedBearing = p1.getDisplayedCoord().bearingTo(p2.getDisplayedCoord());
 		double err = displayedBearing - realBearing;
-		while(err > 180)
+		while (err > 180)
 			err -= 360;
-		while(err < -180)
+		while (err < -180)
 			err += 360;
 		return Math.abs(err);
 	}
-
 
 	/**
 	 * Calculate the rounding error tolerance for a given point.
 	 * The latitude error may be max higher. Maybe this should be 
 	 * @param p0
-	 * @return
+	 * @return the rounding error tolerance for a given point
 	 */
-	private static double calcMaxErrorDistance(Coord p0){
-		Coord test = new Coord(p0.getLatitude(),p0.getLongitude()+1);
-		double lonErr = p0.getDisplayedCoord().distance(test) / 2;
-		return lonErr;
+	private static double calcMaxErrorDistance(Coord p0) {
+		Coord test = new Coord(p0.getLatitude(), p0.getLongitude() + 1);
+		return p0.getDisplayedCoord().distance(test) / 2;
 	}
 
 	/**
@@ -1398,36 +1361,36 @@ public class WrongAngleFixer {
 		int n = points.size();
 		// scan through the way's points looking for points which are
 		// on almost straight line and therefore obsolete
-		for (int i = 0; i+1 < points.size(); i++) {
+		for (int i = 0; i + 1 < points.size(); i++) {
 			Coord c1;
-			if (modifiedPoints.size() > 0)
-				c1 = modifiedPoints.get(modifiedPoints.size()-1);
-			else {
-				c1 = (i > 0) ? points.get(i-1):points.get(n-2);
+			if (!modifiedPoints.isEmpty()) {
+				c1 = modifiedPoints.get(modifiedPoints.size() - 1);
+			} else {
+				c1 = (i > 0) ? points.get(i - 1) : points.get(n - 2);
 			}
 			Coord cm = points.get(i);
-			if (cm.highPrecEquals(c1)){
-				if (modifiedPoints.size() > 1){
-					modifiedPoints.remove(modifiedPoints.size()-1);
-					c1 = modifiedPoints.get(modifiedPoints.size()-1); // might be part of spike
+			if (cm.highPrecEquals(c1)) {
+				if (modifiedPoints.size() > 1) {
+					modifiedPoints.remove(modifiedPoints.size() - 1);
+					c1 = modifiedPoints.get(modifiedPoints.size() - 1); // might be part of spike
 				} else {
 					continue;
 				}
 			}
-			Coord c2 = points.get(i+1);
+			Coord c2 = points.get(i + 1);
 			int straightTest = Utils.isHighPrecStraight(c1, cm, c2);
-			if (straightTest == Utils.STRICTLY_STRAIGHT || straightTest == Utils.STRAIGHT_SPIKE){
+			if (straightTest == Utils.STRICTLY_STRAIGHT || straightTest == Utils.STRAIGHT_SPIKE) {
 				continue;
 			}
 			double realAngle = Utils.getAngle(c1, cm, c2);
-			if (Math.abs(realAngle) < MAX_DIFF_ANGLE_STRAIGHT_LINE){ 
+			if (Math.abs(realAngle) < MAX_DIFF_ANGLE_STRAIGHT_LINE) {
 				double distance = cm.distToLineSegment(c1, c2);
 				if (distance < maxErrorDistance)
 					continue;
 			}
 			modifiedPoints.add(cm);
 		}
-		if (modifiedPoints.size() > 1 && modifiedPoints.get(0) != modifiedPoints.get(modifiedPoints.size()-1))
+		if (modifiedPoints.size() > 1 && modifiedPoints.get(0) != modifiedPoints.get(modifiedPoints.size() - 1))
 			modifiedPoints.add(modifiedPoints.get(0));
 		return modifiedPoints;
 	}
@@ -1439,17 +1402,15 @@ public class WrongAngleFixer {
 	 * @param convertedWays list of ways to filter
 	 * @param modifiedRoads if ways are routable we add the modified ways to this map 
 	 */
-	private void prepWithDouglasPeucker(List<ConvertedWay> convertedWays, HashMap<Long, ConvertedWay> modifiedRoads) {
+	private void prepWithDouglasPeucker(List<ConvertedWay> convertedWays, Map<Long, ConvertedWay> modifiedRoads) {
 		// we don't want to remove end points of ways
 		markEndPoints(convertedWays);
 		double maxErrorDistance = 0.05;
 		Way lastWay = null;
 		for (ConvertedWay cw : convertedWays) {
-			if (!cw.isValid() || cw.isOverlay())
+			if (!cw.isValid() || cw.isOverlay() || cw.getWay().equals(lastWay))
 				continue;
 			Way way = cw.getWay();
-			if (way.equals(lastWay))
-				continue;
 			lastWay = way;
 			List<Coord> points = way.getPoints();
 			List<Coord> coords = new ArrayList<>(points);
@@ -1478,14 +1439,12 @@ public class WrongAngleFixer {
 		}
 	}
 
-	private void markEndPoints(List<ConvertedWay> convertedWays) {
+	private static void markEndPoints(List<ConvertedWay> convertedWays) {
 		Way lastWay = null;
 		for (ConvertedWay cw : convertedWays) {
-			if (!cw.isValid() || cw.isOverlay())
+			if (!cw.isValid() || cw.isOverlay() || cw.getWay().equals(lastWay))
 				continue;
 			Way way = cw.getWay();
-			if (way.equals(lastWay))
-				continue;
 			lastWay = way;
 			way.getFirstPoint().setEndOfWay(true);
 			way.getLastPoint().setEndOfWay(true);
