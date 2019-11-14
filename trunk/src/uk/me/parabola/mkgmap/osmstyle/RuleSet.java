@@ -53,10 +53,10 @@ public class RuleSet implements Rule, Iterable<Rule> {
 	int cacheId;
 	boolean compiled = false;
 
-	private final static short executeFinalizeRulesTagKey = TagDict.getInstance().xlate("mkgmap:execute_finalize_rules");
+	private static final short executeFinalizeRulesTagKey = TagDict.getInstance().xlate("mkgmap:execute_finalize_rules");
 
 	private RuleIndex index = new RuleIndex();
-	private final Set<String> usedTags = new HashSet<String>();
+	private final Set<String> usedTags = new HashSet<>();
 	
 	@Override
 	public void resolveType(Element el, TypeResult result) {
@@ -86,22 +86,21 @@ public class RuleSet implements Rule, Iterable<Rule> {
 		// Get all the rules that could match from the index.  
 		BitSet candidates = new BitSet();
 		for (Entry<Short, String> tagEntry : el.getFastTagEntryIterator()) {
-			BitSet rules = index.getRulesForTag(tagEntry.getKey(), tagEntry.getValue());
-			if (rules != null && !rules.isEmpty() )
-				candidates.or(rules);
+			BitSet bsRules = index.getRulesForTag(tagEntry.getKey(), tagEntry.getValue());
+			if (bsRules != null && !bsRules.isEmpty() )
+				candidates.or(bsRules);
 		}
 		Rule lastRule = null;
-		for (int i = candidates.nextSetBit(0); i >= 0; i = candidates.nextSetBit(i + 1)) {			
+		for (int i = candidates.nextSetBit(0); i >= 0; i = candidates.nextSetBit(i + 1)) {
 			a.reset();
 			lastRule = rules[i];
 			cacheId = lastRule.resolveType(cacheId, el, a);
 			if (a.isResolved())
 				return cacheId;
 		}
-		if (lastRule != null && lastRule.getFinalizeRule() != null){
-			if ("true".equals(el.getTag(executeFinalizeRulesTagKey))){
-				cacheId = lastRule.getFinalizeRule().resolveType(cacheId, el, a);
-			}
+		if (lastRule != null && lastRule.getFinalizeRule() != null
+				&& "true".equals(el.getTag(executeFinalizeRulesTagKey))) {
+			cacheId = lastRule.getFinalizeRule().resolveType(cacheId, el, a);
 		}
 		return cacheId;
 	}
@@ -163,12 +162,7 @@ public class RuleSet implements Rule, Iterable<Rule> {
 
 		index = newIndex;
 		rules = newIndex.getRules();
-		//System.out.println("Merging used tags: "
-		//		   + getUsedTags().toString()
-		//		   + " + "
-		//		   + rs.getUsedTags());
 		addUsedTags(rs.usedTags);
-		//System.out.println("Result: " + getUsedTags().toString());
 		compiled = false;
 	}
 
@@ -195,27 +189,27 @@ public class RuleSet implements Rule, Iterable<Rule> {
 	 * make sure that all rules use the same instance of these common
 	 * sub-expressions.
 	 */
-	private void compile(){
-		HashMap<String, Op> tests = new HashMap<String, Op>();
+	private void compile() {
+		HashMap<String, Op> tests = new HashMap<>();
 
-		for (Rule rule:rules){
+		for (Rule rule : rules) {
 			Op op;
 			if (rule instanceof ExpressionRule)
-				op = ((ExpressionRule)rule).getOp();
+				op = ((ExpressionRule) rule).getOp();
 			else if (rule instanceof ActionRule)
 				op = ((ActionRule) rule).getOp();
 			else {
 				log.error("unexpected rule instance");
 				continue;
 			}
-			if (op instanceof AbstractBinaryOp){
+			if (op instanceof AbstractBinaryOp) {
 				AbstractBinaryOp binOp = (AbstractBinaryOp) op;
 				binOp.setFirst(compileOp(tests, binOp.getFirst()));
 				binOp.setSecond(compileOp(tests, binOp.getSecond()));
 				op = compileOp(tests, binOp);
-			} else if (op instanceof AbstractOp){
+			} else if (op instanceof AbstractOp) {
 				op = compileOp(tests, op);
-			} else if (op instanceof LinkedBinaryOp){
+			} else if (op instanceof LinkedBinaryOp) {
 				((LinkedBinaryOp) op).setFirst(compileOp(tests, ((LinkedBinaryOp) op).getFirst()));
 				((LinkedBinaryOp) op).setSecond(compileOp(tests, ((LinkedBinaryOp) op).getSecond()));
 			} else if (op instanceof LinkedOp) {
@@ -226,12 +220,11 @@ public class RuleSet implements Rule, Iterable<Rule> {
 				continue;
 			}
 			if (rule instanceof ExpressionRule)
-				((ExpressionRule)rule).setOp(op);
+				((ExpressionRule) rule).setOp(op);
 			else if (rule instanceof ActionRule)
 				((ActionRule) rule).setOp(op);
 			else {
 				log.error("unexpected rule instance");
-				continue;
 			}
 		}
 		cacheId = 0;
@@ -296,15 +289,11 @@ public class RuleSet implements Rule, Iterable<Rule> {
 			// that we have rules to which the finalize rules can be applied
 			throw new IllegalStateException("First call prepare() before setting the finalize rules");
 		}
-		for (Rule rule : rules){
+		for (Rule rule : rules) {
 			if (rule.containsExpression(exp))
 				return true;
 		}
-		if (finalizeRule != null){
-			if (finalizeRule.containsExpression(exp))
-				return true;
-		}
-		return false;
+		return finalizeRule != null && finalizeRule.containsExpression(exp);
 	}
 
 	public BitSet getRules(Element el) {
@@ -313,12 +302,12 @@ public class RuleSet implements Rule, Iterable<Rule> {
 		// new element, invalidate all caches
 		cacheId++;
 
-		// Get all the rules that could match from the index.  
+		// Get all the rules that could match from the index.
 		BitSet candidates = new BitSet();
 		for (Entry<Short, String> tagEntry : el.getFastTagEntryIterator()) {
-			BitSet rules = index.getRulesForTag(tagEntry.getKey(), tagEntry.getValue());
-			if (rules != null && !rules.isEmpty() )
-				candidates.or(rules);
+			BitSet bsRules = index.getRulesForTag(tagEntry.getKey(), tagEntry.getValue());
+			if (bsRules != null && !bsRules.isEmpty())
+				candidates.or(bsRules);
 		}
 		return candidates;
 	}

@@ -17,7 +17,6 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +63,7 @@ import uk.me.parabola.mkgmap.reader.osm.TagDict;
  * @author Steve Ratcliffe
  */
 public class RuleIndex {
-	private final List<RuleDetails> ruleDetails = new ArrayList<RuleDetails>();
+	private final List<RuleDetails> ruleDetails = new ArrayList<>();
 
 	private final Map<Short, TagHelper> tagKeyMap = new HashMap<>();
 	private TagHelper[] tagKeyArray = null;
@@ -89,8 +88,9 @@ public class RuleIndex {
 				merged.or(exists);
 				merged.or(value);
 				tagVals.put(val, merged);
-			} else
+			} else {
 				tagVals.put(val, value);
+			}
 		}
 
 		public BitSet getBitSet(String tagVal) {
@@ -145,8 +145,9 @@ public class RuleIndex {
 			assert tagKey > 0;
 			if (tagKey < tagKeyArray.length){
 				th = tagKeyArray[tagKey];
-			} else 
+			} else {
 				th = null;
+			}
 		} else {
 			th = tagKeyMap.get(tagKey);
 		}
@@ -164,16 +165,48 @@ public class RuleIndex {
 		if (inited)
 			return;
 		// This is an index of all rules that start with EXISTS (A=*)
-		Map<String, BitSet> existKeys = new HashMap<String, BitSet>();
+		Map<String, BitSet> existKeys = new HashMap<>();
 		// This is an index of all rules that start with EQUALS (A=B)
-		Map<String, BitSet> tagVals = new HashMap<String, BitSet>();
+		Map<String, BitSet> tagVals = new HashMap<>();
 		
 		// This is an index of all rules by the tag name (A).
-		Map<String, BitSet> tagnames = new HashMap<String, BitSet>();
+		Map<String, BitSet> tagnames = new HashMap<>();
 
 		// remove unnecessary rules
 		filterRules();
+		buildInitialIndex(existKeys, tagVals, tagnames);
+		findDependingRules(existKeys, tagVals, tagnames);
+		
+		// compress the index: create one hash map with one entry for each key
+		for (Map.Entry<String, BitSet> entry : existKeys.entrySet()) {
+			Short skey = TagDict.getInstance().xlate(entry.getKey());
+			tagKeyMap.put(skey, new TagHelper(entry.getValue()));
+		}
+		for (Map.Entry<String, BitSet> entry : tagVals.entrySet()) {
+			String keyString = entry.getKey();
+			int ind = keyString.indexOf('=');
+			if (ind >= 0) {
+				short key = TagDict.getInstance().xlate(keyString.substring(0, ind));
+				String val = keyString.substring(ind + 1);
+				TagHelper th = tagKeyMap.computeIfAbsent(key, k-> new TagHelper(null));
+				th.addTag(val, entry.getValue());
+			}
+		}
+		Optional<Short> minKey = tagKeyMap.keySet().stream().min(Short::compare);
+		if (minKey.isPresent() && minKey.get() > 0) {
+			Optional<Short> maxKey = tagKeyMap.keySet().stream().max(Short::compare);
+			tagKeyArray = new TagHelper[maxKey.get() + 1];
+			for (Map.Entry<Short, TagHelper> entry : tagKeyMap.entrySet()) {
+				tagKeyArray[entry.getKey()] = entry.getValue();
+			}
+			tagKeyMap.clear();
+		}
 
+		inited = true;
+	}
+
+	private void buildInitialIndex(Map<String, BitSet> existKeys, Map<String, BitSet> tagVals,
+			Map<String, BitSet> tagnames) {
 		for (int i = 0; i < ruleDetails.size(); i++) {
 			int ruleNumber = i;
 			RuleDetails rd = ruleDetails.get(i);
@@ -190,11 +223,14 @@ public class RuleIndex {
 					String key = keystring.substring(0, ind);
 					addNumberToMap(tagnames, key, ruleNumber);
 				} else {
-					assert false: "rule index: no = in keystring " + keystring;	
+					assert false : "rule index: no = in keystring " + keystring;
 				}
 			}
 		}
-		
+	}
+
+	private void findDependingRules(Map<String, BitSet> existKeys, Map<String, BitSet> tagVals,
+			Map<String, BitSet> tagnames) {
 		// find the additional rules which might be triggered as a result of actions changing tags.
 		Map<Integer, BitSet> additionalRules = new LinkedHashMap<>();
 		for (int i = 0; i < ruleDetails.size(); i++) {
@@ -222,13 +258,13 @@ public class RuleIndex {
 						addedRules.or(set);
 				}
 			}
-			// Only rules after the current one can be affected 
+			// Only rules after the current one can be affected
 			addedRules.clear(0, ruleNumber);
 			if (!addedRules.isEmpty()) {
 				additionalRules.put(ruleNumber, addedRules);
 			}
 		}
-		
+
 		// now add all the additional rules to the existing sets
 		for (Entry<Integer, BitSet> e : additionalRules.entrySet()) {
 			int ruleNumber = e.getKey();
@@ -245,39 +281,7 @@ public class RuleIndex {
 					}
 				}
 			}
-			
 		}
-		
-		// compress the index: create one hash map with one entry for each key
-		for (Map.Entry<String, BitSet> entry  : existKeys.entrySet()){
-			Short skey = TagDict.getInstance().xlate(entry.getKey());
-			tagKeyMap.put(skey, new TagHelper(entry.getValue()));
-		}
-		for (Map.Entry<String, BitSet> entry  : tagVals.entrySet()){
-			String keyString = entry.getKey();
-			int ind = keyString.indexOf('=');
-			if (ind >= 0) {
-				short key = TagDict.getInstance().xlate(keyString.substring(0, ind));
-				String val = keyString.substring(ind+1);
-				TagHelper th = tagKeyMap.get(key);
-				if (th == null){
-					th = new TagHelper(null);
-					tagKeyMap.put(key, th);
-				} 
-				th.addTag(val, entry.getValue());
-			}
-		}
-		Optional<Short> minKey = tagKeyMap.keySet().stream().min(Short::compare);
-		if (minKey.isPresent() && minKey.get() > 0){
-			Optional<Short> maxKey = tagKeyMap.keySet().stream().max(Short::compare);
-			tagKeyArray = new TagHelper[maxKey.get() + 1];
-			for (Map.Entry<Short, TagHelper> entry  : tagKeyMap.entrySet()){
-				tagKeyArray[entry.getKey()] = entry.getValue();
-			}
-			tagKeyMap.clear();
-		}
-			
-		inited = true;
 	}
 
 	/**
@@ -295,35 +299,30 @@ public class RuleIndex {
 		ruleDetails.addAll(filteredRules);
 	}
 
-	private void removeUnused(List<RuleDetails> filteredRules, Set<String> usedIfVars) {
+	private static void removeUnused(List<RuleDetails> filteredRules, Set<String> usedIfVars) {
 		if (usedIfVars.isEmpty())
 			return;
-		Iterator<RuleDetails> iter = filteredRules.iterator();
-		while (iter.hasNext()) {
-			RuleDetails rd = iter.next();
+		filteredRules.removeIf(rd -> {
 			if (rd.getRule() instanceof ActionRule) {
 				ActionRule ar = (ActionRule) rd.getRule();
 				if (ar.toString().contains("set " + RuleFileReader.IF_PREFIX)) {
-					boolean needed = false;
 					for (String ifVars : usedIfVars) {
 						if (ar.toString().contains("set " + ifVars)) {
-							needed = true;
+							return false;
 						}
 					}
-					if (!needed)
-						iter.remove();
+					return true;
 				}
 			}
-		}
+			return false;
+		});
 	}
 
-	private void findIfVarUsage(Rule rule, Set<String> usedIfVars) {
+	private static void findIfVarUsage(Rule rule, Set<String> usedIfVars) {
 		if (rule == null)
 			return;
-//		if (rule.getFinalizeRule() != null)
-//			findIfVarUsage(rule.getFinalizeRule(), usedIfVars);
 		Op expr = null;
-		if (rule instanceof ExpressionRule) 
+		if (rule instanceof ExpressionRule)
 			expr = ((ExpressionRule) rule).getOp();
 		else if (rule instanceof ActionRule)
 			expr = ((ActionRule) rule).getOp();
@@ -336,12 +335,7 @@ public class RuleIndex {
 	}
 
 	private static void addNumberToMap(Map<String, BitSet> map, String key, int ruleNumber) {
-		BitSet set = map.get(key);
-		if (set == null) {
-			set = new BitSet();
-			map.put(key, set);
-		}
-		set.set(ruleNumber);
+		map.computeIfAbsent(key, k -> new BitSet()).set(ruleNumber);
 	}
 
 	public List<RuleDetails> getRuleDetails() {
