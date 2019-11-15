@@ -2010,27 +2010,31 @@ public class StyledConverter implements OsmConverter {
 		}
 	}
 
+	private static final String[] CONNECTION_TAGS = { "mkgmap:set_unconnected_type", "mkgmap:set_semi_connected_type" };
+
 	/**
 	 * Detect roads that do not share any node with another road.
 	 * If such a road has the mkgmap:set_unconnected_type tag, add it as line, not as a road. 
+	 * Detect also roads which are only connected in one point, so that they don't lead to other roads.
+	 * If such a road has the mkgmap:set_semi_connected_type tag, add it as line, not as a road. 
 	 */
-	private void findUnconnectedRoads(){
-		Map<Coord, HashSet<Way>> connectors = new IdentityHashMap<>(roads.size()*2);
-		
+	private void findUnconnectedRoads() {
+		Map<Coord, HashSet<Way>> connectors = new IdentityHashMap<>(roads.size() * 2);
+
 		// for dead-end-check only: will contain ways with loops (also simply closed ways)
 		HashSet<Way> selfConnectors = new HashSet<>();
-		
+
 		// collect nodes that might connect roads
 		long lastId = 0;
-		for (ConvertedWay cw :roads){
+		for (ConvertedWay cw : roads) {
 			Way way = cw.getWay();
 			if (way.getId() == lastId)
 				continue;
 			lastId = way.getId();
-			for (Coord p:way.getPoints()){
-				if (p.getHighwayCount() > 1){
+			for (Coord p : way.getPoints()) {
+				if (p.getHighwayCount() > 1) {
 					HashSet<Way> ways = connectors.get(p);
-					if (ways == null){
+					if (ways == null) {
 						ways = new HashSet<>();
 						connectors.put(p, ways);
 					}
@@ -2040,136 +2044,198 @@ public class StyledConverter implements OsmConverter {
 				}
 			}
 		}
+
+		/** roads with 0 .. 1 connections to other roads */
+		Map<Long,Integer> poorlyConnectedRoads= new HashMap<>();
 		
-		// find roads that are not connected
-		// count downwards because we are removing elements
 		Iterator<ConvertedWay> iter = roads.iterator();
-		while(iter.hasNext()){
+		while (iter.hasNext()) {
 			ConvertedWay cw = iter.next();
 			if (!cw.isValid())
 				continue;
 			Way way = cw.getWay();
-			if(reportDeadEnds > 0 
-					&& cw.isOneway() && !way.tagIsLikeNo("mkgmap:dead-end-check")) {
-				// report dead ends of oneway roads 
-				List<Coord> points = way.getPoints();
-				int[] pointsToCheck = {0, points.size()-1};
-				if (points.get(pointsToCheck[0]) == points.get(pointsToCheck[1]))
-					continue; // skip closed way
-				for (int pos: pointsToCheck ){
-					boolean isDeadEnd = true;
-					boolean isDeadEndOfMultipleWays = true;
-					Coord p = points.get(pos);
-					if (!bbox.contains(p) || p.getOnBoundary())
-						isDeadEnd = false;  // we don't know enough about possible connections 
-					else if (p.getHighwayCount() < 2) {
-						isDeadEndOfMultipleWays = false;
-					} else {
-						HashSet<Way> ways = connectors.get(p);
-						if (ways.size() <= 1)
-							isDeadEndOfMultipleWays = false;
-						for (Way connectedWay: ways){
-							if (!isDeadEnd)
-								break;
-							if (way == connectedWay){
-								if (selfConnectors.contains(way)){
-									// this might be a P-shaped oneway,
-									// check if it has other exists in the loop part
-									if (pos == 0){
-										for (int k = pos+1; k < points.size()-1; k++){
-											Coord pTest = points.get(k);
-											if (pTest == p)
-												break; // found no other exit
-											if (pTest.getHighwayCount() > 1){
-												isDeadEnd = false;
-												break;
-											}
-										} 
-
-									}else {
-										for (int k = pos-1; k >= 0; k--){
-											Coord pTest = points.get(k);
-											if (pTest == p)
-												break; // found no other exit
-											if (pTest.getHighwayCount() > 1){
-												isDeadEnd = false;
-												break;
-											}
-										} 
-									}
-								}
-								continue;
-							}
-							List<Coord> otherPoints = connectedWay.getPoints();
-							Coord otherFirst = otherPoints.get(0);
-							Coord otherLast = otherPoints.get(otherPoints.size()-1);
-							if (otherFirst == otherLast || !connectedWay.tagIsLikeYes(onewayTagKey))
-								isDeadEnd = false;  
-							else {
-								Coord pOther;
-								if (pos != 0)
-									pOther = otherLast;
-								else
-									pOther = otherFirst;
-								if (p != pOther){
-									// way is connected to a point on a oneway which allows going on
-									isDeadEnd = false;
-								}
-							}
-						}
-					}
-
-					if (isDeadEnd && (isDeadEndOfMultipleWays || reportDeadEnds > 1)){
-						log.warn("Oneway road " + way.getId() + " with tags " + way.toTagString() + ((pos==0) ? " comes from":" goes to") + " nowhere at " + p.toOSMURL());
+			if (reportDeadEnds > 0) {
+				reportDeadEnds(cw, connectors, selfConnectors);
+			}
+			boolean onBoundary = false;
+			int countCon = 0;
+			for (Coord p : way.getPoints()) {
+				if (p.getOnBoundary()) {
+					onBoundary = true;
+					break;
+				}
+				if (p.getHighwayCount() > 1) {
+					HashSet<Way> ways = connectors.get(p);
+					if (ways != null && ways.size() > 1) {
+						++countCon;
 					}
 				}
 			}
-  			String replType = way.getTag("mkgmap:set_unconnected_type");
-			if (replType != null){
-				boolean isConnected = false;
-				boolean onBoundary = false;
-				for (Coord p:way.getPoints()){
-					if (p.getOnBoundary())
-						onBoundary = true;
-					if (p.getHighwayCount() > 1){
-						HashSet<Way> ways = connectors.get(p);
-						if (ways != null && ways.size() > 1){
-							isConnected = true;
-							break;
-						}
-					}
-				}
-				if (!isConnected){
-					if (onBoundary){
-						log.info("road not connected to other roads but is on boundary:", way.toBrowseURL());
-					} else {
-						if ("none".equals(replType))
-							log.info("road not connected to other roads, is ignored:", way.toBrowseURL());
-						else {
-							int typeNoConnection = -1;
-							try{
-								typeNoConnection = Integer.decode(replType);
-								if (GType.isRoutableLineType(typeNoConnection)){
-									typeNoConnection = -1;
-									log.error("type value in mkgmap:set_unconnected_type should not be a routable type:" + replType);
-								}
-							} catch (NumberFormatException e){
-								log.warn("invalid type value in mkgmap:set_unconnected_type:", replType);
-							}
-							if (typeNoConnection != -1 ){
-								log.info("road not connected to other roads, added as line with type", replType + ":", way.toBrowseURL());
-								addLine(way, cw.getGType(), typeNoConnection);
-							} else {
-								log.warn("road not connected to other roads, but replacement type is invalid. Dropped:", way.toBrowseURL());
-							}
-						}
-						iter.remove();
+			boolean remove = false;
+			if (countCon <= 1) {
+				remove = handlePoorConnection(countCon, cw, onBoundary);
+				if (remove) 
+					iter.remove();
+				if (!onBoundary) 
+					poorlyConnectedRoads.put(way.getId(), countCon);
+			} 
+		}
+
+		// now check if we have to remove overlay lines
+		Iterator<ConvertedWay> linesIter = lines.iterator();
+		while (linesIter.hasNext()) {
+			ConvertedWay cw = linesIter.next();
+			if (cw.isOverlay()) {
+				Way way = cw.getWay();
+				Integer countCon = poorlyConnectedRoads.get(way.getId());
+				if (countCon != null) {
+					boolean remove = handlePoorConnection(countCon, cw, false);
+					if (remove) {
+						linesIter.remove();
 					}
 				}
 			}
 		}
 	}
-	
+
+	/**
+	 * When called, the way is either not connected to other roads or it is
+	 * only connected in one point. Check if special tags exist which changes the
+	 * type or tells mkgmap to remove the line.
+	 * 
+	 * @param tagKey     the tag key to check
+	 * @param cw         the converted way (either a road or an overlay line for the road)
+	 * @param onBoundary if true, don't change anything
+	 * @return true if the road should not be added to the map
+	 */
+	private boolean handlePoorConnection(int count, ConvertedWay cw, boolean onBoundary) {
+		Way way = cw.getWay();
+		String tagKey = CONNECTION_TAGS[count];
+		String replTypeString = way.getTag(tagKey);
+		if (replTypeString == null) 
+			return false;
+		StringBuilder sb = new StringBuilder(100);
+		sb.append(way.toBrowseURL()).append(' ').append(GType.formatType(cw.getGType().getType()));
+		if (cw.isOverlay())
+			sb.append("(Overlay)");
+		sb.append(": ").append(count == 0 ? "road not connected" : "road doesn't go").append(" to other roads");
+		if (onBoundary) {
+			log.info(sb.toString(), "but is on boundary");
+			return false;
+		} 
+		sb.append(',');
+		if ("none".equals(replTypeString)) {
+			log.info(sb.toString(), "is ignored because of", tagKey + "=none");
+			return true;
+		}
+		int replType = -1;
+		try {
+			replType = Integer.decode(replTypeString);
+			if (GType.isRoutableLineType(replType)) {
+				replType = -1;
+				log.error("type value in", tagKey, "should not be a routable type:" + replTypeString);
+			}
+			if (!GType.checkType(FeatureKind.POLYLINE, replType)) {
+				replType = -1;
+				log.error("type value in", tagKey, "is not a valid line type:" + replTypeString);
+			}
+		} catch (NumberFormatException e) {
+			throw new ExitException("invalid type value in style" + tagKey + "=" + replTypeString);
+		}
+		if (replType != -1) {
+			log.info(sb.toString(), "added as line with type", replTypeString);
+			addLine(way, cw.getGType(), replType);
+		} else {
+			log.info(sb.toString(), "but replacement type is invalid. Was dropped");
+		}
+		return true; // don't add road or line to map
+	}
+
+	/**
+	 * Check if oneway roads don't allow to continue at the end.
+	 * 
+	 * @param cw             the converted way
+	 * @param connectors     set of nodes where roads are connected
+	 * @param selfConnectors set of nodes where roads have loops (rings or p-shapes)
+	 */
+	private void reportDeadEnds(ConvertedWay cw, Map<Coord, HashSet<Way>> connectors, HashSet<Way> selfConnectors) {
+		Way way = cw.getWay();
+		// report dead ends of oneway roads if check is not disabled
+		if (cw.isOneway() && !way.tagIsLikeNo("mkgmap:dead-end-check")) {
+			List<Coord> points = way.getPoints();
+			int[] pointsToCheck = { 0, points.size() - 1 };
+			if (points.get(pointsToCheck[0]) == points.get(pointsToCheck[1]))
+				return; // skip closed way
+			for (int pos : pointsToCheck) {
+				boolean isDeadEnd = true;
+				boolean isDeadEndOfMultipleWays = true;
+				Coord p = points.get(pos);
+				if (!bbox.contains(p) || p.getOnBoundary())
+					isDeadEnd = false; // we don't know enough about possible connections
+				else if (p.getHighwayCount() < 2) {
+					isDeadEndOfMultipleWays = false;
+				} else {
+					HashSet<Way> ways = connectors.get(p);
+					if (ways.size() <= 1)
+						isDeadEndOfMultipleWays = false;
+					for (Way connectedWay : ways) {
+						if (!isDeadEnd)
+							break;
+						if (way == connectedWay) {
+							if (selfConnectors.contains(way)) {
+								// this might be a P-shaped oneway,
+								// check if it has other exists in the loop part
+								if (pos == 0) {
+									for (int k = pos + 1; k < points.size() - 1; k++) {
+										Coord pTest = points.get(k);
+										if (pTest == p)
+											break; // found no other exit
+										if (pTest.getHighwayCount() > 1) {
+											isDeadEnd = false;
+											break;
+										}
+									}
+								} else {
+									for (int k = pos - 1; k >= 0; k--) {
+										Coord pTest = points.get(k);
+										if (pTest == p)
+											break; // found no other exit
+										if (pTest.getHighwayCount() > 1) {
+											isDeadEnd = false;
+											break;
+										}
+									}
+								}
+							}
+							continue;
+						}
+						List<Coord> otherPoints = connectedWay.getPoints();
+						Coord otherFirst = otherPoints.get(0);
+						Coord otherLast = otherPoints.get(otherPoints.size() - 1);
+						if (otherFirst == otherLast || !connectedWay.tagIsLikeYes(onewayTagKey))
+							isDeadEnd = false;
+						else {
+							Coord pOther;
+							if (pos != 0)
+								pOther = otherLast;
+							else
+								pOther = otherFirst;
+							if (p != pOther) {
+								// way is connected to a point on a oneway which allows going on
+								isDeadEnd = false;
+							}
+						}
+					}
+				}
+
+				if (isDeadEnd && (isDeadEndOfMultipleWays || reportDeadEnds > 1)) {
+					log.warn("Oneway road " + way.getId() + " with tags " + way.toTagString()
+							+ ((pos == 0) ? " comes from" : " goes to") + " nowhere at " + p.toOSMURL());
+				}
+			}
+		}
+	}
+
 	/**
 	 * Make sure that only CoordPOI which affect routing will be treated as
 	 * nodes in the following routines.

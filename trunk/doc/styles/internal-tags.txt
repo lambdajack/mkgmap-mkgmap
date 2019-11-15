@@ -65,7 +65,10 @@ A112 | Usually only the first label is displayed. On some units the second label
 | +mkgmap:dir-check+  | Set to +false+ to tell mkgmap to ignore the way when checking roundabouts for direction | 'check-roundabouts'
 | +mkgmap:no-dir-check+  | Set to +true+ to tell mkgmap to ignore the way when checking roundabouts for direction | 'check-roundabouts'
 | +mkgmap:synthesised+  | Set to +true+ to tell mkgmap that this is an additional way created using the continue statement in an action block and that it should be excluded from checks | 'check-roundabouts', 'check-roundabout-flares'
-    
+| +mkgmap:set_unconnected_type+  | Set to +none+ to remove unconected roads from the map once that all roads are known, or to a valid line type if you want a normal line instead of a road. Works also with overlay lines for the same way. |
+| +mkgmap:set_semi_connected_type+  | Like mkgmap:set_unconnected_type, but matches for roads with exactly one connection to other roads |
+
+
 |=========================================================
 
  
