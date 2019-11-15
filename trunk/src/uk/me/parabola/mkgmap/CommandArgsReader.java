@@ -176,8 +176,13 @@ public class CommandArgsReader {
 		log.debug("adding option", option, value);
 
 		// Note if an explicit mapname is set
-		if (option.equals("mapname"))
-			mapnameWasSet = true;
+		if (option.equals("mapname")) {
+			if (extractMapName(value) == null || "00000000".equals(extractMapName(value))) {
+				throw new ExitException("invalid value for option: mapname="+value+" - mapname should be a 8 digit integer, default is 63240001");
+			} else { 
+				mapnameWasSet = true;
+			}
+		}
 
 		switch (option) {
 		case "input-file":
@@ -295,18 +300,18 @@ public class CommandArgsReader {
 			}
 		}
 
-		private String extractMapName(String path) {
+	}
 
-			File file = new File(path);
-			String fname = file.getName();
-			Pattern pat = Pattern.compile("([0-9]{8})");
-			Matcher matcher = pat.matcher(fname);
-			boolean found = matcher.find();
-			if (found)
-				return matcher.group(1);
+	private String extractMapName(String path) {
+		File file = new File(path);
+		String fname = file.getName();
+		Pattern pat = Pattern.compile("([0-9]{8})");
+		Matcher matcher = pat.matcher(fname);
+		boolean found = matcher.find();
+		if (found)
+			return matcher.group(1);
 
-			return null;
-		}
+		return null;
 	}
 
 	/**
