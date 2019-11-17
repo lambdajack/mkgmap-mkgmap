@@ -41,17 +41,17 @@ import static java.nio.channels.FileChannel.MapMode.READ_ONLY;
 public class HGTReader {
 	private static final Logger log = Logger.getLogger(HGTReader.class);
 
+	public static final short UNDEF = Short.MIN_VALUE;
 	private ByteBuffer buffer;
 	private int res;
-	public final static short UNDEF = Short.MIN_VALUE;
-	public final String fileName;
-	public String path;
-	public boolean read;
+	private final String fileName;
+	private String path;
+	private boolean read;
 	private long count;
 
 	
-	private final static Map<String,Set<String>> missingMap = new HashMap<>();
-	private final static Set<String> badDir = new HashSet<>();
+	private static final Map<String,Set<String>> missingMap = new HashMap<>();
+	private static final Set<String> badDir = new HashSet<>();
 	
 	/**
 	 * Class to read a single HGT file. 
@@ -123,18 +123,12 @@ public class HGTReader {
 				res = -1;
 				path = null;
 				synchronized (missingMap){
-					Set<String> missingSet = missingMap.get(dirsWithHGT);
-					if (missingSet == null) { 
-						missingSet = new HashSet<>();
-						missingMap.put(dirsWithHGT, missingSet);
-					}
-					missingSet.add(fileName);
+					missingMap.computeIfAbsent(dirsWithHGT, k-> new HashSet<>()).add(fileName);
 				}
 				HGTList hgtList = HGTList.get();
 				if (hgtList != null) {
 					if (hgtList.shouldExist(lat, lon))
 						System.err.println(this.getClass().getSimpleName() + ": file " + fileName + " not found but it should exist. Height values will be 0.");
-					return;
 				} else { 
 					log.warn("file " + fileName + " not found. Is expected to cover sea.");
 				}
@@ -217,8 +211,8 @@ public class HGTReader {
 	 * @return resolution (typically 1200 for 3'' or 3600 for 1'')
 	 */
 	private int calcRes(long size, String fname) {
-		long numVals = (long) Math.sqrt(size/2);
-		if (2 * numVals*numVals  == size)
+		long numVals = (long) Math.sqrt(size / 2d);
+		if (2 * numVals * numVals == size)
 			return (int) (numVals - 1);
 		log.error("file", fname, "has unexpected size", size, "and is ignored");
 		return -1;

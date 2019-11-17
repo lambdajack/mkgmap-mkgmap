@@ -16,18 +16,16 @@
  */
 package uk.me.parabola.mkgmap.reader;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.app.Area;
-import uk.me.parabola.imgfmt.app.Coord;
+import uk.me.parabola.imgfmt.app.net.RoadNetwork;
 import uk.me.parabola.imgfmt.app.trergn.Overview;
 import uk.me.parabola.mkgmap.general.MapDataSource;
 import uk.me.parabola.mkgmap.general.MapDetails;
 import uk.me.parabola.mkgmap.general.MapLine;
 import uk.me.parabola.mkgmap.general.MapPoint;
 import uk.me.parabola.mkgmap.general.MapShape;
-import uk.me.parabola.imgfmt.app.net.RoadNetwork;
 import uk.me.parabola.util.Configurable;
 import uk.me.parabola.util.EnhancedProperties;
 
@@ -114,18 +112,12 @@ public abstract class MapperBasedMapDataSource implements MapDataSource, Configu
 	}
 
 	public void addBoundaryLine(Area area, int type, String name) {
-		List<Coord> coords = new ArrayList<Coord>();
-		coords.add(new Coord(area.getMinLat(), area.getMinLong()));
-		coords.add(new Coord(area.getMinLat(), area.getMaxLong()));
-		coords.add(new Coord(area.getMaxLat(), area.getMaxLong()));
-		coords.add(new Coord(area.getMaxLat(), area.getMinLong()));
-		coords.add(new Coord(area.getMinLat() + 1, area.getMinLong()));
 		MapLine boundary = new MapLine();
 		boundary.setType(type);
 		if(name != null)
 			boundary.setName(name);
 		boundary.setMinResolution(0); // On all levels
-		boundary.setPoints(coords);
+		boundary.setPoints(area.toCoords());
 		mapper.addLine(boundary);
 	}
 	

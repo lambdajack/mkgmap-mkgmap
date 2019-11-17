@@ -36,7 +36,6 @@ import java.util.Set;
 import java.util.function.UnaryOperator;
 
 import uk.me.parabola.imgfmt.ExitException;
-import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.Version;
@@ -137,17 +136,15 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 		// First try command line, then style, then our default.
 		String levelSpec = getConfig().getProperty(optionName);
 		log.debug(optionName, levelSpec, ", ", ((levelSpec!=null)?levelSpec.length():""));
-		if (levelSpec == null || levelSpec.length() < 2) {
-			if (style != null) {
-				levelSpec = style.getOption(optionName);
-				log.debug("getting " + optionName + " from style:", levelSpec);
-			}
+		if ((levelSpec == null || levelSpec.length() < 2) && style != null) {
+			levelSpec = style.getOption(optionName);
+			log.debug("getting " + optionName + " from style:", levelSpec);
 		}
 		return levelSpec;
 	}
 	
 	@Override
-	public void load(String name, boolean addBackground) throws FileNotFoundException, FormatException {
+	public void load(String name, boolean addBackground) throws FileNotFoundException {
 		InputStream is = Utils.openFile(name);
 		parse(is, name);
 		elementSaver.finishLoading();
@@ -197,7 +194,7 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 			catch (Exception e) {
 				throw new ExitException("Error reading copyright file " + copyrightFileName, e);
 			}
-			if ((copyrightArray.size() > 0) && copyrightArray.get(0).startsWith("\ufeff"))
+			if (!copyrightArray.isEmpty() && copyrightArray.get(0).startsWith("\ufeff"))
 				copyrightArray.set(0, copyrightArray.get(0).substring(1));
 			UnaryOperator<String> replaceVariables = s -> s.replace("$MKGMAP_VERSION$", Version.VERSION)
 					.replace("$JAVA_VERSION$", System.getProperty("java.version"))
@@ -271,7 +268,7 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 		OsmReadingHooks hooks;
 		switch (plugins.size()) {
 		case 0:
-			hooks = new OsmReadingHooksAdaptor();
+			hooks = new NullHook();
 			break;
 		case 1:
 			hooks = plugins.get(0);
@@ -286,6 +283,9 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 		usedTags.addAll(hooks.getUsedTags());
 		return hooks;
 	}
+
+	/** do nothing hook */
+	private class NullHook implements OsmReadingHooks {}
 
 	private static Map<String, Set<String>> readDeleteTagsFile(String fileName) {
 		Map<String, Set<String>> deletedTags = new HashMap<>();

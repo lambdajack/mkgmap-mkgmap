@@ -41,20 +41,20 @@ import uk.me.parabola.util.MultiHashMap;
  * destination.
  * @author WanMil
  */
-public class LinkDestinationHook extends OsmReadingHooksAdaptor {
+public class LinkDestinationHook implements OsmReadingHooks {
 	private static final Logger log = Logger.getLogger(LinkDestinationHook.class);
 
 	private ElementSaver saver;
 
 	/** Maps which ways can be driven from a given Coord */
-	private IdentityHashMap<Coord, Set<Way>> adjacentWays = new IdentityHashMap<Coord, Set<Way>>();
+	private IdentityHashMap<Coord, Set<Way>> adjacentWays = new IdentityHashMap<>();
 	/** Contains all _link ways that have to be processed */
-	private Map<Long, Way> destinationLinkWays = new LinkedHashMap<Long, Way>();
+	private Map<Long, Way> destinationLinkWays = new LinkedHashMap<>();
 	
-	private final static Set<String> highwayTypes = new LinkedHashSet<String>(Arrays.asList(
+	private static final Set<String> highwayTypes = new LinkedHashSet<>(Arrays.asList(
 			"motorway", "trunk", "primary", "secondary", "tertiary", 
 			"motorway_link", "trunk_link", "primary_link", "secondary_link", "tertiary_link"));
-	private HashSet<String> linkTypes = new HashSet<String>(Arrays.asList(
+	private HashSet<String> linkTypes = new HashSet<>(Arrays.asList(
 			"motorway_link", "trunk_link", "primary_link", "secondary_link", "tertiary_link"));
 	
 
@@ -64,11 +64,12 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 	private NameFinder nameFinder;
 
 	/** Maps which nodes contains to which ways */ 
-	private IdentityHashMap<Coord, Set<Way>> wayNodes = new IdentityHashMap<Coord, Set<Way>>();
+	private IdentityHashMap<Coord, Set<Way>> wayNodes = new IdentityHashMap<>();
 	
 	private boolean processDestinations;
 	private boolean processExits;
 	
+	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
 		this.saver = saver;
 		nameFinder = new NameFinder(props);
@@ -116,7 +117,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 				for (Coord c : points) {
 					Set<Way> ways = adjacentWays.get(c);
 					if (ways == null) {
-						ways = new HashSet<Way>(4);
+						ways = new HashSet<>(4);
 						adjacentWays.put(c, ways);
 					}
 					ways.add(w);
@@ -137,7 +138,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 							destLanesTag = directedDestinationLanes;
 							destSourceTagKey += ":" + directionSuffix;
 						}
-						if (destLanesTag != null && destLanesTag.contains("|") == false) {
+						if (destLanesTag != null && !destLanesTag.contains("|")) {
 							// the destination:lanes tag contains no | => no lane specific information
 							// use this tag as destination tag 
 							destinationTag = destLanesTag;
@@ -154,14 +155,16 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 						}
 						
 					}
-					if (destinationTag != null){
+					if (destinationTag != null) {
 						w.addTag("mkgmap:dest_hint_work", destinationTag);
-						if ("destination".equals(destSourceTagKey) == false){
-							if (log.isDebugEnabled()){
-								if (destSourceTagKey.startsWith("destination:lanes"))
-									log.debug("Use",destSourceTagKey,"as destination tag because there is one lane information only. Way ",w.getId(),w.toTagString());
-								else 
-									log.debug("Use",destSourceTagKey,"as destination tag. Way ",w.getId(),w.toTagString());
+						if (!"destination".equals(destSourceTagKey) && log.isDebugEnabled()) {
+							if (destSourceTagKey.startsWith("destination:lanes")) {
+								log.debug("Use", destSourceTagKey,
+										"as destination tag because there is one lane information only. Way ",
+										w.getId(), w.toTagString());
+							} else {
+								log.debug("Use", destSourceTagKey, "as destination tag. Way ", w.getId(),
+										w.toTagString());
 							}
 						}
 						destinationLinkWays.put(w.getId(), w);
@@ -190,7 +193,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 		for (Coord c : w.getPoints()) {
 			Set<Way> ways = wayNodes.get(c);
 			if (ways == null) {
-				ways = new HashSet<Way>(4);
+				ways = new HashSet<>(4);
 				wayNodes.put(c, ways);
 			}
 			ways.add(w);
@@ -361,6 +364,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 	}
 	
 	/**
+	 * TODO: move to Coord class?
 	 * Retrieve a list of all Coords that are the direct neighbours of
 	 * the given Coord. A neighbours latitude and longitude does not differ
 	 * more than one Garmin unit from the given Coord.
@@ -368,13 +372,12 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 	 * @return all neighbours of c
 	 */
 	private List<Coord> getDirectNeighbours(Coord c) {
-		List<Coord> neighbours = new ArrayList<Coord>(8);
-		for (int dLat = -1; dLat<2; dLat++) {
+		List<Coord> neighbours = new ArrayList<>(8);
+		for (int dLat = -1; dLat < 2; dLat++) {
 			for (int dLon = -1; dLon < 2; dLon++) {
-				if (dLat == 0 && dLon == 0) {
-					continue;
+				if (dLat != 0 || dLon != 0) {
+					neighbours.add(new Coord(c.getLatitude() + dLat, c.getLongitude() + dLon));
 				}
-				neighbours.add(new Coord(c.getLatitude()+dLat, c.getLongitude()+dLon));//TODO: move to Coord class?
 			}
 		}
 		return neighbours;
@@ -388,12 +391,8 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 	 * 		motorway exit  
 	 */
 	private boolean isTaggedAsExit(Node node) {
-		if ("motorway_junction".equals(node.getTag("highway")) == false) {
-			return false;
-		}
-		return node.getTag("ref") != null || 
-				(nameFinder.getName(node) != null) || 
-				node.getTag("exit_to") != null;
+		return "motorway_junction".equals(node.getTag("highway"))
+				&& (node.getTag("ref") != null || (nameFinder.getName(node) != null) || node.getTag("exit_to") != null);
 	}
 	
 	/**
@@ -404,7 +403,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 	 * @return a list of all coords an the connection ways
 	 */
 	private List<Entry<Coord, Way>> getNextNodes(Coord node, boolean drivingDirection) {
-		List<Entry<Coord, Way>> nextNodes = new ArrayList<Entry<Coord, Way>>();
+		List<Entry<Coord, Way>> nextNodes = new ArrayList<>();
 		
 		Set<Way> connectedWays = wayNodes.get(node);
 		for (Way w : connectedWays) {
@@ -453,10 +452,10 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 	private void processWays() {
 		// remove the adjacent links from the destinationLinkWays list
 		// to avoid duplicate dest_hints
-		Queue<Way> linksWithDestination = new ArrayDeque<Way>();
+		Queue<Way> linksWithDestination = new ArrayDeque<>();
 		linksWithDestination.addAll(destinationLinkWays.values());
 		log.debug(destinationLinkWays.size(),"links with destination tag");
-		while (linksWithDestination.isEmpty()== false) {
+		while (!linksWithDestination.isEmpty()) {
 			Way linkWay = linksWithDestination.poll();
 			String destination = linkWay.getTag("mkgmap:dest_hint_work");
 			if (log.isDebugEnabled())
@@ -478,8 +477,8 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 
 					// remove the way from destination handling only if both ways are connected with start/end points
 					// otherwise it is a crossroads and therefore both ways need to be handled
-					boolean startEndConnection = connectedWay.getPoints().isEmpty()==false && connectedWay.getFirstPoint().equals(c);
-					if (startEndConnection && connectedWay.equals(linkWay) == false 
+					boolean startEndConnection = c.equals(connectedWay.getFirstPoint());
+					if (startEndConnection && !connectedWay.equals(linkWay) 
 							&& connectedWay.getTag("highway").endsWith("_link")
 							&& destination.equals(nextDest)) {
 						// do not use this way because there is another link before that with the same destination
@@ -606,10 +605,8 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 								}
 								if (exitNode.getTag("ref") != null)
 									hintWay.addTag("mkgmap:exit_hint_ref", exitNode.getTag("ref"));
-								if (countMatches == 1){
-									if (exitNode.getTag("exit_to") != null){
-										hintWay.addTag("mkgmap:exit_hint_exit_to", exitNode.getTag("exit_to"));
-									}
+								if (countMatches == 1 && exitNode.getTag("exit_to") != null) {
+									hintWay.addTag("mkgmap:exit_hint_exit_to", exitNode.getTag("exit_to"));
 								}
 								if (nameFinder.getName(exitNode) != null){
 									hintWay.addTag("mkgmap:exit_hint_name", nameFinder.getName(exitNode));
@@ -626,7 +623,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 		
 		if (processDestinations) {
 			// use link ways only
-			while (destinationLinkWays.isEmpty() == false) {
+			while (!destinationLinkWays.isEmpty()) {
 				Way w = destinationLinkWays.values().iterator().next();
 				destinationLinkWays.remove(w.getId());
 				if (isNotOneway(w)) {
@@ -716,16 +713,16 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 	 */
 	private double getAngle(Coord cCenter, Coord c1, Coord c2)
 	{
-	    double dx1 = c1.getLongitude() - cCenter.getLongitude();
-	    double dy1 = -(c1.getLatitude() - cCenter.getLatitude());
+		int dx1 = c1.getLongitude() - cCenter.getLongitude();
+		int dy1 = -(c1.getLatitude() - cCenter.getLatitude());
 
-	    double dx2 = c2.getLongitude() - cCenter.getLongitude();
-	    double dy2 = -(c2.getLatitude() - cCenter.getLatitude());
+		int dx2 = c2.getLongitude() - cCenter.getLongitude();
+		int dy2 = -(c2.getLatitude() - cCenter.getLatitude());
 
-	    double inRads1 = Math.atan2(dy1,dx1);
-	    double inRads2 = Math.atan2(dy2,dx2);
+		double inRads1 = Math.atan2(dy1, dx1);
+		double inRads2 = Math.atan2(dy2, dx2);
 
-	    return Math.toDegrees(inRads2) - Math.toDegrees(inRads1);
+		return Math.toDegrees(inRads2) - Math.toDegrees(inRads1);
 	}
 
 	/**
@@ -740,6 +737,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 		nameFinder = null;
 	}
 
+	@Override
 	public Set<String> getUsedTags() {
 		if (!(processDestinations || processExits))
 			return Collections.emptySet();
@@ -747,7 +745,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 		// to be able to copy the value to the destination tag
 		// Do not load destination because it makes sense only if the tag is
 		// referenced in the style file
-		Set<String> tags = new HashSet<String>();
+		Set<String> tags = new HashSet<>();
 		tags.add("highway");
 		tags.add("destination");
 		tags.add("destination:lanes");
@@ -763,6 +761,7 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 		return tags;
 	}	
 
+	@Override
 	public void end() {
 		log.info("LinkDestinationHook started");
 
@@ -789,11 +788,8 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 		// check if oneway is set implicitly by the highway type (motorway and motorway_link)
 		String onewayTag = w.getTag("oneway");
 		String highwayTag = w.getTag("highway");
-		if (onewayTag == null && highwayTag != null
-				&& (highwayTag.equals("motorway") || highwayTag.equals("motorway_link"))) {
-			return true;
-		}
-		return false;
+		return onewayTag == null && highwayTag != null
+				&& (highwayTag.equals("motorway") || highwayTag.equals("motorway_link"));
 	}
 
 	/**
@@ -811,13 +807,12 @@ public class LinkDestinationHook extends OsmReadingHooksAdaptor {
 	 * @return <code>true</code> way is not oneway
 	 */
 	private boolean isNotOneway(Way w) {
-		return "no".equals(w.getTag("oneway")) || 
-				(isOnewayInDirection(w) == false
-				 && isOnewayOppositeDirection(w) == false);
+		return "no".equals(w.getTag("oneway")) || (!isOnewayInDirection(w) && !isOnewayOppositeDirection(w));
 	}
 	
 	/** Private length function without caching */
 	private LengthFunction length = new LengthFunction() {
+		@Override
 		public boolean isCached() {
 			return false;
 		}

@@ -223,13 +223,13 @@ public class MapBuilder implements Configurable {
 		String ipm = props.getProperty("dem-interpolation", "auto");
 		switch (ipm) {
 		case "auto": 
-			demInterpolationMethod = InterpolationMethod.Automatic;
+			demInterpolationMethod = InterpolationMethod.AUTOMATIC;
 			break;
 		case "bicubic": 
-			demInterpolationMethod = InterpolationMethod.Bicubic;
+			demInterpolationMethod = InterpolationMethod.BICUBIC;
 			break;
 		case "bilinear":
-			demInterpolationMethod = InterpolationMethod.Bilinear;
+			demInterpolationMethod = InterpolationMethod.BILINEAR;
 			break;
 		default:
 			throw new IllegalArgumentException("invalid argument for option dem-interpolation: '" + ipm + 

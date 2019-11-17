@@ -37,29 +37,29 @@ import uk.me.parabola.mkgmap.filters.ShapeMergeFilter;
  * @author Steve Ratcliffe
  */
 public class Coord implements Comparable<Coord> {
-	private final static short ON_BOUNDARY_MASK = 0x0001; // bit in flags is true if point lies on a boundary
-	private final static short PRESERVED_MASK = 0x0002; // bit in flags is true if point should not be filtered out
-	private final static short REPLACED_MASK = 0x0004;  // bit in flags is true if point was replaced 
-	private final static short ADDED_BY_CLIPPER_MASK = 0x0008; // bit in flags is true if point was added by clipper 
-	private final static short FIXME_NODE_MASK = 0x0010; // bit in flags is true if a node with this coords has a fixme tag
-	private final static short REMOVE_MASK = 0x0020; // bit in flags is true if this point should be removed
-	private final static short VIA_NODE_MASK = 0x0040; // bit in flags is true if a node with this coords is the via node of a RestrictionRelation
+	private static final short ON_BOUNDARY_MASK = 0x0001; // bit in flags is true if point lies on a boundary
+	private static final short PRESERVED_MASK = 0x0002; // bit in flags is true if point should not be filtered out
+	private static final short REPLACED_MASK = 0x0004;  // bit in flags is true if point was replaced 
+	private static final short ADDED_BY_CLIPPER_MASK = 0x0008; // bit in flags is true if point was added by clipper 
+	private static final short FIXME_NODE_MASK = 0x0010; // bit in flags is true if a node with this coords has a fixme tag
+	private static final short REMOVE_MASK = 0x0020; // bit in flags is true if this point should be removed
+	private static final short VIA_NODE_MASK = 0x0040; // bit in flags is true if a node with this coords is the via node of a RestrictionRelation
 	
-	private final static short PART_OF_BAD_ANGLE = 0x0080; // bit in flags is true if point should be treated as a node
-	private final static short PART_OF_SHAPE2 = 0x0100; // use only in ShapeMerger
-	private final static short END_OF_WAY = 0x0200; // use only in WrongAngleFixer
-	private final static short HOUSENUMBER_NODE = 0x0400; // start/end of house number interval
-	private final static short ADDED_HOUSENUMBER_NODE = 0x0800; // node was added for house numbers
-	private final static short ON_COUNTRY_BORDER = 0x1000; // node is on a country border
+	private static final short PART_OF_BAD_ANGLE = 0x0080; // bit in flags is true if point should be treated as a node
+	private static final short PART_OF_SHAPE2 = 0x0100; // use only in ShapeMerger
+	private static final short END_OF_WAY = 0x0200; // use only in WrongAngleFixer
+	private static final short HOUSENUMBER_NODE = 0x0400; // start/end of house number interval
+	private static final short ADDED_HOUSENUMBER_NODE = 0x0800; // node was added for house numbers
+	private static final short ON_COUNTRY_BORDER = 0x1000; // node is on a country border
 	
-	private final static int HIGH_PREC_BITS = 30;
-	public final static int DELTA_SHIFT = HIGH_PREC_BITS - 24; 
-	private final static int MAX_DELTA = 1 << (DELTA_SHIFT - 2); // max delta abs value that is considered okay
-	private final static long FACTOR_HP = 1L << HIGH_PREC_BITS;
+	private static final int HIGH_PREC_BITS = 30;
+	public static final int DELTA_SHIFT = HIGH_PREC_BITS - 24; 
+	private static final int MAX_DELTA = 1 << (DELTA_SHIFT - 2); // max delta abs value that is considered okay
+	private static final long FACTOR_HP = 1L << HIGH_PREC_BITS;
 	
-	public final static double R = 6378137.0; // Radius of earth at equator as defined by WGS84
-	public final static double U = R * 2 * Math.PI; // circumference of earth at equator (WGS84)
-	public final static double MEAN_EARTH_RADIUS = 6371000; // earth is a flattened sphere
+	public static final double R = 6378137.0; // Radius of earth at equator as defined by WGS84
+	public static final double U = R * 2 * Math.PI; // circumference of earth at equator (WGS84)
+	public static final double MEAN_EARTH_RADIUS = 6371000; // earth is a flattened sphere
 	
 	private final int latitude;
 	private final int longitude;
@@ -94,8 +94,8 @@ public class Coord implements Comparable<Coord> {
 		this.lonDelta = (byte) ((this.longitude << DELTA_SHIFT) - lonHighPrec);
 
 		// verify math
-		assert (this.latitude << DELTA_SHIFT) - latDelta == latHighPrec;
-		assert (this.longitude << DELTA_SHIFT) - lonDelta == lonHighPrec;
+		assert (this.latitude << DELTA_SHIFT) - (int) latDelta == latHighPrec;
+		assert (this.longitude << DELTA_SHIFT) - (int) lonDelta == lonHighPrec;
 	}
 	
 	private Coord (int lat, int lon, byte latDelta, byte lonDelta){
@@ -404,7 +404,7 @@ public class Coord implements Comparable<Coord> {
 	 * Compares the coordinates that are displayed in the map
 	 */
 	public boolean equals(Object obj) {
-		if (obj == null || !(obj instanceof Coord))
+		if (!(obj instanceof Coord))
 			return false;
 		Coord other = (Coord) obj;
 		return latitude == other.latitude && longitude == other.longitude;
@@ -486,8 +486,7 @@ public class Coord implements Comparable<Coord> {
 		double sinMidLat = Math.sin((lat1-lat2)/2);
 		double sinMidLon = Math.sin((lon1-lon2)/2);
 		double dRad = 2*Math.asin(Math.sqrt(sinMidLat*sinMidLat + Math.cos(lat1)*Math.cos(lat2)*sinMidLon*sinMidLon));
-		double distance= dRad * R;
-		return distance;
+		return dRad * R; // the distance
 	}
 
 	/**
@@ -513,10 +512,7 @@ public class Coord implements Comparable<Coord> {
 
 		// distance is pythagoras on 'stretched' Mercator projection
 		double distRad = Math.sqrt(dLat*dLat + q*q*dLon*dLon); // angular distance in radians
-		double dist = distRad * R;
-
-		return dist;
-		
+		return distRad * R; // the distance
 	}
 
 	/**
@@ -652,7 +648,7 @@ public class Coord implements Comparable<Coord> {
 	/* Factor for conversion to radians using HIGH_PREC_BITS bits
 	 * (Math.PI / 180) * (360.0 / (1 << HIGH_PREC_BITS)) 
 	 */
-	final static double HIGH_PREC_RAD_FACTOR = 2 * Math.PI / FACTOR_HP;
+	static final double HIGH_PREC_RAD_FACTOR = 2 * Math.PI / FACTOR_HP;
 	
 	/**
 	 * Convert to radians using high precision 
@@ -667,14 +663,14 @@ public class Coord implements Comparable<Coord> {
 	 * @return Latitude as signed HIGH_PREC_BITS bit integer 
 	 */
 	public int getHighPrecLat() {
-		return (latitude << DELTA_SHIFT) - latDelta;
+		return (latitude << DELTA_SHIFT) - (int) latDelta;
 	}
 
 	/**
 	 * @return Longitude as signed HIGH_PREC_BITS bit integer 
 	 */
 	public int getHighPrecLon() {
-		return (longitude << DELTA_SHIFT) - lonDelta;
+		return (longitude << DELTA_SHIFT) - (int) lonDelta;
 	}
 	
 	/**

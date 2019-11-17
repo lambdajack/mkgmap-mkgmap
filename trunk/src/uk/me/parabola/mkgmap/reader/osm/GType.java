@@ -58,22 +58,20 @@ public class GType {
 	private boolean propogateActionsOnContinue;
 
 	public static boolean checkType(FeatureKind featureKind, int type) {
-		if (type >= 0x010000){
+		if (type >= 0x010000) {
 			if ((type & 0xff) > 0x1f)
 				return false;
 		} else {
-			if (featureKind == FeatureKind.POLYLINE && type > 0x3f)
+			if (featureKind == FeatureKind.POLYLINE && type > 0x3f
+					|| (featureKind == FeatureKind.POLYGON && (type > 0x7f || type == 0x4a))) {
 				return false;
-			else if (featureKind == FeatureKind.POLYGON && (type> 0x7f || type == 0x4a))
-				return false;
-			else if (featureKind == FeatureKind.POINT){
+			} else if (featureKind == FeatureKind.POINT) {
 				if (type < 0x0100)
 					return false;
 				int subtype = type & 0xff;
- 				if (subtype > 0x1f)
+				if (subtype > 0x1f || MapPoint.isCityType(type) && subtype != 0) {
 					return false;
-				if (MapPoint.isCityType(type) && subtype != 0)
-					return false;
+				}
 			}
 		}
 		return true;
@@ -83,10 +81,9 @@ public class GType {
 		this.featureKind = featureKind;
 		try {
 			int t = Integer.decode(type);
-			if (featureKind == FeatureKind.POLYGON){
+			if (featureKind == FeatureKind.POLYGON && t >= 0x100 && t < 0x10000 && (t & 0xff) == 0) {
 				// allow 0xYY00 instead of 0xYY
-				if (t >= 0x100 && t < 0x10000 && (t & 0xff) == 0)
-					t >>= 8;
+				t >>= 8;
 			}
 			this.type = t;
 		} catch (NumberFormatException e) {
@@ -163,9 +160,9 @@ public class GType {
 			fmt.format(" road_class=%d road_speed=%d", roadClass, roadSpeed);
 		
 		if (continueSearch)
-			fmt.format(" continue");
+			sb.append(" continue");
 		if (propogateActionsOnContinue)
-			fmt.format(" propagate");
+			sb.append(" propagate");
 		sb.append(']');
 		String res = sb.toString();
 		fmt.close();

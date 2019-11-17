@@ -30,7 +30,7 @@ import uk.me.parabola.util.EnhancedProperties;
  * 
  * @author WanMil
  */
-public class UnusedElementsRemoverHook extends OsmReadingHooksAdaptor {
+public class UnusedElementsRemoverHook implements OsmReadingHooks {
 	private static final Logger log = Logger.getLogger(UnusedElementsRemoverHook.class);
 
 	private ElementSaver saver;

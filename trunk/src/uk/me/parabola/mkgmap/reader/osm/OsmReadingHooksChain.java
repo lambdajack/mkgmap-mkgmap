@@ -45,6 +45,7 @@ public class OsmReadingHooksChain implements OsmReadingHooks {
 		readingHooks = readingHooksList.toArray(new OsmReadingHooks[readingHooksList.size()]);
 	}
 	
+	@Override
 	public Set<String> getUsedTags() {
 		HashSet<String> usedTags = new HashSet<String>();
 		for (int i = 0; i < readingHooks.length; i++)
@@ -52,27 +53,32 @@ public class OsmReadingHooksChain implements OsmReadingHooks {
 		return usedTags;
 	}
 	
+	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
 		for (int i = 0; i < readingHooks.length; i++)
 			readingHooks[i].init(saver, props);
 		return true;
 	}
 
+	@Override
 	public void onAddNode(Node node) {
 		for (int i = 0; i < readingHooks.length; i++)
 			readingHooks[i].onAddNode(node);
 	}
 
+	@Override
 	public void onCoordAddedToWay(Way way, long coordId, Coord co) {
 		for (int i = 0; i < readingHooks.length; i++)
 			readingHooks[i].onCoordAddedToWay(way, coordId, co);
 	}
 
+	@Override
 	public void onAddWay(Way way) {
 		for (int i = 0; i < readingHooks.length; i++)
 			readingHooks[i].onAddWay(way);
 	}
 
+	@Override
 	public void end() {
 		for (int i = 0; i < readingHooks.length; i++)
 			readingHooks[i].end();

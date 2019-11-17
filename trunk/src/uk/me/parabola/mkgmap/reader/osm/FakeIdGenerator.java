@@ -16,7 +16,10 @@ package uk.me.parabola.mkgmap.reader.osm;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class FakeIdGenerator {
-
+	
+	private FakeIdGenerator () {
+		// private constructor to hide the implicit public one
+	}
 	private static final long START_ID = 1L << 62;
 	
 	private static final AtomicLong fakeId = new AtomicLong(START_ID);
@@ -39,11 +42,7 @@ public class FakeIdGenerator {
 	 * @return a unique id
 	 */
 	public static long makeFakeId() {
-		long id = fakeId.incrementAndGet(); 
-//				if (4611686018427394038L == id){
-//					long dd = 4;
-//				}
-		return id;
+		return fakeId.incrementAndGet(); 
 	}
 
 	public static boolean isFakeId(long id) {

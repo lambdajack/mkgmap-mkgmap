@@ -17,7 +17,7 @@ import java.util.Arrays;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.util.EnhancedProperties;
 
-public class MultiPolygonFinishHook extends OsmReadingHooksAdaptor {
+public class MultiPolygonFinishHook implements OsmReadingHooks {
 	private static final Logger log = Logger.getLogger(MultiPolygonFinishHook.class);
 	
 	private ElementSaver saver;

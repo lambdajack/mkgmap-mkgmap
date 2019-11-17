@@ -162,6 +162,7 @@ public class MultiPolygonCutter {
 			
 			// the inner areas of the cut point have been processed
 			// they are no longer needed
+			
 			for (Area cutArea : cutPoint.getAreas()) {
 				ListIterator<Area> areaIter = areaCutData.innerAreas.listIterator();
 				while (areaIter.hasNext()) {
@@ -172,8 +173,6 @@ public class MultiPolygonCutter {
 					}
 				}
 			}
-			// remove all does not seem to work. It removes more than the identical areas.
-//			areaCutData.innerAreas.removeAll(cutPoint.getAreas());
 
 			if (areaCutData.outerArea.isSingular()) {
 				// the area is singular
@@ -576,15 +575,15 @@ public class MultiPolygonCutter {
 			if (minAspectRatio == null) {
 				// first get the left/upper cut
 				Rectangle2D r1 = getCutRectangleForArea(outerBounds, true);
-				double s1_1 = CoordinateAxis.LATITUDE.getSizeOfSide(r1);
-				double s1_2 = CoordinateAxis.LONGITUDE.getSizeOfSide(r1);
-				double ar1 = Math.min(s1_1, s1_2) / Math.max(s1_1, s1_2);
+				double s11 = CoordinateAxis.LATITUDE.getSizeOfSide(r1);
+				double s12 = CoordinateAxis.LONGITUDE.getSizeOfSide(r1);
+				double ar1 = Math.min(s11, s12) / Math.max(s11, s12);
 
 				// second get the right/lower cut
 				Rectangle2D r2 = getCutRectangleForArea(outerBounds, false);
-				double s2_1 = CoordinateAxis.LATITUDE.getSizeOfSide(r2);
-				double s2_2 = CoordinateAxis.LONGITUDE.getSizeOfSide(r2);
-				double ar2 = Math.min(s2_1, s2_2) / Math.max(s2_1, s2_2);
+				double s21 = CoordinateAxis.LATITUDE.getSizeOfSide(r2);
+				double s22 = CoordinateAxis.LONGITUDE.getSizeOfSide(r2);
+				double ar2 = Math.min(s21, s22) / Math.max(s21, s22);
 
 				// get the minimum
 				minAspectRatio = Math.min(ar1, ar2);
@@ -592,62 +591,41 @@ public class MultiPolygonCutter {
 			return minAspectRatio;
 		}
 		
+		
 		public int compareTo(CutPoint o) {
 			if (this == o) {
 				return 0;
 			}
 			// prefer a cut at the boundaries
-			if (isStartCut() && o.isStartCut() == false) {
-				return 1;
-			} 
-			else if (isStartCut() == false && o.isStartCut()) {
-				return -1;
-			}
-			else if (isStopCut() && o.isStopCut() == false) {
-				return 1;
-			}
-			else if (isStopCut() == false && o.isStopCut()) {
-				return -1;
-			}
-			
+			int d = Boolean.compare(isStartCut(), o.isStartCut());
+			if (d != 0)
+				return d;
+			d = Boolean.compare(isStopCut(), o.isStopCut());
+			if (d != 0)
+				return d;
 			// handle the special case that a cut has no area
 			if (getNumberOfAreas() == 0) {
-				if (o.getNumberOfAreas() == 0) {
-					return 0;
-				} else {
-					return -1;
-				}
+				return o.getNumberOfAreas() == 0 ? 0 : -1;
 			} else if (o.getNumberOfAreas() == 0) {
 				return 1;
 			}
-			
-			if (isBadCutPoint() != o.isBadCutPoint()) {
-				if (isBadCutPoint()) {
-					return -1;
-				} else
-					return 1;
-			}
-			
+
+			d = Boolean.compare(o.isBadCutPoint(), isBadCutPoint()); // exchanged order!
+			if (d != 0)
+				return d;
 			double dAR = getMinAspectRatio() - o.getMinAspectRatio();
 			if (dAR != 0) {
 				return (dAR > 0 ? 1 : -1);
 			}
-			
-			if (isGoodCutPoint() != o.isGoodCutPoint()) {
-				if (isGoodCutPoint())
-					return 1;
-				else
-					return -1;
-			}
-			
+			d = Boolean.compare(isGoodCutPoint(), o.isGoodCutPoint());
+			if (d != 0)
+				return d;
 			// prefer the larger area that is split
-			double ss1 = axis.getSizeOfSide(getBounds2D());
-			double ss2 = o.axis.getSizeOfSide(o.getBounds2D());
-			if (ss1-ss2 != 0)
-				return Double.compare(ss1,ss2); 
+			d = Double.compare(axis.getSizeOfSide(getBounds2D()), o.axis.getSizeOfSide(o.getBounds2D()));
+			if (d != 0)
+				return d;
 
-			int ndiff = getNumberOfAreas()-o.getNumberOfAreas();
-			return ndiff;
+			return getNumberOfAreas() - o.getNumberOfAreas();
 
 		}
 
@@ -666,7 +644,7 @@ public class MultiPolygonCutter {
 		}
 	}
 
-	private static enum CoordinateAxis {
+	private enum CoordinateAxis {
 		LATITUDE(false), LONGITUDE(true);
 
 		private CoordinateAxis(boolean useX) {

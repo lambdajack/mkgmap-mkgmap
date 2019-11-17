@@ -12,6 +12,7 @@
  */
 package uk.me.parabola.mkgmap.reader.osm;
 
+import java.util.Collections;
 import java.util.Set;
 
 import uk.me.parabola.imgfmt.app.Coord;
@@ -52,7 +53,9 @@ public interface OsmReadingHooks {
 	 * @return If you return false then this set of hooks will not be used. So if they
 	 * are not needed based on the options supplied you can disable it.
 	 */
-	public boolean init(ElementSaver saver, EnhancedProperties props);
+	public default boolean init(ElementSaver saver, EnhancedProperties props) {
+		return true;
+	}
 
 	/**
 	 * Retrieves the tags that are used by this hook. Tags that are used only if they are referenced
@@ -60,7 +63,9 @@ public interface OsmReadingHooks {
 	 * 
 	 * @return the tag names used by this hook
 	 */
-	public Set<String> getUsedTags();
+	public default Set<String> getUsedTags() {
+		return Collections.emptySet();
+	}
 	
 	/**
 	 * Called on adding a node to the saver and just before it is added. You can modify
@@ -68,7 +73,7 @@ public interface OsmReadingHooks {
 	 *
 	 * @param node The node to be added.
 	 */
-	void onAddNode(Node node);
+	default void onAddNode(Node node) {}
 
 	/**
 	 * Add the given way. The way must be complete, call after the end tag
@@ -76,7 +81,7 @@ public interface OsmReadingHooks {
 	 *
 	 * @param way The osm way.
 	 */
-	public void onAddWay(Way way);
+	public default void onAddWay(Way way) {}
 
 	/**
 	 * This is called whenever a node is added to a way.  A node is something with tags, not just a Coord.
@@ -87,11 +92,12 @@ public interface OsmReadingHooks {
 	 * @param coordId The coordinate id of the node that is being added.
 	 * @param co The coordinate.
 	 */
-	public void onCoordAddedToWay(Way way, long coordId, Coord co);
+	public default void onCoordAddedToWay(Way way, long coordId, Coord co) {}
 
 	/**
 	 * Called after the file has been read.  Can be used to add more elements to the saver
 	 * based on information stored up.
 	 */
-	public void end();
+	public default void end() {}
+	
 }

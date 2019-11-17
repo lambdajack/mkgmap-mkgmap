@@ -60,7 +60,7 @@ import uk.me.parabola.util.EnhancedProperties;
  * </ul>
  * @author WanMil
  */
-public class POIGeneratorHook extends OsmReadingHooksAdaptor {
+public class POIGeneratorHook implements OsmReadingHooks {
 	private static final Logger log = Logger.getLogger(POIGeneratorHook.class);
 
 	private List<Entry<String,String>> poiPlacementTags; 

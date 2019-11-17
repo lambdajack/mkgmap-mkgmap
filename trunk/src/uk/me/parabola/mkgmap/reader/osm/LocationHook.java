@@ -25,7 +25,7 @@ import uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryQuadTree;
 import uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryUtil;
 import uk.me.parabola.util.EnhancedProperties;
 
-public class LocationHook extends OsmReadingHooksAdaptor {
+public class LocationHook implements OsmReadingHooks {
 	private static final Logger log = Logger.getLogger(LocationHook.class);
 	// the resulting assignments are logged with this extra logger
 	// so that it is possible to log only the results of the location hook

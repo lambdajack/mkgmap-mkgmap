@@ -26,12 +26,12 @@ import uk.me.parabola.util.EnhancedProperties;
  * @author WanMil
  *
  */
-public class RoutingHook extends OsmReadingHooksAdaptor {
+public class RoutingHook implements OsmReadingHooks {
 
 	private final Set<String> usedTags;
 	
 	public RoutingHook() {
-		usedTags = new HashSet<String>();
+		usedTags = new HashSet<>();
 		usedTags.add("except");
 		usedTags.add("restriction");
 		usedTags.add("restriction:foot");
@@ -74,10 +74,9 @@ public class RoutingHook extends OsmReadingHooksAdaptor {
 		return props.containsKey("route");
 	}
 
-
+	@Override
 	public Set<String> getUsedTags() {
 		return usedTags;
 	}
-	
 
 }

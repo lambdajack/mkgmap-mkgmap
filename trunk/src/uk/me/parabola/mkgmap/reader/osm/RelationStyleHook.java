@@ -20,19 +20,16 @@ import uk.me.parabola.util.EnhancedProperties;
  * This hook applies the relation rules of the style system.
  * @author WanMil
  */
-public class RelationStyleHook extends OsmReadingHooksAdaptor {
+public class RelationStyleHook implements OsmReadingHooks {
 
 	private Style style;
 	private ElementSaver saver;
 	private NameFinder nameFinder;
 
-	public RelationStyleHook() {
-	}
-
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
 		this.saver = saver;
 		nameFinder  = new NameFinder(props);
-		return super.init(saver, props);
+		return true;
 	}
 
 	public void setStyle(Style style){
@@ -48,9 +45,6 @@ public class RelationStyleHook extends OsmReadingHooksAdaptor {
 				((RestrictionRelation) rel).eval(saver.getBoundingBox());
 			}
 		}
-		super.end();
 	}
-
-	
 	
 }

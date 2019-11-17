@@ -57,7 +57,7 @@ import uk.me.parabola.util.Java2DConverter;
  * Should pick one that works well and make it the default.
  *
  */
-public class SeaGenerator extends OsmReadingHooksAdaptor {
+public class SeaGenerator implements OsmReadingHooks {
 	private static final Logger log = Logger.getLogger(SeaGenerator.class);
 
 	private boolean generateSeaUsingMP = true;

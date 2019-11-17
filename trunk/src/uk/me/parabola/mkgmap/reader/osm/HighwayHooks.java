@@ -30,7 +30,7 @@ import uk.me.parabola.util.EnhancedProperties;
  *
  * Some of this would be much better done in a style file or by extending the style system.
  */
-public class HighwayHooks extends OsmReadingHooksAdaptor {
+public class HighwayHooks implements OsmReadingHooks {
 	private static final Logger log = Logger.getLogger(HighwayHooks.class);
 
 	private final List<Way> motorways = new ArrayList<>();

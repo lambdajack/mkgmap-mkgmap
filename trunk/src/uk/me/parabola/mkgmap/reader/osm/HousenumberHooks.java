@@ -27,7 +27,7 @@ import uk.me.parabola.util.EnhancedProperties;
  * @author GerdP
  *  
  */
-public class HousenumberHooks extends OsmReadingHooksAdaptor {
+public class HousenumberHooks implements OsmReadingHooks {
 	private static final Logger log = Logger.getLogger(HousenumberHooks.class);
 	
 	private ElementSaver saver;

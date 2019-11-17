@@ -27,7 +27,7 @@ import uk.me.parabola.log.Logger;
  */
 public class HGTConverter {
 	private static final Logger log = Logger.getLogger(HGTConverter.class);
-	protected final static double FACTOR = 45.0d / (1<<29);
+	protected static final double FACTOR = 45.0d / (1<<29);
 	private short[] noHeights = { HGTReader.UNDEF };
 	private HGTReader[][] readers;
 	private final int minLat32;
@@ -47,16 +47,16 @@ public class HGTConverter {
 	private int statRdrNull;
 	private int statRdrRes;
 	
-	private InterpolationMethod interpolationMethod = InterpolationMethod.Bicubic;
+	private InterpolationMethod interpolationMethod = InterpolationMethod.BICUBIC;
 
 	public enum InterpolationMethod {
 		/** faster, smoothing, less precise */
-		Bilinear , 
+		BILINEAR, 
 		/** slower, higher precision */
-		Bicubic, 
+		BICUBIC, 
 		/** bicubic for high resolution, else bilinear */ 
-		Automatic
-	};
+		AUTOMATIC
+	}
 	
 	/**
 	 * Class to extract elevation information from SRTM files in hgt format.
@@ -100,7 +100,6 @@ public class HGTConverter {
 			}
 		}
 		res = maxRes; // we use the highest available res
-		return;
 	}
 
 	/**
@@ -109,7 +108,7 @@ public class HGTConverter {
 	 */
 	public void setInterpolationMethod(InterpolationMethod interpolationMethod) {
 		this.interpolationMethod = interpolationMethod;
-		useComplexInterpolation = (interpolationMethod != InterpolationMethod.Bilinear);
+		useComplexInterpolation = (interpolationMethod != InterpolationMethod.BILINEAR);
 	}
 
 	/**
@@ -127,16 +126,16 @@ public class HGTConverter {
 			// no reader : ocean or missing file
 			return outsidePolygonHeight;
 		}
-		int res = rdr.getRes();
+		int detectedRes = rdr.getRes();
 		rdr.prepRead();
-		if (res <= 0)
+		if (detectedRes <= 0)
 			return 0; // assumed to be an area in the ocean
 		lastRow = row;
 
-		double scale  = res * FACTOR;
+		double scale  = detectedRes * FACTOR;
 		
-		double y1 = (lat32 - minLat32) * scale - row * res;
-		double x1 = (lon32 - minLon32) * scale - col * res;
+		double y1 = (lat32 - minLat32) * scale - row * detectedRes;
+		double x1 = (lon32 - minLon32) * scale - col * detectedRes;
 		int xLeft = (int) x1;
 		int yBottom = (int) y1;
 		double qx = x1 - xLeft;
@@ -183,7 +182,7 @@ public class HGTConverter {
 	 * can use HGTreaders near the current one
 	 */
 	private boolean fillArray(HGTReader rdr, int row, int col, int xLeft, int yBottom) {
-		int res = rdr.getRes();
+		int detectedRes = rdr.getRes();
 		int minX = 0;
 		int minY = 0;
 		int maxX = 3;
@@ -196,7 +195,7 @@ public class HGTConverter {
 				return false;
 			minX = 1;
 			inside = false;
-		} else if (xLeft == res - 1) {
+		} else if (xLeft == detectedRes - 1) {
 			if (col + 1 >= readers[0].length)
 				return false;
 			maxX = 2;
@@ -207,7 +206,7 @@ public class HGTConverter {
 				return false;
 			minY = 1;
 			inside = false;
-		} else if (yBottom == res - 1) {
+		} else if (yBottom == detectedRes - 1) {
 			if (row + 1 >= readers.length)
 				return false;
 			maxY = 2;
@@ -229,19 +228,19 @@ public class HGTConverter {
 			return true;
 
 		// fill data from adjacent readers, down and up
-		if (xLeft > 0 && xLeft < res - 1) {
+		if (xLeft > 0 && xLeft < detectedRes - 1) {
 			if (yBottom == 0) { // bottom edge
-				HGTReader rdrBB = prepReader(res, row - 1, col);
+				HGTReader rdrBB = prepReader(detectedRes, row - 1, col);
 				if (rdrBB == null)
 					return false;
 				for (int x = 0; x <= 3; x++) {
-					h = rdrBB.ele(xLeft + x - 1, res - 1);
+					h = rdrBB.ele(xLeft + x - 1, detectedRes - 1);
 					if (h == HGTReader.UNDEF)
 						return false;
 					eleArray[x][0] = h;
 				}
-			} else if (yBottom == res - 1) { // top edge
-				HGTReader rdrTT = prepReader(res, row + 1, col);
+			} else if (yBottom == detectedRes - 1) { // top edge
+				HGTReader rdrTT = prepReader(detectedRes, row + 1, col);
 				if (rdrTT == null)
 					return false;
 				for (int x = 0; x <= 3; x++) {
@@ -254,19 +253,19 @@ public class HGTConverter {
 		}
 
 		// fill data from adjacent readers, left and right
-		if (yBottom > 0 && yBottom < res - 1) {
+		if (yBottom > 0 && yBottom < detectedRes - 1) {
 			if (xLeft == 0) { // left edgge
-				HGTReader rdrLL = prepReader(res, row, col - 1);
+				HGTReader rdrLL = prepReader(detectedRes, row, col - 1);
 				if (rdrLL == null)
 					return false;
 				for (int y = 0; y <= 3; y++) {
-					h = rdrLL.ele(res - 1, yBottom + y - 1);
+					h = rdrLL.ele(detectedRes - 1, yBottom + y - 1);
 					if (h == HGTReader.UNDEF)
 						return false;
 					eleArray[0][y] = h;
 				}
-			} else if (xLeft == res - 1) { // right edge
-				HGTReader rdrRR = prepReader(res, row, col + 1);
+			} else if (xLeft == detectedRes - 1) { // right edge
+				HGTReader rdrRR = prepReader(detectedRes, row, col + 1);
 				if (rdrRR == null)
 					return false;
 				for (int y = 0; y <= 3; y++) {
@@ -281,45 +280,45 @@ public class HGTConverter {
 		// fill data from adjacent readers, corners
 		if (xLeft == 0) {
 			if (yBottom == 0) { // left bottom corner
-				HGTReader rdrLL = prepReader(res, row, col - 1);
+				HGTReader rdrLL = prepReader(detectedRes, row, col - 1);
 				if (rdrLL == null)
 					return false;
 				for (int y = 1; y <= 3; y++) {
-					h = rdrLL.ele(res - 1, yBottom + y - 1);
+					h = rdrLL.ele(detectedRes - 1, yBottom + y - 1);
 					if (h == HGTReader.UNDEF)
 						return false;
 					eleArray[0][y] = h;
 				}
 
-				HGTReader rdrBB = prepReader(res, row - 1, col);
+				HGTReader rdrBB = prepReader(detectedRes, row - 1, col);
 				if (rdrBB == null)
 					return false;
 				for (int x = 1; x <= 3; x++) {
-					h = rdrBB.ele(xLeft + x - 1, res - 1);
+					h = rdrBB.ele(xLeft + x - 1, detectedRes - 1);
 					if (h == HGTReader.UNDEF)
 						return false;
 					eleArray[x][0] = h;
 				}
 
-				HGTReader rdrLB = prepReader(res, row - 1, col - 1);
+				HGTReader rdrLB = prepReader(detectedRes, row - 1, col - 1);
 				if (rdrLB == null)
 					return false;
-				h = rdrLB.ele(res - 1, res - 1);
+				h = rdrLB.ele(detectedRes - 1, detectedRes - 1);
 				if (h == HGTReader.UNDEF)
 					return false;
 				eleArray[0][0] = h;
-			} else if (yBottom == res - 1) { // left top corner
-				HGTReader rdrLL = prepReader(res, row, col - 1);
+			} else if (yBottom == detectedRes - 1) { // left top corner
+				HGTReader rdrLL = prepReader(detectedRes, row, col - 1);
 				if (rdrLL == null)
 					return false;
 				for (int y = 0; y <= 2; y++) {
-					h = rdrLL.ele(res - 1, yBottom + y - 1);
+					h = rdrLL.ele(detectedRes - 1, yBottom + y - 1);
 					if (h == HGTReader.UNDEF)
 						return false;
 					eleArray[0][y] = h;
 				}
 
-				HGTReader rdrTT = prepReader(res, row + 1, col);
+				HGTReader rdrTT = prepReader(detectedRes, row + 1, col);
 				if (rdrTT == null)
 					return false;
 				for (int x = 1; x <= 3; x++) {
@@ -329,17 +328,17 @@ public class HGTConverter {
 					eleArray[x][3] = h;
 				}
 
-				HGTReader rdrLT = prepReader(res, row + 1, col - 1);
+				HGTReader rdrLT = prepReader(detectedRes, row + 1, col - 1);
 				if (rdrLT == null)
 					return false;
-				h = rdrLT.ele(res - 1, 1);
+				h = rdrLT.ele(detectedRes - 1, 1);
 				if (h == HGTReader.UNDEF)
 					return false;
 				eleArray[0][3] = h;
 			}
-		} else if (xLeft == res - 1) {
+		} else if (xLeft == detectedRes - 1) {
 			if (yBottom == 0) { // right bottom corner
-				HGTReader rdrRR = prepReader(res, row, col + 1);
+				HGTReader rdrRR = prepReader(detectedRes, row, col + 1);
 				if (rdrRR == null)
 					return false;
 				for (int y = 1; y <= 3; y++) {
@@ -349,25 +348,25 @@ public class HGTConverter {
 					eleArray[3][y] = h;
 				}
 
-				HGTReader rdrBB = prepReader(res, row - 1, col);
+				HGTReader rdrBB = prepReader(detectedRes, row - 1, col);
 				if (rdrBB == null)
 					return false;
 				for (int x = 0; x <= 2; x++) {
-					h = rdrBB.ele(xLeft + x - 1, res - 1);
+					h = rdrBB.ele(xLeft + x - 1, detectedRes - 1);
 					if (h == HGTReader.UNDEF)
 						return false;
 					eleArray[x][0] = h;
 				}
 
-				HGTReader rdrRB = prepReader(res, row - 1, col + 1);
+				HGTReader rdrRB = prepReader(detectedRes, row - 1, col + 1);
 				if (rdrRB == null)
 					return false;
-				h = rdrRB.ele(1, res - 1);
+				h = rdrRB.ele(1, detectedRes - 1);
 				if (h == HGTReader.UNDEF)
 					return false;
 				eleArray[3][0] = h;
-			} else if (yBottom == res - 1) { // right top corner
-				HGTReader rdrRR = prepReader(res, row, col + 1);
+			} else if (yBottom == detectedRes - 1) { // right top corner
+				HGTReader rdrRR = prepReader(detectedRes, row, col + 1);
 				if (rdrRR == null)
 					return false;
 				for (int y = 0; y <= 2; y++) {
@@ -377,7 +376,7 @@ public class HGTConverter {
 					eleArray[3][y] = h;
 				}
 
-				HGTReader rdrTT = prepReader(res, row + 1, col);
+				HGTReader rdrTT = prepReader(detectedRes, row + 1, col);
 				if (rdrTT == null)
 					return false;
 				for (int x = 0; x <= 2; x++) {
@@ -387,7 +386,7 @@ public class HGTConverter {
 					eleArray[x][3] = h;
 				}
 
-				HGTReader rdrRT = prepReader(res, row + 1, col + 1);
+				HGTReader rdrRT = prepReader(detectedRes, row + 1, col + 1);
 				if (rdrRT == null)
 					return false;
 				h = rdrRT.ele(1, 1);
@@ -468,7 +467,6 @@ public class HGTConverter {
 					return (short) Math.round((1.0D - qx) * hlt + qx * hrt);
 				if (hrt != HGTReader.UNDEF && hrb != HGTReader.UNDEF && qx > 0.5D)	//right edge
 					return (short) Math.round((1.0D - qy) * hrb + qy * hrt);
-				//if (hlt != HGTReader.UNDEF && hrb != HGTReader.UNDEF && qx + qy > 0.5D && gx + qy < 1.5D)	//diagonal
 				// nearest value
 				return (short)((qx < 0.5D)? ((qy < 0.5D)? hlb: hlt): ((qy < 0.5D)? hrb: hrt));
 			}
@@ -481,7 +479,6 @@ public class HGTConverter {
 					return (short) Math.round((1.0D - qx) * hlb + qx * hrb);
 				if (hlb != HGTReader.UNDEF && hlt != HGTReader.UNDEF && qx < 0.5D)	//left edge
 					return (short) Math.round((1.0D - qy) * hlb + qy * hlt);
-				//if (hlt != HGTReader.UNDEF && hrb != HGTReader.UNDEF && qx + qy > 0.5D && gx + qy < 1.5D)	//diagonal
 				// nearest value
 				return (short) ((qx < 0.5D) ? ((qy < 0.5D) ? hlb : hlt) : ((qy < 0.5D) ? hrb : hrt));
 			}
@@ -494,7 +491,6 @@ public class HGTConverter {
 					return (short) Math.round((1.0D - qx) * hlt + qx * hrt);
 				if (hlt != HGTReader.UNDEF && hlb != HGTReader.UNDEF && qx < 0.5D)	//left edge
 					return (short) Math.round((1.0D - qy) * hlb + qy * hlt);
-				//if (hlb != HGTReader.UNDEF && hrt != HGTReader.UNDEF && qy > qx - 0.5D && qy < qx + 0.5D)	//diagonal
 				// nearest value
 				return (short) ((qx < 0.5D) ? ((qy < 0.5D) ? hlb : hlt) : ((qy < 0.5D) ? hrb : hrt));
 			}
@@ -507,7 +503,6 @@ public class HGTConverter {
 					return (short) Math.round((1.0D - qx) * hlb + qx * hrb);
 				if (hrb != HGTReader.UNDEF && hrt != HGTReader.UNDEF && qx > 0.5D)	//right edge
 					return (short) Math.round((1.0D - qy) * hrb + qy * hrt);
-				//if (hlb != HGTReader.UNDEF && hrt != HGTReader.UNDEF && qy > qx - 0.5D && qy < qx + 0.5D)	//diagonal
 				// nearest value
 				return (short) ((qx < 0.5D) ? ((qy < 0.5D) ? hlb : hlt) : ((qy < 0.5D) ? hrb : hrt));
 			}
@@ -521,15 +516,6 @@ public class HGTConverter {
 		double hxb = (1.0D - qx)*hlb + qx*hrb;
 		return (short) Math.round((1.0D - qy) * hxb + qy * hxt);
 	}
-
-//	public void stats() {
-//		for (int i = 0; i < readers.length; i++) {
-//			for (int j = 0; j < readers[i].length; j++) {
-//				System.out.println(readers[i][j]);
-//			}
-//			
-//		}
-//	}
 
 	public int getHighestRes() {
 		return res;
@@ -568,7 +554,7 @@ public class HGTConverter {
 		clearStat();
 		pointsDistanceLat = pointDist;
 		pointsDistanceLon = pointDist;
-		if (InterpolationMethod.Automatic.equals(interpolationMethod)) {
+		if (InterpolationMethod.AUTOMATIC.equals(interpolationMethod)) {
 			if (res > 0) {
 				int distHGTx3 = (1 << 29)/(45 / 3 * res);	// 3 * HGT points distance in DEM units
 				if (distHGTx3 + 20 > pointDist) {		// account for rounding of pointDist and distHGTx3
@@ -603,8 +589,6 @@ public class HGTConverter {
 	 * a an array with one value for each point, in the order top -> down and left -> right.
 	 */
 	public short[] getHeights(int lat32, int lon32, int height, int width) {
-		short[] realHeights = noHeights;
-		
 		java.awt.geom.Area testArea = null;
 		if (demArea != null) {
 			// we have a bounding polygon
@@ -621,7 +605,7 @@ public class HGTConverter {
 			}
 		}
 
-		realHeights = new short[width * height];
+		short[] realHeights = new short[width * height];
 		int count = 0;
 		int py = lat32;
 		for (int y = 0; y < height; y++) {

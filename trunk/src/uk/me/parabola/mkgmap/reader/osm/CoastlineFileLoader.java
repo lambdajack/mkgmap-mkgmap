@@ -25,7 +25,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
@@ -33,11 +32,10 @@ import uk.me.parabola.util.EnhancedProperties;
 
 public final class CoastlineFileLoader {
 
-	private static final Logger log = Logger
-			.getLogger(CoastlineFileLoader.class);
+	private static final Logger log = Logger.getLogger(CoastlineFileLoader.class);
 
 	private final Set<String> coastlineFiles;
-	private final Collection<CoastlineWay> coastlines = new ArrayList<CoastlineWay>();
+	private final Collection<CoastlineWay> coastlines = new ArrayList<>();
 
 	private final AtomicBoolean coastlinesLoaded = new AtomicBoolean(false);
 	private final AtomicBoolean loadingStarted = new AtomicBoolean(false);
@@ -45,7 +43,7 @@ public final class CoastlineFileLoader {
 	private final EnhancedProperties coastConfig;
 
 	private CoastlineFileLoader() {
-		this.coastlineFiles = new HashSet<String>();
+		this.coastlineFiles = new HashSet<>();
 		this.coastConfig = new EnhancedProperties();
 	}
 
@@ -69,8 +67,7 @@ public final class CoastlineFileLoader {
 		}
 	}
 
-	private OsmMapDataSource loadFromFile(String name)
-			throws FileNotFoundException, FormatException {
+	private OsmMapDataSource loadFromFile(String name) throws FileNotFoundException {
 		OsmMapDataSource src = new OsmCoastDataSource();
 		src.config(getConfig());
 		log.info("Started loading coastlines from", name);
@@ -79,8 +76,7 @@ public final class CoastlineFileLoader {
 		return src;
 	}
 
-	private Collection<Way> loadFile(String filename)
-			throws FileNotFoundException {
+	private Collection<Way> loadFile(String filename) throws FileNotFoundException {
 		OsmMapDataSource src = loadFromFile(filename);
 		return src.getElementSaver().getWays().values();
 	}
@@ -96,8 +92,7 @@ public final class CoastlineFileLoader {
 				int nBefore = coastlines.size();
 
 				Collection<Way> loadedCoastlines = loadFile(coastlineFile);
-				log.info(loadedCoastlines.size(), "coastline ways from",
-						coastlineFile, "loaded.");
+				log.info(loadedCoastlines.size(), "coastline ways from", coastlineFile, "loaded.");
 
 				ArrayList<Way> ways = SeaGenerator.joinWays(loadedCoastlines);
 				ListIterator<Way> wayIter = ways.listIterator();
@@ -105,12 +100,10 @@ public final class CoastlineFileLoader {
 				while (wayIter.hasNext()) {
 					Way way = wayIter.next();
 					wayIter.remove();
-					coastlines.add(new CoastlineWay(way.getId(), way
-							.getPoints()));
+					coastlines.add(new CoastlineWay(way.getId(), way.getPoints()));
 				}
 
-				log.info((coastlines.size() - nBefore),
-						"coastlines loaded from", coastlineFile);
+				log.info((coastlines.size() - nBefore), "coastlines loaded from", coastlineFile);
 			} catch (FileNotFoundException exp) {
 				log.error("Coastline file " + coastlineFile + " not found.");
 			} catch (Exception exp) {
@@ -122,12 +115,12 @@ public final class CoastlineFileLoader {
 	}
 
 	public Collection<Way> getCoastlines(Area bbox) {
-		if (coastlinesLoaded.get() == false) {
+		if (!coastlinesLoaded.get()) {
 			synchronized (this) {
 				loadCoastlines();
 			}
 		}
-		Collection<Way> ways = new ArrayList<Way>();
+		Collection<Way> ways = new ArrayList<>();
 		for (CoastlineWay w : coastlines) {
 			if (w.getBbox().intersects(bbox)) {
 				Way x = new Way(w.getOriginalId(), w.getPoints());
@@ -145,13 +138,11 @@ public final class CoastlineFileLoader {
 		public CoastlineWay(long id, List<Coord> points) {
 			super(id, points);
 			if (points.isEmpty()) {
-				throw new IllegalArgumentException(
-						"No support for empty ways. WayId: " + id);
+				throw new IllegalArgumentException("No support for empty ways. WayId: " + id);
 			}
 
 			if (log.isDebugEnabled())
-				log.debug("Create coastline way", id, "with", points.size(),
-						"points");
+				log.debug("Create coastline way", id, "with", points.size(), "points");
 			bbox = Area.getBBox(points);
 		}
 
@@ -170,12 +161,10 @@ public final class CoastlineFileLoader {
 		}
 
 		@Override
-		public Map<String, String> getTagsWithPrefix(String prefix,
-				boolean removePrefix) {
+		public Map<String, String> getTagsWithPrefix(String prefix, boolean removePrefix) {
 			if ("natural".startsWith(prefix)) {
 				if (removePrefix) {
-					return Collections.singletonMap(
-							"natural".substring(prefix.length()), "coastline");
+					return Collections.singletonMap("natural".substring(prefix.length()), "coastline");
 				} else {
 					return Collections.singletonMap("natural", "coastline");
 				}

@@ -31,7 +31,7 @@ import uk.me.parabola.util.Java2DConverter;
  * @author Gerd Petermann
  *
  */
-public class ResidentialHook extends OsmReadingHooksAdaptor {
+public class ResidentialHook implements OsmReadingHooks {
 	private static final Logger log = Logger.getLogger(ResidentialHook.class);
 
 	
@@ -40,14 +40,16 @@ public class ResidentialHook extends OsmReadingHooksAdaptor {
 	private ElementSaver saver;
 	private NameFinder nameFinder;
 
+	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props) {
-		if (props.getProperty("residential-hook", true) == false)
+		if (!props.getProperty("residential-hook", true))
 			return false; 
 		this.nameFinder = new NameFinder(props);
 		this.saver = saver;
 		return true;
 	}
 
+	@Override
 	public void end() {
 		log.info("Starting with residential hook");
 
@@ -58,10 +60,8 @@ public class ResidentialHook extends OsmReadingHooksAdaptor {
 		
 		// process all nodes that might be converted to a garmin node (tagcount > 0)
 		for (Node node : saver.getNodes().values()) {
-			if (node.getTagCount() > 0) {
-				if (saver.getBoundingBox().contains(node.getLocation())){
-					processElem(node);
-				}
+			if (node.getTagCount() > 0 && saver.getBoundingBox().contains(node.getLocation())) {
+				processElem(node);
 			}
 		}
 

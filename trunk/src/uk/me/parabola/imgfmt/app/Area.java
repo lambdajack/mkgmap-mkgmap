@@ -32,7 +32,7 @@ import uk.me.parabola.log.Logger;
  */
 public class Area {
 	private static final Logger log = Logger.getLogger(Area.class);
-	public final static Area PLANET = new Area(-90.0, -180.0, 90.0, 180.0);
+	public static final Area PLANET = new Area(-90.0, -180.0, 90.0, 180.0);
 
 	private final int minLat;
 	private final int minLong;
@@ -169,7 +169,7 @@ public class Area {
 	 * @throws MapFailedException if more complex split operation couldn't be honoured.
 	 */
 	public Area[] split(int xsplit, int ysplit, int resolutionShift) {
-		Area[] areas =  new Area[xsplit * ysplit];
+		Area[] areas = new Area[xsplit * ysplit];
 
 		int xstart;
 		int xend;
@@ -182,22 +182,22 @@ public class Area {
 			if (x == xsplit - 1)
 				xend = maxLong;
 			else
-				xend = roundPof2(xstart + (maxLong - xstart) / (xsplit - x),
-						 resolutionShift);
+				xend = roundPof2(xstart + (maxLong - xstart) / (xsplit - x), resolutionShift);
 			ystart = minLat;
 			for (int y = 0; y < ysplit; y++) {
 				if (y == ysplit - 1)
 					yend = maxLat;
 				else
-					yend = roundPof2(ystart + (maxLat - ystart) / (ysplit - y),
-							 resolutionShift);
+					yend = roundPof2(ystart + (maxLat - ystart) / (ysplit - y), resolutionShift);
 				if (xstart < xend && ystart < yend) {
 					Area a = new Area(ystart, xstart, yend, xend);
-//					log.debug(x, y, a);
-					log.debug("Area.split", minLat, minLong, maxLat, maxLong, "res", resolutionShift, "to", ystart, xstart, yend, xend);
+					log.debug("Area.split", minLat, minLong, maxLat, maxLong, "res", resolutionShift, "to", ystart,
+							xstart, yend, xend);
 					areas[nAreas++] = a;
-				} else
-					log.warn("Area.split", minLat, minLong, maxLat, maxLong, "res", resolutionShift, "can't", xsplit, ysplit);
+				} else {
+					log.warn("Area.split", minLat, minLong, maxLat, maxLong, "res", resolutionShift, "can't", xsplit,
+							ysplit);
+				}
 				ystart = yend;
 			}
 			xstart = xend;
@@ -318,17 +318,13 @@ public class Area {
 	}
 
 	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
+		if (this == o)
+			return true;
+		if (o == null || getClass() != o.getClass())
+			return false;
 
 		Area area = (Area) o;
-
-		if (maxLat != area.maxLat) return false;
-		if (maxLong != area.maxLong) return false;
-		if (minLat != area.minLat) return false;
-		if (minLong != area.minLong) return false;
-
-		return true;
+		return maxLat == area.maxLat && maxLong == area.maxLong && minLat == area.minLat && minLong == area.minLong;
 	}
 
 	public int hashCode() {
@@ -343,16 +339,12 @@ public class Area {
 	 * @return list of coords that form the rectangle
 	 */
 	public List<Coord> toCoords(){
-		List<Coord> coords = new ArrayList<Coord>(5);
-		Coord start = new Coord(minLat, minLong);
-		coords.add(start);
-		Coord co = new Coord(minLat, maxLong);
-		coords.add(co);
-		co = new Coord(maxLat, maxLong);
-		coords.add(co);
-		co = new Coord(maxLat, minLong);
-		coords.add(co);
-		coords.add(start);
+		List<Coord> coords = new ArrayList<>(5);
+		coords.add(new Coord(minLat, minLong));
+		coords.add(new Coord(minLat, maxLong));
+		coords.add(new Coord(maxLat, maxLong));
+		coords.add(new Coord(maxLat, minLong));
+		coords.add(coords.get(0));
 		return coords;
 	}
 

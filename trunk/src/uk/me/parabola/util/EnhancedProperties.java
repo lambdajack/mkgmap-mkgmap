@@ -73,13 +73,10 @@ public class EnhancedProperties extends Properties {
 	public boolean getProperty(String key, boolean def) {
 		String s = getProperty(key);
 		if (s != null) {
-			if (s.length() == 0)
+			if (s.isEmpty())
 				return true;
 			char c = s.toLowerCase().charAt(0);
-			if (c == '1' || c == 'y' || c == 't')
-				return true;
-			else
-				return false;
+			return  (c == '1' || c == 'y' || c == 't');
 		}
 		return def;
 	}

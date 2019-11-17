@@ -13,7 +13,6 @@
 package uk.me.parabola.mkgmap.reader.hgt;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,6 +20,7 @@ import java.io.RandomAccessFile;
 import java.util.BitSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import uk.me.parabola.log.Logger;
 
 /**
@@ -30,11 +30,10 @@ import uk.me.parabola.log.Logger;
 public class HGTList {
 	private static final Logger log = Logger.getLogger(HGTList.class);
 
-	private final static HGTList instance = new HGTList();
-	private static BitSet knownHgt;
+	private static final HGTList instance = new HGTList();
+	private BitSet knownHgt;
 	
-	private HGTList()
-	{
+	private HGTList() {
 		try {
 			knownHgt = loadConfig();
 		} catch (IOException e) {
@@ -45,12 +44,12 @@ public class HGTList {
 	public static HGTList get() {
 		return instance;
 	} 
+	
 	public BitSet getKnownHGT() {
 		return knownHgt;
 	} 
 	
- 	private BitSet loadConfig() throws IOException
- 	{
+	private BitSet loadConfig() throws IOException {
 		try {
 			String name = "hgt/known-hgt.txt";
 			BitSet bs = compileHGTList(name);
@@ -86,9 +85,8 @@ public class HGTList {
 	 * @param filename the path to the human readable file
 	 * @return the {@link BitSet} 
 	 * @throws IOException 
-	 * @throws FileNotFoundException 
 	 */
-	private static BitSet compileHGTList(String filename) throws FileNotFoundException, IOException {
+	private static BitSet compileHGTList(String filename) throws IOException {
 		final Pattern hgtPattern =  Pattern.compile("([sSnN])(\\d{2})([eEwW])(\\d{3}).*");
 		try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
 			BitSet bs = new BitSet(180*360);
@@ -121,29 +119,28 @@ public class HGTList {
 		}
 	}
 	
-	private static int getBitSetPos (int lat, int lon) {
+	private static int getBitSetPos(int lat, int lon) {
 		assert lat >= -90 && lat < 90 && lon >= -180 && lon < 180;
 		return (90 + lat) * 360 + lon + 180;
 	}
-	
+
 	public synchronized boolean shouldExist(int lat, int lon) {
 		if (knownHgt != null)
 			return knownHgt.get(getBitSetPos(lat, lon));
 		return false;
 	}
-	
+
 	public static void main(String[] args) throws IOException {
 		if (args.length >= 2 && "compile".equals(args[0])) {
 			BitSet bs = compileHGTList(args[1]);
 			String outName = (args.length > 2) ? args[2] : "known-hgt.bin";
-			
-			RandomAccessFile raf = new RandomAccessFile(outName, "rw");
-			raf.write(bs.toByteArray());
-			raf.close();
+
+			try (RandomAccessFile raf = new RandomAccessFile(outName, "rw")) {
+				raf.write(bs.toByteArray());
+			}
 		} else {
 			System.out.println("usage: HGTList compile hgt-list [outfile name]");
-		} 
-		
+		}
 	}
 
 }
