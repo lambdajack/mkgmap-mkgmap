@@ -278,6 +278,10 @@ public class MapBuilder implements Configurable {
 		if (mapInfo.isEmpty())
 			getMapInfo();
 
+		if (map.getNodFile() != null) {
+			// make sure that island detection is done before we write any map data so that NOD flags are properly set 
+			src.getRoadNetwork().getCenters();
+		}
 		normalizeCountries(src);
 		
 		processCities(map, src);
@@ -1180,6 +1184,7 @@ public class MapBuilder implements Configurable {
 			LineMergeFilter merger = new LineMergeFilter();
 			lines = merger.merge(lines, res);
 		}
+		
 		LayerFilterChain filters = new LayerFilterChain(config);
 		if (enableLineCleanFilters && (res < 24)) {
 			filters.addFilter(new RoundCoordsFilter());
