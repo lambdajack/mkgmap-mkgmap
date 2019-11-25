@@ -593,6 +593,7 @@ place. If any of the roads forming the island touches a tile boundary or a
 country border the island is ignored, as it may be connected to other roads in
 a different tile.
 :	See also option --add-boundary-nodes-at-admin-boundaries.
+: This option seems to cause routing problems in BaseCamp.
 <p>
 ;--max-flare-length-ratio=NUM
 : 	When checking flare roads, ignore roads whose length is
