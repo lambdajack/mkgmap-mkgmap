@@ -28,7 +28,11 @@ public class Zip {
 	// The index is not stored in the file, you just use the index of it in
 	// the section.
 	private int index;
-	private Label label;
+	private final Label label;
+
+	public Zip(Label label) {
+		this.label = label;
+	}
 
 	public void write(ImgFileWriter writer) {
 		writer.put3u(label.getOffset());
@@ -38,10 +42,6 @@ public class Zip {
 		return label;
 	}
 	
-	public void setLabel(Label label) {
-		this.label = label;
-	}
-
 	public int getIndex() {
 		return index;
 	}

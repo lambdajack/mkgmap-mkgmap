@@ -13,6 +13,7 @@
 
 package uk.me.parabola.mkgmap.build;
 
+import java.awt.Rectangle;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
@@ -28,6 +29,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.UnaryOperator;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -129,13 +131,13 @@ public class MapBuilder implements Configurable {
 	private List<String> copyrights = new ArrayList<>();
 
 	private boolean doRoads; 
-	private Boolean driveOnLeft; // needs to be Boolean for later test:	if (driveOnLeft == null){
+	private Boolean driveOnLeft; // needs to be Boolean for later null test 
 	private Locator locator;
 
 	private final java.util.Map<String, Highway> highways = new HashMap<>();
 
 	/** name that is used for cities which name are unknown */
-	private final static String UNKNOWN_CITY_NAME = "";
+	private static final String UNKNOWN_CITY_NAME = "";
 
 	private Country defaultCountry;
 	private String countryName = "COUNTRY";
@@ -147,7 +149,7 @@ public class MapBuilder implements Configurable {
 
 	private int minSizePolygon;
 	private String polygonSizeLimitsOpt;
-	private HashMap<Integer,Integer> polygonSizeLimits;
+	private TreeMap<Integer,Integer> polygonSizeLimits;
 	private double reducePointError;
 	private double reducePointErrorPolygon;
 	private boolean mergeLines;
@@ -192,7 +194,7 @@ public class MapBuilder implements Configurable {
 		mergeLines = props.containsKey("merge-lines");
 
 		// undocumented option - usually used for debugging only
-		mergeShapes = props.getProperty("no-mergeshapes", false) == false;
+		mergeShapes = !props.getProperty("no-mergeshapes", false);
 
 		makePOIIndex = props.getProperty("make-poi-index", false);
 
@@ -237,7 +239,7 @@ public class MapBuilder implements Configurable {
 		}
 	}
 
-	private List<Integer> parseDemDists(String demDists) {
+	private static List<Integer> parseDemDists(String demDists) {
 		List<Integer> dists = new ArrayList<>();
 		if (demDists == null)
 			dists.add(-1);
@@ -264,15 +266,13 @@ public class MapBuilder implements Configurable {
 		TREFile treFile = map.getTreFile();
 		lblFile = map.getLblFile();
 		NETFile netFile = map.getNetFile();
-		DEMFile demFile = map.getDemFile();
 		
 		doRoads = netFile != null;
 		
-		if(routeCenterBoundaryType != 0 &&
-		   netFile != null &&
-		   src instanceof MapperBasedMapDataSource) {
-			for(RouteCenter rc : src.getRoadNetwork().getCenters()) {
-				((MapperBasedMapDataSource)src).addBoundaryLine(rc.getArea(), routeCenterBoundaryType, rc.reportSizes());
+		if (routeCenterBoundaryType != 0 && netFile != null && src instanceof MapperBasedMapDataSource) {
+			for (RouteCenter rc : src.getRoadNetwork().getCenters()) {
+				((MapperBasedMapDataSource) src).addBoundaryLine(rc.getArea(), routeCenterBoundaryType,
+						rc.reportSizes());
 			}
 		}
 		if (mapInfo.isEmpty())
@@ -291,11 +291,9 @@ public class MapBuilder implements Configurable {
 		processInfo(map, src);
 		makeMapAreas(map, src);
 		 
-		if (driveOnLeft == null){
-			// check if source gives info about driving side
-			if (src instanceof MapperBasedMapDataSource){
-				driveOnLeft = ((MapperBasedMapDataSource) src).getDriveOnLeft();
-			}
+		if (driveOnLeft == null && src instanceof MapperBasedMapDataSource) {
+			// source can give info about driving side
+			driveOnLeft = ((MapperBasedMapDataSource) src).getDriveOnLeft();
 		}
 		if (driveOnLeft == null)
 			driveOnLeft = false;
@@ -325,53 +323,59 @@ public class MapBuilder implements Configurable {
 			netFile.writePost(rgnFile.getWriter());
 		}
 		warnAbout3ByteImgRefs();
-		if (demFile != null) {
-			try{
-				long t1 = System.currentTimeMillis();
-				java.awt.geom.Area  demArea = null;
-				if (demPolygon != null) {
-					Area bbox = src.getBounds();
-					// the rectangle is a bit larger to avoid problems at tile boundaries
-					Rectangle2D r = new Rectangle2D.Double(bbox.getMinLong() - 2, bbox.getMinLat() - 2,
-							bbox.getWidth() + 4, bbox.getHeight() + 4);
-					if (demPolygon.intersects(r) && !demPolygon.contains(r)){
-						demArea = demPolygon;
-					}					
-				} 
-				if (demArea == null && src instanceof OverviewMapDataSource) {
-					Path2D demPoly = ((OverviewMapDataSource) src).getTileAreaPath();
-					if (demPoly != null) {
-						demArea = new java.awt.geom.Area(demPoly);
-					}
-				}
-				Area treArea = demFile.calc(src.getBounds(), demArea, pathToHGT, demDists, demOutsidePolygonHeight, demInterpolationMethod);
-				map.setBounds(treArea);
-				long t2 = System.currentTimeMillis();
-				log.info("DEM file calculation for", map.getFilename(), "took", (t2 - t1), "ms");
-				demFile.write();
-			} catch (MapFailedException e) {
-				log.error("exception while creating DEM file", e.getMessage());
-				throw new MapFailedException("DEM"); //TODO: better remove DEM file?
-			}
-		}
+		buildDem(map, src);
 		treFile.writePost();
 	}
 
+	private void buildDem(Map map, LoadableMapDataSource src) {
+		DEMFile demFile = map.getDemFile();
+		if (demFile == null)
+			return;
+		try{
+			long t1 = System.currentTimeMillis();
+			java.awt.geom.Area  demArea = null;
+			if (demPolygon != null) {
+				Area bbox = src.getBounds();
+				// the rectangle is a bit larger to avoid problems at tile boundaries
+				Rectangle2D r = new Rectangle(bbox.getMinLong() - 2, bbox.getMinLat() - 2, 
+						bbox.getWidth() + 4, bbox.getHeight() + 4);
+				if (demPolygon.intersects(r) && !demPolygon.contains(r)) {
+					demArea = demPolygon;
+				}
+			} 
+			if (demArea == null && src instanceof OverviewMapDataSource) {
+				Path2D demPoly = ((OverviewMapDataSource) src).getTileAreaPath();
+				if (demPoly != null) {
+					demArea = new java.awt.geom.Area(demPoly);
+				}
+			}
+			Area treArea = demFile.calc(src.getBounds(), demArea, pathToHGT, demDists, demOutsidePolygonHeight, demInterpolationMethod);
+			map.setBounds(treArea);
+			long t2 = System.currentTimeMillis();
+			log.info("DEM file calculation for", map.getFilename(), "took", (t2 - t1), "ms");
+			demFile.write();
+		} catch (MapFailedException e) {
+			log.error("exception while creating DEM file", e.getMessage());
+			throw new MapFailedException("DEM"); 
+		}
+	}
+
 	private void warnAbout3ByteImgRefs() {
+		String mapContains = "Map contains";
 		String infoMsg = "- more than 65535 might cause indexing problems and excess size. Suggest splitter with lower --max-nodes";
 		int itemCount;
 		itemCount = lblFile.numCities();
 		if (itemCount > 0xffff)
-			log.error("Map contains", itemCount, "Cities", infoMsg);
+			log.error(mapContains, itemCount, "Cities", infoMsg);
 		itemCount = lblFile.numZips();
 		if (itemCount > 0xffff)
-			log.error("Map contains", itemCount, "Zips", infoMsg);
+			log.error(mapContains, itemCount, "Zips", infoMsg);
 		itemCount = lblFile.numHighways();
 		if (itemCount > 0xffff)
-			log.error("Map contains", itemCount, "Highways", infoMsg);
+			log.error(mapContains, itemCount, "Highways", infoMsg);
 		itemCount = lblFile.numExitFacilities();
 		if (itemCount > 0xffff)
-			log.error("Map contains", itemCount, "Exit facilities", infoMsg);
+			log.error(mapContains, itemCount, "Exit facilities", infoMsg);
 	} // warnAbout3ByteImgRefs
 
 	private Country getDefaultCountry() {
@@ -387,7 +391,7 @@ public class MapBuilder implements Configurable {
 	 * @return the default region in the given country ({@code null} if not available)
 	 */
 	private Region getDefaultRegion(Country country) {
-		if (lblFile==null || regionName == null) {
+		if (lblFile == null || regionName == null) {
 			return null;
 		}
 		if (country == null) {
@@ -413,27 +417,18 @@ public class MapBuilder implements Configurable {
 			if (countryStr != null) {
 				countryStr = locator.normalizeCountry(countryStr);
 				p.setCountry(countryStr);
-			}			
+			}
 		}
-		
+
 		for (MapLine l : src.getLines()) {
 			String countryStr = l.getCountry();
 			if (countryStr != null) {
 				countryStr = locator.normalizeCountry(countryStr);
 				l.setCountry(countryStr);
-			}			
-		}		
+			}
+		}
 
 		// shapes do not have address information
-		// untag the following lines if this is wrong
-//		for (MapShape s : src.getShapes()) {
-//			String countryStr = s.getCountry();
-//			if (countryStr != null) {
-//				countryStr = locator.normalizeCountry(countryStr);
-//				s.setCountry(countryStr);
-//			}			
-//		}		
-
 	}
 	
 	/**
@@ -449,7 +444,7 @@ public class MapBuilder implements Configurable {
 	private void processCities(Map map, MapDataSource src) {
 		LBLFile lbl = map.getLblFile();
 		
-		if (locationAutofill.isEmpty() == false) {
+		if (!locationAutofill.isEmpty()) {
 			// collect the names of the cities
 			for (MapPoint p : src.getPoints()) {
 				if(p.isCity() && p.getName() != null)
@@ -459,34 +454,30 @@ public class MapBuilder implements Configurable {
 			locator.autofillCities(); // Try to fill missing information that include search of next city
 		}
 		
-		for (MapPoint p : src.getPoints()) 
-		{
-			if(p.isCity() && p.getName() != null)
-			{
-				String countryStr = p.getCountry();
-				Country thisCountry;
-				if(countryStr != null) {
-					thisCountry = lbl.createCountry(countryStr, locator.getCountryISOCode(countryStr));
-				} else
-					thisCountry = getDefaultCountry();
-
-				String regionStr  = p.getRegion();
-				Region thisRegion;
-				if(regionStr != null)
-				{
-					thisRegion = lbl.createRegion(thisCountry,regionStr, null);
-				}
-				else
-					thisRegion = getDefaultRegion(thisCountry);
-
-				City thisCity;
-				if(thisRegion != null)
-					thisCity = lbl.createCity(thisRegion, p.getName(), true);
-				else
-					thisCity = lbl.createCity(thisCountry, p.getName(), true);
-
-				cityMap.put(p, thisCity);
+		for (MapPoint p : src.getPoints()) {
+			if (!p.isCity() || p.getName() == null)
+				continue;
+			String countryStr = p.getCountry();
+			Country thisCountry;
+			if (countryStr != null) {
+				thisCountry = lbl.createCountry(countryStr, locator.getCountryISOCode(countryStr));
+			} else {
+				thisCountry = getDefaultCountry();
 			}
+			String regionStr = p.getRegion();
+			Region thisRegion;
+			if (regionStr != null) {
+				thisRegion = lbl.createRegion(thisCountry, regionStr, null);
+			} else {
+				thisRegion = getDefaultRegion(thisCountry);
+			}
+			City thisCity;
+			if (thisRegion != null)
+				thisCity = lbl.createCity(thisRegion, p.getName(), true);
+			else
+				thisCity = lbl.createCity(thisCountry, p.getName(), true);
+
+			cityMap.put(p, thisCity);
 		}
 
 	}
@@ -495,93 +486,94 @@ public class MapBuilder implements Configurable {
 		LBLFile lbl = map.getLblFile();
 		MapPoint searchPoint = new MapPoint();
 		for (MapLine line : src.getLines()) {
-			if(line.isRoad()) {
-				String cityName = line.getCity();
-				String cityCountryName = line.getCountry();
-				String cityRegionName  = line.getRegion();
-				String zipStr = line.getZip();
+			if(!line.isRoad()) 
+				continue;
+			String cityName = line.getCity();
+			String cityCountryName = line.getCountry();
+			String cityRegionName  = line.getRegion();
+			String zipStr = line.getZip();
 
-				if(cityName == null && locationAutofill.contains("nearest")) {
-					// Get name of next city if untagged
+			if(cityName == null && locationAutofill.contains("nearest")) {
+				// Get name of next city if untagged
 
-					searchPoint.setLocation(line.getLocation());
-					MapPoint nextCity = locator.findNextPoint(searchPoint);
+				searchPoint.setLocation(line.getLocation());
+				MapPoint nextCity = locator.findNextPoint(searchPoint);
 
-					if(nextCity != null) {
-						cityName = nextCity.getCity();
-						// city/region/country fields should match to the found city
-						cityCountryName = nextCity.getCountry();
-						cityRegionName = nextCity.getRegion();
-							
-						// use the zip code only if no zip code is known
-						if(zipStr == null)
-							zipStr = nextCity.getZip();
-					}
-				}
+				if(nextCity != null) {
+					cityName = nextCity.getCity();
+					// city/region/country fields should match to the found city
+					cityCountryName = nextCity.getCountry();
+					cityRegionName = nextCity.getRegion();
 
-				MapRoad road = (MapRoad) line;
-				road.resetImgData();
-
-				City roadCity = calcCity(lbl, cityName, cityRegionName, cityCountryName);
-				if (roadCity != null)
-					road.addRoadCity(roadCity);
-
-				if(zipStr != null) {
-					road.addRoadZip(lbl.createZip(zipStr));
-				}
-
-				List<Numbers> numbers = road.getRoadDef().getNumbersList();
-				if (numbers != null){
-					for (Numbers num : numbers){
-						for (int i = 0; i < 2; i++){
-							boolean left = (i == 0);
-							ZipCodeInfo zipInfo = num.getZipCodeInfo(left);
-							if (zipInfo != null && zipInfo.getZipCode() != null){
-								Zip zip = zipInfo.getImgZip();
-								if (zipInfo.getImgZip() == null){
-									zip = lbl.createZip(zipInfo.getZipCode());
-									zipInfo.setImgZip(zip);
-								}
-								if (zip != null)
-									road.addRoadZip(zip);
-							}
-							CityInfo cityInfo = num.getCityInfo(left);
-							if (cityInfo != null){
-								City city = cityInfo.getImgCity();
-								if (city == null ){
-									city = calcCity(lbl, cityInfo.getCity(), cityInfo.getRegion(), cityInfo.getCountry());
-									cityInfo.setImgCity(city);
-								}
-								if (city != null)
-									road.addRoadCity(city);
-							}
-						}
-					}
+					// use the zip code only if no zip code is known
+					if(zipStr == null)
+						zipStr = nextCity.getZip();
 				}
 			}
+
+			MapRoad road = (MapRoad) line;
+			road.resetImgData();
+
+			City roadCity = calcCity(lbl, cityName, cityRegionName, cityCountryName);
+			if (roadCity != null)
+				road.addRoadCity(roadCity);
+
+			if (zipStr != null) {
+				road.addRoadZip(lbl.createZip(zipStr));
+			}
+
+			processRoadNumbers(road, lbl);
 		}	
 	}
 
-	private City calcCity(LBLFile lbl, String city, String region, String country){
+	private void processRoadNumbers(MapRoad road, LBLFile lbl) {
+		List<Numbers> numbers = road.getRoadDef().getNumbersList();
+		if (numbers == null)
+			return;
+		for (Numbers num : numbers) {
+			for (int i = 0; i < 2; i++) {
+				boolean leftRightFlag = (i == 0);
+				ZipCodeInfo zipInfo = num.getZipCodeInfo(leftRightFlag);
+				if (zipInfo != null && zipInfo.getZipCode() != null) {
+					Zip zip = zipInfo.getImgZip();
+					if (zip == null) {
+						zip = lbl.createZip(zipInfo.getZipCode());
+						zipInfo.setImgZip(zip);
+					}
+					if (zip != null)
+						road.addRoadZip(zip);
+				}
+				CityInfo cityInfo = num.getCityInfo(leftRightFlag);
+				if (cityInfo != null) {
+					City city = cityInfo.getImgCity();
+					if (city == null) {
+						city = calcCity(lbl, cityInfo.getCity(), cityInfo.getRegion(), cityInfo.getCountry());
+						cityInfo.setImgCity(city);
+					}
+					if (city != null)
+						road.addRoadCity(city);
+				}
+			}
+		}
+	}
+
+	private City calcCity(LBLFile lbl, String city, String region, String country) {
 		if (city == null && region == null && country == null)
 			return null;
-		Country cc = (country == null)? getDefaultCountry() : lbl.createCountry(locator.normalizeCountry(country), locator.getCountryISOCode(country));
-		Region cr = (region == null)? getDefaultRegion(cc) : lbl.createRegion(cc, region, null);
-		if (city == null && (country != null || region != null)) {
-			// if city name is unknown and region and/or country is known 
+		Country cc = (country == null) ? getDefaultCountry()
+				: lbl.createCountry(locator.normalizeCountry(country), locator.getCountryISOCode(country));
+		Region cr = (region == null) ? getDefaultRegion(cc) : lbl.createRegion(cc, region, null);
+		if (city == null) {
+			// if city name is unknown and region and/or country is known
 			// use empty name for the city
 			city = UNKNOWN_CITY_NAME;
 		}
-		if (city == null)
-			return null;
-		if(cr != null) {
+		if (cr != null) {
 			return lbl.createCity(cr, city, false);
-		}
-		else {
+		} else {
 			return lbl.createCity(cc, city, false);
 		}
 	}
-	
 	
 	private void processPOIs(Map map, MapDataSource src) {
 
@@ -597,80 +589,72 @@ public class MapBuilder implements Configurable {
 			// * cities (already processed)
 			// * extended types (address information not shown in MapSource and on GPS)
 			// * all POIs except roads in case the no-poi-address option is set
-			else if (!p.isCity() && !p.hasExtendedType() &&  poiAddresses)
-			{
+			else if (!p.isCity() && !p.hasExtendedType() &&  poiAddresses) {
 				
 				String countryStr = p.getCountry();
 				String regionStr  = p.getRegion();
 				String zipStr     = p.getZip();
 				String cityStr    = p.getCity();
 
-				if(locationAutofill.contains("nearest") && (countryStr == null || regionStr == null || (zipStr == null && cityStr == null)))
-				{
+				if (locationAutofill.contains("nearest")
+						&& (countryStr == null || regionStr == null || (zipStr == null && cityStr == null))) {
 					MapPoint nextCity = locator.findNearbyCityByName(p);
-						
-					if(nextCity == null)
+
+					if (nextCity == null)
 						nextCity = locator.findNextPoint(p);
 
-					if(nextCity != null)
-					{
-						if (countryStr == null)	countryStr = nextCity.getCountry();
-						if (regionStr == null)  regionStr  = nextCity.getRegion();
+					if (nextCity != null) {
+						if (countryStr == null)
+							countryStr = nextCity.getCountry();
+						if (regionStr == null)
+							regionStr = nextCity.getRegion();
 
-						if(zipStr == null)
-						{
+						if (zipStr == null) {
 							String cityZipStr = nextCity.getZip();
-							
-							// Ignore list of Zips separated by ;
-							
-							if(cityZipStr != null && cityZipStr.indexOf(',') < 0)
+
+							// Ignore list of Zips separated by ,
+							if (cityZipStr != null && cityZipStr.indexOf(',') < 0)
 								zipStr = cityZipStr;
 						}
-							
-						if(cityStr == null) cityStr = nextCity.getCity();
-					
+
+						if (cityStr == null)
+							cityStr = nextCity.getCity();
+
 					}
-				}
-				
+				}				
 	
-				if(countryStr != null && !checkedForPoiDispFlag)
-				{
+				if (countryStr != null && !checkedForPoiDispFlag) {
 					// Different countries require different address notation
 
 					poiDisplayFlags = locator.getPOIDispFlag(countryStr);
 					checkedForPoiDispFlag = true;
 				}
 
-
 				POIRecord r = lbl.createPOI(p.getName());	
 				
-				if(cityStr != null || regionStr != null || countryStr != null){
+				if (cityStr != null || regionStr != null || countryStr != null) {
 					r.setCity(calcCity(lbl, cityStr, regionStr, countryStr));
 				}
 
-				if (zipStr != null)
-				{
+				if (zipStr != null) {
 					Zip zip = lbl.createZip(zipStr);
 					r.setZip(zip);
 				}
 
-				if(p.getStreet() != null)
-				{
+				if (p.getStreet() != null) {
 					Label streetName = lbl.newLabel(p.getStreet());
-					r.setStreetName(streetName);			  
+					r.setStreetName(streetName);
 				}
 
 				String houseNumber = p.getHouseNumber();
-				if (houseNumber != null && !houseNumber.isEmpty()) {
-					if(!r.setSimpleStreetNumber(houseNumber))
-						r.setComplexStreetNumber(lbl.newLabel(houseNumber));
+				if (houseNumber != null && !houseNumber.isEmpty() && !r.setSimpleStreetNumber(houseNumber)) {
+					r.setComplexStreetNumber(lbl.newLabel(houseNumber));
 				}
 
 				String phone = p.getPhone();
-				if (phone != null && !phone.isEmpty()) {
-					if(!r.setSimplePhoneNumber(phone))
-						r.setComplexPhoneNumber(lbl.newLabel(phone));
-				}	
+				if (phone != null && !phone.isEmpty() && !r.setSimplePhoneNumber(phone)) {
+					r.setComplexPhoneNumber(lbl.newLabel(phone));
+				}
 		  	
 				poimap.put(p, r);
 			}
@@ -682,20 +666,20 @@ public class MapBuilder implements Configurable {
 	private void processExit(Map map, MapExitPoint mep) {
 		LBLFile lbl = map.getLblFile();
 		String ref = mep.getMotorwayRef();
-		String OSMId = mep.getOSMId();
+		String osmId = mep.getOSMId();
 		if(ref != null) {
 			Highway hw = highways.get(ref);
 			if(hw == null)
 				hw = makeHighway(map, ref);
 			if(hw == null) {
-			    log.warn("Can't create exit", mep.getName(), "(OSM id", OSMId, ") on unknown highway", ref);
+			    log.warn("Can't create exit", mep.getName(), "(OSM id", osmId, ") on unknown highway", ref);
 			    return;
 			}
 			String exitName = mep.getName();
 			String exitTo = mep.getTo();
 			Exit exit = new Exit(hw);
 			String facilityDescription = mep.getFacilityDescription();
-			log.info("Creating", ref, "exit", exitName, "(OSM id", OSMId +") to", exitTo, "with facility", ((facilityDescription == null)? "(none)" : facilityDescription));
+			log.info("Creating", ref, "exit", exitName, "(OSM id", osmId +") to", exitTo, "with facility", ((facilityDescription == null)? "(none)" : facilityDescription));
 			if(facilityDescription != null) {
 				// description is TYPE,DIR,FACILITIES,LABEL
 				// (same as Polish Format)
@@ -746,21 +730,18 @@ public class MapBuilder implements Configurable {
 	private void makeMapAreas(Map map, LoadableMapDataSource src) {
 		// The top level has to cover the whole map without subdividing, so
 		// do a special check to make sure.
-		LevelInfo[] levels = null; 
-		if (src instanceof OverviewMapDataSource){
+		LevelInfo[] levels = null;
+		if (src instanceof OverviewMapDataSource) {
 			mergeLines = true;
 			prepShapesForMerge(src.getShapes());
 			mergeShapes = true;
 			levels = src.mapLevels();
+		} else if (OverviewBuilder.isOverviewImg(map.getFilename())) {
+			levels = src.overviewMapLevels();
+		} else {
+			levels = src.mapLevels();
 		}
-		else {
-			if (OverviewBuilder.isOverviewImg(map.getFilename())) {
-				levels = src.overviewMapLevels();
-			} else {
-				levels = src.mapLevels();
-			}
-		}
-		if (levels == null){
+		if (levels == null) {
 			throw new ExitException("no info about levels available.");
 		}
 		LevelInfo levelInfo = levels[0];
@@ -810,7 +791,7 @@ public class MapBuilder implements Configurable {
 						log.debug("ADD parent-subdiv", parent, srcDivPair.getSource(), ", z=", zoom, " new=", div);
 					nextList.add(new SourceSubdiv(area, div));
 				}
-				if (nextList.size() > 0){
+				if (!nextList.isEmpty()) {
 					Subdivision lastdiv = nextList.get(nextList.size() - 1).getSubdiv();
 					lastdiv.setLast(true);
 				}
@@ -827,10 +808,10 @@ public class MapBuilder implements Configurable {
 	 */
 	private static void prepShapesForMerge(List<MapShape> shapes) {
 		Long2ObjectOpenHashMap<Coord> coordMap = new Long2ObjectOpenHashMap<>();
-		for (MapShape s : shapes){
+		for (MapShape s : shapes) {
 			List<Coord> points = s.getPoints();
 			int n = points.size();
-			for (int i = 0; i< n; i++){
+			for (int i = 0; i < n; i++) {
 				Coord co = points.get(i);
 				Coord repl = coordMap.get(Utils.coord2Long(co));
 				if (repl == null)
@@ -839,7 +820,6 @@ public class MapBuilder implements Configurable {
 					points.set(i, repl);
 			}
 		}
-		return;
 	}
 
 	/**
@@ -939,7 +919,7 @@ public class MapBuilder implements Configurable {
 			catch (Exception e) {
 				throw new ExitException("Error reading license file " + licenseFileName, e);
 			}
-			if ((licenseArray.size() > 0) && licenseArray.get(0).startsWith("\ufeff"))
+			if ((!licenseArray.isEmpty()) && licenseArray.get(0).startsWith("\ufeff"))
 				licenseArray.set(0, licenseArray.get(0).substring(1));
 			UnaryOperator<String> replaceVariables = s -> s.replace("$MKGMAP_VERSION$", Version.VERSION)
 					.replace("$JAVA_VERSION$", System.getProperty("java.version"))
@@ -969,14 +949,13 @@ public class MapBuilder implements Configurable {
 		}
 	}
 	
-	public void setMapInfo(List<String> msgs){
+	public void setMapInfo(List<String> msgs) {
 		mapInfo = msgs;
 	}
-	
-	public void setCopyrights(List<String> msgs){
+
+	public void setCopyrights(List<String> msgs) {
 		copyrights = msgs;
-	}
-	
+	}	
 	
 	/**
 	 * Set all the information that appears in the header.
@@ -1000,13 +979,14 @@ public class MapBuilder implements Configurable {
 		//
 		// We use it to add copyright information that there is no room for
 		// elsewhere
-		String info = "";
-		for (String s: mapInfo){
-			info += s.trim() + "\n";
+		StringBuilder info = new StringBuilder();
+		for (String s : mapInfo) {
+			info.append(s.trim()).append('\n');
 		}
-		if (!info.isEmpty())
-			map.addInfo(info);
-		if (copyrights.isEmpty()){
+		if (info.length() > 0)
+			map.addInfo(info.toString());
+
+		if (copyrights.isEmpty()) {
 			// There has to be (at least) two copyright messages or else the map
 			// does not show up.  The second and subsequent ones will be displayed
 			// at startup, although the conditions where that happens are not known.
@@ -1046,8 +1026,7 @@ public class MapBuilder implements Configurable {
 		// pointIndex must be initialized to the number of indexed
 		// points (not 1)
 		for (MapPoint point : points) {
-			if (point.isCity() &&
-			    point.getMinResolution() <= res) {
+			if (point.isCity() && point.getMinResolution() <= res) {
 				++pointIndex;
 				haveIndPoints = true;
 			}
@@ -1055,8 +1034,7 @@ public class MapBuilder implements Configurable {
 
 		for (MapPoint point : points) {
 
-			if (point.isCity() ||
-			    point.getMinResolution() > res)
+			if (point.isCity() || point.getMinResolution() > res)
 				continue;
 
 			String name = point.getName();
@@ -1064,9 +1042,9 @@ public class MapBuilder implements Configurable {
 			Point p = div.createPoint(name);
 			p.setType(point.getType());
 
-			if(point.hasExtendedType()) {
+			if (point.hasExtendedType()) {
 				ExtTypeAttributes eta = point.getExtTypeAttributes();
-				if(eta != null) {
+				if (eta != null) {
 					eta.processLabels(lbl);
 					p.setExtTypeAttributes(eta);
 				}
@@ -1076,8 +1054,7 @@ public class MapBuilder implements Configurable {
 			try {
 				p.setLatitude(coord.getLatitude());
 				p.setLongitude(coord.getLongitude());
-			}
-			catch (AssertionError ae) {
+			} catch (AssertionError ae) {
 				log.error("Problem with point of type 0x" + Integer.toHexString(point.getType()) + " at " + coord.toOSMURL());
 				log.error("  Subdivision shift is " + div.getShift() +
 						  " and its centre is at " + div.getCenter().toOSMURL());
@@ -1090,17 +1067,18 @@ public class MapBuilder implements Configurable {
 				p.setPOIRecord(r);
 
 			map.addMapObject(p);
-			if(!point.hasExtendedType()) {
-				if(name != null && div.getZoom().getLevel() == 0) {
-					if(pointIndex > 255)
-						log.error("Too many POIs at location " + div.getCenter().toOSMURL() + " - " + name + " will be ignored"); 
-					else if(point.isExit()) {
-						Exit e = ((MapExitPoint)point).getExit();
-						if(e != null)
+			if (!point.hasExtendedType()) {
+				if (name != null && div.getZoom().getLevel() == 0) {
+					if (pointIndex > 255) {
+						log.error("Too many POIs near location", div.getCenter().toOSMURL(), "-", name,
+								"will be ignored");
+					} else if (point.isExit()) {
+						Exit e = ((MapExitPoint) point).getExit();
+						if (e != null)
 							e.getHighway().addExitPoint(name, pointIndex, div);
-					}
-					else if(makePOIIndex)
+					} else if (makePOIIndex) {
 						lbl.createPOIIndex(name, pointIndex, div, point.getType());
+					}
 				}
 
 				++pointIndex;
@@ -1113,8 +1091,7 @@ public class MapBuilder implements Configurable {
 			pointIndex = 1; // reset to 1
 			for (MapPoint point : points) {
 
-				if (!point.isCity() ||
-				    point.getMinResolution() > res)
+				if (!point.isCity() || point.getMinResolution() > res)
 					continue;
 
 				String name = point.getName();
@@ -1128,8 +1105,7 @@ public class MapBuilder implements Configurable {
 				try {
 					p.setLatitude(coord.getLatitude());
 					p.setLongitude(coord.getLongitude());
-				}
-				catch (AssertionError ae) {
+				} catch (AssertionError ae) {
 					log.error("Problem with point of type 0x" + Integer.toHexString(point.getType()) + " at " + coord.toOSMURL());
 					log.error("  Subdivision shift is " + div.getShift() +
 							  " and its centre is at " + div.getCenter().toOSMURL());
@@ -1144,7 +1120,7 @@ public class MapBuilder implements Configurable {
 					City c = cityMap.get(point);
 
 					if(pointIndex > 255) {
-						System.err.println("Can't set city point index for " + name + " (too many indexed points in division)\n");
+						log.error("Can't set city point index for", name, "(too many indexed points in division)\n");
 					} else {
 						c.setPointIndex(pointIndex);
 						c.setSubdivision(div);
@@ -1167,8 +1143,7 @@ public class MapBuilder implements Configurable {
 	 * @param div	The subdivision that the lines belong to.
 	 * @param lines The lines to be added.
 	 */
-	private void processLines(Map map, Subdivision div, List<MapLine> lines)
-	{
+	private void processLines(Map map, Subdivision div, List<MapLine> lines) {
 		div.startLines();  // Signal that we are beginning to draw the lines.
 
 		int res = div.getResolution();
@@ -1199,9 +1174,9 @@ public class MapBuilder implements Configurable {
 		filters.addFilter(new LineAddFilter(div, map));
 		
 		for (MapLine line : lines) {
-			if (line.getMinResolution() > res)
-				continue;
-			filters.startFilter(line);
+			if (line.getMinResolution() <= res) {
+				filters.startFilter(line);
+			}
 		}
 	}
 
@@ -1216,8 +1191,7 @@ public class MapBuilder implements Configurable {
 	 * @param div	The subdivision that the polygons belong to.
 	 * @param shapes The polygons to be added.
 	 */
-	private void processShapes(Map map, Subdivision div, List<MapShape> shapes)
-	{
+	private void processShapes(Map map, Subdivision div, List<MapShape> shapes) {
 		div.startShapes();  // Signal that we are beginning to draw the shapes.
 
 		int res = div.getResolution();
@@ -1258,9 +1232,9 @@ public class MapBuilder implements Configurable {
 		filters.addFilter(new ShapeAddFilter(div, map));
 
 		for (MapShape shape : shapes) {
-			if (shape.getMinResolution() > res)
-				continue;
-			filters.startFilter(shape);
+			if (shape.getMinResolution() <= res) {
+				filters.startFilter(shape);
+			}
 		}
 	}
 
@@ -1286,29 +1260,25 @@ public class MapBuilder implements Configurable {
 			int maxLon = shape.getBounds().getMaxLong();
 			
 			List<Coord> points = shape.getPoints();
-			int n = shape.getPoints().size();
+			int n = points.size();
 			IdentityHashMap<Coord, Coord> coords = new IdentityHashMap<>(n);
-			Coord first = points.get(0);
-			Coord prev = first;
-			Coord last = first;
-			for(int i = 1; i < points.size(); ++i) {
+			Coord prev = points.get(0);
+			Coord last;
+			for (int i = 1; i < n; ++i) {
 				last = points.get(i);
 				// preserve coord instances which are used more than once,
 				// these are typically produced by the ShapeMergerFilter 
 				// to connect holes
-				if (coords.get(last) == null){
+				if (coords.get(last) == null) {
 					coords.put(last, last);
-				}
-				else {
-					if (!last.preserved()){
-						last.preserved(true);
-					}
+				} else if (!last.preserved()) {
+					last.preserved(true);
 				}
 
 				// preserve the end points of horizontal and vertical lines that lie
 				// on the bbox of the shape. 
 				if(last.getLatitude() == prev.getLatitude() && (last.getLatitude() == minLat || last.getLatitude() == maxLat) ||
-				   last.getLongitude() == prev.getLongitude()&& (last.getLongitude() == minLon || last.getLongitude() == maxLon)){
+				   last.getLongitude() == prev.getLongitude() && (last.getLongitude() == minLon || last.getLongitude() == maxLon)) {
 					last.preserved(true);
 					prev.preserved(true);
 				}
@@ -1318,18 +1288,13 @@ public class MapBuilder implements Configurable {
 	}
 
 	Highway makeHighway(Map map, String ref) {
-		if(getDefaultRegion(null) == null) {
+		if (getDefaultRegion(null) == null) {
 			log.warn("Highway " + ref + " has no region (define a default region to zap this warning)");
 		}
-		Highway hw = highways.get(ref);
-		if(hw == null) {
-			LBLFile lblFile = map.getLblFile();
-			log.info("creating highway " + ref);
-			hw = lblFile.createHighway(getDefaultRegion(null), ref);
-			highways.put(ref, hw);
-		}
-
-		return hw;
+		return highways.computeIfAbsent(ref, k-> {
+			log.info("creating highway", ref);
+			return map.getLblFile().createHighway(getDefaultRegion(null), ref);
+		});
 	}
 
 	/**
@@ -1357,49 +1322,34 @@ public class MapBuilder implements Configurable {
 	 * @return the size filter value
 	 */
 	private int getMinSizePolygonForResolution(int res) {
-	
 		if (polygonSizeLimitsOpt == null)
 			return minSizePolygon;
 	
-		if (polygonSizeLimits == null){
-			polygonSizeLimits = new HashMap<>();
+		if (polygonSizeLimits == null) {
+			polygonSizeLimits = new TreeMap<>();
 			String[] desc = polygonSizeLimitsOpt.split("[, \\t\\n]+");
-	
-			int count = 0;
+
 			for (String s : desc) {
 				String[] keyVal = s.split("[=:]");
 				if (keyVal == null || keyVal.length < 2) {
-					System.err.println("incorrect polygon-size-limits specification " + polygonSizeLimitsOpt);
-					continue;
+					throw new ExitException("incorrect polygon-size-limits specification " + polygonSizeLimitsOpt);
 				}
 	
 				try {
 					int key = Integer.parseInt(keyVal[0]);
 					int value = Integer.parseInt(keyVal[1]);
 					Integer testDup = polygonSizeLimits.put(key, value);
-					if (testDup != null){
-						System.err.println("duplicate resolution value in polygon-size-limits specification " + polygonSizeLimitsOpt);
-						continue;
+					if (testDup != null) {
+						throw new ExitException("duplicate resolution value in polygon-size-limits specification "
+								+ polygonSizeLimitsOpt);
 					}
 				} catch (NumberFormatException e) {
-					System.err.println("polygon-size-limits specification not all numbers " + keyVal[count]);
-				}
-				count++;
-			}
-		}
-		if (polygonSizeLimits != null){
-			// return the value for the desired resolution or the next higher one
-			for (int r = res; r <= 24; r++){
-				Integer limit = polygonSizeLimits.get(r);
-				if (limit != null){
-					if (r != res)
-						polygonSizeLimits.put(res, limit);
-					return limit;
+					throw new ExitException("polygon-size-limits specification not all numbers: " + s);
 				}
 			}
-			return 0;
 		}
-		return minSizePolygon;
+		// return the value for the desired resolution or the next higher one
+		return polygonSizeLimits.ceilingEntry(res).getValue();
 	}
 
 	private static class SourceSubdiv {
@@ -1420,7 +1370,7 @@ public class MapBuilder implements Configurable {
 		}
 	}
 
-	private class LineAddFilter extends BaseFilter implements MapFilter {
+	private static class LineAddFilter extends BaseFilter implements MapFilter {
 		private final Subdivision div;
 		private final Map map;
 
@@ -1440,8 +1390,9 @@ public class MapBuilder implements Configurable {
 					eta.processLabels(map.getLblFile());
 					pl.setExtTypeAttributes(eta);
 				}
-			} else
+			} else {
 				div.setPolylineNumber(pl);
+			}
 
 			pl.setDirection(line.isDirection());
 
@@ -1455,7 +1406,7 @@ public class MapBuilder implements Configurable {
 				RoadDef roaddef = road.getRoadDef();
 
 				pl.setRoadDef(roaddef);
-				if (road.hasSegmentsFollowing() )
+				if (road.hasSegmentsFollowing())
 					pl.setLastSegment(false);
 
 				roaddef.addPolylineRef(pl);
@@ -1482,9 +1433,9 @@ public class MapBuilder implements Configurable {
 			pg.addCoords(shape.getPoints());
 
 			pg.setType(shape.getType());
-			if(element.hasExtendedType()) {
+			if (element.hasExtendedType()) {
 				ExtTypeAttributes eta = element.getExtTypeAttributes();
-				if(eta != null) {
+				if (eta != null) {
 					eta.processLabels(map.getLblFile());
 					pg.setExtTypeAttributes(eta);
 				}

@@ -143,8 +143,7 @@ public class LBLFileReader extends ImgFile {
 			Label label = fetchLabel(offset);
 
 			if (label != null) {
-				Country country = new Country(index);
-				country.setLabel(label);
+				Country country = new Country(index, label);
 				countries.add(country);
 			}
 			index++;
@@ -171,9 +170,8 @@ public class LBLFileReader extends ImgFile {
 			int offset = reader.get3u();
 			Label label = fetchLabel(offset);
 			if (label != null) {
-				Region region = new Region(countries.get(country));
+				Region region = new Region(countries.get(country), label);
 				region.setIndex(index);
-				region.setLabel(label);
 
 				regions.add(region);
 			}
@@ -245,7 +243,7 @@ public class LBLFileReader extends ImgFile {
 		int start = header.getLabelStart();
 		int size =  header.getLabelSize();
 
-		reader.position(start + mult);
+		reader.position((long) start + mult);
 		int labelOffset = mult;
 
 		for (int off = mult; off <= size; off++) {
@@ -313,8 +311,7 @@ public class LBLFileReader extends ImgFile {
 		while (reader.position() < end) {
 			int lblOffset = reader.get3u();
 			
-			Zip zip = new Zip();
-			zip.setLabel(fetchLabel(lblOffset));
+			Zip zip = new Zip(fetchLabel(lblOffset));
 			zip.setIndex(zipIndex);
 			
 			zips.put(zip.getIndex(), zip);

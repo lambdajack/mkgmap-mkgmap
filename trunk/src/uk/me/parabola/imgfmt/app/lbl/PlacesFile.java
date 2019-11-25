@@ -20,7 +20,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
+import java.util.TreeMap;
 
 import uk.me.parabola.imgfmt.app.Exit;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
@@ -34,7 +36,6 @@ import uk.me.parabola.imgfmt.app.trergn.Subdivision;
  * This is really part of the LBLFile.  We split out all the parts of the file
  * that are to do with location to here.
  */
-@SuppressWarnings({"unchecked", "rawtypes"})
 public class PlacesFile {
 	public static final int MIN_INDEXED_POI_TYPE = 0x29;
 	public static final int MAX_INDEXED_POI_TYPE = 0x30;
@@ -53,7 +54,7 @@ public class PlacesFile {
 	private final List<Highway> highways = new ArrayList<>();
 	private final List<ExitFacility> exitFacilities = new ArrayList<>();
 	private final List<POIRecord> pois = new ArrayList<>();
-	private final List[] poiIndex = new ArrayList[256];
+	private final TreeMap<Integer, List<POIIndex>> poiIndex = new TreeMap<>();
 
 	private LBLFile lblFile;
 	private PlacesHeader placeHeader;
@@ -76,32 +77,27 @@ public class PlacesFile {
 	}
 
 	void write(ImgFileWriter writer) {
-		for (Country c : countryList)
-			c.write(writer);
+		countryList.forEach(c -> c.write(writer));
 		placeHeader.endCountries(writer.position());
 
-		for (Region region : regionList)
-			region.write(writer);
+		regionList.forEach(r -> r.write(writer));
 		placeHeader.endRegions(writer.position());
 
-		for (City sc : cityList)
-			sc.write(writer);
+		cityList.forEach(sc -> sc.write(writer));
 
 		placeHeader.endCity(writer.position());
 
-		for (List<POIIndex> pil : poiIndex) {
-			if(pil != null) {
-				// sort entries by POI name
-				List<SortKey<POIIndex>> sorted = new ArrayList<>();
-				for (POIIndex index : pil) {
-					SortKey<POIIndex> sortKey = sort.createSortKey(index, index.getName());
-					sorted.add(sortKey);
-				}
-				sorted.sort(null);
+		for (List<POIIndex> pil : poiIndex.values()) {
+			// sort entries by POI name
+			List<SortKey<POIIndex>> sorted = new ArrayList<>();
+			for (POIIndex index : pil) {
+				SortKey<POIIndex> sortKey = sort.createSortKey(index, index.getName());
+				sorted.add(sortKey);
+			}
+			sorted.sort(null);
 
-				for (SortKey<POIIndex> key : sorted) {
-					key.getObject().write(writer);
-				}
+			for (SortKey<POIIndex> key : sorted) {
+				key.getObject().write(writer);
 			}
 		}
 		placeHeader.endPOIIndex(writer.position());
@@ -114,17 +110,15 @@ public class PlacesFile {
 		placeHeader.endPOI(writer.position());
 
 		int numPoiIndexEntries = 0;
-		for (int i = 0; i < 256; ++i) {
-			if(poiIndex[i] != null) {
-				writer.put1u(i);
-				writer.put3u(numPoiIndexEntries + 1);
-				numPoiIndexEntries += poiIndex[i].size();
-			}
+		for (Entry<Integer, List<POIIndex>> entry : poiIndex.entrySet()) {
+			int i = entry.getKey();
+			writer.put1u(i);
+			writer.put3u(numPoiIndexEntries + 1);
+			numPoiIndexEntries += entry.getValue().size();
 		}
 		placeHeader.endPOITypeIndex(writer.position());
 
-		for (Zip z : zipList)
-			z.write(writer);
+		zipList.forEach(z -> z.write(writer));
 		placeHeader.endZip(writer.position());
 
 		int extraHighwayDataOffset = 0;
@@ -135,59 +129,37 @@ public class PlacesFile {
 		}
 		placeHeader.endHighway(writer.position());
 
-		for (ExitFacility ef : exitFacilities)
-			ef.write(writer);
+		exitFacilities.forEach(ef -> ef.write(writer));
 		placeHeader.endExitFacility(writer.position());
 
-		for (Highway h : highways)
-			h.write(writer, true);
+		highways.forEach(h -> h.write(writer, true));
 		placeHeader.endHighwayData(writer.position());
 	}
 
 	Country createCountry(String name, String abbr) {
-	
 		String s = abbr != null ? name + (char)0x1d + abbr : name;
-			
-		Country c = countries.get(s);
-	
-		if(c == null) {
-			c = new Country(countries.size()+1);
-
-			Label l = lblFile.newLabel(s);
-			c.setLabel(l);
-			countries.put(s, c);
-		}
-		return c;
+		return countries.computeIfAbsent(s, k -> new Country(countries.size() + 1, lblFile.newLabel(s)));
 	}
 
 	Region createRegion(Country country, String name, String abbr) {
-	
-		String s = abbr != null ? name + (char)0x1d + abbr : name;
-
+		String s = abbr != null ? name + (char) 0x1d + abbr : name;
 		String uniqueRegionName = s.toUpperCase() + "_C" + country.getLabel().getOffset();
-	
-		Region r = regions.get(uniqueRegionName);
-		
-		if(r == null) {
-			r = new Region(country);
-			Label l = lblFile.newLabel(s);
-			r.setLabel(l);
-			regionList.add(r);
-			regions.put(uniqueRegionName, r);
-		}
-		return r;
+		return regions.computeIfAbsent(uniqueRegionName, k -> new Region(country, lblFile.newLabel(s)));
 	}
 
+	/**
+	 * Create city without region
+	 * @param country the country
+	 * @param name the name of the city
+	 * @param unique set to true if you needed a new city object
+	 * @return the city object
+	 */
 	City createCity(Country country, String name, boolean unique) {
-
 		String uniqueCityName = name.toUpperCase() + "_C" + country.getLabel().getOffset();
 		
 		// if unique is true, make sure that the name really is unique
-		if(unique && cities.get(uniqueCityName) != null) {
-			do {
-				// add random suffix
-				uniqueCityName += "_" + new Random().nextInt(0x10000);
-			} while(cities.get(uniqueCityName) != null);
+		if (unique) {
+			uniqueCityName = createUniqueCityName(uniqueCityName);
 		}
 
 		City c = null;
@@ -197,8 +169,7 @@ public class PlacesFile {
 		if (c == null) {
 			c = new City(country);
 
-			Label l = lblFile.newLabel(name);
-			c.setLabel(l);
+			c.setLabel(lblFile.newLabel(name));
 
 			cityList.add(c);
 			cities.put(uniqueCityName, c);
@@ -208,27 +179,30 @@ public class PlacesFile {
 		return c;
 	}
 
+	/**
+	 * Create city with region
+	 * @param region the region
+	 * @param name the name of the city
+	 * @param unique set to true if you needed a new city object
+	 * @return the city object
+	 */
 	City createCity(Region region, String name, boolean unique) {
 		
 		String uniqueCityName = name.toUpperCase() + "_R" + region.getLabel().getOffset();
 		
-		// if unique is true, make sure that the name really is unique
-		if (unique && cities.get(uniqueCityName) != null) {
-			do {
-				// add semi-random suffix.
-				uniqueCityName += "_" + random.nextInt(0x10000);
-			} while(cities.get(uniqueCityName) != null);
+		if (unique) {
+			uniqueCityName = createUniqueCityName(uniqueCityName);
 		}
 
 		City c = null;
-		if(!unique)
+		if(!unique) {
 			c = cities.get(uniqueCityName);
+		}
 		
 		if(c == null) {
 			c = new City(region);
 
-			Label l = lblFile.newLabel(name);
-			c.setLabel(l);
+			c.setLabel(lblFile.newLabel(name));
 
 			cityList.add(c);
 			cities.put(uniqueCityName, c);
@@ -238,26 +212,23 @@ public class PlacesFile {
 		return c;
 	}
 
-	Zip createZip(String code) {
-		Zip z = postalCodes.get(code);
-
-		if(z == null) {
-			z = new Zip();
-
-			Label l = lblFile.newLabel(code);
-			z.setLabel(l);
-
-			zipList.add(z);
-			postalCodes.put(code, z);
+	private String createUniqueCityName(String name) {
+		String uniqueCityName = name;
+		while (cities.get(uniqueCityName) != null) {
+			// add semi-random suffix.
+			uniqueCityName += "_" + random.nextInt(0x10000);
 		}
-		return z;
+		return uniqueCityName;
+	}
+	
+	Zip createZip(String code) {
+		return postalCodes.computeIfAbsent(code, k -> new Zip(lblFile.newLabel(code)));
 	}
 
 	Highway createHighway(Region region, String name) {
 		Highway h = new Highway(region, highways.size()+1);
 
-		Label l = lblFile.newLabel(name);
-		h.setLabel(l);
+		h.setLabel(lblFile.newLabel(name));
 
 		highways.add(h);
 		return h;
@@ -272,12 +243,9 @@ public class PlacesFile {
 
 	POIRecord createPOI(String name) {
 		assert !poisClosed;
-		// TODO...
 		POIRecord p = new POIRecord();
 
-		Label l = lblFile.newLabel(name);
-		p.setLabel(l);
-
+		p.setLabel(lblFile.newLabel(name));
 		pois.add(p);
 		
 		return p;
@@ -285,14 +253,10 @@ public class PlacesFile {
 
 	POIRecord createExitPOI(String name, Exit exit) {
 		assert !poisClosed;
-		// TODO...
 		POIRecord p = new POIRecord();
 
-		Label l = lblFile.newLabel(name);
-		p.setLabel(l);
-
+		p.setLabel(lblFile.newLabel(name));
 		p.setExit(exit);
-
 		pois.add(p);
 
 		return p;
@@ -305,9 +269,7 @@ public class PlacesFile {
 			return;
 		
 		POIIndex pi = new POIIndex(name, index, group, type & 0xff);
-		if(poiIndex[t] == null)
-			poiIndex[t] = new ArrayList<POIIndex>();
-		poiIndex[t].add(pi);
+		poiIndex.computeIfAbsent(t, k -> new ArrayList<>()).add(pi);
 	}
 
 	void allPOIsDone() {
@@ -330,7 +292,7 @@ public class PlacesFile {
 	}
 
 	/**
-	 * I don't know that you have to sort these (after all most tiles will
+	 * I don't know that you have to sort these (after almost all tiles will
 	 * only be in one country or at least a very small number).
 	 *
 	 * But why not?
@@ -357,7 +319,7 @@ public class PlacesFile {
 	 */
 	private void sortRegions() {
 		List<SortKey<Region>> keys = new ArrayList<>();
-		for (Region r : regionList) {
+		for (Region r : regions.values()) {
 			SortKey<Region> key = sort.createSortKey(r, r.getLabel(), r.getCountry().getIndex());
 			keys.add(key);
 		}

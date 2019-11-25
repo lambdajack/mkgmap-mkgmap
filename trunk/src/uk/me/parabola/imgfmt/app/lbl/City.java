@@ -60,9 +60,7 @@ public class City {
 	}
 
 	void write(ImgFileWriter writer) {
-		//writer.put3()
 		if (pointRef) {
-		    //		    System.err.println("City point = " + (int)pointIndex + " div = " + subdivision.getNumber());
 			writer.put1u(pointIndex);
 			writer.put2u(subdivision.getNumber());
 		} else {
@@ -106,15 +104,11 @@ public class City {
 	}
 
 	public String getName() {
-		if (label == null)
-			return "";
-		return label.getText();
+		return label == null ? "" : label.getText();
 	}
 
 	public int getLblOffset() {
-		if (label == null)
-			return 0;
-		return label.getOffset();
+		return label == null ? 0 : label.getOffset();
 	}
 
 	public String toString() {
@@ -124,9 +118,9 @@ public class City {
 		if (subdivision != null)
 			result += " " + subdivision.getNumber() + "/" + pointIndex;
 		if(country != null)
-			result += " in country " + (0 + country.getIndex());
+			result += " in country " + country.getIndex();
 		if(region != null)
-			result += " in region " + (0 + region.getIndex());
+			result += " in region " + region.getIndex();
 
 		return result;
 	}
@@ -159,7 +153,7 @@ public class City {
 	}
 	
 	public int getCountryNumber() {
-		return country != null ? country.getIndex() : 0;
+		return country == null ? 0 : country.getIndex();
 	}
 
 	public Label getLabel() {

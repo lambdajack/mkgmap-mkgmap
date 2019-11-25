@@ -57,18 +57,18 @@ public class LBLFile extends ImgFile {
 	private final PlacesFile places = new PlacesFile();
 	private Sort sort;
 
-	// Shift value for the label offset.
-	private final int offsetMultiplier = 1;
+	// Shift value for the label offset, we always use 1 here.
+	private static final int OFFSET_MULTIPLIER = 1;
 
 	public LBLFile(ImgChannel chan, Sort sort) {
 		this.sort = sort;
 		lblHeader.setSort(sort);
-		lblHeader.setOffsetMultiplier(offsetMultiplier);
+		lblHeader.setOffsetMultiplier(OFFSET_MULTIPLIER);
 		setHeader(lblHeader);
 
 		setWriter(new BufferedImgFileWriter(chan));
 
-		position(LBLHeader.HEADER_LEN + lblHeader.getSortDescriptionLength());
+		position((long) LBLHeader.HEADER_LEN + lblHeader.getSortDescriptionLength());
 
 		// The zero offset is for no label.
 		getWriter().put1u(0);
@@ -156,12 +156,12 @@ public class LBLFile extends ImgFile {
 	 */
 	private void alignForNext() {
 		// Align ready for next label
-		while ((getCurrentLabelOffset() & ((1 << offsetMultiplier) - 1)) != 0)
+		while ((getCurrentLabelOffset() & ((1 << OFFSET_MULTIPLIER) - 1)) != 0)
 			getWriter().put1u(0);
 	}
 
 	private int getNextLabelOffset() {
-		return getCurrentLabelOffset() >> offsetMultiplier;
+		return getCurrentLabelOffset() >> OFFSET_MULTIPLIER;
 	}
 
 	private int getCurrentLabelOffset() {

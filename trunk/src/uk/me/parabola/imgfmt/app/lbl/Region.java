@@ -28,10 +28,11 @@ public class Region {
 	private int index;
 
 	private final Country country;
-	private Label label;
+	private final Label label;
 
-	public Region(Country country) {
+	public Region(Country country, Label label) {
 		this.country = country;
+		this.label = label;
 	}
 
 	public void write(ImgFileWriter writer) {
@@ -50,10 +51,6 @@ public class Region {
 
 	public void setIndex(int index) {
 		this.index = index;
-	}
-
-	public void setLabel(Label label) {
-		this.label = label;
 	}
 
 	public Label getLabel() {

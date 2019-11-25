@@ -24,10 +24,6 @@ public class CombinedSortKey<T> implements SortKey<T> {
 	private final int first;
 	private final int second;
 
-	//public CombinedSortKey(SortKey<T> key, int first) {
-	//	this(key, first, 0);
-	//}
-
 	public CombinedSortKey(SortKey<T> obj, int first, int second) {
 		this.key = obj;
 		this.first = first;
@@ -42,22 +38,11 @@ public class CombinedSortKey<T> implements SortKey<T> {
 		CombinedSortKey<T> other = (CombinedSortKey<T>) o;
 		int res = key.compareTo(other.key);
 		if (res == 0) {
-			res = compareInts(first, other.first);
+			res = Integer.compare(first, other.first);
 			if (res == 0) {
-				res = compareInts(second, other.second);
+				res = Integer.compare(second, other.second);
 			}
 		}
-		return res;
-	}
-
-	private int compareInts(int i1, int i2) {
-		int res;
-		if (i1 == i2)
-			res = 0;
-		else if (i1 < i2)
-			res = -1;
-		else
-			res = 1;
 		return res;
 	}
 }
