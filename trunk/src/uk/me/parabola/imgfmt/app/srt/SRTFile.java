@@ -106,16 +106,16 @@ public class SRTFile extends ImgFile {
 		int secondary = sort.getSecondary(i);
 		int tertiary = sort.getTertiary(i);
 		if (isMulti) {
-			assert primary <= 0xffff;
-			assert secondary <= 0xff;
-			assert tertiary <= 0xff;
+			assert primary <= 0xffff : primary;
+			assert secondary <= 0xff : secondary;
+			assert tertiary <= 0xff : tertiary;
 			writer.put2u(primary);
 			writer.put1u(secondary);
 			writer.put1u(tertiary);
 		} else {
-			assert primary <= 0xff;
-			assert secondary <= 0xf;
-			assert tertiary <= 0xf;
+			assert primary <= 0xff : primary;
+			assert secondary <= 0xf : secondary;
+			assert tertiary <= 0xf : tertiary;
 			writer.put1u(primary);
 			writer.put1u((tertiary << 4) | (secondary & 0xf));
 		}

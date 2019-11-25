@@ -135,7 +135,7 @@ public class Sort {
 			for (int i = 0; i < 256; i++) {
 				if (((p.flags[i] >>> 4) & 0xf) == 0) {
 					if (p.getPrimary(i) != 0) {
-						byte second = p.getSecondary(i);
+						int second = p.getSecondary(i);
 						maxSecondary = Math.max(maxSecondary, second);
 						if (second != 0) {
 							maxTertiary = Math.max(maxTertiary, p.getTertiary(i));
@@ -361,7 +361,7 @@ public class Sort {
 		// We need +1 for the null bytes, we also +2 for a couple of expanded characters. For a complete
 		// german map this was always enough in tests.
 		byte[] key = new byte[(chars.length + 1 + 2) * 4];
-		int needed = 0;
+		int needed;
 		try {
 			needed = fillCompleteKey(chars, key);
 		} catch (ArrayIndexOutOfBoundsException e) {
@@ -597,7 +597,7 @@ public class Sort {
 
 	/**
 	 * Allocate space for up to n pages.
-	 * @param n
+	 * @param n Number of pages
 	 */
 	public void setMaxPage(int n) {
 		pages = Arrays.copyOf(pages, n + 1);
@@ -626,7 +626,7 @@ public class Sort {
 		private final byte[] tertiary = new byte[256];
 		private final byte[] flags = new byte[256];
 
-		char getPrimary(int ch) {
+		int getPrimary(int ch) {
 			return primary[ch & 0xff];
 		}
 
@@ -634,16 +634,16 @@ public class Sort {
 			primary[ch & 0xff] = (char) val;
 		}
 
-		byte getSecondary(int ch) {
-			return secondary[ch & 0xff];
+		int getSecondary(int ch) {
+			return secondary[ch & 0xff] & 0xff;
 		}
 
 		void setSecondary(int ch, int val) {
 			secondary[ch & 0xff] = (byte) val;
 		}
 
-		byte getTertiary(int ch) {
-			return tertiary[ch & 0xff];
+		int getTertiary(int ch) {
+			return tertiary[ch & 0xff] & 0xff;
 		}
 
 		void setTertiary(int ch, int val) {
@@ -659,11 +659,11 @@ public class Sort {
 		public int getPos(int type, int ch) {
 			switch (type) {
 			case Collator.PRIMARY:
-				return getPrimary(ch) & 0xffff;
+				return getPrimary(ch);
 			case Collator.SECONDARY:
-				return getSecondary(ch) & 0xff;
+				return getSecondary(ch);
 			case Collator.TERTIARY:
-				return getTertiary(ch) & 0xff;
+				return getTertiary(ch);
 			default:
 				assert false : "bad collation type passed";
 				return 0;
@@ -850,7 +850,7 @@ public class Sort {
 						}
 
 						// Get the first non-ignorable at this level
-						int c = chars[(pos++ & 0xff)];
+						int c = chars[pos++ & 0xff];
 						if (!hasPage(c >>> 8)) {
 							next = 0;
 							continue;

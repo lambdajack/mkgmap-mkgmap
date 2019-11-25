@@ -329,7 +329,7 @@ public class SrtTextReader {
 			CodePosition cp = new CodePosition();
 			int b = r.getBval();
 			int primary = sort.getPrimary(b);
-			cp.setPrimary((char) primary);
+			cp.setPrimary(primary);
 
 			// We do not want the character to sort fully equal to the expanded characters (or any other
 			// character so adjust the ordering at other strengths.  May need further tweaks.
@@ -346,15 +346,15 @@ public class SrtTextReader {
 				} else {
 					secondary = 1;
 				}
-				cp.setSecondary((byte) (secondary));
-				cp.setTertiary((byte) (tertiary));
+				cp.setSecondary(secondary);
+				cp.setTertiary(tertiary);
 			} else {
 				num++;
-				secondary = sort.getSecondary(b) & 0xff;
-				cp.setSecondary((byte) (secondary + 7));
+				secondary = sort.getSecondary(b);
+				cp.setSecondary(secondary + 7);
 
-				tertiary = sort.getTertiary(b) & 0xff;
-				cp.setTertiary((byte) (tertiary + 2));
+				tertiary = sort.getTertiary(b);
+				cp.setTertiary(tertiary + 2);
 			}
 			expansions.add(cp);
 		}

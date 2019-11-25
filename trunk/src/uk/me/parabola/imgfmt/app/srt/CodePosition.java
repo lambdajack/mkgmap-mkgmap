@@ -20,19 +20,19 @@ import java.text.Collator;
  * @author Steve Ratcliffe
  */
 public class CodePosition {
-	private char primary;
-	private byte secondary;
-	private byte tertiary;
+	private int primary;
+	private int secondary;
+	private int tertiary;
 
-	public char getPrimary() {
+	public int getPrimary() {
 		return primary;
 	}
 
-	public byte getSecondary() {
+	public int getSecondary() {
 		return secondary;
 	}
 
-	public byte getTertiary() {
+	public int getTertiary() {
 		return tertiary;
 	}
 
@@ -47,23 +47,23 @@ public class CodePosition {
 		case Collator.PRIMARY:
 			return primary;
 		case Collator.SECONDARY:
-			return secondary & 0xff;
+			return secondary;
 		case Collator.TERTIARY:
-			return tertiary & 0xff;
+			return tertiary;
 		default:
 			return 0;
 		}
 	}
 
-	public void setPrimary(char primary) {
+	public void setPrimary(int primary) {
 		this.primary = primary;
 	}
 
-	public void setSecondary(byte secondary) {
+	public void setSecondary(int secondary) {
 		this.secondary = secondary;
 	}
 
-	public void setTertiary(byte tertiary) {
+	public void setTertiary(int tertiary) {
 		this.tertiary = tertiary;
 	}
 }

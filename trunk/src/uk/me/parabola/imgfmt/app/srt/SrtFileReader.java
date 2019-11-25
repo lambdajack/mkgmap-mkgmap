@@ -173,20 +173,21 @@ public class SrtFileReader extends ImgFile {
 		int rec;
 		if (posLength == 2) {
 			rec = reader.get2u();
-			cp.setPrimary((char) (rec & 0xff));
-			cp.setSecondary((byte) ((rec >> 8) & 0xf));
-			cp.setTertiary((byte) ((rec >> 12) & 0xf));
+			cp.setPrimary(rec & 0xff);
+			cp.setSecondary((rec >> 8) & 0xf);
+			cp.setTertiary((rec >> 12) & 0xf);
 			
 		} else if (posLength == 3) {
+			// what is the extra byte for ???
 			rec = reader.get3u();
-			cp.setPrimary((char) (rec & 0xff));
-			cp.setSecondary((byte) ((rec >> 8) & 0xf));
-			cp.setTertiary((byte) ((rec >> 12) & 0xf));
+			cp.setPrimary(rec & 0xff);
+			cp.setSecondary((rec >> 8) & 0xf);
+			cp.setTertiary((rec >> 12) & 0xf);
 		} else if (posLength == 4) {
 			rec = reader.get4();
-			cp.setPrimary((char) (rec & 0xffff));
-			cp.setSecondary((byte) ((rec >> 16) & 0xff));
-			cp.setTertiary((byte) ((rec >> 24) & 0xff));
+			cp.setPrimary(rec & 0xffff);
+			cp.setSecondary((rec >> 16) & 0xff);
+			cp.setTertiary((rec >> 24) & 0xff);
 		} else {
 			throw new RuntimeException("unexpected value posLength " + posLength);
 		}
