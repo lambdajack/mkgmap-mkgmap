@@ -25,7 +25,7 @@ import uk.me.parabola.imgfmt.app.srt.SortKey;
  * @author Steve Ratcliffe
  */
 public class Mdr27 extends MdrSection {
-	private final List<Mdr5Record> cities = new ArrayList<Mdr5Record>();
+	private final List<Mdr5Record> cities = new ArrayList<>();
 
 	public Mdr27(MdrConfig config) {
 		setConfig(config);
@@ -38,7 +38,7 @@ public class Mdr27 extends MdrSection {
 	public void sortCities(List<Mdr5Record> list) {
 		Sort sort = getConfig().getSort();
 
-		List<SortKey<Mdr5Record>> keys = new ArrayList<SortKey<Mdr5Record>>();
+		List<SortKey<Mdr5Record>> keys = new ArrayList<>();
 		for (Mdr5Record c : list) {
 			Mdr13Record mdrRegion = c.getMdrRegion();
 			if (mdrRegion != null) {

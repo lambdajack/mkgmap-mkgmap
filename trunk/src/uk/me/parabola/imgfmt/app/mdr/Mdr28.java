@@ -27,7 +27,7 @@ import uk.me.parabola.imgfmt.app.srt.SortKey;
  * @author Steve Ratcliffe
  */
 public class Mdr28 extends MdrSection implements HasHeaderFlags {
-	private final List<Mdr28Record> index = new ArrayList<Mdr28Record>();
+	private final List<Mdr28Record> index = new ArrayList<>();
 
 	public Mdr28(MdrConfig config) {
 		setConfig(config);

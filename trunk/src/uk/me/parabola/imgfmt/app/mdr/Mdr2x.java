@@ -44,8 +44,6 @@ public abstract class Mdr2x extends MdrMapSection implements HasHeaderFlags {
 		boolean writeLabel = (magic & HAS_LABEL) != 0;  // A guess
 		boolean writeNameOffset = (magic & HAS_NAME_OFFSET) != 0;  // A guess, but less so
 		int partialInfoSize = ((magic >> 3) & 0x7);
-//		int partialBShift = ((magic >> 6) & 0xf);
-//		int partialBMask = (1 << partialBShift) - 1;
 		
 		int recordNumber = 0;
 		for (Mdr7Record street : streets) {
@@ -68,8 +66,6 @@ public abstract class Mdr2x extends MdrMapSection implements HasHeaderFlags {
 
 				if (partialInfoSize > 0) {
 					int trailingFlags = ((rr & 1) == 0) ? 1 : 0;
-					// trailingFlags |= s.getB() << 1;
-					// trailingFlags |= s.getS() << (1 + partialBShift);
 					writer.putNu(partialInfoSize, trailingFlags);
 				}
 			} else {
@@ -119,6 +115,7 @@ public abstract class Mdr2x extends MdrMapSection implements HasHeaderFlags {
 		return streets.size();
 	}
 
+	@Override
 	protected void releaseMemory() {
 		streets = null;
 	}

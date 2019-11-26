@@ -17,23 +17,21 @@ package uk.me.parabola.imgfmt.app.mdr;
  *
  * @author Steve Ratcliffe
  */
-public class Mdr8Record extends ConfigBase {
-	private char[] prefix;
-	private int recordNumber;
+public class Mdr8Record {
+	private final char[] prefix;
+	private final int recordNumber;
+
+	
+	public Mdr8Record(char[] prefix, int recordNumber) {
+		this.prefix = prefix;
+		this.recordNumber = recordNumber;
+	}
 
 	public char[] getPrefix() {
 		return prefix;
 	}
 
-	public void setPrefix(char[] prefix) {
-		this.prefix = prefix;
-	}
-
 	public int getRecordNumber() {
 		return recordNumber;
-	}
-
-	public void setRecordNumber(int recordNumber) {
-		this.recordNumber = recordNumber;
 	}
 }

@@ -12,7 +12,6 @@
  */
 package uk.me.parabola.imgfmt.app.mdr;
 
-import uk.me.parabola.imgfmt.ReadFailedException;
 import uk.me.parabola.imgfmt.app.CommonHeader;
 import uk.me.parabola.imgfmt.app.ImgFileReader;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
@@ -49,7 +48,7 @@ public class MDRHeader extends CommonHeader {
 		sections[1].setPosition(getHeaderLength());
 	}
 
-	protected void readFileHeader(ImgFileReader reader) throws ReadFailedException {
+	protected void readFileHeader(ImgFileReader reader) {
 		throw new UnsupportedOperationException("not implemented yet");
 	}
 

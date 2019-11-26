@@ -49,7 +49,7 @@ public class Mdr17 extends MdrSection {
 	 * have a header with the length and the record size and prefix length of the
 	 * records in the subsection.
 	 */
-	private void writeSubSect(ImgFileWriter writer, PrefixIndex index) {
+	private static void writeSubSect(ImgFileWriter writer, PrefixIndex index) {
 		index.preWrite();
 		int len = index.getItemSize() * index.getNumberOfItems() + 2;
 		if (len == 2)
@@ -77,6 +77,7 @@ public class Mdr17 extends MdrSection {
 		index.writeSectData(writer);
 	}
 
+	@Override
 	protected void releaseMemory() {
 		streets = null;
 		cities = null;

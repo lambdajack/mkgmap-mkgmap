@@ -25,7 +25,7 @@ import uk.me.parabola.imgfmt.app.ImgFileWriter;
 public class Mdr8 extends MdrSection implements HasHeaderFlags {
 	private static final int STRING_WIDTH = 4;
 
-	private List<Mdr8Record> index = new ArrayList<Mdr8Record>();
+	private List<Mdr8Record> index = new ArrayList<>();
 
 	public Mdr8(MdrConfig config) {
 		setConfig(config);

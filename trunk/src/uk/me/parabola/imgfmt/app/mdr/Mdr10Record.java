@@ -29,12 +29,7 @@ public class Mdr10Record implements Comparable<Mdr10Record> {
 	private Mdr11Record mdr11ref;
 
 	public int compareTo(Mdr10Record o) {
-		if (mdr11ref.getRecordNumber() == o.mdr11ref.getRecordNumber())
-			return 0;
-		else if (mdr11ref.getRecordNumber() < o.mdr11ref.getRecordNumber())
-			return -1;
-		else
-			return 1;
+		return Integer.compare(mdr11ref.getRecordNumber(), o.mdr11ref.getRecordNumber());
 	}
 
 	public Mdr11Record getMdr11ref() {

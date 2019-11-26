@@ -140,7 +140,6 @@ public class Mdr7 extends MdrMapSection {
 				st.setOutNameOffset((byte) outOffset);
 				st.setPrefixOffset((byte) prefix);
 				st.setSuffixOffset((byte) suffix);
-				//System.out.println(st.getName() + ": add partial " + st.getPartialName());
 				if (!exclNames.contains(st.getPartialName()))
 					storeMdr7(st);
 
@@ -202,6 +201,7 @@ public class Mdr7 extends MdrMapSection {
 	 * This is a performance critical part of the index creation process
 	 * as it requires a lot of heap to store the sort keys. 	  	 
 	 */
+	@Override
 	protected void preWriteImpl() {
 		
 		LargeListSorter<Mdr7Record> partialSorter = new LargeListSorter<Mdr7Record>(sort) {
@@ -233,7 +233,6 @@ public class Mdr7 extends MdrMapSection {
 		
 		allStreets.trimToSize();
 		streets.trimToSize();
-		return;
 	}
 
 	/**
@@ -356,6 +355,7 @@ public class Mdr7 extends MdrMapSection {
 		return magic;
 	}
 
+	@Override
 	protected void releaseMemory() {
 		allStreets = null;
 		streets = null;

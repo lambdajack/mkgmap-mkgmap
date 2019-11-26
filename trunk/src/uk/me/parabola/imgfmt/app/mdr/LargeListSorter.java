@@ -57,14 +57,13 @@ public abstract class LargeListSorter<T extends NamedRecord> {
 			merge(list,start,len);
 		} else {
 			// sort one chunk
-//			System.out.println("sorting list of roads. positions " + start + " to " + (start + len - 1));
 			Map<String, byte[]> cache = new HashMap<>();
 			List<SortKey<T>> keys = new ArrayList<>(len);
 
 			for (int i = start; i < start + len; i++) {
 				keys.add(makeKey(list.get(i), sort, cache));
 			}
-			cache = null;
+			cache = null; // release memory
 			keys.sort(null);
 			
 			for (int i = 0; i < keys.size(); i++){ 
@@ -72,13 +71,11 @@ public abstract class LargeListSorter<T extends NamedRecord> {
 				T r = sk.getObject();
 				list.set(start+i, r);
 			}
-			return;
 		}
 	}
 	
 	
 	private void merge(List<T> list, int start, int len) {
-//		System.out.println("merging positions " + start + " to " + (start + len - 1));
 		int pos1 = start;
 		int pos2 = start + len / 2;
 		int stop1 = start + len / 2;
@@ -89,11 +86,11 @@ public abstract class LargeListSorter<T extends NamedRecord> {
 		SortKey<T> sk1 = null;
 		SortKey<T> sk2 = null;
 		while (pos1 < stop1 &&  pos2 < stop2) {
-			if (fetch1 && pos1 < stop1) {
+			if (fetch1) {
 				sk1 = makeKey(list.get(pos1), sort, null);
 				fetch1 = false;
 			}
-			if (fetch2 && pos2 < stop2) {
+			if (fetch2) {
 				sk2 = makeKey(list.get(pos2), sort, null);
 				fetch2 = false;
 			}

@@ -18,4 +18,7 @@ package uk.me.parabola.imgfmt.app.mdr;
  */
 public class Mdr12Record extends Mdr8Record {
 	// This is exactly the same as mdr8
+	public Mdr12Record(char[] prefix, int recordNumber) {
+		super(prefix, recordNumber);
+	}
 }

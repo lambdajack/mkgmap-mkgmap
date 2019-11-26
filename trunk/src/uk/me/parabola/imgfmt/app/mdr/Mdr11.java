@@ -56,6 +56,7 @@ public class Mdr11 extends MdrMapSection {
 	 * The POI index contains individual references to POI by subdiv and index, so they are not
 	 * de-duplicated in the index in the same way that streets and cities are.
 	 */
+	@Override
 	protected void preWriteImpl() {
 		pois.trimToSize();
 		Sort sort = getConfig().getSort();
@@ -67,7 +68,6 @@ public class Mdr11 extends MdrMapSection {
 				return sort.createSortKey(r, r.getName(), r.getMapIndex(), cache);
 			}
 		};
-//		System.out.println("sorting " + pois.size() + " pois by name"); 
 		sorter.sort(pois);
 		for (Mdr11Record poi : pois) {
 			mdr10.addPoiType(poi);
@@ -145,10 +145,7 @@ public class Mdr11 extends MdrMapSection {
 				rec--;
 			}
 
-			Mdr12Record indexRecord = new Mdr12Record();
-			indexRecord.setPrefix(prefix);
-			indexRecord.setRecordNumber(rec);
-			list.add(indexRecord);
+			list.add(new Mdr12Record(prefix, rec));
 		}
 		return list;
 	}
@@ -168,6 +165,7 @@ public class Mdr11 extends MdrMapSection {
 		this.mdr10 = mdr10;
 	}
 
+	@Override
 	public void releaseMemory() {
 		pois = null;
 		mdr10 = null;

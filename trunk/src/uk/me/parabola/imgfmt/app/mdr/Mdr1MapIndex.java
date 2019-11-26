@@ -34,9 +34,6 @@ public class Mdr1MapIndex {
 		this.subWriter.position(subHeader.getHeaderLen());
 	}
 
-	public void startSection(int n) {
-	}
-
 	public void endSection(int n) {
 		int sn = sectionToSubsection(n);
 		if (sn != 0)
@@ -47,7 +44,7 @@ public class Mdr1MapIndex {
 		subWriter.putNu(pointerSize, recordNumber);
 	}
 	
-	private int sectionToSubsection(int n) {
+	private static int sectionToSubsection(int n) {
 		int sn;
 		switch (n) {
 		case 11: sn = 1; break;

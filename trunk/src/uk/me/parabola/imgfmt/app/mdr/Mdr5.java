@@ -52,6 +52,7 @@ public class Mdr5 extends MdrMapSection {
 	/**
 	 * Called after all cities to sort and number them.
 	 */
+	@Override
 	public void preWriteImpl() {
 		localCitySize = Utils.numberToPointerSize(maxCityIndex + 1);
 
@@ -282,6 +283,7 @@ public class Mdr5 extends MdrMapSection {
 		return val;
 	}
 
+	@Override
 	protected void releaseMemory() {
 		allCities = null;
 		cities = null;

@@ -127,6 +127,7 @@ public class Mdr10 extends MdrMapSection {
 		this.numberOfPois = numberOfPois;
 	}
 
+	@Override
 	protected void releaseMemory() {
 		poiTypes = null;
 	}

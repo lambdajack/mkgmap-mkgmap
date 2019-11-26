@@ -25,7 +25,7 @@ import uk.me.parabola.imgfmt.app.ImgFileWriter;
  * @author Steve Ratcliffe
  */
 public class Mdr18 extends MdrSection implements HasHeaderFlags {
-	private List<Mdr18Record> poiTypes = new ArrayList<Mdr18Record>();
+	private List<Mdr18Record> poiTypes = new ArrayList<>();
 
 	public Mdr18(MdrConfig config) {
 		setConfig(config);

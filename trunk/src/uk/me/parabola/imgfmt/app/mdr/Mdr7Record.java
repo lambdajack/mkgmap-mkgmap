@@ -169,9 +169,7 @@ public class Mdr7Record extends RecordBase implements NamedRecord {
 			return false;
 		if (suffixOffset != other.suffixOffset)
 			return false;
-		if (city != other.getCity()) 
-			return false;
-		return true;
+		return (city == other.getCity()); 
 	}
 
 	/**
@@ -184,9 +182,7 @@ public class Mdr7Record extends RecordBase implements NamedRecord {
 		if (last == null)
 			return 0;
 		int res = 0;
-		String lastPartial = last.getPartialName();
-		String partial = getPartialName();
-		int cmp = collator.compare(lastPartial, partial);
+		int cmp = collator.compare(last.getPartialName(), getPartialName());
 		if (cmp == 0)
 			res = 1;
 		res |= checkFullRepeat(last, collator);
@@ -203,9 +199,7 @@ public class Mdr7Record extends RecordBase implements NamedRecord {
 		if (last == null)
 			return 0;
 		int res = 0;
-		String lastName = last.getName();
-		String name = getName();
-		int cmp = collator.compare(lastName, name);
+		int cmp = collator.compare(last.getName(), getName());
 		if (cmp == 0) 
 			res |= 2;
 		return res;

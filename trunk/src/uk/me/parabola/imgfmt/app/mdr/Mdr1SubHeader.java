@@ -51,7 +51,6 @@ public class Mdr1SubHeader {
 			if (n == 2)
 				writer.put4(section.getPosition());
 			else {
-				//section.writeSectionInfo(writer);
 				writer.put4(section.getPosition());
 				int size = section.getSize();
 				if (size == 0)

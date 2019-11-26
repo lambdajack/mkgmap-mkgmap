@@ -29,14 +29,10 @@ public class Mdr14Record extends RecordBase implements Comparable<Mdr14Record>, 
 	 * it wasn't.
 	 */
 	public int compareTo(Mdr14Record o) {
-		int v1 = (getMapIndex()<<16) + countryIndex;
-		int v2 = (o.getMapIndex()<<16) + o.countryIndex;
-		if (v1 < v2)
-			return -1;
-		else if (v1 > v2)
-			return 1;
-		else
-			return 0;
+		int d = Integer.compare(getMapIndex(), o.getMapIndex());
+		if (d == 0)
+			d = Integer.compare(countryIndex, o.countryIndex);
+		return d;
 	}
 
 	public int getCountryIndex() {

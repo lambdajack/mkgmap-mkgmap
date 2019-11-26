@@ -21,13 +21,13 @@ import uk.me.parabola.imgfmt.app.ImgFileWriter;
 
 /**
  * POI types.  A simple list of the types that are used?
- * If you have this section, then the ability to select POI categories
+ * If you don't have this section, then the ability to select POI categories
  * goes away.
  * 
  * @author Steve Ratcliffe
  */
 public class Mdr4 extends MdrSection implements HasHeaderFlags {
-	private final Set<Mdr4Record> poiTypes = new HashSet<Mdr4Record>();
+	private final Set<Mdr4Record> poiTypes = new HashSet<>();
 
 	public Mdr4(MdrConfig config) {
 		setConfig(config);
@@ -35,7 +35,7 @@ public class Mdr4 extends MdrSection implements HasHeaderFlags {
 
 	
 	public void writeSectData(ImgFileWriter writer) {
-		List<Mdr4Record> list = new ArrayList<Mdr4Record>(poiTypes);
+		List<Mdr4Record> list = new ArrayList<>(poiTypes);
 		list.sort(null);
 
 		for (Mdr4Record r : list) {
@@ -50,13 +50,7 @@ public class Mdr4 extends MdrSection implements HasHeaderFlags {
 	}
 
 	public void addType(int type) {
-		Mdr4Record r = new Mdr4Record();
-		r.setType((type >> 8) & 0xff);
-		r.setSubtype(type & 0xff);
-
-		r.setUnknown(0);
-
-		poiTypes.add(r);
+		poiTypes.add(new Mdr4Record((type >> 8) & 0xff, type & 0xff));
 	}
 
 	/**

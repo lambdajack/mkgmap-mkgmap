@@ -57,7 +57,7 @@ public class Mdr1 extends MdrSection implements HasHeaderFlags {
 	 */
 	public void addMap(int mapNumber, int index) {
 		assert index > 0;
-		Mdr1Record rec = new Mdr1Record(mapNumber, getConfig());
+		Mdr1Record rec = new Mdr1Record(mapNumber);
 		rec.setMapIndex(index);
 		maps.add(rec);
 
@@ -96,11 +96,7 @@ public class Mdr1 extends MdrSection implements HasHeaderFlags {
 	}
 
 	public void setStartPosition(int sectionNumber) {
-		if (isForDevice())
-			return;
-
-		for (Mdr1Record mi : maps)
-			mi.getMdrMapIndex().startSection(sectionNumber);
+		// nothing to do
 	}
 
 	public void setEndPosition(int sectionNumber) {

@@ -23,6 +23,7 @@ public class Mdr12 extends Mdr8 {
 		super(config);
 	}
 
+	@Override
 	protected int associatedSize() {
 		return getSizes().getPoiSize();
 	}

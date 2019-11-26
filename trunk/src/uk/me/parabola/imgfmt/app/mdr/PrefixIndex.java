@@ -52,6 +52,7 @@ public class PrefixIndex extends MdrSection {
 	/**
 	 * We can create an index for any type that has a name.
 	 * @param list A list of items that have a name.
+	 * @param grouped used with MDR7 records  
 	 */
 	public void createFromList(List<? extends NamedRecord> list, boolean grouped) {
 		maxIndex = list.size();
@@ -85,10 +86,7 @@ public class PrefixIndex extends MdrSection {
 			int cmp = collator.compareOneStrengthWithLength(prefix, lastPrefix, Collator.PRIMARY, prefixLength);
 			if (cmp > 0) {
 				outRecord++;
-				Mdr8Record ind = new Mdr8Record();
-				ind.setPrefix(prefix);
-				ind.setRecordNumber(inRecord);
-				index.add(ind);
+				index.add(new Mdr8Record(prefix, inRecord));
 
 				lastPrefix = prefix;
 				
@@ -107,6 +105,10 @@ public class PrefixIndex extends MdrSection {
 		}
 	}
 	
+	/**
+	 * We can create an index for any type that has a name.
+	 * @param list A list of items that have a name.
+	 */
 	public void createFromList(List<? extends NamedRecord> list) {
 		createFromList(list, false);
 	}

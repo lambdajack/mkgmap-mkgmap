@@ -41,7 +41,7 @@ public class Mdr15 extends MdrSection {
 	private final OutputStream stringFile;
 	private int nextOffset;
 
-	private Map<String, Integer> strings = new HashMap<String, Integer>();
+	private Map<String, Integer> strings = new HashMap<>();
 	private final Charset charset;
 	private final File tempFile;
 
@@ -94,6 +94,7 @@ public class Mdr15 extends MdrSection {
 	 * Close the temporary file, and release the string table which is no longer
 	 * needed.
 	 */
+	@Override
 	public void releaseMemory() {
 		strings = null;
 		try {
@@ -104,9 +105,7 @@ public class Mdr15 extends MdrSection {
 	}
 
 	public void writeSectData(ImgFileWriter writer) {
-		FileInputStream stream = null;
-		try {
-			stream = new FileInputStream(tempFile);
+		try (FileInputStream stream = new FileInputStream(tempFile)) {
 			FileChannel channel = stream.getChannel();
 			ByteBuffer buf = ByteBuffer.allocate(32 * 1024);
 			while (channel.read(buf) > 0) {
@@ -116,8 +115,6 @@ public class Mdr15 extends MdrSection {
 			}
 		} catch (IOException e) {
 			throw new ExitException("Could not write string section of index");
-		} finally {
-			Utils.closeFile(stream);
 		}
 	}
 
@@ -131,6 +128,7 @@ public class Mdr15 extends MdrSection {
 	 * offset possible.  We are taking the total size of the string section
 	 * for this.
 	 */
+	@Override
 	public int getSizeForRecord() {
 		return Utils.numberToPointerSize(nextOffset);
 	}

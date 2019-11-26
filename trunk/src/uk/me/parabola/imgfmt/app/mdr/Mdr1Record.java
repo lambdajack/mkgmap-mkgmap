@@ -20,7 +20,7 @@ public class Mdr1Record extends RecordBase {
 	private Mdr1MapIndex mdrMapIndex;
 	private int indexOffset;
 
-	public Mdr1Record(int mapNumber, MdrConfig config) {
+	public Mdr1Record(int mapNumber) {
 		this.mapNumber = mapNumber;
 	}
 

@@ -25,7 +25,7 @@ import uk.me.parabola.imgfmt.app.ImgFileWriter;
  * @author Steve Ratcliffe
  */
 public class Mdr9 extends MdrSection implements HasHeaderFlags {
-	private final Map<Integer, Integer> index = new LinkedHashMap<Integer, Integer>();
+	private final Map<Integer, Integer> index = new LinkedHashMap<>();
 
 	public Mdr9(MdrConfig config) {
 		setConfig(config);

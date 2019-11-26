@@ -28,6 +28,10 @@ public class MdrUtils {
 	public static final int POI_INDEX_PREFIX_LEN = 4;
 	public static final int MAX_GROUP = 13;
 
+	private MdrUtils () {
+		// private constructor to hide the implicit public one.
+	}
+	
 	/**
 	 * Get the group number for the poi.  This is the first byte of the records
 	 * in mdr9.

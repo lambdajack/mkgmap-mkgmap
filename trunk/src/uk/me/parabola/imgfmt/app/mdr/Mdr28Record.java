@@ -19,7 +19,7 @@ package uk.me.parabola.imgfmt.app.mdr;
  *
  * @author Steve Ratcliffe
  */
-public class Mdr28Record extends ConfigBase {
+public class Mdr28Record {
 	private int index;
 	private String name;
 	private int mdr21;

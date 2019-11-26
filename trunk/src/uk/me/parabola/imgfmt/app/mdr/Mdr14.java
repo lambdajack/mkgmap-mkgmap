@@ -23,7 +23,7 @@ import uk.me.parabola.imgfmt.app.ImgFileWriter;
  * @author Steve Ratcliffe
  */
 public class Mdr14 extends MdrSection implements HasHeaderFlags {
-	private final List<Mdr14Record> countries = new ArrayList<Mdr14Record>();
+	private final List<Mdr14Record> countries = new ArrayList<>();
 
 	public Mdr14(MdrConfig config) {
 		setConfig(config);

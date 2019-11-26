@@ -34,7 +34,6 @@ import uk.me.parabola.mkgmap.scan.SyntaxException;
  * @author Steve Ratcliffe
  */
 public class MdrConfig {
-	//private static final int DEFAULT_HEADER_LEN = 286;
 	private static final int DEFAULT_HEADER_LEN = 568;
 
 	private boolean writable;
@@ -130,7 +129,7 @@ public class MdrConfig {
 	}
 
 	public void setMdr7Excl(String exclList) {
-		mdr7Excl = StringToSet(exclList);
+		mdr7Excl = stringToSet(exclList);
 	}
 
 	public Set<String> getMdr7Del() {
@@ -138,10 +137,10 @@ public class MdrConfig {
 	}
 
 	public void setMdr7Del(String delList) {
-		mdr7Del = StringToSet(delList);
+		mdr7Del = stringToSet(delList);
 	}
 	
-	private Set<String> StringToSet (String opt) {
+	private static Set<String> stringToSet (String opt) {
 		Set<String> set;
 
 		if (opt == null)
@@ -152,7 +151,7 @@ public class MdrConfig {
 			if (opt.endsWith("'") || opt.endsWith("\""))
 				opt = opt.substring(0, opt.length() - 1);
 			List<String> list = Arrays.asList(opt.split(","));
-			set = new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
+			set = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 			for (String s : list) {
 				set.add(s.trim());
 			}
@@ -189,7 +188,7 @@ public class MdrConfig {
 	 * @param start first type
 	 * @param stop last type (included)
 	 */
-	private void genTypesForRange(Set<Integer> set, String start, String stop) {
+	private static void genTypesForRange(Set<Integer> set, String start, String stop) {
 		GType[] types = new GType[2];
 		String[] ranges = {start, stop};
 		boolean ok = true;
@@ -211,7 +210,7 @@ public class MdrConfig {
 		}
 		for (int i = types[0].getType(); i <= types[1].getType(); i++) {
 			if ((i & 0xff) > 0x1f)
-				i = ((i >> 8) + 1) << 8;
+				i = ((i >> 8) + 1) << 8; 
 			set.add(i);
 		}
 		

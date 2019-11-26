@@ -197,7 +197,7 @@ public abstract class MdrSection extends ConfigBase {
 			return sections[20].getSizeForRecord();
 		}
 
-		private int flagForSize(int size) {
+		private static int flagForSize(int size) {
 			int flag;
 			if (size == 1)
 				flag = 0x80;
