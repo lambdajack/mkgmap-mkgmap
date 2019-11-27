@@ -1347,6 +1347,8 @@ public class MapBuilder implements Configurable {
 					throw new ExitException("polygon-size-limits specification not all numbers: " + s);
 				}
 			}
+			if (polygonSizeLimits.get(24) == null) 
+				polygonSizeLimits.put(24, 0);
 		}
 		// return the value for the desired resolution or the next higher one
 		return polygonSizeLimits.ceilingEntry(res).getValue();
