@@ -12,10 +12,8 @@
  */
 package uk.me.parabola.mkgmap.reader.osm;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import uk.me.parabola.imgfmt.app.Coord;
@@ -31,23 +29,20 @@ import uk.me.parabola.util.EnhancedProperties;
  */ 
 public class OsmReadingHooksChain implements OsmReadingHooks {
 
-	private static final OsmReadingHooks[] NO_HOOKS = new OsmReadingHooks[0];
-	
-	private OsmReadingHooks[] readingHooks = NO_HOOKS;
+	private OsmReadingHooks[] readingHooks = {}; // no default hooks
 
 	/**
-	 * Add a new set of hooks.
-	 * @param hooks The reading hooks.
+	 * Add a new hook at the end of the chain.
+	 * @param hook The reading hook.
 	 */
-	public void add(OsmReadingHooks hooks) {
-		List<OsmReadingHooks> readingHooksList = new ArrayList<OsmReadingHooks>(Arrays.asList(readingHooks));
-		readingHooksList.add(hooks);
-		readingHooks = readingHooksList.toArray(new OsmReadingHooks[readingHooksList.size()]);
+	public void add(OsmReadingHooks hook) {
+		readingHooks = Arrays.copyOfRange(readingHooks, 0, readingHooks.length + 1);
+		readingHooks[readingHooks.length - 1] = hook;
 	}
 	
 	@Override
 	public Set<String> getUsedTags() {
-		HashSet<String> usedTags = new HashSet<String>();
+		HashSet<String> usedTags = new HashSet<>();
 		for (int i = 0; i < readingHooks.length; i++)
 			usedTags.addAll(readingHooks[i].getUsedTags());
 		return usedTags;
