@@ -409,7 +409,9 @@ public class SeaGenerator implements OsmReadingHooks {
 	public void onAddWay(Way way) {
 		String natural = way.getTag("natural");
 		if(natural != null) {
+			boolean foundCoastline = false;
 			if("coastline".equals(natural)) {
+				foundCoastline = true;
 				if (precompSeaDir != null)
 					splitCoastLineToLineAndShape(way, natural);
 				else {
@@ -421,7 +423,6 @@ public class SeaGenerator implements OsmReadingHooks {
 			} else if (natural.contains(";")) {
 				// cope with compound tag value
 				String others = null;
-				boolean foundCoastline = false;
 				for(String n : natural.split(";")) {
 					if("coastline".equals(n.trim()))
 						foundCoastline = true;
@@ -443,6 +444,13 @@ public class SeaGenerator implements OsmReadingHooks {
 						}
 					}
 				}
+			}
+			if (foundCoastline && precompSeaDir == null && coastlineFilenames == null) {
+				// create copy of way that has only the natural=coastline tag
+				Way shore = new Way(way.getId(), way.getPoints());
+				shore.setFakeId();
+				shore.addTag("natural", "coastline");
+				saver.addWay(shore);
 			}
 		}
 	}
@@ -681,6 +689,7 @@ public class SeaGenerator implements OsmReadingHooks {
 			Way sea = new Way(FakeIdGenerator.makeFakeId(),bounds.toCoords());
 			sea.addTag("natural", "sea");
 			sea.setFullArea(SEA_SIZE);
+			saver.addWay(sea);
 			
 			for (Way w : landWays) {
 				saver.addWay(w);
