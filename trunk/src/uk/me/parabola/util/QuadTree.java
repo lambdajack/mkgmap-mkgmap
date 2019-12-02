@@ -22,11 +22,11 @@ public class QuadTree {
 	}
 
 	public boolean addAll(Collection<Coord> coordList) {
-		boolean oneAdded = false;
+		long oldCount = itemCount;
 		for (Coord c : coordList) {
-			oneAdded = add(c) | oneAdded;
+			add(c);
 		}
-		return oneAdded;
+		return itemCount > oldCount;
 	}
 
 	public boolean add(Coord c) {
@@ -43,8 +43,7 @@ public class QuadTree {
 	}
 
 	public List<Coord> get(Collection<List<Coord>> polygons) {
-		return root.get(new QuadTreePolygon(polygons), new ArrayList<Coord>(
-				2000));
+		return root.get(new QuadTreePolygon(polygons), new ArrayList<Coord>(2000));
 	}
 
 	public List<Coord> get(List<Coord> polygon) {
@@ -55,11 +54,10 @@ public class QuadTree {
 		if (polygon.size() < 3) {
 			return Collections.emptyList();
 		}
-		if (polygon.get(0).equals(polygon.get(polygon.size() - 1)) == false) {
-			return null;
+		if (!polygon.get(0).equals(polygon.get(polygon.size() - 1))) {
+			throw new IllegalArgumentException("polygon is not closed");
 		}
-		ArrayList<Coord> points = root.get(new QuadTreePolygon(polygon),
-				new ArrayList<Coord>(2000));
+		List<Coord> points = root.get(new QuadTreePolygon(polygon), new ArrayList<Coord>(2000));
 		if (offset > 0) {
 			ListIterator<Coord> pointIter = points.listIterator();
 			while (pointIter.hasNext()) {
@@ -80,8 +78,7 @@ public class QuadTree {
 		return itemCount;
 	}
 
-	private static boolean isCloseToPolygon(Coord point, List<Coord> polygon,
-			int gap) {
+	private static boolean isCloseToPolygon(Coord point, List<Coord> polygon, int gap) {
 		Iterator<Coord> polyIter = polygon.iterator();
 		Coord c2 = polyIter.next();
 		while (polyIter.hasNext()) {

@@ -142,18 +142,18 @@ public class PrecompSeaGenerator {
 	 * Retrieve the areas of all precompiled tiles that have to be worked out. 
 	 * @return the areas of all tiles
 	 */
-	private List<uk.me.parabola.imgfmt.app.Area> getTiles() {
+	private static List<uk.me.parabola.imgfmt.app.Area> getTiles() {
 		return getTiles(uk.me.parabola.imgfmt.app.Area.PLANET);
 	}
 
-	private List<uk.me.parabola.imgfmt.app.Area> getTiles(
+	private static List<uk.me.parabola.imgfmt.app.Area> getTiles(
 			uk.me.parabola.imgfmt.app.Area wholeArea) {
 		int minLat = wholeArea.getMinLat();
 		int maxLat = wholeArea.getMaxLat();
 		int minLon = wholeArea.getMinLong();
 		int maxLon = wholeArea.getMaxLong();
 
-		List<uk.me.parabola.imgfmt.app.Area> tiles = new ArrayList<uk.me.parabola.imgfmt.app.Area>();
+		List<uk.me.parabola.imgfmt.app.Area> tiles = new ArrayList<>();
 		for (int lon = SeaGenerator.getPrecompTileStart(minLon); lon < maxLon; lon += SeaGenerator.PRECOMP_RASTER) {
 			for (int lat = SeaGenerator.getPrecompTileStart(minLat); lat < maxLat; lat += SeaGenerator.PRECOMP_RASTER) {
 				uk.me.parabola.imgfmt.app.Area tile = new uk.me.parabola.imgfmt.app.Area(
@@ -180,6 +180,7 @@ public class PrecompSeaGenerator {
 			setDaemon(true);
 		}
 
+		@Override
 		public void run() {
 			long count = 0;
 			do {
@@ -198,7 +199,7 @@ public class PrecompSeaGenerator {
 	 * @param geometry a polygon as {@link Geometry} object
 	 * @return the polygon converted to an {@link Area} object.
 	 */
-	private Area convertToArea(Geometry geometry) {
+	private static Area convertToArea(Geometry geometry) {
 		Coordinate[] c = geometry.getCoordinates();
 		List<Coord> points = new ArrayList<>(c.length);
 		for (int n = 0; n < c.length; n++) {
@@ -219,7 +220,7 @@ public class PrecompSeaGenerator {
 			Collection<uk.me.parabola.imgfmt.app.Area> tiles,
 			CountDownLatch tilesCountdown,
 			BlockingQueue<Entry<String, List<Way>>> saveQueue) {
-		List<PrecompSeaMerger> mergers = new ArrayList<PrecompSeaMerger>();
+		List<PrecompSeaMerger> mergers = new ArrayList<>();
 
 		for (uk.me.parabola.imgfmt.app.Area bounds : tiles) {
 
@@ -236,7 +237,7 @@ public class PrecompSeaGenerator {
 	}
 
 	private void createShapefileAccess() throws IOException {
-		Map<String,URL> map = new HashMap<String, URL>();
+		Map<String,URL> map = new HashMap<>();
 		map.put("url", shapeFile.toURI().toURL());
 		DataStore dataStore = DataStoreFinder.getDataStore(map);
 		String typeName = dataStore.getTypeNames()[0];
@@ -276,10 +277,10 @@ public class PrecompSeaGenerator {
 
 		// perform several cycles which is necessary to reduce memory
 		// requirements
-		while (remainingTiles.isEmpty() == false) {
+		while (!remainingTiles.isEmpty()) {
 
 			// create a list with all tiles that are processed within this cycle
-			List<uk.me.parabola.imgfmt.app.Area> tiles = new ArrayList<uk.me.parabola.imgfmt.app.Area>();
+			List<uk.me.parabola.imgfmt.app.Area> tiles = new ArrayList<>();
 			tiles.addAll(remainingTiles.subList(0,
 					Math.min(tilesPerCycle, remainingTiles.size())));
 			remainingTiles.subList(0,
@@ -402,7 +403,7 @@ public class PrecompSeaGenerator {
 		String shapeCRS = args[1];
 		File outputDir = new File(args[2]);
 
-		if (shapeFile.exists() == false) {
+		if (!shapeFile.exists()) {
 			throw new FileNotFoundException("File "+shapeFile+" does not exist.");
 		}
 		

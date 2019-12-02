@@ -31,7 +31,6 @@ import java.util.Set;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.osmstyle.NameFinder;
-import uk.me.parabola.mkgmap.osmstyle.function.LengthFunction;
 import uk.me.parabola.util.EnhancedProperties;
 import uk.me.parabola.util.MultiHashMap;
 
@@ -191,12 +190,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 	 */
 	private void registerPointsOfWay(Way w) {
 		for (Coord c : w.getPoints()) {
-			Set<Way> ways = wayNodes.get(c);
-			if (ways == null) {
-				ways = new HashSet<>(4);
-				wayNodes.put(c, ways);
-			}
-			ways.add(w);
+			wayNodes.computeIfAbsent(c, k-> new HashSet<>()).add(w);
 		}			
 	}
 	
@@ -371,7 +365,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 	 * @param c the Coord for which the neighbours should be retrieved.
 	 * @return all neighbours of c
 	 */
-	private List<Coord> getDirectNeighbours(Coord c) {
+	private static List<Coord> getDirectNeighbours(Coord c) {
 		List<Coord> neighbours = new ArrayList<>(8);
 		for (int dLat = -1; dLat < 2; dLat++) {
 			for (int dLon = -1; dLon < 2; dLon++) {
@@ -565,7 +559,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 						if (highwayLinkTag.endsWith("_link")) {
 							log.debug("Try to cut",highwayLinkTag, w, "into three parts for giving hint to exit", exitNode);
 							// calc the way length to decide how to cut the way
-							double wayLength = getLength(w);
+							double wayLength = w.calcLengthInMetres();
 							if (wayLength < 10 && w.getPoints().size() < 3) {
 								log.info("Way", w, "is too short (", wayLength," m) to cut it into several pieces. Cannot place exit hint.");
 								continue;
@@ -658,7 +652,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 					}
 					
 					// calc the way length to decide how to cut the way
-					double wayLength = getLength(w);
+					double wayLength = w.calcLengthInMetres();
 					if (wayLength < 10) {
 						log.info("Way", w, "is too short (", wayLength," m) to cut it into several pieces. Cannot place destination hint.");
 						continue;
@@ -711,7 +705,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 	 * @param c2 point of the second line
 	 * @return the angle [-180; 180]
 	 */
-	private double getAngle(Coord cCenter, Coord c1, Coord c2)
+	private static double getAngle(Coord cCenter, Coord c1, Coord c2)
 	{
 		int dx1 = c1.getLongitude() - cCenter.getLongitude();
 		int dy1 = -(c1.getLatitude() - cCenter.getLatitude());
@@ -780,7 +774,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 	 * @param w the way
 	 * @return <code>true</code> way is oneway
 	 */
-	private boolean isOnewayInDirection(Way w) {
+	private static boolean isOnewayInDirection(Way w) {
 		if (w.tagIsLikeYes("oneway")) {
 			return true;
 		}
@@ -789,7 +783,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 		String onewayTag = w.getTag("oneway");
 		String highwayTag = w.getTag("highway");
 		return onewayTag == null && highwayTag != null
-				&& (highwayTag.equals("motorway") || highwayTag.equals("motorway_link"));
+				&& ("motorway".equals(highwayTag)|| "motorway_link".equals(highwayTag));
 	}
 
 	/**
@@ -797,7 +791,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 	 * @param w the way
 	 * @return <code>true</code> way is oneway in opposite direction
 	 */
-	private boolean isOnewayOppositeDirection(Way w) {
+	private static boolean isOnewayOppositeDirection(Way w) {
 		return "-1".equals(w.getTag("oneway"));
 	}
 
@@ -806,30 +800,8 @@ public class LinkDestinationHook implements OsmReadingHooks {
 	 * @param w the way
 	 * @return <code>true</code> way is not oneway
 	 */
-	private boolean isNotOneway(Way w) {
+	private static boolean isNotOneway(Way w) {
 		return "no".equals(w.getTag("oneway")) || (!isOnewayInDirection(w) && !isOnewayOppositeDirection(w));
-	}
-	
-	/** Private length function without caching */
-	private LengthFunction length = new LengthFunction() {
-		@Override
-		public boolean isCached() {
-			return false;
-		}
-	};
-	
-	/**
-	 * Retrieve the length of the given way.
-	 * @param w way
-	 * @return length in m
-	 */
-	private double getLength(Way w) {
-		String lengthValue = length.value(w);
-		try {
-			return Math.round(Double.valueOf(lengthValue));
-		} catch (Exception exp) {
-			return 0;
-		}
 	}
 	
 }

@@ -16,7 +16,7 @@
  */
 package uk.me.parabola.mkgmap.reader.osm;
 
-import java.awt.*;
+import java.awt.Polygon;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -100,7 +100,7 @@ public class Way extends Element {
 	}
 
 	public void addPointIfNotEqualToLastPoint(Coord co) {
-		if(points.isEmpty() || !co.equals(points.get(points.size() - 1)))
+		if(points.isEmpty() || !co.highPrecEquals(getLastPoint())) 
 			points.add(co);
 	}
 
@@ -282,10 +282,23 @@ public class Way extends Element {
 		this.fullArea = fullArea;
 	}
 
-	public long getFullArea() { // this is unadulterated size, +ve if clockwise
-		if (this.fullArea == Long.MAX_VALUE && points.size() >= 4 && points.get(0).highPrecEquals(points.get(points.size()-1))) {
+	public long getFullArea() { // this is unadulterated size, positive if clockwise
+		if (this.fullArea == Long.MAX_VALUE && points.size() >= 4 && getFirstPoint().highPrecEquals(getLastPoint())) {
 			this.fullArea = ShapeMergeFilter.calcAreaSizeTestVal(points);
 		}
 		return this.fullArea;
+	}
+	
+	public double calcLengthInMetres() {
+		double length = 0;
+		if (points.size() > 1) {
+			Coord p0 = points.get(0);
+			for (int i = 1; i < points.size(); i++) {
+				Coord p1 = points.get(i);
+				length += p0.distance(p1);
+				p0 = p1;
+			}
+		}
+		return length;
 	}
 }

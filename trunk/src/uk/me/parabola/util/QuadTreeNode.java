@@ -1,7 +1,6 @@
 package uk.me.parabola.util;
 
-import java.awt.*;
-import java.util.ArrayList;
+import java.awt.Rectangle;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -90,7 +89,7 @@ public class QuadTreeNode {
 			this.points = points;
 			split();
 		} else {
-			this.points = new HashSet<Coord>(points);
+			this.points = new HashSet<>(points);
 		}
 	}
 
@@ -102,7 +101,7 @@ public class QuadTreeNode {
 		if (coveredBounds == null) {
 			coveredBounds = new Area(c.getLatitude(), c.getLongitude(),
 					c.getLatitude(), c.getLongitude());
-		} else if (coveredBounds.contains(c) == false) {
+		} else if (!coveredBounds.contains(c)) {
 			coveredBounds = new Area(Math.min(coveredBounds.getMinLat(),
 					c.getLatitude()), Math.min(coveredBounds.getMinLong(),
 					c.getLongitude()), Math.max(coveredBounds.getMaxLat(),
@@ -126,11 +125,7 @@ public class QuadTreeNode {
 
 	public List<Coord> get(Area bbox, List<Coord> resultList) {
 		if (isLeaf()) {
-			if (bbox.getMinLat() <= coveredBounds.getMinLat()
-					&& bbox.getMaxLat() >= coveredBounds.getMaxLat()
-					&& bbox.getMinLong() <= coveredBounds.getMinLong()
-					&& bbox.getMaxLong() >= coveredBounds.getMaxLong()) {
-
+			if (bbox.contains(coveredBounds)) {
 				// the bounding box is contained completely in the bbox
 				// => add all points without further check
 				resultList.addAll(points);
@@ -152,7 +147,7 @@ public class QuadTreeNode {
 		return resultList;
 	}
 
-	public ArrayList<Coord> get(QuadTreePolygon polygon, ArrayList<Coord> resultList) {
+	public List<Coord> get(QuadTreePolygon polygon, List<Coord> resultList) {
 		if (polygon.getBbox().intersects(getBounds())) {
 			if (isLeaf()) {
 				for (Coord c : points) {
@@ -176,9 +171,9 @@ public class QuadTreeNode {
 
 	}
 
-	private java.awt.geom.Area createArea(Area bbox) {
-		return new java.awt.geom.Area(new Rectangle(bbox.getMinLong(),
-				bbox.getMinLat(), bbox.getWidth(), bbox.getHeight()));
+	private static java.awt.geom.Area createArea(Area bbox) {
+		return new java.awt.geom.Area(
+				new Rectangle(bbox.getMinLong(), bbox.getMinLat(), bbox.getWidth(), bbox.getHeight()));
 	}
 
 	public boolean isLeaf() {
@@ -217,7 +212,7 @@ public class QuadTreeNode {
 
 	public void clear() {
 		this.children = null;
-		points = new HashSet<Coord>();
+		points = new HashSet<>();
 		coveredBounds = new Area(Integer.MAX_VALUE, Integer.MAX_VALUE,
 				Integer.MIN_VALUE, Integer.MIN_VALUE);
 	}

@@ -94,9 +94,8 @@ public final class CoastlineFileLoader {
 				Collection<Way> loadedCoastlines = loadFile(coastlineFile);
 				log.info(loadedCoastlines.size(), "coastline ways from", coastlineFile, "loaded.");
 
-				ArrayList<Way> ways = SeaGenerator.joinWays(loadedCoastlines);
+				List<Way> ways = SeaGenerator.joinWays(loadedCoastlines);
 				ListIterator<Way> wayIter = ways.listIterator();
-				ways = null;
 				while (wayIter.hasNext()) {
 					Way way = wayIter.next();
 					wayIter.remove();

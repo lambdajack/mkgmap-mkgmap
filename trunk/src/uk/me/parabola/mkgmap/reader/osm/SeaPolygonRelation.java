@@ -31,8 +31,7 @@ import uk.me.parabola.util.QuadTree;
  * @author WanMil
  */
 public class SeaPolygonRelation extends MultiPolygonRelation {
-	private static final Logger log = Logger
-			.getLogger(SeaPolygonRelation.class);
+	private static final Logger log = Logger.getLogger(SeaPolygonRelation.class);
 
 	private final QuadTree landCoords;
 	private final QuadTree seaCoords;
@@ -45,7 +44,7 @@ public class SeaPolygonRelation extends MultiPolygonRelation {
 	private final DecimalFormat format = new DecimalFormat("0.0000");
 	private Rule floodBlockerRules;
 	
-	private final String[] landTag = {"natural","land"};
+	private final String[] landTag = { "natural", "land" };
 
 	public SeaPolygonRelation(Relation other, Map<Long, Way> wayMap, Area bbox) {
 		super(other, wayMap, bbox);
@@ -61,6 +60,7 @@ public class SeaPolygonRelation extends MultiPolygonRelation {
 		return false;
 	}
 	
+	@Override
 	protected void postProcessing() {
 		if (isFloodBlocker()) {
 			removeFloodedAreas();
@@ -108,10 +108,9 @@ public class SeaPolygonRelation extends MultiPolygonRelation {
 		// create a copy of all resulting ways - the tile way map contains only
 		// polygons from
 		// the sea generation
-		ArrayList<Way> polygons = new ArrayList<Way>(getMpPolygons().values());
+		ArrayList<Way> polygons = new ArrayList<>(getMpPolygons().values());
 
-		log.info("Starting flood blocker. Polygons to check:", getMpPolygons()
-				.size());
+		log.info("Starting flood blocker. Polygons to check:", getMpPolygons().size());
 
 		String baseName = GpxCreator.getGpxBaseName();
 		if (debug) {
@@ -128,15 +127,14 @@ public class SeaPolygonRelation extends MultiPolygonRelation {
 			String polyType = (sea ? "sea" : "land");
 			String otherType = (sea ? "land" : "sea");
 			
-			List<Coord> minusCoords = badCoords.get(p.getPoints(),
-					getFloodBlockerGap());
+			List<Coord> minusCoords = badCoords.get(p.getPoints(), getFloodBlockerGap());
 			List<Coord> positiveCoords = goodCoords.get(p.getPoints());
 			
 			log.info(polyType,"polygon", p.getId(), "contains",
 					minusCoords.size(), otherType,"coords and",
 					positiveCoords.size(), polyType,"coords.");	
-			
-			if (minusCoords.size() > 0) {
+
+			if (!minusCoords.isEmpty()) {
 				double area = MultiPolygonRelation.calcAreaSize(p.getPoints());
 				double ratio = ((minusCoords.size() - positiveCoords.size()) * 100000.0d / area);
 				String areaFMT = format.format(area);
@@ -158,7 +156,7 @@ public class SeaPolygonRelation extends MultiPolygonRelation {
 									+ positiveCoords.size() + "_" + ratioFMT,
 									null, minusCoords);
 
-					if (positiveCoords.isEmpty() == false) {
+					if (!positiveCoords.isEmpty()) {
 						GpxCreator.createGpx(
 								baseName + p.getId() + "_pro_"
 										+ minusCoords.size() + "_"
@@ -178,7 +176,6 @@ public class SeaPolygonRelation extends MultiPolygonRelation {
 						p.deleteTag(landTag[0]);
 						p.addTag("natural", "sea");
 					}
-//					getMpPolygons().remove(p.getId());
 				} else {
 					log.info("Polygon",p.getId(), "is not blocked");
 				}
@@ -222,10 +219,6 @@ public class SeaPolygonRelation extends MultiPolygonRelation {
 
 	public void setFloodBlockerThreshold(int floodBlockerThreshold) {
 		this.floodBlockerThreshold = floodBlockerThreshold;
-	}
-
-	public boolean isDebug() {
-		return debug;
 	}
 
 	public void setDebug(boolean debug) {

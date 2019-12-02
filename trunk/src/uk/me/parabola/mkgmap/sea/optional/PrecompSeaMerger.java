@@ -47,18 +47,18 @@ class PrecompSeaMerger implements Runnable {
 	private final BlockingQueue<Entry<String, List<Way>>> saveQueue;
 	private ExecutorService service;
 
-	static class MergeData {
-		public final Rectangle2D bounds;
-		public final BlockingQueue<Area> toMerge;
-		public final AtomicBoolean ready = new AtomicBoolean(false);
-		public Path2D.Double tmpLandPath = new Path2D.Double();
-		public Area landArea = new Area();
+	private static class MergeData {
+		final Rectangle2D bounds;
+		final BlockingQueue<Area> toMerge;
+		final AtomicBoolean ready = new AtomicBoolean(false);
+		Path2D.Double tmpLandPath = new Path2D.Double();
+		Area landArea = new Area();
 		private final String key;
 
 		public MergeData(Rectangle2D bounds, String key) {
 			this.key = key;
 			this.bounds = bounds;
-			toMerge = new LinkedBlockingQueue<Area>();
+			toMerge = new LinkedBlockingQueue<>();
 		}
 
 		public String getKey() {
@@ -95,9 +95,9 @@ class PrecompSeaMerger implements Runnable {
 		return mergeData.bounds;
 	}
 
-	private List<Way> convertToWays(Area a, String naturalTag) {
+	private static List<Way> convertToWays(Area a, String naturalTag) {
 		List<List<Coord>> pointLists = Java2DConverter.areaToShapes(a);
-		List<Way> ways = new ArrayList<Way>(pointLists.size());
+		List<Way> ways = new ArrayList<>(pointLists.size());
 		for (List<Coord> points : pointLists) {
 			Way w = new Way(FakeIdGenerator.makeFakeId(), points);
 			w.addTag("natural", naturalTag);
@@ -138,8 +138,7 @@ class PrecompSeaMerger implements Runnable {
 			merge = mergeData.toMerge.poll();
 		}
 
-		if (mergeData.ready.get() == false
-				|| mergeData.toMerge.isEmpty() == false) {
+		if (!mergeData.ready.get() || !mergeData.toMerge.isEmpty()) {
 			// repost the merge thread
 			service.execute(this);
 			return;
@@ -159,7 +158,7 @@ class PrecompSeaMerger implements Runnable {
 			// no land in this tile => create a sea way only
 			ways.addAll(convertToWays(new Area(mergeData.bounds), "sea"));
 		} else {
-			Map<Long, Way> landWays = new HashMap<Long, Way>();
+			Map<Long, Way> landWays = new HashMap<>();
 			List<List<Coord>> landParts = Java2DConverter
 					.areaToShapes(mergeData.landArea);
 			for (List<Coord> landPoints : landParts) {
@@ -187,6 +186,7 @@ class PrecompSeaMerger implements Runnable {
 			{
 				// do not calculate the area size => it is not required and adds
 				// a superfluous tag 
+				@Override
 				protected boolean isAreaSizeCalculated() {
 					return false;
 				}
@@ -203,7 +203,7 @@ class PrecompSeaMerger implements Runnable {
 						.getTag(MultiPolygonRelation.STYLE_FILTER_TAG))) {
 					
 					String tag = w.getTag("natural");
-					if ("sea".equals(tag) == false) {
+					if (!"sea".equals(tag)) {
 						// ignore the land polygons - we already have them in our list
 						continue;
 					}
@@ -216,8 +216,7 @@ class PrecompSeaMerger implements Runnable {
 
 		try {
 			// forward the ways to the queue of the saver thread
-			saveQueue.put(new SimpleEntry<String, List<Way>>(
-					mergeData.getKey(), ways));
+			saveQueue.put(new SimpleEntry<String, List<Way>>(mergeData.getKey(), ways));
 		} catch (InterruptedException exp) {
 			exp.printStackTrace();
 		}

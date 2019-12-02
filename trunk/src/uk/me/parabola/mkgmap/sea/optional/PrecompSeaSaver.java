@@ -13,12 +13,12 @@
 
 package uk.me.parabola.mkgmap.sea.optional;
 
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +32,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.mkgmap.reader.osm.SeaGenerator;
@@ -53,14 +55,14 @@ class PrecompSeaSaver implements Runnable {
 
 	private final File outputDir;
 	
-	private final BlockingQueue<Entry<String, List<Way>>> saveQueue = new LinkedBlockingQueue<Entry<String, List<Way>>>();
+	private final BlockingQueue<Entry<String, List<Way>>> saveQueue = new LinkedBlockingQueue<>();
 
 	public PrecompSeaSaver(File outputDir, boolean usePbf) {
 		this.outputDir = outputDir;
 		finishWait = new CountDownLatch(1);
 		this.usePbf = usePbf;
-		idMapping = new HashMap<Integer, String>();
-		index = new TreeMap<String, String>();
+		idMapping = new HashMap<>();
+		index = new TreeMap<>();
 		this.outputDir.mkdirs();
 	}
 	
@@ -70,10 +72,10 @@ class PrecompSeaSaver implements Runnable {
 
 	private OSMWriter createWriter(int id, String key) {
 		String[] parts = key.split(Pattern.quote("_"));
-		int lat = Integer.valueOf(parts[0]);
-		int lon = Integer.valueOf(parts[1]);
-		uk.me.parabola.splitter.Area bounds = new uk.me.parabola.splitter.Area(
-				lat, lon, lat + SeaGenerator.PRECOMP_RASTER, lon + SeaGenerator.PRECOMP_RASTER);
+		int lat = Integer.parseInt(parts[0]);
+		int lon = Integer.parseInt(parts[1]);
+		uk.me.parabola.splitter.Area bounds = new uk.me.parabola.splitter.Area(lat, lon,
+				lat + SeaGenerator.PRECOMP_RASTER, lon + SeaGenerator.PRECOMP_RASTER);
 		OSMWriter writer = (usePbf ? new BinaryMapWriter(bounds, outputDir, nextId, 0)
 				: new OSMXMLWriter(bounds, outputDir, nextId, 0));
 		idMapping.put(id, key);
@@ -87,7 +89,7 @@ class PrecompSeaSaver implements Runnable {
 	}
 
 	public void run() {
-		while (saveQueue.isEmpty() == false || finished.get() == false) {
+		while (!saveQueue.isEmpty() || !finished.get()) {
 			Entry<String, List<Way>> tileData = null;
 			try {
 				tileData = saveQueue.poll(1, TimeUnit.MINUTES);
@@ -95,7 +97,7 @@ class PrecompSeaSaver implements Runnable {
 				exp.printStackTrace();
 			}
 			if (tileData != null) {
-				int id = ++nextId;
+				int fakeMapid = ++nextId;
 
 				if (tileData.getValue().size() == 1) {
 					// do not write the tile because it consists of one
@@ -105,82 +107,77 @@ class PrecompSeaSaver implements Runnable {
 					String naturalTag = singleWay.getTag("natural");
 					index.put(tileData.getKey(), naturalTag);
 				} else {
-					String ext = (usePbf ? "pbf" : "gz");
-					index.put(tileData.getKey(), "sea_" + tileData.getKey()
-							+ ".osm." + ext);
-
-					OSMWriter writer = createWriter(id, tileData.getKey());
-
-					Long2ObjectOpenHashMap<Long> coordIds = new Long2ObjectOpenHashMap<>();
-					Map<Long,uk.me.parabola.splitter.Way> pbfWays = new TreeMap<Long, uk.me.parabola.splitter.Way>();
-					long maxNodeId = 1;
-					for (Way w : tileData.getValue()) {
-						uk.me.parabola.splitter.Way pbfWay = new uk.me.parabola.splitter.Way();
-						pbfWay.set(w.getId());
-						for (Entry<String, String> tag : w
-								.getTagEntryIterator()) {
-							pbfWay.addTag(tag.getKey(), tag.getValue());
-						}
-						for (Coord c : w.getPoints()) {
-							Node n = new Node();
-							long key = Utils.coord2Long(c);
-							Long nodeId = coordIds.get(key);
-							if (nodeId == null) {
-								nodeId = new Long(maxNodeId++);
-								coordIds.put(key, nodeId);
-								n.set(nodeId,
-										c.getLatDegrees(),
-										c.getLonDegrees());
-								try {
-									writer.write(n);
-								} catch (IOException exp) {
-									exp.printStackTrace();
-								}
-							}
-							pbfWay.addRef(nodeId);
-						}
-						pbfWays.put(pbfWay.getId(),pbfWay);
+					try {
+						writeTile(tileData, fakeMapid);
+					} catch (IOException e) {
+						throw new ExitException(e.getLocalizedMessage());
 					}
-					for (uk.me.parabola.splitter.Way pbfWay : pbfWays.values()) {
-						try {
-							writer.write(pbfWay);
-						} catch (IOException exp) {
-							exp.printStackTrace();
-						}
-					}
-					writer.finishWrite();
-
-					File tileFile = new File(outputDir, String.format(
-							"%08d.osm." + ext, id));
-					File precompFile = new File(outputDir, "sea_"
-							+ tileData.getKey() + ".osm." + ext);
-					if (precompFile.exists()) {
-						precompFile.delete();
-					}
-					
-					tileFile.renameTo(precompFile);
 				}
 			}
 		}
 		
-		writeIndex();
+		try {
+			writeIndex();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
 		finishWait.countDown();
 	}
 	
-	private void writeIndex() {
-		try {
-			PrintWriter indexWriter = new PrintWriter(
-					new GZIPOutputStream(new FileOutputStream(
-					new File(outputDir, "index.txt.gz"))));
-			
-			for (Entry<String, String> ind : index.entrySet()) {
-				indexWriter.format("%s;%s\n", ind.getKey(), ind.getValue());
-			}
+	/** 
+	 * Use splitter.jar to write the tile in osm format.
+	 * @param tileData the tile data containing the 
+	 * @param fakeMapid the pseudo-mapid used for this tile
+	 * @throws IOException in case of error
+	 */
+	private void writeTile(Entry<String, List<Way>> tileData, int fakeMapid) throws IOException {
+		String ext = (usePbf ? "pbf" : "gz");
+		index.put(tileData.getKey(), "sea_" + tileData.getKey() + ".osm." + ext);
 
-			indexWriter.close();
-		} catch (IOException exp1) {
-			exp1.printStackTrace();
+		OSMWriter writer = createWriter(fakeMapid, tileData.getKey());
+
+		Long2ObjectOpenHashMap<Long> coordIds = new Long2ObjectOpenHashMap<>();
+		Map<Long,uk.me.parabola.splitter.Way> pbfWays = new TreeMap<>();
+		long maxNodeId = 1;
+		for (Way w : tileData.getValue()) {
+			uk.me.parabola.splitter.Way pbfWay = new uk.me.parabola.splitter.Way();
+			pbfWay.set(w.getId());
+			for (Entry<String, String> tag : w.getTagEntryIterator()) {
+				pbfWay.addTag(tag.getKey(), tag.getValue());
+			}
+			for (Coord c : w.getPoints()) {
+				Node n = new Node();
+				long key = Utils.coord2Long(c);
+				Long nodeId = coordIds.get(key);
+				if (nodeId == null) {
+					nodeId = maxNodeId++;
+					coordIds.put(key, nodeId);
+					n.set(nodeId, c.getLatDegrees(), c.getLonDegrees());
+					writer.write(n);
+				}
+				pbfWay.addRef(nodeId);
+			}
+			pbfWays.put(pbfWay.getId(), pbfWay);
+		}
+		for (uk.me.parabola.splitter.Way pbfWay : pbfWays.values()) {
+			writer.write(pbfWay);
+		}
+
+		writer.finishWrite();
+
+		File tileFile = new File(outputDir, String.format("%08d.osm.%s", fakeMapid, ext));
+		File precompFile = new File(outputDir, "sea_" + tileData.getKey() + ".osm." + ext);
+		Files.move(tileFile.toPath(), precompFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+	}
+
+	private void writeIndex() throws IOException {
+		try (PrintWriter indexWriter = new PrintWriter(
+				new GZIPOutputStream(new FileOutputStream(new File(outputDir, "index.txt.gz"))))) {
+
+			for (Entry<String, String> ind : index.entrySet()) {
+				indexWriter.format("%s;%s", ind.getKey(), ind.getValue()).append('\n');
+			}
 		}
 	}
 }

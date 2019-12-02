@@ -18,7 +18,6 @@ import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 import java.util.Map.Entry;
 
-import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
@@ -45,18 +44,9 @@ public class LengthFunction extends CachedFunction {
 		return nf.format(length);
 	}
 	
-	private double calcLength(Element el) {
+	private static double calcLength(Element el) {
 		if (el instanceof Way) {
-			Way w = (Way)el;
-			double length = 0;
-			Coord prevC = null;
-			for (Coord c : w.getPoints()) {
-				if (prevC != null) {
-					length += prevC.distance(c);
-				}
-				prevC = c;
-			}
-			return length;
+			return ((Way) el).calcLengthInMetres();
 		} else if (el instanceof Relation) {
 			Relation rel = (Relation)el;
 			double length = 0;
@@ -76,14 +66,17 @@ public class LengthFunction extends CachedFunction {
 		}
 	}
 	
+	@Override
 	public String getName() {
 		return "length";
 	}
 
+	@Override
 	public boolean supportsWay() {
 		return true;
 	}
 
+	@Override
 	public boolean supportsRelation() {
 		return true;
 	}
