@@ -559,7 +559,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 						if (highwayLinkTag.endsWith("_link")) {
 							log.debug("Try to cut",highwayLinkTag, w, "into three parts for giving hint to exit", exitNode);
 							// calc the way length to decide how to cut the way
-							double wayLength = w.calcLengthInMetres();
+							double wayLength = Math.round(w.calcLengthInMetres());
 							if (wayLength < 10 && w.getPoints().size() < 3) {
 								log.info("Way", w, "is too short (", wayLength," m) to cut it into several pieces. Cannot place exit hint.");
 								continue;
@@ -652,7 +652,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 					}
 					
 					// calc the way length to decide how to cut the way
-					double wayLength = w.calcLengthInMetres();
+					double wayLength = Math.round(w.calcLengthInMetres());
 					if (wayLength < 10) {
 						log.info("Way", w, "is too short (", wayLength," m) to cut it into several pieces. Cannot place destination hint.");
 						continue;
