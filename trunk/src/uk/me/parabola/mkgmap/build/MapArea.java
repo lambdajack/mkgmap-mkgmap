@@ -130,12 +130,7 @@ public class MapArea implements MapDataSource {
 	 * @param resolution The current resolution of the layer.
 	 */
 	private void addPolygons(MapDataSource src, final int resolution) {
-		MapFilterChain chain = new MapFilterChain() {
-			public void doFilter(MapElement element) {
-				MapShape shape = (MapShape) element;
-				addShape(shape);
-			}
-		};
+		MapFilterChain chain = element -> addShape((MapShape) element);
 
 		PolygonSubdivSizeSplitterFilter filter = new PolygonSubdivSizeSplitterFilter();
 		FilterConfig config = new FilterConfig();
@@ -166,12 +161,7 @@ public class MapArea implements MapDataSource {
 	private void addLines(MapDataSource src, final int resolution) {
 		// Split lines for size, such that it is appropriate for the
 		// resolution that it is at.
-		MapFilterChain chain = new MapFilterChain() {
-			public void doFilter(MapElement element) {
-				MapLine line = (MapLine) element;
-				addLine(line);
-			}
-		};
+		MapFilterChain chain = element -> addLine((MapLine) element);
 
 		LineSizeSplitterFilter filter = new LineSizeSplitterFilter();
 		FilterConfig config = new FilterConfig();
@@ -309,7 +299,7 @@ public class MapArea implements MapDataSource {
 		} else {
 			for (MapLine l : this.lines) {
 				// Drop any zero sized lines.
-				if (l instanceof MapRoad == false && l.getRect().height <= 0 && l.getRect().width <= 0)
+				if (!(l instanceof MapRoad) && l.getRect().height <= 0 && l.getRect().width <= 0)
 					continue;
 				Area lineBounds = l.getBounds();
 				int areaIndex = pickArea(mapAreas, l, xbaseHp, ybaseHp, nx, ny, dxHp, dyHp);
@@ -891,9 +881,7 @@ public class MapArea implements MapDataSource {
 	 * @return true if this area contains any data
 	 */
 	public boolean hasData() {
-		if (points.isEmpty() && lines.isEmpty() && shapes.isEmpty())
-			return false;
-		return true;
+		return !points.isEmpty() || !lines.isEmpty() || !shapes.isEmpty();
 	}
 
 	@Override

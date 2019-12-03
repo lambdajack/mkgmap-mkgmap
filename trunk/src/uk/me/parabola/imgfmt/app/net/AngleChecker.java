@@ -46,10 +46,9 @@ public class AngleChecker {
 
 	private boolean ignoreSharpAngles;
 	private boolean cycleMap;
-//	private final Coord test = new Coord(48.074815,16.272771);
 
-	private final int MIN_ANGLE = 0x10;
-	private final int MIN_LOW_SPEED_ANGLE = 0x20;
+	private static final int MIN_ANGLE = 0x10;
+	private static final int MIN_LOW_SPEED_ANGLE = 0x20;
 
 	private int mask;
 	private int mrnd;
@@ -76,55 +75,49 @@ public class AngleChecker {
 			orAccessMask |= arc.getRoadDef().getAccess();
 			roadDefs.add(arc.getRoadDef());
 		}
+
 		public float getInitialHeading() {
 			return initialHeading;
 		}
+		
 		public boolean isOneway() {
 			return isOneWayTrueCount == arcs.size();
 		}
+		
 		public boolean isForward() {
 			return isForwardTrueCount == arcs.size();
 		}
+		
 		/**
 		 * @return
 		 */
 		public void setInitialHeading(float modIH) {
 			while (modIH > 180)
-				modIH -= 360; 
+				modIH -= 360;
 			while (modIH < -180)
-				modIH += 360; 
+				modIH += 360;
 			initialHeading = modIH;
-			imgHeading = calcEncodedBearing(initialHeading); 
-			
-			for (RouteArc arc : arcs){
+			imgHeading = calcEncodedBearing(initialHeading);
+
+			for (RouteArc arc : arcs) {
 				arc.setInitialHeading(modIH);
 			}
 		}
-		
-		public String toString(){
+
+		public String toString() {
 			return arcs.get(0).toString();
 		}
 	}
 	
 	
-	private byte calcEncodedBearing (float b) {
+	private byte calcEncodedBearing(float b) {
 		return (byte) ((RouteArc.directionFromDegrees(b) + mrnd) & mask);
 	}
-	
+
 	public void config(EnhancedProperties props) {
 		// undocumented option - usually used for debugging only
 		ignoreSharpAngles = props.getProperty("ignore-sharp-angles", false);
 		cycleMap = props.getProperty("cycle-map", false);
-//		float a = 0;
-//		for (int i = 0; i <= 1440; i++){
-//			int ar = (int) Math.round(a * 256.0 / 360);
-//			int am = ar & 0xf0;
-//			log.error(a,ar,"0x" + Integer.toHexString(am));
-//			a +=0.25;
-//			if (a >= 180)
-//				a -= 360;
-//		}
-		return;
 	}
 
 	public void check(Map<Integer, RouteNode> nodes) {
@@ -183,25 +176,17 @@ public class AngleChecker {
 			if (angleAttr.maskedAngle < 0)
 				angleAttr.maskedAngle += 256;
 
-			if (ag1.isOneway() && ag1.isForward()){
-				// the "incoming" arc is a wrong direction oneway
-				angleAttr.noAccess = true;
-			} else if (ag2.isOneway() && ag2.isForward() == false){
-				// the "outgoing" arc is a wrong direction oneway
+			if (ag1.isOneway() && ag1.isForward()
+					|| ag2.isOneway() && !ag2.isForward()) {
+				// the "incoming" arc or the "outgoing" is a wrong direction oneway
 				angleAttr.noAccess = true;
 			}
 			
-//			if (node.getCoord().distance(test) < 2){
-//				if (angleAttr.angle == 20){
-//					angleAttr.maskedMinAngle = 0x30;
-//					continue;
-//				}
-//			}
 			int sumSpeeds = ag1.maxRoadSpeed + ag2.maxRoadSpeed;
 			if (sumSpeeds <= 1)
 				continue;
 			byte pathAccessMask = (byte) (ag1.orAccessMask & ag2.orAccessMask);
-			if (pathAccessMask == 0){
+			if (pathAccessMask == 0) {
 				// no common vehicle allowed on both arcs
 				angleAttr.noAccess = true;
 			}
@@ -290,7 +275,7 @@ public class AngleChecker {
 				int modIH = ag2.imgHeading + usedIncrement;
 				if (modIH > 128)
 					modIH -= 256;
-				ag2.setInitialHeading(modIH * 360/256);
+				ag2.setInitialHeading(modIH * 360 / 256f);
 				int modAngle = Math.round(ag2.getInitialHeading() - ag1.getInitialHeading());
 				if (modAngle < 0)
 					modAngle += 360;				
@@ -309,7 +294,7 @@ public class AngleChecker {
 				int modIH = ag1.imgHeading - usedIncrement;
 				if (modIH < -128)
 					modIH += 256;
-				ag1.setInitialHeading(modIH * 360/256);
+				ag1.setInitialHeading(modIH * 360 / 256f);
 				int modAngle = Math.round(ag2.getInitialHeading() - ag1.getInitialHeading()); 
 				if (modAngle < 0)
 					modAngle += 360;				
@@ -329,7 +314,6 @@ public class AngleChecker {
 					log.info(sharpAngle, "don't know how to enlarge it further");
 			}
 		}
-		return;
 	}
 
 
@@ -380,7 +364,7 @@ public class AngleChecker {
 					ag.addArc(arc2);
 				} else{
 					arc1 = arc2;
-					if (iter.hasNext() == false)
+					if (!iter.hasNext())
 						addArc1 = true;
 					break;
 				}

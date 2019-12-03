@@ -67,17 +67,14 @@ public class NOD1Part {
 	// maximal width and height of the bounding box, since
 	// NOD 1 coordinate offsets are at most 16 bit wide.
 	private static final int MAX_SIZE_UNSAFE = 1 << 16;
-//	private static final int MAX_SIZE = MAX_SIZE_UNSAFE / 2;
 	private static final int MAX_SIZE = MAX_SIZE_UNSAFE - 0x800;
 
 	// Table A has at most 0x100 entries
 	private static final int MAX_TABA_UNSAFE = 0x100;
-//	private static final int MAX_TABA = MAX_TABA_UNSAFE / 2;
 	private static final int MAX_TABA = MAX_TABA_UNSAFE - 0x8;
 
 	// Table B has at most 0x100 entries
 	private static final int MAX_TABB_UNSAFE = 0x100;
-//	private static final int MAX_TABB = MAX_TABB_UNSAFE / 2;
 	private static final int MAX_TABB = MAX_TABB_UNSAFE - 0x2;
 
 	// Nodes size is max 0x2000 to cope with signed 14 bit node offsets
@@ -183,9 +180,9 @@ public class NOD1Part {
 	// The area that actually has nodes.
 	private final BBox bboxActual = new BBox();
 
-	private List<RouteNode> nodes = new ArrayList<RouteNode>();
+	private List<RouteNode> nodes = new ArrayList<>();
 	private TableA tabA = new TableA();
-	private Map<RouteNode,RouteNode> destNodes = new LinkedHashMap<RouteNode, RouteNode>();
+	private Map<RouteNode,RouteNode> destNodes = new LinkedHashMap<>();
 
 	/**
 	 * Create an unbounded NOD1Part.
@@ -218,18 +215,16 @@ public class NOD1Part {
 	 * external arc at a deeper level of recursion.
 	 */
 	public void addNode(RouteNode node) {
-		assert bbox == null || bbox.contains(node.getCoord())
-			: "trying to add out-of-bounds node: " + node;
+		assert bbox == null || bbox.contains(node.getCoord()) : "trying to add out-of-bounds node: " + node;
 
 		bboxActual.extend(node.getCoord());
 		nodes.add(node);
 		for (RouteArc arc : node.arcsIteration()) {
 			tabA.addArc(arc);
 			RouteNode dest = arc.getDest();
-			if (arc.isInternal() == false){
+			if (!arc.isInternal()) {
 				destNodes.put(dest, dest);
-			}
-			else if (bbox != null && !bbox.contains(dest.getCoord()) || dest.getGroup() != node.getGroup()) {
+			} else if (bbox != null && !bbox.contains(dest.getCoord()) || dest.getGroup() != node.getGroup()) {
 				arc.setInternal(false);
 				destNodes.put(dest, dest);
 			}
@@ -243,7 +238,7 @@ public class NOD1Part {
 					if (arc.getSource() != node){
 						tabA.addArc(arc);
 						RouteNode dest = arc.getDest();
-						if (arc.isInternal() == false)
+						if (!arc.isInternal())
 							destNodes.put(dest, dest);
 						else if (bbox != null && !bbox.contains(dest.getCoord()) || dest.getGroup() != node.getGroup()) {
 							arc.setInternal(false);
@@ -268,7 +263,7 @@ public class NOD1Part {
 	 * Subdivide this part recursively until it satisfies the constraints.
 	 */
 	protected List<RouteCenter> subdivideHelper(int depth) {
-		List<RouteCenter> centers = new LinkedList<RouteCenter>();
+		List<RouteCenter> centers = new LinkedList<>();
 
 		if (satisfiesConstraints()) {
 			centers.add(this.toRouteCenter());

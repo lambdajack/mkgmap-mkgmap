@@ -326,7 +326,7 @@ public class RouteNode implements Comparable<RouteNode> {
 	}
 
 	public Iterable<RouteArc> arcsIteration() {
-		return () -> arcs.iterator();
+		return arcs::iterator;
 	}
 
 	public List<RouteRestriction> getRestrictions() {
@@ -362,7 +362,7 @@ public class RouteNode implements Comparable<RouteNode> {
 				}
 			}
 		}
-		if (roundaboutArcs.size() > 0) {
+		if (!roundaboutArcs.isEmpty()) {
 			// get the coordinates of a box bounding the junctions of the roundabout
 			int minRoundaboutLat = coord.getHighPrecLat();
 			int maxRoundaboutLat = minRoundaboutLat;
@@ -484,10 +484,9 @@ public class RouteNode implements Comparable<RouteNode> {
 											log.warn("Roundabout " + rd + " overlaps " + fb.getRoadDef() + " at " + coord.toOSMURL());
 										}
 									}
-									else if(fb.isForward()) {
-										if(!rd.messagePreviouslyIssued("roundabout forks/overlaps")) {
-											log.warn("Roundabout " + rd + " forks at " + coord.toOSMURL());
-										}
+									else if (fb.isForward()
+											&& !rd.messagePreviouslyIssued("roundabout forks/overlaps")) {
+										log.warn("Roundabout " + rd + " forks at " + coord.toOSMURL());
 									}
 								}
 							}
@@ -557,14 +556,15 @@ public class RouteNode implements Comparable<RouteNode> {
 				boolean connectsToNonRoundaboutSegment = false;
 				RouteArc nextRoundaboutArc = null;
 				for (RouteArc nba : nb.arcs) {
-					if (nba.isDirect() == false)
+					if (!nba.isDirect())
 						continue;
 					if (!nba.getRoadDef().isSynthesised()) {
 						if (nba.getRoadDef().isRoundabout()) {
 							if (nba.isForward())
 								nextRoundaboutArc = nba;
-						} else
+						} else {
 							connectsToNonRoundaboutSegment = true;
+						}
 					}
 				}
 
@@ -723,7 +723,6 @@ public class RouteNode implements Comparable<RouteNode> {
 		
 		if (nodes.size() < 3)
 			return;
-//		System.out.println(road + " " + nodes.size() + " " + forwardArcs.size());
 		ArrayList<RouteArc> newArcs = new ArrayList<>(); 
 		IntArrayList arcPositions = forwardArcPositions;
 		List<RouteArc> roadArcs = forwardArcs;
@@ -772,15 +771,14 @@ public class RouteNode implements Comparable<RouteNode> {
 						newArc.setIndirect();
 						newArcs.add(newArc);
 						arcToStepNode = newArc;
-						stepNode = destNode;
 						
 						partialArcLength = 0;
 						if (cl >= finalClass)
 							break;
 					}
 				}
-				if (newArcs.isEmpty() == false){
-					int directArcPos =  arcPositions.getInt(i);
+				if (!newArcs.isEmpty()) {
+					int directArcPos = arcPositions.getInt(i);
 					assert nodes.get(i).arcs.get(directArcPos).isDirect();
 					assert nodes.get(i).arcs.get(directArcPos).getRoadDef() == newArcs.get(0).getRoadDef();
 					assert nodes.get(i).arcs.get(directArcPos).isForward() == newArcs.get(0).isForward();
@@ -790,7 +788,6 @@ public class RouteNode implements Comparable<RouteNode> {
 						int reverseArcPos = reverseArcPositions.get(i-1); // i-1 because first node doesn't have reverse arc 
 						if (directArcPos < reverseArcPos)
 							reverseArcPositions.set(i - 1, reverseArcPos + newArcs.size());
-							
 					}
 				}
 			}

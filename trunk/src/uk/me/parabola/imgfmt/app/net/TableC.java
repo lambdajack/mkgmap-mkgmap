@@ -31,7 +31,7 @@ public class TableC {
 
 	private final TableA tabA;
 
-	private final List<RouteRestriction> restrictions = new ArrayList<RouteRestriction>();
+	private final List<RouteRestriction> restrictions = new ArrayList<>();
 
 	public TableC(TableA tabA) {
 		this.tabA = tabA;

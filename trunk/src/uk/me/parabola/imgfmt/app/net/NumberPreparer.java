@@ -238,7 +238,7 @@ public class NumberPreparer {
 	/**
 	 * The current state of the writing process.
 	 */
-	static abstract class State {
+	abstract static class State {
 
 		protected final Side left = new Side(true);
 		protected final Side right = new Side(false);

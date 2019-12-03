@@ -25,9 +25,9 @@ import uk.me.parabola.imgfmt.app.ImgFileWriter;
  */
 public class TableB {
 
-	private final ArrayList<RouteNode> nodes = new ArrayList<RouteNode>();
+	private final ArrayList<RouteNode> nodes = new ArrayList<>();
 
-	private final static int ITEM_SIZE = 3;
+	private static final int ITEM_SIZE = 3;
 
 	private int offset;
 
@@ -64,7 +64,6 @@ public class TableB {
 	public void addNode(RouteNode node) {
 		int i = nodes.indexOf(node);
 		if (i < 0) {
-			//i = nodes.size();
 			nodes.add(node);
 		}
 	}

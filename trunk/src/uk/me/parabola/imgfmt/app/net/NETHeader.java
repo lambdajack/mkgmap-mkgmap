@@ -16,7 +16,6 @@
  */
 package uk.me.parabola.imgfmt.app.net;
 
-import uk.me.parabola.imgfmt.ReadFailedException;
 import uk.me.parabola.imgfmt.app.CommonHeader;
 import uk.me.parabola.imgfmt.app.ImgFileReader;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
@@ -51,7 +50,7 @@ public class NETHeader extends CommonHeader {
 	 *
 	 * @param reader The header is read from here.
 	 */
-	protected void readFileHeader(ImgFileReader reader) throws ReadFailedException {
+	protected void readFileHeader(ImgFileReader reader) {
 		roadDefinitions.readSectionInfo(reader, false);
 		roadShift = reader.get1u();
 

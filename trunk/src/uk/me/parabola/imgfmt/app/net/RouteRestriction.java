@@ -38,8 +38,6 @@ import static uk.me.parabola.imgfmt.app.net.AccessTagsAndBits.*;
  * @author Robert Vollmert
  */
 public class RouteRestriction {
-	//private static final Logger log = Logger.getLogger(RouteRestriction.class);
-
 	// first three bytes of the header -- might specify the type of restriction
 	// and when it is active
 	private static final byte RESTRICTION_TYPE = 0x05; // 0x07 spotted, meaning?
@@ -63,16 +61,16 @@ public class RouteRestriction {
 	private final byte exceptMask;
 	private final byte flags; // meaning of bits 0x01 and 0x10 are not clear 
 
-	private final static byte F_EXCEPT_FOOT      = 0x02;
-	private final static byte F_EXCEPT_EMERGENCY = 0x04;
-	private final static byte F_MORE_EXCEPTIONS  = 0x08;
+	private static final byte F_EXCEPT_FOOT      = 0x02;
+	private static final byte F_EXCEPT_EMERGENCY = 0x04;
+	private static final byte F_MORE_EXCEPTIONS  = 0x08;
 	
-	private final static byte EXCEPT_CAR      = 0x01;
-	private final static byte EXCEPT_BUS      = 0x02;
-	private final static byte EXCEPT_TAXI     = 0x04;
-	private final static byte EXCEPT_DELIVERY = 0x10;
-	private final static byte EXCEPT_BICYCLE  = 0x20;
-	private final static byte EXCEPT_TRUCK    = 0x40;
+	private static final byte EXCEPT_CAR      = 0x01;
+	private static final byte EXCEPT_BUS      = 0x02;
+	private static final byte EXCEPT_TAXI     = 0x04;
+	private static final byte EXCEPT_DELIVERY = 0x10;
+	private static final byte EXCEPT_BICYCLE  = 0x20;
+	private static final byte EXCEPT_TRUCK    = 0x40;
 	
 	/**
 	 * 
@@ -87,21 +85,21 @@ public class RouteRestriction {
 			RouteArc arc = arcs.get(i);
 			assert arc.getDest() != viaNode;
 		}
-		byte flags = 0;
+		byte tmpFlags = 0;
 		
 		if ((mkgmapExceptMask & FOOT) != 0)
-			flags |= F_EXCEPT_FOOT;
+			tmpFlags |= F_EXCEPT_FOOT;
 		if ((mkgmapExceptMask & EMERGENCY) != 0)
-			flags |= F_EXCEPT_EMERGENCY;
+			tmpFlags |= F_EXCEPT_EMERGENCY;
 		
 		exceptMask = translateExceptMask(mkgmapExceptMask); 
 		if(exceptMask != 0)
-			flags |= F_MORE_EXCEPTIONS;
+			tmpFlags |= F_MORE_EXCEPTIONS;
 
 		int numArcs = arcs.size();
 		assert numArcs < 8;
-		flags |= ((numArcs) << 5);
-		this.flags = flags;
+		tmpFlags |= ((numArcs) << 5);
+		this.flags = tmpFlags;
 	}
 
 	
@@ -170,12 +168,10 @@ public class RouteRestriction {
 				offsets[pos++] = calcOffset(arc.getDest(), tableOffset);
 			else 
 				offsets[pos++] = arc.getIndexB();
-			if (arc.getSource() == viaNode){
+			if (!viaWritten && arc.getSource() == viaNode) {
 				// there will be two nodes with source node = viaNode, but we write the source only once
-				if (!viaWritten){
-					offsets[pos++] = calcOffset(viaNode, tableOffset);
-					viaWritten = true;
-				}
+				offsets[pos++] = calcOffset(viaNode, tableOffset);
+				viaWritten = true;
 			}
 		}
 

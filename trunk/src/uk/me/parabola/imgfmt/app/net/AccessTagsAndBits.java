@@ -14,6 +14,7 @@ package uk.me.parabola.imgfmt.app.net;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.TagDict;
 
@@ -23,6 +24,11 @@ import uk.me.parabola.mkgmap.reader.osm.TagDict;
  *
  */
 public final class AccessTagsAndBits {
+	
+	private AccessTagsAndBits() {
+		//  private constructor to hide the implicit public one
+	}
+
 	// constants for vehicle class
 	public static final byte FOOT 	   = 0x01;
 	public static final byte BIKE      = 0x02;
@@ -60,8 +66,9 @@ public final class AccessTagsAndBits {
 		for (Map.Entry<String, Byte> entry : ACCESS_TAGS.entrySet()) {
 			ACCESS_TAGS_COMPILED.put(TagDict.getInstance().xlate(entry.getKey()), entry.getValue());
 		}
-	};
+	}
 
+	
 	public static final Map<String, Byte> ROUTE_TAGS;
 	static {
 		ROUTE_TAGS = new LinkedHashMap<>();

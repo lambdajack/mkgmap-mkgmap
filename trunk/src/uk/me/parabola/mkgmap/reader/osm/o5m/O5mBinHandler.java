@@ -16,6 +16,7 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.mkgmap.reader.osm.Element;
@@ -49,17 +50,16 @@ public class O5mBinHandler extends OsmHandler{
 	private static final int STRING_TABLE_SIZE = 15000;
 	private static final int MAX_STRING_PAIR_SIZE = 250 + 2;
 	private static final String[] REL_REF_TYPES = {"node", "way", "relation", "?"};
-	private static final double FACTOR = 1d/1000000000; // used with 100*<Val>*FACTOR 
+	private static final double FACTOR = 1d/1_000_000_000; // used with 100*<Val>*FACTOR 
 	
 	private BufferedInputStream fis;
 	private InputStream is;
-	private ByteArrayInputStream bis;
 	
 	// buffer for byte -> String conversions
 	private byte[] cnvBuffer; 
 	
 	private byte[] ioBuf;
-	private int ioPos;
+	private int ioBufPos;
 	// the o5m string table
 	private String[][] stringTable;
 	private String[] stringPair;
@@ -67,24 +67,23 @@ public class O5mBinHandler extends OsmHandler{
 	// a counter that must be maintained by all routines that read data from the stream
 	private int bytesToRead;
 	// total number of bytes read from stream
-	long countBytes;
+	private long countBytes;
 
 	// for delta calculations
 	private long lastNodeId;
 	private long lastWayId;
 	private long lastRelId;
-	private long lastRef[];
+	private long[] lastRef;
 	private long lastTs;
 	private long lastChangeSet;
-	private int lastLon,lastLat;
+	private int lastLon;
+	private int lastLat;
 	
 	/**
 	 * A parser for the o5m format
-	 * @param processor A mapProcessor instance
-	 * @param skipArray An Array of longs that is used to hold information of file position of the first occurrence of 
-	 * each known 05m data type (esp. nodes, ways, and relations). 
 	 */
 	public O5mBinHandler() {
+		// nothing to do
 	}
 
 	@Override
@@ -93,62 +92,62 @@ public class O5mBinHandler extends OsmHandler{
 	}
 
 	/**
-	 * parse the input stream
+	 * Parse the input stream.
 	 */
 	@Override
-	public void parse(InputStream stream){
+	public void parse(InputStream stream) {
 		this.fis = new BufferedInputStream(stream);
 		is = fis;
 		this.cnvBuffer = new byte[4000]; // OSM data should not contain string pairs with length > 512
 		this.ioBuf = new byte[8192];
-		this.ioPos = 0;
+		this.ioBufPos = 0;
 		this.stringPair = new String[2];
 		this.lastRef = new long[3];
 		reset();
 		try {
 			int start = is.read();
 			++countBytes;
-			if (start != RESET_FLAG) 
+			if (start != RESET_FLAG)
 				throw new IOException("wrong header byte " + start);
 			readFile();
 		} catch (IOException e) {
+			System.err.println("exception after " + countBytes + " bytes");
 			e.printStackTrace();
 		}
 	}
 	
 	private void readFile() throws IOException{
 		boolean done = false;
-		while(!done){
+		while(!done) {
 			is = fis;
 			long size = 0;
 			int fileType = is.read();
 			++countBytes;
-			if (fileType >= 0 && fileType < 0xf0){
+			if (fileType >= 0 && fileType < 0xf0) {
 				bytesToRead = 0;
 				size = readUnsignedNum64FromStream();
-				countBytes += size - bytesToRead; // bytesToRead is negative 
-				bytesToRead = (int)size;
+				countBytes += size - bytesToRead; // bytesToRead is negative
+				bytesToRead = (int) size;
 				
-				switch(fileType){
+				switch (fileType) {
 				case NODE_DATASET: 
 				case WAY_DATASET: 
 				case REL_DATASET: 
 				case BBOX_DATASET:
 				case TIMESTAMP_DATASET:
 				case HEADER_DATASET:
-					if (bytesToRead > ioBuf.length){
-						ioBuf = new byte[(int)bytesToRead+100];
+					if (bytesToRead > ioBuf.length) {
+						ioBuf = new byte[bytesToRead + 100];
 					}
-					int bytesRead  = 0;
+					int bytesRead = 0;
 					int neededBytes = bytesToRead;
-					while (neededBytes > 0){
+					while (neededBytes > 0) {
 						bytesRead += is.read(ioBuf, bytesRead, neededBytes);
 						neededBytes -= bytesRead;
-					} 
-					ioPos = 0;
-					bis = new ByteArrayInputStream(ioBuf,0,bytesToRead);
-					is = bis;
-					break;					
+					}
+					ioBufPos = 0;
+					is = new ByteArrayInputStream(ioBuf, 0, bytesToRead);
+					break;
 				default:	
 				}
 			}
@@ -162,16 +161,16 @@ public class O5mBinHandler extends OsmHandler{
 			else if (fileType == EOD_FLAG) done = true;
 			else if (fileType == RESET_FLAG) reset();
 			else {
-				if (fileType < 0xf0 )skip(size); // skip unknown data set 
+				if (fileType < 0xf0 ) skip(size); // skip unknown data set 
 			}
 		}
 	}
 	
 	/**
-	 * read (and ignore) the file timestamp data set
+	 * Read (and ignore) the file timestamp data set.
 	 */
-	private void readFileTimestamp(){
-		/*long fileTimeStamp = */readSignedNum64();
+	private void readFileTimestamp() {
+		/* long fileTimeStamp = */readSignedNum64();
 	}
 	
 	/**
@@ -179,30 +178,30 @@ public class O5mBinHandler extends OsmHandler{
 	 * @param bytes 
 	 * @throws IOException
 	 */
-	private void skip(long bytes)throws IOException{
+	private void skip(long bytes) throws IOException {
 		long toSkip = bytes;
-		while (toSkip > 0)
+		while (toSkip > 0) {
 			toSkip -= is.skip(toSkip);
+		}
 	}
 	
 	/**
-	 * read the bounding box data set
-	 * @throws IOException
+	 * Read the bounding box data set.
 	 */
 	private void readBBox() {
-		double leftf = (double) (100L*readSignedNum32()) * FACTOR;
-		double bottomf = (double) (100L*readSignedNum32()) * FACTOR;
-		double rightf = (double) (100L*readSignedNum32()) * FACTOR;
-		double topf = (double) (100L*readSignedNum32()) * FACTOR;
+		double minlon = FACTOR * 100L * readSignedNum32();
+		double minlat = FACTOR * 100L * readSignedNum32();
+		double maxlon = FACTOR * 100L * readSignedNum32();
+		double maxlat = FACTOR * 100L * readSignedNum32();
+
 		assert bytesToRead == 0;
-		setBBox(bottomf, leftf, topf, rightf);
+		setBBox(minlat, minlon, maxlat, maxlon);
 	}
 
 	/**
-	 * read a node data set 
-	 * @throws IOException
+	 * Read a node data set. 
 	 */
-	private void readNode() throws IOException{
+	private void readNode() {
 		lastNodeId += readSignedNum64();
 		if (bytesToRead == 0)
 			return; // only nodeId: this is a delete action, we ignore it 
@@ -212,17 +211,17 @@ public class O5mBinHandler extends OsmHandler{
 		int lon = readSignedNum32() + lastLon; lastLon = lon;
 		int lat = readSignedNum32() + lastLat; lastLat = lat;
 			
-		double flon = (double)(100L*lon) * FACTOR;
-		double flat = (double)(100L*lat) * FACTOR;
+		double flon = FACTOR * (100L * lon);
+		double flat = FACTOR * (100L * lat);
 		assert flat >= -90.0 && flat <= 90.0;  
 		assert flon >= -180.0 && flon <= 180.0;  
 
 		Coord co = new Coord(flat, flon);
 		saver.addPoint(lastNodeId, co);
-		if (bytesToRead > 0){
-			Node node = new Node(lastNodeId,co);
+		if (bytesToRead > 0) {
+			Node node = new Node(lastNodeId, co);
 			readTags(node);
-			if (node.getTagCount() > 0){
+			if (node.getTagCount() > 0) {
 				// If there are tags, then we save a proper node for it.
 				saver.addNode(node);
 				hooks.onAddNode(node);
@@ -231,35 +230,33 @@ public class O5mBinHandler extends OsmHandler{
 	}
 	
 	/**
-	 * read a way data set
-	 * @throws IOException
+	 * Read a way data set.
 	 */
-	private void readWay() throws IOException{
+	private void readWay() {
 		lastWayId += readSignedNum64();
 		if (bytesToRead == 0)
-			return; // only wayId: this is a delete action, we ignore it 
+			return; // only wayId: this is a delete action, we ignore it
 
 		readVersionTsAuthor();
 		if (bytesToRead == 0)
-			return; // only wayId + version: this is a delete action, we ignore it 
+			return; // only wayId + version: this is a delete action, we ignore it
 		Way way = startWay(lastWayId);
 		long refSize = readUnsignedNum32();
 		long stop = bytesToRead - refSize;
-		
-		while(bytesToRead > stop){
+
+		while (bytesToRead > stop) {
 			lastRef[0] += readSignedNum64();
 			addCoordToWay(way, lastRef[0]);
 		}
-		
+
 		readTags(way);
 		endWay(way);
 	}
 	
 	/**
-	 * read a relation data set
-	 * @throws IOException
+	 * Read a relation data set.
 	 */
-	private void readRel() throws IOException{
+	private void readRel() {
 		lastRelId += readSignedNum64(); 
 		if (bytesToRead == 0)
 			return; // only relId: this is a delete action, we ignore it 
@@ -270,29 +267,27 @@ public class O5mBinHandler extends OsmHandler{
 		GeneralRelation rel = new GeneralRelation(lastRelId);
 		long refSize = readUnsignedNum32();
 		long stop = bytesToRead - refSize;
-		while(bytesToRead > stop){
+		while (bytesToRead > stop) {
 			Element el = null;
 			long deltaRef = readSignedNum64();
 			int refType = readRelRef();
 			String role = stringPair[1];
 			lastRef[refType] += deltaRef;
 			long memId = lastRef[refType];
-			if (refType == 0){
+			if (refType == 0) {
 				el = saver.getNode(memId);
-				if(el == null) {
+				if (el == null) {
 					// we didn't make a node for this point earlier,
 					// do it now (if it exists)
 					Coord co = saver.getCoord(memId);
-					if(co != null) {
+					if (co != null) {
 						el = new Node(memId, co);
-						saver.addNode((Node)el);
+						saver.addNode((Node) el);
 					}
 				}
-			}
-			else if (refType == 1){
+			} else if (refType == 1) {
 				el = saver.getWay(memId);
-			}
-			else if (refType == 2){
+			} else if (refType == 2) {
 				el = saver.getRelation(memId);
 				if (el == null) {
 					saver.deferRelation(memId, rel, role);
@@ -308,9 +303,9 @@ public class O5mBinHandler extends OsmHandler{
 		saver.addRelation(rel);
 	}
 	
-	private boolean readTags(Element elem) throws IOException{
+	private boolean readTags(Element elem) {
 		boolean tagsIncomplete = false;
-		while (bytesToRead > 0){
+		while (bytesToRead > 0) {
 			readStringPair();
 			String key = stringPair[0];
 			String val = stringPair[1];
@@ -322,16 +317,17 @@ public class O5mBinHandler extends OsmHandler{
 				key = keepTag(key, val);
 			if (key != null)
 				elem.addTagFromRawOSM(key, val);
-			else 
+			else
 				tagsIncomplete = true;
 		}
 		assert bytesToRead == 0;
 		return tagsIncomplete;
 	}
+
 	/**
-	 * Store a new string pair (length check must be performed by caller)
+	 * Store a new string pair (length check must be performed by caller).
 	 */
-	private void storeStringPair(){
+	private void storeStringPair() {
 		stringTable[0][currStringTablePos] = stringPair[0];
 		stringTable[1][currStringTablePos] = stringPair[1];
 		++currStringTablePos;
@@ -340,87 +336,85 @@ public class O5mBinHandler extends OsmHandler{
 	}
 
 	/**
-	 * set stringPair to the values referenced by given string reference
-	 * No checking is performed.
+	 * set stringPair to the values referenced by given string reference No checking
+	 * is performed.
+	 * 
 	 * @param ref valid values are 1 .. STRING_TABLE_SIZE
 	 */
-	private void setStringRefPair(int ref){
+	private void setStringRefPair(int ref) {
 		int pos = currStringTablePos - ref;
-		if (pos < 0) 
+		if (pos < 0)
 			pos += STRING_TABLE_SIZE;
 		stringPair[0] = stringTable[0][pos];
 		stringPair[1] = stringTable[1][pos];
 	}
 
 	/**
-	 * Read version, time stamp and change set and author.  
-	 * We are not interested in the values, but we have to maintain the string table.
-	 * @throws IOException
+	 * Read version, time stamp and change set and author. We are not interested in
+	 * the values, but we have to maintain the string table.
 	 */
-	
-	private void readVersionTsAuthor() throws IOException {
-		int version = readUnsignedNum32(); 
-		if (version != 0){
+	private void readVersionTsAuthor() {
+		int version = readUnsignedNum32();
+		if (version != 0) {
 			// version info
-			long ts = readSignedNum64() + lastTs; lastTs = ts;
-			if (ts != 0){
-				long changeSet = readSignedNum32() + lastChangeSet; lastChangeSet = changeSet;
+			long ts = readSignedNum64() + lastTs;
+			lastTs = ts;
+			if (ts != 0) {
+				long changeSet = readSignedNum32() + lastChangeSet;
+				lastChangeSet = changeSet;
 				readAuthor();
 			}
 		}
 	}
+
 	/**
-	 * Read author . 
-	 * @throws IOException
+	 * Read author. 
 	 */
-	private void readAuthor() throws IOException{
+	private void readAuthor() {
 		int stringRef = readUnsignedNum32();
-		if (stringRef == 0){
+		if (stringRef == 0) {
 			long toReadStart = bytesToRead;
 			long uidNum = readUnsignedNum64();
 			if (uidNum == 0)
 				stringPair[0] = "";
-			else{
-				stringPair[0] = Long.toString(uidNum);
-				ioPos++; // skip terminating zero from uid
+			else {
+				stringPair[0] = Long.toUnsignedString(uidNum);
+				ioBufPos++; // skip terminating zero from uid
 				--bytesToRead;
 			}
 			stringPair[1] = readString();
 			long bytes = toReadStart - bytesToRead;
 			if (bytes <= MAX_STRING_PAIR_SIZE)
 				storeStringPair();
-		}
-		else 
+		} else {
 			setStringRefPair(stringRef);
-		
-		//System.out.println(pair[0]+ "/" + pair[1]);
+		}
 	}
 	
 	/**
-	 * read object type ("0".."2") concatenated with role (single string) 
+	 * Read object type ("0".."2") concatenated with role (single string) .
 	 * @return 0..3 for type (3 means unknown)
 	 */
-	private int readRelRef () throws IOException{
+	private int readRelRef () {
 		int refType = -1;
 		long toReadStart = bytesToRead;
 		int stringRef = readUnsignedNum32();
-		if (stringRef == 0){
-			refType = ioBuf[ioPos++] - 0x30;
+		if (stringRef == 0) {
+			refType = ioBuf[ioBufPos++] - 0x30;
 			--bytesToRead;
 
 			if (refType < 0 || refType > 2)
 				refType = 3;
 			stringPair[0] = REL_REF_TYPES[refType];
-				
+
 			stringPair[1] = readString();
 			long bytes = toReadStart - bytesToRead;
 			if (bytes <= MAX_STRING_PAIR_SIZE)
 				storeStringPair();
-		}
-		else {
+		} else {
 			setStringRefPair(stringRef);
 			char c = stringPair[0].charAt(0);
-			switch (c){
+			switch (c) {
 			case 'n': refType = 0; break;
 			case 'w': refType = 1; break;
 			case 'r': refType = 2; break;
@@ -431,43 +425,41 @@ public class O5mBinHandler extends OsmHandler{
 	}
 	
 	/**
-	 * read a string pair (see o5m definition)
-	 * @throws IOException
+	 * Read a string pair (see o5m definition).
 	 */
-	private void readStringPair() throws IOException{
+	private void readStringPair() {
 		int stringRef = readUnsignedNum32();
-		if (stringRef == 0){
+		if (stringRef == 0) {
 			long toReadStart = bytesToRead;
 			int cnt = 0;
-			while (cnt < 2){
+			while (cnt < 2) {
 				stringPair[cnt++] = readString();
 			}
 			long bytes = toReadStart - bytesToRead;
 			if (bytes <= MAX_STRING_PAIR_SIZE)
 				storeStringPair();
-		}
-		else 
+		} else {
 			setStringRefPair(stringRef);
+		}
 	}
 	
 	/**
 	 * Read a zero-terminated string (see o5m definition).
 	 * @throws IOException
 	 */
-	String readString() throws IOException {
-		int length = 0; 
+	private String readString() {
+		int length = 0;
 		while (true) {
-			final int b = ioBuf[ioPos++];
+			final int b = ioBuf[ioBufPos++];
 			--bytesToRead;
 			if (b == 0)
-				return new String(cnvBuffer, 0, length, "UTF-8");
+				return new String(cnvBuffer, 0, length, StandardCharsets.UTF_8);
 			cnvBuffer[length++] = (byte) b;
 		}
 	}
-
 	
 	/** reset the delta values and string table */
-	private void reset(){
+	private void reset() {
 		lastNodeId = 0; lastWayId = 0; lastRelId = 0;
 		lastRef[0] = 0; lastRef[1] = 0;lastRef[2] = 0;
 		lastTs = 0; lastChangeSet = 0;
@@ -477,153 +469,109 @@ public class O5mBinHandler extends OsmHandler{
 	}
 
 	/**
-	 * read and verify o5m header (known values are o5m2 and o5c2)
-	 * @throws IOException
+	 * Read and verify o5m header (known values are o5m2 and o5c2).
+	 * @throws IOException in case of error
 	 */
 	private void readHeader() throws IOException {
-		if (ioBuf[0] != 'o' || ioBuf[1] != '5' || (ioBuf[2]!='c'&&ioBuf[2]!='m') ||ioBuf[3] != '2' ){
+		if (ioBuf[0] != 'o' || ioBuf[1] != '5' || (ioBuf[2] != 'c' && ioBuf[2] != 'm') || ioBuf[3] != '2') {
 			throw new IOException("unsupported header");
 		}
 	}
 	
 	/**
-	 * read a varying length signed number (see o5m definition)
-	 * @return the number
-	 * @throws IOException
+	 * Read a varying length signed number (see o5m definition).
+	 * @return the number as int
 	 */
 	private int readSignedNum32() {
-		int result;
-		int b = ioBuf[ioPos++];
-		--bytesToRead;
-		result = b;
-		if ((b & 0x80) == 0){  // just one byte
-			if ((b & 0x01) == 1)
-				return -1-(result>>1); 
-			else
-				return result>>1;
-		}
-		int sign = b & 0x01;
-		result = (result & 0x7e)>>1;
-		int fac = 0x40;
-		while (((b = ioBuf[ioPos++]) & 0x80) != 0){ // more bytes will follow
-			--bytesToRead;
-			result += fac * (b & 0x7f) ;
-			fac  <<= 7;
-		}
-		--bytesToRead;
-		result += fac * b;
-		if (sign == 1) // negative
-			return -1-result;
-		else
-			return result;
-
+		return (int) readSignedNum64(); 
 	}
 
 	/**
-	 * read a varying length signed number (see o5m definition)
-	 * @return the number
-	 * @throws IOException
+	 * Read a varying length signed number (see o5m definition).
+	 * @return the number as long
 	 */
 	private long readSignedNum64() {
 		long result;
-		int b = ioBuf[ioPos++];
+		int b = ioBuf[ioBufPos++];
 		--bytesToRead;
 		result = b;
-		if ((b & 0x80) == 0){  // just one byte
+		if ((b & 0x80) == 0) { // just one byte
 			if ((b & 0x01) == 1)
-				return -1-(result>>1); 
-			else
-				return result>>1;
+				return -1 - (result >> 1);
+			return result >> 1;
+
 		}
 		int sign = b & 0x01;
-		result = (result & 0x7e)>>1;
-		long fac = 0x40;
-		while (((b = ioBuf[ioPos++]) & 0x80) != 0){ // more bytes will follow
+		result = (result & 0x7e) >> 1;
+		int shift = 6;
+		while (((b = ioBuf[ioBufPos++]) & 0x80) != 0) { // more bytes will follow
 			--bytesToRead;
-			result += fac * (b & 0x7f) ;
-			fac  <<= 7;
+			result += ((long) (b & 0x7f)) << shift;
+			shift += 7;
 		}
 		--bytesToRead;
-		result += fac * b;
+		result += ((long) b) << shift;
 		if (sign == 1) // negative
-			return -1-result;
-		else
-			return result;
-
+			return -1 - result;
+		return result;
 	}
 
 	/**
-	 * read a varying length unsigned number (see o5m definition)
-	 * @return a long
-	 * @throws IOException
+	 * Read a varying length unsigned number (see o5m definition).
+	 * 
+	 * @return the number as long
+	 * @throws IOException in case of I/O error
 	 */
-	private long readUnsignedNum64FromStream()throws IOException {
+	private long readUnsignedNum64FromStream() throws IOException {
 		int b = is.read();
 		--bytesToRead;
 		long result = b;
-		if ((b & 0x80) == 0){  // just one byte
+		if ((b & 0x80) == 0) { // just one byte
 			return result;
 		}
 		result &= 0x7f;
-		long fac = 0x80;
-		while (((b = is.read()) & 0x80) != 0){ // more bytes will follow
+		int shift = 7;
+		while (((b = is.read()) & 0x80) != 0) { // more bytes will follow
 			--bytesToRead;
-			result += fac * (b & 0x7f) ;
-			fac  <<= 7;
+			result += ((long) (b & 0x7f)) << shift;
+			shift += 7;
 		}
 		--bytesToRead;
-		result += fac * b;
+		result += ((long) b) << shift;
 		return result;
 	}
 	
-	
 	/**
-	 * read a varying length unsigned number (see o5m definition)
-	 * @return a long
-	 * @throws IOException
+	 * Read a varying length unsigned number (see o5m definition).
+	 * 
+	 * @return the number as long
 	 */
-	private long readUnsignedNum64(){
-		int b = ioBuf[ioPos++];
+	private long readUnsignedNum64() {
+		int b = ioBuf[ioBufPos++];
 		--bytesToRead;
 		long result = b;
-		if ((b & 0x80) == 0){  // just one byte
+		if ((b & 0x80) == 0) { // just one byte
 			return result;
 		}
 		result &= 0x7f;
-		long fac = 0x80;
-		while (((b = ioBuf[ioPos++]) & 0x80) != 0){ // more bytes will follow
+		int shift = 7;
+		while (((b = ioBuf[ioBufPos++]) & 0x80) != 0) { // more bytes will follow
 			--bytesToRead;
-			result += fac * (b & 0x7f) ;
-			fac  <<= 7;
+			result += ((long) (b & 0x7f)) << shift;
+			shift += 7;
 		}
 		--bytesToRead;
-		result += fac * b;
+		result += ((long) b) << shift;
 		return result;
 	}
 
 	/**
-	 * read a varying length unsigned number (see o5m definition)
-	 * is similar to the 64 bit version.
-	 * @return an int 
-	 * @throws IOException
+	 * Read a varying length unsigned number (see o5m definition).
+	 * 
+	 * @return the number as int
 	 */
-	private int readUnsignedNum32(){
-		int b = ioBuf[ioPos++];
-		--bytesToRead;
-		int result = b;
-		if ((b & 0x80) == 0){  // just one byte
-			return result;
-		}
-		result &= 0x7f;
-		long fac = 0x80;
-		while (((b = ioBuf[ioPos++]) & 0x80) != 0){ // more bytes will follow
-			--bytesToRead;
-			result += fac * (b & 0x7f) ;
-			fac  <<= 7;
-		}
-		--bytesToRead;
-		result += fac * b;
-		return result;
+	private int readUnsignedNum32() {
+		return (int) readUnsignedNum64();
 	}
 
 }

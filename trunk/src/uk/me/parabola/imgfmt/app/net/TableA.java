@@ -39,13 +39,13 @@ public class TableA {
 	private int offset;
 
 	// arcs for roundabouts
-	private final HashMap<RoadDef,Integer> roundaboutArcs = new LinkedHashMap<RoadDef,Integer>();
+	private final HashMap<RoadDef,Integer> roundaboutArcs = new LinkedHashMap<>();
 	// arcs for unpaved ways
-	private final HashMap<RoadDef,Integer> unpavedArcs = new LinkedHashMap<RoadDef,Integer>();
+	private final HashMap<RoadDef,Integer> unpavedArcs = new LinkedHashMap<>();
 	// arcs for ferry ways
-	private final HashMap<RoadDef,Integer> ferryArcs = new LinkedHashMap<RoadDef,Integer>();
+	private final HashMap<RoadDef,Integer> ferryArcs = new LinkedHashMap<>();
 	// arcs for paved ways
-	private final HashMap<RoadDef,Integer> pavedArcs = new LinkedHashMap<RoadDef,Integer>();
+	private final HashMap<RoadDef,Integer> pavedArcs = new LinkedHashMap<>();
 
 	private static int count;
 

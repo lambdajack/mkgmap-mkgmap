@@ -37,7 +37,7 @@ public class NETFileReader extends ImgFile {
 	private final NETHeader netHeader = new NETHeader();
 
 	// To begin with we only need LBL offsets.
-	private final Map<Integer, Integer> offsetLabelMap = new HashMap<Integer, Integer>();
+	private final Map<Integer, Integer> offsetLabelMap = new HashMap<>();
 	private List<Integer> offsets;
 
 	private List<City> cities;
@@ -79,9 +79,9 @@ public class NETFileReader extends ImgFile {
 	 */
 	public List<RoadDef> getRoads() {
 		ImgFileReader reader = getReader();
-		int start = netHeader.getRoadDefinitionsStart();
+		long start = netHeader.getRoadDefinitionsStart();
 
-		List<RoadDef> roads = new ArrayList<RoadDef>();
+		List<RoadDef> roads = new ArrayList<>();
 		int record = 0;
 		for (int off : offsets) {
 			reader.position(start + off);
@@ -182,7 +182,8 @@ public class NETFileReader extends ImgFile {
 				initFlag >>= 5;
 			}
 			node += skip + 1;
-			int right = 0, left = 0;
+			int right = 0;
+			int left = 0;
 			if (initFlag == 0) {
 				right = left = getCityOrZip(reader, size, endPos);
 			} else if ((initFlag & 0x4) != 0) {
@@ -208,8 +209,7 @@ public class NETFileReader extends ImgFile {
 			assert false : "ERRROR overflow";
 			return 0;
 		}
-		int cnum = reader.getNu(size);
-		return cnum;
+		return reader.getNu(size);
 	}
 
 	/**
@@ -252,11 +252,10 @@ public class NETFileReader extends ImgFile {
 	private  void readLabelOffsets() {
 		ImgFileReader reader = getReader();
 		offsets = readOffsets();
-		int start = netHeader.getRoadDefinitionsStart();
+		long start = netHeader.getRoadDefinitionsStart();
 		for (int off : offsets) {
 			reader.position(start + off);
 			int labelOffset = reader.get3u();
-			// TODO what if top bit is not set?, there can be more than one name and we will miss them
 			offsetLabelMap.put(off, labelOffset & 0x7fffff);
 		}
 	}
@@ -283,10 +282,9 @@ public class NETFileReader extends ImgFile {
 		}
 
 		// Sort in address order in the hope of speeding up reading.
-		List<Integer> offsets = new ArrayList<>(allOffsets);
-		allOffsets = null;
-		offsets.sort(null);
-		return offsets;
+		List<Integer> sortedOffsets = new ArrayList<>(allOffsets);
+		sortedOffsets.sort(null);
+		return sortedOffsets;
 	}
 
 	public void setCities(List<City> cities) {

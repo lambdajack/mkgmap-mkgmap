@@ -18,7 +18,6 @@ package uk.me.parabola.imgfmt.app.net;
 
 import java.util.Arrays;
 
-import uk.me.parabola.imgfmt.ReadFailedException;
 import uk.me.parabola.imgfmt.app.CommonHeader;
 import uk.me.parabola.imgfmt.app.ImgFileReader;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
@@ -61,7 +60,7 @@ public class NODHeader extends CommonHeader {
 	 *
 	 * @param reader The header is read from here.
 	 */
-	protected void readFileHeader(ImgFileReader reader) throws ReadFailedException {
+	protected void readFileHeader(ImgFileReader reader) {
         nodes.readSectionInfo(reader, false);
         flags = reader.get2u();
         reader.get2u();
@@ -92,8 +91,8 @@ public class NODHeader extends CommonHeader {
 	
 	// multiplier shift for road + arc length values, the smaller the shift the higher the precision and NOD size 
 	// as it has an influence on the number of bits needed to encode a length
-	final static int DISTANCE_MULT_SHIFT = 1; // 0..7  1 seems to be a good compromise
-	final static int DISTANCE_MULT = 1 << DISTANCE_MULT_SHIFT;
+	static final int DISTANCE_MULT_SHIFT = 1; // 0..7  1 seems to be a good compromise
+	static final int DISTANCE_MULT = 1 << DISTANCE_MULT_SHIFT;
 	protected void writeFileHeader(ImgFileWriter writer) {
 		nodes.setPosition(HEADER_LEN);
 		nodes.writeSectionInfo(writer);
