@@ -322,9 +322,9 @@ public class StyledConverter implements OsmConverter {
 				roads.add(cw);
 				numRoads++;
 				if (!cw.isFerry()) {
-					String country = way.getTag(countryTagKey);
-					if (country != null) {
-						boolean drivingSideIsLeft = LocatorConfig.get().getDriveOnLeftFlag(country);
+					String countryIso = LocatorConfig.get().getCountryISOCode(way.getTag(countryTagKey));
+					if (countryIso != null) {
+						boolean drivingSideIsLeft = LocatorConfig.get().getDriveOnLeftFlag(countryIso);
 						if (drivingSideIsLeft)
 							numDriveOnLeftRoads++;
 						else
