@@ -95,6 +95,11 @@ public class Label {
 		return s.trim();
 	}
 
+	/**
+	 * two or more whitespace characters are replaced by a single space
+	 * @param s string to trim
+	 * @return the trimmed string or null if s is null or empty
+	 */
 	public static String squashSpaces(String s) {
 		if(s == null || s.isEmpty())
 			return null;

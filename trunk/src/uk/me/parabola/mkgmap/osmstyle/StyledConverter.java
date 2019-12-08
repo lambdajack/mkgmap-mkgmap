@@ -158,6 +158,7 @@ public class StyledConverter implements OsmConverter {
 	private final Tags styleOptionTags;
 	private static final String STYLE_OPTION_PREF = "mkgmap:option:";
 	private final PrefixSuffixFilter prefixSuffixFilter;
+	private final boolean keepBlanks;
 	
 	private LineAdder lineAdder;
 	
@@ -225,6 +226,7 @@ public class StyledConverter implements OsmConverter {
 		// control calculation of extra nodes in NOD3 / NOD4
 		admLevelNod3 = props.getProperty("add-boundary-nodes-at-admin-boundaries", 2);
 		addBoundaryNodesAtAdminBoundaries = routable && admLevelNod3 > 0;
+		keepBlanks = props.containsKey("keep-blanks");
 	}
 
 	/**
@@ -1263,15 +1265,15 @@ public class StyledConverter implements OsmConverter {
 	private static final short phoneTagKey = TagDict.getInstance().xlate("mkgmap:phone");
 	private static final short is_inTagKey = TagDict.getInstance().xlate("mkgmap:is_in");
 	
-	private static void elementSetup(MapElement ms, GType gt, Element element) {
+	private void elementSetup(MapElement ms, GType gt, Element element) {
 		String[] labels = new String[4];
-		int noLabels = 0;
+		int numLabels = 0;
 		for (int labelNo = 0; labelNo < 4; labelNo++) {
 			String label1 = element.getTag(labelTagKeys[labelNo]);
-			String label = Label.squashSpaces(label1);
+			String label = keepBlanks ? label1 : Label.squashSpaces(label1);
 			if (label != null) {
-				labels[noLabels] = label;
-				noLabels++;
+				labels[numLabels] = label;
+				numLabels++;
 			} 
 		}
 
