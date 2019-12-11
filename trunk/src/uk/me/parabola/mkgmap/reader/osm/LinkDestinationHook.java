@@ -491,7 +491,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 			
 			Map<String, Set<Coord>> highwayCoords = new LinkedHashMap<>();
 			for (String type : highwayTypes){
-				highwayCoords.put(type, new HashSet<Coord>());
+				highwayCoords.put(type, Collections.newSetFromMap(new IdentityHashMap<Coord, Boolean>()));
 			}
 			for (Way w : saver.getWays().values()) {
 				String highwayTag = w.getTag("highway");
