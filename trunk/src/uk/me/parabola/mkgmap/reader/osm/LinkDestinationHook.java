@@ -402,7 +402,15 @@ public class LinkDestinationHook implements OsmReadingHooks {
 		Set<Way> connectedWays = wayNodes.get(node);
 		for (Way w : connectedWays) {
 			// get the index of the node
-			int index = w.getPoints().indexOf(node);
+			List<Coord> points = w.getPoints();
+			int index = -1;
+			for (int i = 0; i < points.size(); i++) {
+				if (node == points.get(i)) {
+					index = i;
+					break;
+				}
+			}
+
 			if (index < 0) {
 				// this should not happen
 				log.error("Cannot find node "+node+" in way "+w);
