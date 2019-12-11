@@ -471,7 +471,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 
 					// remove the way from destination handling only if both ways are connected with start/end points
 					// otherwise it is a crossroads and therefore both ways need to be handled
-					boolean startEndConnection = c.equals(connectedWay.getFirstPoint());
+					boolean startEndConnection = c == connectedWay.getFirstPoint();
 					if (startEndConnection && !connectedWay.equals(linkWay) 
 							&& connectedWay.getTag("highway").endsWith("_link")
 							&& destination.equals(nextDest)) {
