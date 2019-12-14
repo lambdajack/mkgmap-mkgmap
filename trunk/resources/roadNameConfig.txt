@@ -44,8 +44,8 @@ prefix1:it = "Via", "Piazza", "Viale"
 prefix2:it = "del ", "dei ", "della ", "delle ", "di "
 
 # portugese
-prefix1:pt = "Rua", "Avenida", "Travessa"
-prefix2:pt = "da ", "do ", "de ", "das ", "dos "
+prefix1:pt = "Rua", "Avenida", "Travessa", "Alameda", "Beco", "Estrada", "Rodovia"
+prefix2:pt = "da ", "do ", "de ", "das ", "dos ", "d'"
 
 # spanish
 prefix1:es = "Avenida", "Calle", "Paseo"
@@ -56,9 +56,11 @@ prefix2:es = "de las ", "de los ", "de la ", "del ", "de ", "d'", "las ", "los "
 # Map three letter ISO country codes to list of used languages for road names.
 # It is assumed that the style sets mkgmap:country to one of these ISO codes.    
 
+lang:AGO = pt
 lang:AND = es, ca
 lang:ARG = es
 lang:BOL = es
+lang:BRA = pt
 lang:CAN = en, fr
 lang:CHE = de, fr, it
 lang:CHL = es
@@ -72,10 +74,12 @@ lang:ESH = es
 lang:ESP = es, gl, eu, ca
 lang:FRA = fr
 lang:GBR = en
+lang:GNB = pt
 lang:GTM = es
 lang:GUY = en
 lang:HND = es
 lang:MEX = es
+lang:MOZ = pt
 lang:NIC = es
 lang:PAN = es
 lang:PER = es
