@@ -85,7 +85,7 @@ public class TypCompiler implements MapProcessor {
 			param.setFamilyId(family);
 		if (product != -1)
 			param.setProductId(product);
-		if (cp != -1)
+		if (cp != -1 && param.getCodePage() == 0)
 			param.setCodePage(cp);
 
 		File outFile = new File(filename);
