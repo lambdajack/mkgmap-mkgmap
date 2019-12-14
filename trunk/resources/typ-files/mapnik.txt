@@ -1,7 +1,6 @@
-﻿
+
 [_id]
 ProductCode=1
-FID=8000
 CodePage=65001
 [End]
 [_comments]
