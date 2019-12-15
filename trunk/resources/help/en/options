@@ -687,6 +687,21 @@ Miscellaneous options:
 	It is possible to define wildcards for tag values like entrance=*.
 	Default: entrance=main;entrance=yes;building=entrance
 
+--is-in-landuse=value[,value...]
+	Tells mkgmap to calculate a tag for each given landuse area. 
+	Allows to identify eg. buildings within a landuse=residential or ways 
+	within a landuse=cemetery. If an element is within the given landuse area,
+	the information is stored in special tags with prefix mkmap:lu:.
+	Example: If you specify --is-in-landuse=cemetery and an element is within a 
+	landuse=cemetery polygon mkgmap adds the tag
+	mkgmap:lu:cemetery=x where x is either "yes" or the name of the cemetery.
+	The program builds a spatial index for each listed landuse value to be able to compute
+	this information before the style rules in lines and points are applied.
+	The default for this option is residential. To disable the processing use
+	--no-is-in-landuse or an empty list of values.
+	If the style uses the tag mkgmap:residential which was set by earlier versions
+	of mkgmap a warning is printed and the old tag is generated.
+
 --precomp-sea=directory|zipfile
 	Defines the directory or a zip file that contains precompiled sea tiles. 
 	Sea files in a zip file must be located in the zip file's root directory or in 
