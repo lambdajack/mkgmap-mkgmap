@@ -63,7 +63,6 @@ public class CommandArgsReader {
 		add(new CommandOption("overview-mapnumber", "63240000"));
 		add(new CommandOption("poi-address", ""));
 		add(new CommandOption("merge-lines", ""));
-		add(new CommandOption("is-in-landuse", "residential"));
 	}
 
 	/**

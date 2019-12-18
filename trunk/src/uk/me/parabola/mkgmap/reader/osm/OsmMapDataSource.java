@@ -72,7 +72,7 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 			new HighwayHooks(),
 			new LocationHook(),
 			new POIGeneratorHook(),
-			new LanduseHook(),
+			new ResidentialHook(),
 			new HousenumberHooks(),
 	};
 	protected OsmConverter converter;
@@ -82,8 +82,6 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 	private static final LocalDateTime now = LocalDateTime.now();
 	
 	protected static final List<OsmHandler> handlers;
-
-	public static final String ADD_MKGMAP_RESIDENTIAL = "style-uses-mkgmap:residential";
 	static {
 		handlers = new ArrayList<>();
 		handlers.add(new OsmBinHandler());
@@ -336,10 +334,6 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 		EnhancedProperties props = getConfig();
 		setStyle(StyleImpl.readStyle(props));
 
-		if (style.getUsedTags().contains("mkgmap:residential")) {
-			System.err.println("Found mkgmap:residential in style, please replace by mkgmap:lu:residential");
-			props.put(ADD_MKGMAP_RESIDENTIAL, "yes");
-		}
 		usedTags.addAll(style.getUsedTags());
 		usedTags.addAll(NameFinder.getNameTags(props));
 		converter = new StyledConverter(style, mapper, props);
