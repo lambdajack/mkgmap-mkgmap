@@ -13,12 +13,18 @@
 
 package uk.me.parabola.mkgmap.osmstyle.function;
 
+import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.FUNCTION;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
 import uk.me.parabola.mkgmap.osmstyle.eval.ValueOp;
 import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
-
-import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.FUNCTION;
+import uk.me.parabola.mkgmap.scan.SyntaxException;
 
 /**
  * The interface for all functions that can be used within a style file.<br>
@@ -28,9 +34,18 @@ import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.FUNCTION;
  */
 public abstract class StyleFunction extends ValueOp {
 
+	protected int reqdNumParams = 0;
+	protected List<String> params;
+
 	public StyleFunction(String value) {
 		super(value);
 		setType(FUNCTION);
+	}
+
+	public void setParams(List<String> params) {
+		if (params.size() != reqdNumParams)
+			throw new SyntaxException(String.format("Function %s takes %d parameters, %d given", getName(), reqdNumParams, params.size()));
+		this.params = new ArrayList<>(params);
 	}
 
 	/**
@@ -72,5 +87,12 @@ public abstract class StyleFunction extends ValueOp {
 
 	public String toString() {
 		return getName() + "()";
+	}
+
+	/**
+	 * @return the tag keys evaluated in this function.
+	 */
+	public Set<String> getUsedTags() {
+		return Collections.emptySet();
 	}
 }

@@ -58,5 +58,7 @@ public interface Rule {
 	public Rule getFinalizeRule();
 
 	public boolean containsExpression(String exp);
+
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver);
 	
 }

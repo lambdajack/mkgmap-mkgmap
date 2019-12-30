@@ -187,4 +187,9 @@ public class ActionRule implements Rule {
 	public boolean containsExpression(String exp) {
 		return expression.toString().contains(exp);
 	}
+
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
+		expression.augmentWith(elementSaver);
+	}
+
 }

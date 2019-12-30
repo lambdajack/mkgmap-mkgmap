@@ -15,7 +15,9 @@ package uk.me.parabola.mkgmap.osmstyle.function;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.Collections;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import uk.me.parabola.mkgmap.reader.osm.Element;
@@ -96,6 +98,7 @@ public class MaxSpeedFunction extends CachedFunction {
 
 	}
 
+	@Override
 	public String getName() {
 		switch (this.unit) {
 		case MPH:
@@ -106,7 +109,13 @@ public class MaxSpeedFunction extends CachedFunction {
 		}
 	}
 
+	@Override
 	public boolean supportsWay() {
 		return true;
+	}
+	
+	@Override
+	public Set<String> getUsedTags() {
+		return Collections.singleton("maxspeed");
 	}
 }

@@ -54,6 +54,8 @@ public interface OsmConverter {
 	 */
 	public void convertRelation(Relation relation);
 
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver);
+
 	/**
 	 * Set the bounding box for this map.  This should be set before any other
 	 * elements are converted if you want to use it.

@@ -15,6 +15,8 @@ package uk.me.parabola.mkgmap.osmstyle.eval;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Stack;
@@ -27,6 +29,8 @@ import uk.me.parabola.mkgmap.reader.osm.FeatureKind;
 import uk.me.parabola.mkgmap.scan.SyntaxException;
 import uk.me.parabola.mkgmap.scan.TokenScanner;
 import uk.me.parabola.mkgmap.scan.WordInfo;
+import uk.me.parabola.mkgmap.scan.Token;
+import uk.me.parabola.mkgmap.scan.TokType;
 
 import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.*;
 
@@ -37,12 +41,12 @@ import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.*;
 public class ExpressionReader {
 	private static final Logger log = Logger.getLogger(ExpressionReader.class);
 
-	private final Stack<Op> stack = new Stack<Op>();
-	private final Stack<Op> opStack = new Stack<Op>();
+	private final Stack<Op> stack = new Stack<>();
+	private final Stack<Op> opStack = new Stack<>();
 	private final TokenScanner scanner;
 	private final FeatureKind kind;
 
-	private final Set<String> usedTags = new HashSet<String>();
+	private final Set<String> usedTags = new HashSet<>();
 
 	public ExpressionReader(TokenScanner scanner, FeatureKind kind) {
 		this.scanner = scanner;
@@ -77,7 +81,7 @@ public class ExpressionReader {
 				pushValue(wordInfo.getText());
 			} else if (wordInfo.getText().charAt(0) == '$') {
 				String tagname = scanner.nextWord();
-				if (tagname.equals("{")) {
+				if ("{".equals(tagname)) {
 					tagname = scanner.nextWord();
 					scanner.validateNext("}");
 				}
@@ -86,8 +90,23 @@ public class ExpressionReader {
 				// it is a function
 				// this requires a () after the function name
 				scanner.validateNext("(");
+				List<String> funcParams = new ArrayList<>();
+				do {
+					Token tok = scanner.peekToken();
+					if (tok.getType() != TokType.TEXT &&
+					    (tok.getType() != TokType.SYMBOL ||
+					     !("'".equals(tok.getValue()) || "\"".equals(tok.getValue()))))
+						break;
+					WordInfo funcParam = scanner.nextWordWithInfo();
+					funcParams.add(funcParam.getText());
+					if (scanner.checkToken(",")) {
+						/*Token comma = */scanner.nextToken();
+					} else {
+						break;
+					}
+				} while (true);
 				scanner.validateNext(")");
-				saveFunction(wordInfo.getText());
+				saveFunction(wordInfo.getText(), funcParams);
 			} else {
 				pushValue(wordInfo.getText());
 			}
@@ -123,7 +142,7 @@ public class ExpressionReader {
 	 * @param ifStack
 	 * @return
 	 */
-	private Op appendIfExpr(Op expr, Collection<Op[]> ifStack) {
+	private static Op appendIfExpr(Op expr, Collection<Op[]> ifStack) {
 		Op result = expr;
 		for (Op[] ops : ifStack) {
 			if (result != null) {
@@ -131,9 +150,9 @@ public class ExpressionReader {
 				and.setFirst(result);
 				and.setSecond(ops[0].copy());
 				result = and;
-			} else 
+			} else  {
 				result = ops[0].copy();
-			
+			}
 		}
 		return result;
 	}
@@ -143,7 +162,7 @@ public class ExpressionReader {
 	 * @param token The string to test.
 	 * @return True if this looks like an operator.
 	 */
-	private boolean isOperation(WordInfo token) {
+	private static boolean isOperation(WordInfo token) {
 		// A quoted word is not an operator eg: '=' is a string.
 		if (token.isQuoted())
 			return false;
@@ -174,7 +193,7 @@ public class ExpressionReader {
 	 */
 	private void saveOp(String value) {
 		log.debug("save op", value);
-		if (value.equals("#")) {
+		if ("#".equals(value)) {
 			scanner.skipLine();
 			return;
 		}
@@ -253,7 +272,7 @@ public class ExpressionReader {
 				op.setFirst(arg1);
 			}
 		} else if (!op.isType(OPEN_PAREN)) {
-			if (stack.size() < 1)
+			if (stack.isEmpty())
 				throw new SyntaxException(scanner, String.format("Missing argument for %s operator",
 						op.getType().toSymbol()));
 			op.setFirst(stack.pop());
@@ -277,10 +296,11 @@ public class ExpressionReader {
 	 *
 	 * @param functionName A name to look up.
 	 */
-	private void saveFunction(String functionName) {
+    private void saveFunction(String functionName, List<String> functionParams) {
 		StyleFunction function = FunctionFactory.createFunction(functionName);
 		if (function == null)
 			throw new SyntaxException(String.format("No function with name '%s()'", functionName));
+		function.setParams(functionParams);
 
 		// TODO: supportsWay split into supportsPoly{line,gon}, or one function supports(kind)
 		boolean supported = false;
@@ -304,7 +324,7 @@ public class ExpressionReader {
 
 		if (!supported)
 			throw new SyntaxException(String.format("Function '%s()' not supported for %s", functionName, kind));
-
+		usedTags.addAll(function.getUsedTags());
 		stack.push(function);
 	}
 

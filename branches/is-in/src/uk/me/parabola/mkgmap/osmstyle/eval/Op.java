@@ -135,4 +135,7 @@ public interface Op {
 		} else
 			return this;
 	}
+
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver);
+    
 }

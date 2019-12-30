@@ -66,4 +66,11 @@ public abstract class AbstractBinaryOp extends AbstractOp implements BinaryOp {
 
 		return sb.toString();
 	}
+
+	@Override
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
+		first.augmentWith(elementSaver);
+		second.augmentWith(elementSaver);
+	}
+
 }
