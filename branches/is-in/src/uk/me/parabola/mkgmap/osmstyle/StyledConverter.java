@@ -61,7 +61,6 @@ import uk.me.parabola.mkgmap.general.MapShape;
 import uk.me.parabola.mkgmap.osmstyle.housenumber.HousenumberGenerator;
 import uk.me.parabola.mkgmap.reader.osm.CoordPOI;
 import uk.me.parabola.mkgmap.reader.osm.Element;
-import uk.me.parabola.mkgmap.reader.osm.ElementSaver;
 import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
 import uk.me.parabola.mkgmap.reader.osm.FeatureKind;
 import uk.me.parabola.mkgmap.reader.osm.GType;
@@ -695,16 +694,13 @@ public class StyledConverter implements OsmConverter {
 	}
 	
 	/**
-	 * Invoked a the raw OSM data has been read and hooks run, but before any of the convertXxx() calls
-         * this is called with the ElementSaver so...
+	 * Invoked after the raw OSM data has been read and hooks run, but before any of the convertXxx() calls
 	 *
 	 * @param elementSaver Gives access to the pre-converted OSM data
 	 */
 	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
-	    // %%%RWB
-		log.warn("elementSaver pcrl: Nodes:", elementSaver.getNodes().size(), "Ways:", elementSaver.getWays().size(), "Rels:", elementSaver.getRelations().size());
-		// %%% abd process the rles
-		wayRules.augmentWith(elementSaver);
+		// wayRules doesn't need to be done (or must be done first) because is concat. of line & polygon rules
+		//wayRules.augmentWith(elementSaver);
 		nodeRules.augmentWith(elementSaver);
 		lineRules.augmentWith(elementSaver);
 		polygonRules.augmentWith(elementSaver);
@@ -731,7 +727,6 @@ public class StyledConverter implements OsmConverter {
 	 * @param bbox The bounding area, must not be null.
 	 */
 	public void setBoundingBox(Area bbox) {
-		    
 		this.clipper = new AreaClipper(bbox);
 		this.bbox = bbox;
 

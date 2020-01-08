@@ -92,6 +92,7 @@ public class ExpressionReader {
 				scanner.validateNext("(");
 				List<String> funcParams = new ArrayList<>();
 				do {
+					scanner.skipSpace();    
 					Token tok = scanner.peekToken();
 					if (tok.getType() != TokType.TEXT &&
 					    (tok.getType() != TokType.SYMBOL ||
