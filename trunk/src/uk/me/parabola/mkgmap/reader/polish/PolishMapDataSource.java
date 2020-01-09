@@ -551,7 +551,11 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 		}
 		if (close && points.get(0) != points.get(points.size() - 1)) {
 			// not closed, close it
-			points.add(points.get(0));
+			if (points.get(0).highPrecEquals(points.get(points.size() - 1))) {
+				points.set(points.size() - 1, points.get(0));
+			} else {
+				points.add(points.get(0));
+			}
 		}
 		log.debug(points.size() + " points from " + value);
 		return points;
