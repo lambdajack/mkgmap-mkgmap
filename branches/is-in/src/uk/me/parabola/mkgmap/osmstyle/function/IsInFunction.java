@@ -1,3 +1,16 @@
+/*
+ * Copyright (C) 2019.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3 or
+ * version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ */
+
 package uk.me.parabola.mkgmap.osmstyle.function;
 
 import java.awt.geom.Path2D;
@@ -5,25 +18,49 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeMap;
 
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Element;
+import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
 import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.Way;
+import uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryUtil;
 import uk.me.parabola.util.ElementQuadTree;
 import uk.me.parabola.util.Java2DConverter;
 
+/**
+ * Implements insideness tests for points, polyline and polygon. We distinguish
+ * 3 cases for points: <br>
+ * 1: the point is outside the polygon <br>
+ * 2: the point is on the boundary of the polygon (or very close to it) <br>
+ * 3: the point in inside the polygon
+ * 
+ * We distinguish 6 cases for lines: <br>
+ * 1: all of the line is outside the polygon <br>
+ * 2: some of the line is outside and the rest touches or runs along the polygon
+ * edge <br>
+ * 3: all of the line runs along the polygon edge <br>
+ * 4: some of the line is inside and the rest touches or runs along. <br>
+ * 5: all of the line is inside the polygon <br>
+ * 6: some is inside and some outside the polygon. Obviously some point is on
+ * the polygon edge but we don't care if runs along the edge.
+ * 
+ * @author Gerd Petermann
+ *
+ */
 public class IsInFunction extends StyleFunction {
 	private static final Logger log = Logger.getLogger(IsInFunction.class);
+	private static final boolean SIMULATE_UNIT_TEST = false; 
 
 	private ElementQuadTree qt;
-	
+
 	public IsInFunction() {
 		super(null);
-		reqdNumParams = 3;  // ??? maybe have something to indicate variable...
+		reqdNumParams = 3; // ??? maybe have something to indicate variable...
 		// maybe param:
 		// 1: polygon tagName
 		// 2: value for above tag
@@ -31,17 +68,11 @@ public class IsInFunction extends StyleFunction {
 	}
 
 	protected String calcImpl(Element el) {
+		String mode = params.get(2);
 		boolean answer = false;
 		if (qt != null && !qt.isEmpty()) {
 			Set<Element> polygons;
 			Area bbox;
-			/**
-			 * TODO: calculate bbox of element, 
-			 * retrieve closed ways which match the tag given with parameters
-			 * use spatial index if that improves performance
-			 * calculate insideness  
-			 */
-			
 			// this is just some test code to give different answers...
 			if (el instanceof Node) {
 				Coord c = ((Node) el).getLocation();
@@ -49,7 +80,7 @@ public class IsInFunction extends StyleFunction {
 				polygons = qt.get(bbox);
 				for (Element e : polygons) {
 					Way poly = (Way) e;
-					if (Java2DConverter.createHighPrecPolygon(poly.getPoints()).contains(c.getHighPrecLon(), c.getHighPrecLat())) {
+					if (BoundaryUtil.insidePolygon(c, true, poly.getPoints().toArray(new Coord[0]))) {
 						answer = true;
 						break;
 					}
@@ -59,8 +90,9 @@ public class IsInFunction extends StyleFunction {
 				if (w.isComplete()) {
 					bbox = Area.getBBox(w.getPoints());
 					polygons = qt.get(bbox);
-					if (!polygons.isEmpty()) {
-						// combine all polygons which intersect the bbox of the element if possible
+					if (polygons.size() > 1) {
+						// combine all polygons which intersect the bbox of the
+						// element if possible
 						Path2D.Double path = new Path2D.Double();
 						for (Element e : polygons) {
 							Way poly = (Way) e;
@@ -68,65 +100,110 @@ public class IsInFunction extends StyleFunction {
 							path.append(polyPath, false);
 						}
 						java.awt.geom.Area polygonsArea = new java.awt.geom.Area(path);
-						List<Coord> intersections = new ArrayList<>();
-						//TODO: need to know if this function is used in lines or polygons rules
-						List<List<Coord>> mergedShapes = Java2DConverter.areaToShapes(polygonsArea);
-						// brute force search for intersections between way segments
-						for (List<Coord> shape : mergedShapes) {
-							for (int i = 0; i < shape.size(); i++) {
-								Coord p11 = shape.get(i);
-								Coord p12 = shape.get(i + 1 < shape.size() ? i+1 : 0); 
-								for (int k = 0; k < w.getPoints().size() - 1; k++) {
-									Coord p21 = w.getPoints().get(k);
-									Coord p22 = w.getPoints().get(k + 1);
-									Coord x = Utils.getSegmentSegmentIntersection(p11, p12, p21, p22);
-									if (x != null) {
-										intersections.add(x);
-										// intersection found, maybe they are crossing, maybe they are touching 
-										double x1 = (double)p21.getHighPrecLon()/ (1<<Coord.DELTA_SHIFT); 
-										double y1 = (double)p21.getHighPrecLat() / (1<<Coord.DELTA_SHIFT); 
-										double x2 = (double)p22.getHighPrecLon()/ (1<<Coord.DELTA_SHIFT); 
-										double y2 = (double)p22.getHighPrecLat() / (1<<Coord.DELTA_SHIFT); 
 
-										// TODO: replace area.contains() 
-										// with method that returns only
-										// true for nodes which are inside
-										// and not on the boundary
-										if (polygonsArea.contains(x1,y1) != polygonsArea.contains(x2,y2)) {
-											if ("any".equals(params.get(2)))
-												return String.valueOf(true);
-											if ("all".equals(params.get(2)))
-												return String.valueOf(false);
-										}
-									}
+						List<List<Coord>> mergedShapes = Java2DConverter.areaToShapes(polygonsArea);
+
+						// combination of polygons may contain holes. They are counter clockwise.
+						List<List<Coord>> holes = new ArrayList<>();
+						List<List<Coord>> outers = new ArrayList<>();
+						for (List<Coord> shape : mergedShapes) {
+							(Way.clockwise(shape) ? outers : holes).add(shape);
+						}
+						// check if any outer intersects with the way
+						for (List<Coord> shape : outers) {
+							answer = checLineAgainsShape(w.getPoints(), shape, mode);
+							if(answer) 
+								break;
+
+						}
+						if(answer && !holes.isEmpty()) {
+							// an outer ring matched
+							// check if any hole intersects with the way
+							String holeMode = "all".equals(mode) ? "any" : "all";
+							for (List<Coord> hole : holes) {
+								boolean test = checLineAgainsShape(w.getPoints(), hole, holeMode);
+								if (test) {
+									answer = false;
+									break;
 								}
+
 							}
 						}
-						// found no intersection, way is either inside or outside, use result for 1st point
-						// TODO: make sure that tested node is not on boundary
-						double x1 = (double) w.getFirstPoint().getHighPrecLon() / (1 << Coord.DELTA_SHIFT);
-						double y1 = (double) w.getFirstPoint().getHighPrecLat() / (1 << Coord.DELTA_SHIFT);
-						answer = polygonsArea.contains(x1, y1);
+					} else if (polygons.size() == 1) {
+						answer = checLineAgainsShape(w.getPoints(), ((Way) polygons.iterator().next()).getPoints(), mode);
 					}
 				}
 			}
 		}
-		if (answer) {
-//			log.error(el.toBrowseURL(), params, answer);
-		}
 		return String.valueOf(answer);
+	}
+
+	private enum Status {
+		IN, ON, OUT;
 	}
 
 	@Override
 	public String value(Element el) {
-		return calcImpl(el);
+		if ("w25".equals(el.getTag("name"))) {
+			long dd = 4;
+		}
+		String res = calcImpl(el);
+		if (SIMULATE_UNIT_TEST) { 
+			String expected = el.getTag("expected");
+			if (expected != null && !"?".equals(expected) && "landuse".equals(params.get(0)) && "residential".equals(params.get(1))) {
+				if (el instanceof Way) {
+
+					Way w2 = (Way) el.copy();
+					Collections.reverse(w2.getPoints());
+					String res2 = calcImpl(w2);
+					if (!res.equals(res2)) {
+						log.error(el.getTag("name"), res, res2, params, "oops reverse");
+					}
+					if (w2.hasIdenticalEndPoints()) {
+						List<Coord> points = w2.getPoints();
+						for (int i = 1; i < w2.getPoints().size(); i++) {
+							points.remove(points.size() - 1);
+							Collections.rotate(points, 1);
+							points.add(points.get(0));
+							res2 = calcImpl(w2);
+							if (!res.equals(res2)) {
+								log.error(el.getTag("name"), res, res2, params, "oops rotate",i);
+								calcImpl(w2);
+							}
+
+						}
+					}
+				}
+				boolean b1 = Boolean.parseBoolean(res);
+				boolean in = "in".equals(expected);
+				boolean straddle = "straddle".equals(expected);
+				boolean out = "out".equals(expected);
+				if (b1 && out) {
+					log.error(el.getTag("name"), res, params, "oops");
+				}
+				if ("any".equals(params.get(2))) {
+					if (!b1 && (in || straddle)) {
+						log.error(el.getTag("name"), res, params, "oops");
+					}
+				}
+				if ("all".equals(params.get(2))) {
+					if (!b1 && in) {
+						log.error(el.getTag("name"), res, params, "oops");
+					}
+					if (b1 && (straddle)) {
+						log.error(el.getTag("name"), res, params, "oops");
+					}
+				}
+			}
+		}
+		return res;
 	}
-    
+
 	@Override
 	public String getName() {
 		return "is_in";
 	}
-	
+
 	@Override
 	public boolean supportsNode() {
 		return true;
@@ -144,7 +221,8 @@ public class IsInFunction extends StyleFunction {
 
 	@Override
 	public String toString() {
-		// TODO: check what is needed for class ExpressionArranger and RuleSet.compile()
+		// TODO: check what is needed for class ExpressionArranger and
+		// RuleSet.compile()
 		return super.toString() + params;
 	}
 
@@ -152,7 +230,8 @@ public class IsInFunction extends StyleFunction {
 	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
 		List<Element> matchingPolygons = new ArrayList<>();
 		for (Way w : elementSaver.getWays().values()) {
-			if (w.isComplete() && w.hasIdenticalEndPoints()) {
+			if (w.isComplete() && w.hasIdenticalEndPoints()
+					&& !"polyline".equals(w.getTag(MultiPolygonRelation.STYLE_FILTER_TAG))) {
 				String val = w.getTag(params.get(0));
 				if (val != null && val.equals(params.get(1))) {
 					matchingPolygons.add(w);
@@ -162,5 +241,141 @@ public class IsInFunction extends StyleFunction {
 		if (!matchingPolygons.isEmpty()) {
 			qt = new ElementQuadTree(elementSaver.getBoundingBox(), matchingPolygons);
 		}
+	}
+
+	private static boolean checLineAgainsShape(List<Coord> lineToTest, List<Coord> shape, String mode) {
+//		List<Coord> wayPoints = w.getPoints();
+		final int n = lineToTest.size();
+		Status statusFirst = checkPointAgainstShape(lineToTest.get(0), shape);
+		if (statusFirst == Status.IN && "any".equals(mode))
+			return true;
+		if (statusFirst == Status.OUT  && "all".equals(mode))
+			return false;
+		Status statusLast = checkPointAgainstShape(lineToTest.get(n-1), shape);
+		if (statusLast == Status.IN && "any".equals(mode))
+			return true;
+		if (statusLast == Status.OUT  && "all".equals(mode))
+			return false;
+		for (int i = 0; i < shape.size() - 1; i++) {
+			Coord p11 = shape.get(i);
+			Coord p12 = shape.get(i + 1);
+			//TODO: p11 hpequals p12
+//			GpxCreator.createGpx("e:/ld/s", Arrays.asList(p11,p12));
+			for (int k = 0; k < n - 1; k++) {
+				Coord p21 = lineToTest.get(k);
+				Coord p22 = lineToTest.get(k + 1);
+				//TODO: p21 hpequals p22
+				
+				Coord inter = Utils.getSegmentSegmentIntersection(p11, p12, p21, p22);
+				if (inter != null) {
+					// segments have at least one common point 
+					boolean isCrossing = false;
+					if (inter.distance(p21) < 0.01) {
+						if (k > 0) {
+							Coord a = lineToTest.get(k-1); // prev point on way
+//							GpxCreator.createGpx("e:/ld/w", Arrays.asList(a,p21,p22));
+							if (p21.highPrecEquals(p11)) {
+								Coord b = p11; // point shared by way and shape
+								Coord c = p22; // next point on way
+								Coord x = shape.get(i-1 >= 0 ? i-1 : shape.size()-2); // prev point in shape
+								Coord y = p12; // next point on shape
+//								GpxCreator.createGpx("e:/ld/s", Arrays.asList(x,p11,p12));
+								//TODO: Can we do this sorting without the costly bearing calculations? 
+								TreeMap<Double, Character> map = new TreeMap<>();
+								map.put(b.bearingTo(a), 'a');
+								map.put(b.bearingTo(c), 'c');
+								map.put(b.bearingTo(x), 'x');
+								map.put(b.bearingTo(y), 'y');
+								if (map.size() == 4) {
+									List<Character> sortedByBearing = new ArrayList<>(map.values());
+									int xpos = sortedByBearing.indexOf('x');
+									int ypos = sortedByBearing.indexOf('y');
+									
+									if (Math.abs(xpos-ypos) == 2) {
+										// pair xy is eiher on 0 and 2 or 1 and 3, so only one of a and c is between them
+										// shape segments x-b-y is nether between nor outside of way segments a-b-c
+										isCrossing = true;
+									}
+								} else {
+									// spike/overlap
+									long dd = 4; // TODO?
+								}
+								
+							} else if (p21.highPrecEquals(p12)) {
+								// handle next time
+							} else {
+								long isLeftPrev = lineToTest.get(k-1).isLeft(p11, p12);
+								long isLeftNext = p22.isLeft(p11, p12);
+								if (isLeftPrev< 0 && isLeftNext > 0 || isLeftPrev > 0 && isLeftNext < 0) {
+									isCrossing = true;
+								}
+							}
+						} else {
+							long dd = 4; // TODO
+						}
+					} else if (inter.distance(p22) < 0.01) {
+						// handle next time
+					} else {
+						isCrossing = true;
+					}
+					if (isCrossing) {
+						// real intersection found 
+						if ("any".equals(mode))
+							return true;
+						if ("all".equals(mode))
+							return false;
+					}
+				}
+			}
+		}
+		// found no intersection
+		if (statusFirst == Status.ON && statusLast == Status.ON) {
+			for (int i = 1; i < n - 1; i++) {
+				Status inner = checkPointAgainstShape(lineToTest.get(i), shape);
+				if (inner != Status.ON)
+					return inner == Status.IN;
+			}
+			// all points on boundary
+			for (int i = 0; i < n-1; i++) {
+				Coord p1 = lineToTest.get(i);
+				Coord p2 = lineToTest.get(i + 1);
+				if (!isSequenceInShape(shape, p1, p2)) {
+					Coord pTest = p1.makeBetweenPoint(p2, 0.001);
+					Status midPoint = checkPointAgainstShape(pTest, shape);
+					if (midPoint != Status.ON)
+						return midPoint == Status.IN;
+				}
+			}
+		}
+		return statusFirst ==  Status.IN || statusLast == Status.IN;
+	}
+
+	private static boolean isSequenceInShape(List<Coord> shape, Coord p1, Coord p2) {
+		for (int i  = 0; i < shape.size(); i++) {
+			Coord p = shape.get(i);
+			if (p.highPrecEquals(p1)) {
+				int pos2Prev = i > 0 ? i - 1 : shape.size() - 2;
+				if (shape.get(pos2Prev).highPrecEquals(p2))
+					return true;
+				int pos2Next = i < shape.size() - 1 ? i + 1 : 1;
+				if (shape.get(pos2Next).highPrecEquals(p2))
+					return true;
+			}
+		}
+		
+		return false;
+	}
+
+	private static Status checkPointAgainstShape(Coord p, List<Coord> shape) {
+		boolean res0 = BoundaryUtil.insidePolygon(p, true, shape.toArray(new Coord[0]));
+		Status status = res0 ? Status.IN : Status.OUT;
+		if (status == Status.IN) {
+			// point is in or on
+			boolean res1 = BoundaryUtil.insidePolygon(p, false, shape.toArray(new Coord[0]));
+			if (res0 != res1) {
+				status = Status.ON;
+			}
+		}
+		return status;
 	}
 }

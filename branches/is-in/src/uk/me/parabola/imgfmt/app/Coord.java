@@ -880,5 +880,17 @@ public class Coord implements Comparable<Coord> {
 		double newLon = lon + Math.atan2(Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat), Math.cos(angularDistance) - Math.sin(lat) * Math.sin(newLat));
 		return new Coord(Math.toDegrees(newLat), Math.toDegrees(newLon));
 	}
-	
+
+	/**
+	 * Calculate if this point lies on the left or right of the line through the given points.
+	 * @param p0 first point
+	 * @param p2 second point
+	 * @return positive value if on left, negative value if on the right, 0 if on the line
+	 */
+	public long isLeft(final Coord p1, final Coord p2) {
+		long p1Lat = p1.getHighPrecLat();
+		long p1Lon = p1.getHighPrecLon();
+		return ((long) p2.getHighPrecLon() - p1Lon) * ((long) this.getHighPrecLat() - p1Lat)
+				- ((long) p2.getHighPrecLat() - p1Lat) * ((long) this.getHighPrecLon() - p1Lon);
+	}
 }

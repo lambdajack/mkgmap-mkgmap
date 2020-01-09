@@ -800,4 +800,96 @@ public class BoundaryUtil {
 		}
 		return splits;
 	}
+    /**
+     * Tests if point is inside an area. 
+     * @param point the point to test
+     * @param onBoundary the value that should be returned if the point is on the boundary
+     * @param fullArea a singular area 
+     * @return true if the point is inside polygon.
+     */
+    public static boolean pointInsideArea(Coord point, boolean onBoundary, Area fullArea) {
+    	double x = (double) point.getHighPrecLon() / (1 << Coord.DELTA_SHIFT);
+    	double y = (double) point.getHighPrecLat() / (1 << Coord.DELTA_SHIFT);
+    	Rectangle2D r = fullArea.getBounds2D();
+        double x0 = r.getX();
+        double y0 = r.getY();
+		boolean insideOrOnBounaryOfRect = (x >= x0 && y >= y0 && x <= x0 + r.getWidth() && y <= y0 + r.getHeight());
+		if (!insideOrOnBounaryOfRect) 
+			return false;
+    	List<Area> singularAreas = Java2DConverter.areaToSingularAreas(fullArea);
+    	for (Area area : singularAreas) {
+    		if (pointInsideSingularArea(point, onBoundary, area))
+    			return true;
+    	}
+    	return false;
+    }
+
+    /**
+     * Tests if point is inside or on boundary of an area.
+     * @param point the point to test
+     * @param onBoundary the value that should be returned if the point is on the boundary
+     * @param area a singular area 
+     * @return true if the point is inside polygon.
+     */
+    public static boolean pointInsideSingularArea(Coord point, boolean onBoundary, Area area) {
+    	List<Coord> polygonNodes = Java2DConverter.singularAreaToPoints(area);
+    	if (polygonNodes == null)
+    		return false;
+
+    	return insidePolygon(point, onBoundary, polygonNodes.toArray(new Coord[0]));
+    }
+    
+    /**
+     * Check if node is in polygon using winding counter. 
+     * Based on code from Dan Sunday, but allows to define how to handle nodes on boundary.   
+     * @param p the point to test
+     * @param onBoundary the value that should be returned if the point is on the boundary
+     * @param v vector of points describing the polygon
+     * @return true if p is inside the polygon, false if outside, the value of onBoundary if its on the boundary
+     * <p>
+     * Copyright 2000 softSurfer, 2012 Dan Sunday
+     * This code may be freely used and modified for any purpose
+     * providing that this copyright notice is included with it.
+     * SoftSurfer makes no warranty for this code, and cannot be held
+     * liable for any real or imagined damage resulting from its use.
+     * Users of this code must verify correctness for their application.     
+     * See http://geomalgorithms.com/a03-_inclusion.html
+     */
+    public static final boolean insidePolygon (final Coord p, boolean onBoundary, final Coord... v) {
+        final int y = p.getHighPrecLat();
+        final int len = v.length;
+        // the winding number counter
+        int wn = 0;
+        Coord c = v[0], n; // current & next points from vertex array
+       
+		for (int i = 0; ++i < len; c = n) {
+			n = v[i];
+			if (p.highPrecEquals(n)) {
+				return onBoundary;
+			}
+			if (c.getHighPrecLat() <= y) { // starting y <= p.y
+				// an upward crossing and p left of edge:
+				if (n.getHighPrecLat() > y) {
+					long l = p.isLeft(c, n);
+					if (l > 0) {
+						++wn;
+					} else if (l == 0) {
+						return onBoundary; 
+					}
+				}
+
+			} else if (n.getHighPrecLat() <= y) {
+				// a downward crossing and p right of edge.
+				long l = p.isLeft(c, n);
+				if (l < 0) {
+					--wn;
+				} else if (l == 0) {
+					return onBoundary; 
+				}
+			}
+		}
+       
+        return wn != 0; // if 0 point is outside
+    }
+	
 }

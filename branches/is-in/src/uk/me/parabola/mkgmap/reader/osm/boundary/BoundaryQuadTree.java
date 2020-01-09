@@ -163,22 +163,34 @@ public class BoundaryQuadTree {
 	 * The returned Tags must not be modified by the caller.   
 	 */
 	public Tags get(Coord co){
-		Tags res = root.get(co/*, "_"*/);
-		if (res == null && bbox.contains(co.getLongitude(),co.getLatitude())){
-			// we did not find the point, probably it lies on a boundary and
-			// the clauses regarding insideness of areas make it "invisible"
-			// try again a few other nearby points 
-			Coord neighbour1 = new Coord(co.getLatitude()-1, co.getLongitude());
-			Coord neighbour2 = new Coord(co.getLatitude()  , co.getLongitude()-1);
-			Coord neighbour3 = new Coord(co.getLatitude()+1, co.getLongitude());
-			Coord neighbour4 = new Coord(co.getLatitude()  , co.getLongitude()+1);
-			res = root.get(neighbour1/*, "_"*/);
-			if (res == null)
-				res = root.get(neighbour2/*, "_"*/);
-			if (res == null)
-				res = root.get(neighbour3/*, "_"*/);
-			if (res == null)
-				res = root.get(neighbour4/*, "_"*/);
+		return get(co, true);
+	}
+	
+	/**
+	 * Return location relevant Tags for the point defined by Coord 
+	 * @param co the point
+	 * @param tryAlsoNearby if true, try also nearby points 
+	 * @return a reference to the internal Tags or null if the point was not found. 
+	 * The returned Tags must not be modified by the caller.   
+	 */
+	public Tags get(Coord co, boolean tryAlsoNearby) {
+		Tags res = root.get(co);
+		if (res == null && tryAlsoNearby) {
+			int lonHp = co.getHighPrecLon();
+			int latHp = co.getHighPrecLat();
+			double x = (double) lonHp / (1 << Coord.DELTA_SHIFT);
+			double y = (double) latHp / (1 << Coord.DELTA_SHIFT);
+			int radius = 1 << Coord.DELTA_SHIFT;
+			if ( bbox.contains(x, y)) {
+				// try again a few other nearby points
+				res = root.get(Coord.makeHighPrecCoord(latHp + radius, lonHp));
+				if (res == null)
+					res = root.get(Coord.makeHighPrecCoord(latHp, lonHp + radius));
+				if (res == null)
+					res = root.get(Coord.makeHighPrecCoord(latHp - radius, lonHp));
+				if (res == null)
+					res = root.get(Coord.makeHighPrecCoord(latHp, lonHp - radius));
+			}
 		}
 		return res;
 	}
@@ -239,17 +251,6 @@ public class BoundaryQuadTree {
 		return root.getCoveredArea(admLevel, "_");
 	}
 	
-	/**
-	 * Return boundary names relevant for the point defined by Coord 
-	 * @param co the point
-	 * @return A string with a boundary Id, optionally followed by pairs of admlevel:boundary Id.
-	 * Sample: r1184826;6:r62579;4:r62372;2:r51477  
-	 */
-	public String getBoundaryNames(Coord co){
-		return root.getBoundaryNames(co);
-	}
-
-
 	/**
 	 * Save the BoundaryQuadTree to an open stream. The format is QUADTREE_DATA_FORMAT.
 	 * @param stream
@@ -326,7 +327,7 @@ public class BoundaryQuadTree {
 		try {
 			while (true) {
 				String type = inpStream.readUTF();
-				if (type.equals("TAGS")){
+				if ("TAGS".equals(type)){
 					String id = inpStream.readUTF();
 					Tags tags = new Tags();
 					int noOfTags = inpStream.readInt();
@@ -337,7 +338,7 @@ public class BoundaryQuadTree {
 					}
 					boundaryTags.put(id, tags);
 				}
-				else if (type.equals("AREA")){
+				else if ("AREA".equals(type)){
 					if (isFirstArea){
 						isFirstArea = false;
 						prepareLocationInfo();
@@ -458,38 +459,6 @@ public class BoundaryQuadTree {
 		}
 
 		/**
-		 * Return boundary names relevant for the point defined by Coord 
-		 * @param co the point
-		 * @return A string with a boundary Id, optionally followed by pairs of admlevel:boundary Id.
-		 * Sample: r1184826;6:r62579;4:r62372;2:r51477  
-		 */
-		private String getBoundaryNames(Coord co) {
-			if (!this.bounds.contains(co))
-				return null;
-			if (isLeaf){
-				if (nodes == null || nodes.isEmpty())
-					return null;
-				int lon = co.getLongitude();
-				int lat = co.getLatitude();
-				for (NodeElem nodeElem : nodes) {
-					if (nodeElem.tagMask > 0 && nodeElem.getArea().contains(lon, lat)) {
-						if (nodeElem.locationDataSrc != null)
-							return nodeElem.boundaryId + ";" + nodeElem.locationDataSrc;
-						return nodeElem.boundaryId;
-					}
-				}
-			}
-			else {
-				for (int i = 0; i < 4; i++){
-					String res = childs[i].getBoundaryNames(co);
-					if (res != null) 
-						return res; 
-				}
-			}
-			return null;
-		}
-
-		/**
 		 * Return location relevant Tags for the point defined by Coord 
 		 * @param co the point
 		 * @return a reference to the internal Tags or null if the point was not found. 
@@ -498,22 +467,19 @@ public class BoundaryQuadTree {
 		private Tags get(Coord co/*, String treePath*/){
 			if (!this.bounds.contains(co))
 				return null;
-			if (isLeaf){
+			if (isLeaf) {
 				if (nodes == null || nodes.isEmpty())
 					return null;
-				int lon = co.getLongitude();
-				int lat = co.getLatitude();
 				for (NodeElem nodeElem : nodes) {
-					if (nodeElem.tagMask > 0 && nodeElem.getArea().contains(lon, lat)) {
+					if (nodeElem.tagMask > 0 && BoundaryUtil.pointInsideArea(co, true, nodeElem.getArea())) {
 						return nodeElem.locTags;
 					}
 				}
-			}
-			else {
-				for (int i = 0; i < 4; i++){
-					Tags res = childs[i].get(co/*, treePath+i*/);
-					if (res != null) 
-						return res; 
+			} else {
+				for (int i = 0; i < 4; i++) {
+					Tags res = childs[i].get(co/* , treePath+i */);
+					if (res != null)
+						return res;
 				}
 			}
 			return null;
@@ -755,7 +721,7 @@ public class BoundaryQuadTree {
 			}
 			long t1 = System.currentTimeMillis();
 			if (DEBUG){
-				if (treePath.equals(DEBUG_TREEPATH) || DEBUG_TREEPATH.equals("all")){
+				if (treePath.equals(DEBUG_TREEPATH) || "all".equals(DEBUG_TREEPATH)) {
 					for (NodeElem nodeElem: nodes){
 						nodeElem.saveGPX("start",treePath);
 					}			
@@ -773,7 +739,7 @@ public class BoundaryQuadTree {
 			for (int i=0; i < nodes.size(); i++){
 				NodeElem toAdd = nodes.get(i);
 				if (DEBUG) {
-					if (treePath.equals(DEBUG_TREEPATH) || DEBUG_TREEPATH.equals("all")) {
+					if (treePath.equals(DEBUG_TREEPATH) || "all".equals(DEBUG_TREEPATH)) {
 						for (NodeElem nodeElem : reworked) {
 							nodeElem.saveGPX("debug" + i, treePath);
 						}
