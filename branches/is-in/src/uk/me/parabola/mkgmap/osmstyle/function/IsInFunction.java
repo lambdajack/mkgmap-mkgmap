@@ -15,6 +15,7 @@ package uk.me.parabola.mkgmap.osmstyle.function;
 
 import java.awt.geom.Path2D;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -29,6 +30,7 @@ import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
 import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryUtil;
+import uk.me.parabola.mkgmap.scan.SyntaxException;
 import uk.me.parabola.util.ElementQuadTree;
 import uk.me.parabola.util.Java2DConverter;
 
@@ -68,70 +70,73 @@ public class IsInFunction extends StyleFunction {
 	}
 
 	protected String calcImpl(Element el) {
-		String mode = params.get(2);
 		boolean answer = false;
-		if (qt != null && !qt.isEmpty()) {
-			Set<Element> polygons;
-			Area bbox;
-			// this is just some test code to give different answers...
-			if (el instanceof Node) {
-				Coord c = ((Node) el).getLocation();
-				bbox = Area.getBBox(Collections.singletonList(c));
-				polygons = qt.get(bbox);
-				for (Element e : polygons) {
-					Way poly = (Way) e;
-					if (BoundaryUtil.insidePolygon(c, true, poly.getPoints().toArray(new Coord[0]))) {
-						answer = true;
-						break;
-					}
+		if (qt == null || qt.isEmpty()) { 
+			return String.valueOf(answer);
+		}
+		
+		String mode = params.get(2);
+		
+		Set<Element> polygons;
+		Area bbox;
+		// this is just some test code to give different answers...
+		if (el instanceof Node) {
+			Coord c = ((Node) el).getLocation();
+			bbox = Area.getBBox(Collections.singletonList(c));
+			polygons = qt.get(bbox);
+			for (Element e : polygons) {
+				Way shape = (Way) e;
+				if (BoundaryUtil.insidePolygon(c, true, shape.getPoints().toArray(new Coord[0]))) {
+					answer = true;
+					break;
 				}
-			} else if (el instanceof Way) {
-				Way w = (Way) el;
-				if (w.isComplete()) {
-					bbox = Area.getBBox(w.getPoints());
-					polygons = qt.get(bbox);
-					if (polygons.size() > 1) {
-						// combine all polygons which intersect the bbox of the
-						// element if possible
-						Path2D.Double path = new Path2D.Double();
-						for (Element e : polygons) {
-							Way poly = (Way) e;
-							Path2D polyPath = Java2DConverter.createPath2D(poly.getPoints());
-							path.append(polyPath, false);
-						}
-						java.awt.geom.Area polygonsArea = new java.awt.geom.Area(path);
-
-						List<List<Coord>> mergedShapes = Java2DConverter.areaToShapes(polygonsArea);
-
-						// combination of polygons may contain holes. They are counter clockwise.
-						List<List<Coord>> holes = new ArrayList<>();
-						List<List<Coord>> outers = new ArrayList<>();
-						for (List<Coord> shape : mergedShapes) {
-							(Way.clockwise(shape) ? outers : holes).add(shape);
-						}
-						// check if any outer intersects with the way
-						for (List<Coord> shape : outers) {
-							answer = checLineAgainsShape(w.getPoints(), shape, mode);
-							if(answer) 
-								break;
-
-						}
-						if(answer && !holes.isEmpty()) {
-							// an outer ring matched
-							// check if any hole intersects with the way
-							String holeMode = "all".equals(mode) ? "any" : "all";
-							for (List<Coord> hole : holes) {
-								boolean test = checLineAgainsShape(w.getPoints(), hole, holeMode);
-								if (test) {
-									answer = false;
-									break;
-								}
-
-							}
-						}
-					} else if (polygons.size() == 1) {
-						answer = checLineAgainsShape(w.getPoints(), ((Way) polygons.iterator().next()).getPoints(), mode);
+			}
+		} else if (el instanceof Way) {
+			Way w = (Way) el;
+			if (w.isComplete()) {
+				bbox = Area.getBBox(w.getPoints());
+				polygons = qt.get(bbox);
+				if (polygons.size() > 1) {
+					// combine all polygons which intersect the bbox of the
+					// element if possible
+					Path2D.Double path = new Path2D.Double();
+					for (Element e : polygons) {
+						Way poly = (Way) e;
+						Path2D polyPath = Java2DConverter.createPath2D(poly.getPoints());
+						path.append(polyPath, false);
 					}
+					java.awt.geom.Area polygonsArea = new java.awt.geom.Area(path);
+
+					List<List<Coord>> mergedShapes = Java2DConverter.areaToShapes(polygonsArea);
+
+					// combination of polygons may contain holes. They are counter clockwise.
+					List<List<Coord>> holes = new ArrayList<>();
+					List<List<Coord>> outers = new ArrayList<>();
+					for (List<Coord> shape : mergedShapes) {
+						(Way.clockwise(shape) ? outers : holes).add(shape);
+					}
+					// check if any outer intersects with the way
+					for (List<Coord> shape : outers) {
+						answer = checLineAgainsShape(w.getPoints(), shape, mode);
+						if(answer) 
+							break;
+
+					}
+					if(answer && !holes.isEmpty()) {
+						// an outer ring matched
+						// check if any hole intersects with the way
+						String holeMode = "all".equals(mode) ? "any" : "all";
+						for (List<Coord> hole : holes) {
+							boolean test = checLineAgainsShape(w.getPoints(), hole, holeMode);
+							if (test) {
+								answer = false;
+								break;
+							}
+
+						}
+					}
+				} else if (polygons.size() == 1) {
+					answer = checLineAgainsShape(w.getPoints(), ((Way) polygons.iterator().next()).getPoints(), mode);
 				}
 			}
 		}
@@ -144,9 +149,9 @@ public class IsInFunction extends StyleFunction {
 
 	@Override
 	public String value(Element el) {
-		if ("w25".equals(el.getTag("name"))) {
-			long dd = 4;
-		}
+//		if ("w15".equals(el.getTag("name"))) {
+//			long dd = 4;
+//		}
 		String res = calcImpl(el);
 		if (SIMULATE_UNIT_TEST) { 
 			String expected = el.getTag("expected");
@@ -197,6 +202,15 @@ public class IsInFunction extends StyleFunction {
 			}
 		}
 		return res;
+	}
+	
+	@Override
+	public void setParams(List<String> params) {
+		super.setParams(params);
+		if (!Arrays.asList("any", "all").contains(params.get(2))) {
+			throw new SyntaxException(String.format("Third parameter '%s' of function %s is not supported: %s. Must be 'any' or 'all'.",
+					params.get(2), getName(), params));
+		}
 	}
 
 	@Override
@@ -259,22 +273,34 @@ public class IsInFunction extends StyleFunction {
 		for (int i = 0; i < shape.size() - 1; i++) {
 			Coord p11 = shape.get(i);
 			Coord p12 = shape.get(i + 1);
-			//TODO: p11 hpequals p12
-//			GpxCreator.createGpx("e:/ld/s", Arrays.asList(p11,p12));
+			if (p11.highPrecEquals(p12)) {
+				// maybe we should even skip very short segments (< 0.01 m)?
+				continue;
+			}
+			//			GpxCreator.createGpx("e:/ld/s", Arrays.asList(p11,p12));
 			for (int k = 0; k < n - 1; k++) {
 				Coord p21 = lineToTest.get(k);
 				Coord p22 = lineToTest.get(k + 1);
-				//TODO: p21 hpequals p22
+				if (p21.highPrecEquals(p22)) {
+					// maybe we should even skip very short segments (< 0.01 m)?
+					continue;
+				}
 				
 				Coord inter = Utils.getSegmentSegmentIntersection(p11, p12, p21, p22);
 				if (inter != null) {
 					// segments have at least one common point 
 					boolean isCrossing = false;
 					if (inter.distance(p21) < 0.01) {
-						if (k > 0) {
-							Coord a = lineToTest.get(k-1); // prev point on way
+						if (k == 0) {
+							// first segment of line and first point on boundary
+							// nothing to do
+							if (statusFirst != Status.ON) {
+								log.error("internal error? first point is on line but status of first point is not ON");
+							}
+						} else {
 //							GpxCreator.createGpx("e:/ld/w", Arrays.asList(a,p21,p22));
 							if (p21.highPrecEquals(p11)) {
+								Coord a = lineToTest.get(k-1); // prev point on way
 								Coord b = p11; // point shared by way and shape
 								Coord c = p22; // next point on way
 								Coord x = shape.get(i-1 >= 0 ? i-1 : shape.size()-2); // prev point in shape
@@ -297,12 +323,12 @@ public class IsInFunction extends StyleFunction {
 										isCrossing = true;
 									}
 								} else {
-									// spike/overlap
-									long dd = 4; // TODO?
+									// two or more segments have the same bearing, can be a spike in shape or way or an overlap
+									// ignore this for now
 								}
 								
 							} else if (p21.highPrecEquals(p12)) {
-								// handle next time
+								// handled in next iteration (k+1) or (i+1) 
 							} else {
 								long isLeftPrev = lineToTest.get(k-1).isLeft(p11, p12);
 								long isLeftNext = p22.isLeft(p11, p12);
@@ -310,8 +336,6 @@ public class IsInFunction extends StyleFunction {
 									isCrossing = true;
 								}
 							}
-						} else {
-							long dd = 4; // TODO
 						}
 					} else if (inter.distance(p22) < 0.01) {
 						// handle next time
