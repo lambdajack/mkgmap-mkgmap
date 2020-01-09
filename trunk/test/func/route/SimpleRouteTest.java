@@ -90,7 +90,7 @@ public class SimpleRouteTest extends Base {
 			case "RGN":
 				count++;
 				System.out.println("RGN size " + size);
-				assertThat("RGN size", size, new RangeMatcher(2727));
+				assertThat("RGN size", size, new RangeMatcher(2764,3));
 				break;
 			case "TRE":
 				count++;
