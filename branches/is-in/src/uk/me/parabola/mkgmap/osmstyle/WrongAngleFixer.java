@@ -1374,6 +1374,9 @@ public class WrongAngleFixer {
 					modifiedPoints.remove(modifiedPoints.size() - 1);
 					c1 = modifiedPoints.get(modifiedPoints.size() - 1); // might be part of spike
 				} else {
+					if (modifiedPoints.isEmpty()) {
+						modifiedPoints.add(c1);
+					}
 					continue;
 				}
 			}
