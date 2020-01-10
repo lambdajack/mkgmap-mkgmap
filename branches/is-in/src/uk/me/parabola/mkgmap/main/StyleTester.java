@@ -306,9 +306,6 @@ public class StyleTester implements OsmConverter {
 		converter.convertRelation(relation);
 	}
 
-	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
-	}
-
 	public void setBoundingBox(Area bbox) {
 		converter.setBoundingBox(bbox);
 	}
@@ -701,10 +698,6 @@ public class StyleTester implements OsmConverter {
 					return true;
 				return false;
 			}
-
-			public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
-			}
-
 		}
 
 		/**

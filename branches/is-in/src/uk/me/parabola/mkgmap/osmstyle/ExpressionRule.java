@@ -117,8 +117,9 @@ public class ExpressionRule implements Rule {
 		return expression.toString().contains(exp);
 	}
 
-	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
-		expression.augmentWith(elementSaver);
+	@Override
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver, boolean isLineRule) {
+		expression.augmentWith(elementSaver, isLineRule);
 	}
 
 }

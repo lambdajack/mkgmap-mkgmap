@@ -136,6 +136,7 @@ public interface Op {
 			return this;
 	}
 
-	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver);
+	public default void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver, boolean isLineRule) {
+	}
     
 }

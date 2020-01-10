@@ -170,11 +170,12 @@ public class LinkedOp implements Op {
 		return wrapped.getEvaluatedTagKeys();
 	}
 
-	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
+	@Override
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver, boolean isLineRule) {
 		if (wrapped != null)	    
-			wrapped.augmentWith(elementSaver);
+			wrapped.augmentWith(elementSaver, isLineRule);
 		if (link != null)	    
-			link.augmentWith(elementSaver);
+			link.augmentWith(elementSaver, isLineRule);
 	}
 
 }

@@ -37,9 +37,6 @@ public class BoundaryConverter implements OsmConverter {
 	public void convertNode(Node node) {
 	}
 
-	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
-	}
-    
 	@Override
 	public void convertRelation(Relation relation) {
 		if (relation instanceof BoundaryRelation) {

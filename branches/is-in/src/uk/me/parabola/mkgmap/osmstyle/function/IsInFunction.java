@@ -57,6 +57,7 @@ import uk.me.parabola.util.Java2DConverter;
 public class IsInFunction extends StyleFunction {
 	private static final Logger log = Logger.getLogger(IsInFunction.class);
 	private static final boolean SIMULATE_UNIT_TEST = false; 
+	private boolean isLineRule; 
 
 	private ElementQuadTree qt;
 
@@ -241,7 +242,8 @@ public class IsInFunction extends StyleFunction {
 	}
 
 	@Override
-	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver, boolean isLineRule) {
+		this.isLineRule = isLineRule;
 		List<Element> matchingPolygons = new ArrayList<>();
 		for (Way w : elementSaver.getWays().values()) {
 			if (w.isComplete() && w.hasIdenticalEndPoints()
@@ -257,7 +259,7 @@ public class IsInFunction extends StyleFunction {
 		}
 	}
 
-	private static boolean checLineAgainsShape(List<Coord> lineToTest, List<Coord> shape, String mode) {
+	private boolean checLineAgainsShape(List<Coord> lineToTest, List<Coord> shape, String mode) {
 		final int n = lineToTest.size();
 		Status statusFirst = checkPointAgainstShape(lineToTest.get(0), shape);
 		if (statusFirst == Status.IN && "any".equals(mode))
@@ -339,10 +341,11 @@ public class IsInFunction extends StyleFunction {
 				if (inner != Status.ON)
 					return inner == Status.IN;
 			}
-			// all points on boundary
+			// all points are on boundary
 			for (int i = 0; i < n-1; i++) {
 				Coord p1 = lineToTest.get(i);
 				Coord p2 = lineToTest.get(i + 1);
+				// TODO: may not work with b14 (element is inner ring in mp)
 				if (!isSequenceInShape(shape, p1, p2)) {
 					Coord pTest = p1.makeBetweenPoint(p2, 0.001);
 					Status midPoint = checkPointAgainstShape(pTest, shape);
@@ -351,8 +354,8 @@ public class IsInFunction extends StyleFunction {
 				}
 			}
 			
-			if (lineToTest.get(0) == lineToTest.get(n-1) && n > 2) {
-				// assume that a closed way is a polygon TODO: parameter from style 
+			if (!isLineRule && n > 2) {
+				// way is a poslygon 
 				Coord pTest = lineToTest.get(0).makeBetweenPoint(lineToTest.get(2), 0.5);
 				Status midPoint = checkPointAgainstShape(pTest, shape);
 				return midPoint == Status.IN;
