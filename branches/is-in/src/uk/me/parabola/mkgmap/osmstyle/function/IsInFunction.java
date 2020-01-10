@@ -298,14 +298,12 @@ public class IsInFunction extends StyleFunction {
 								log.error("internal error? first point is on line but status of first point is not ON");
 							}
 						} else {
-//							GpxCreator.createGpx("e:/ld/w", Arrays.asList(a,p21,p22));
 							if (p21.highPrecEquals(p11)) {
 								Coord a = lineToTest.get(k-1); // prev point on way
 								Coord b = p11; // point shared by way and shape
 								Coord c = p22; // next point on way
 								Coord x = shape.get(i-1 >= 0 ? i-1 : shape.size()-2); // prev point in shape
 								Coord y = p12; // next point on shape
-//								GpxCreator.createGpx("e:/ld/s", Arrays.asList(x,p11,p12));
 								//TODO: Can we do this sorting without the costly bearing calculations? 
 								TreeMap<Double, Character> map = new TreeMap<>();
 								map.put(b.bearingTo(a), 'a');
@@ -330,10 +328,17 @@ public class IsInFunction extends StyleFunction {
 							} else if (p21.highPrecEquals(p12)) {
 								// handled in next iteration (k+1) or (i+1) 
 							} else {
+								// way segment starts on a shape segment
+								// somewhere between p11 and p12
+								// it may cross the shape or just touch it,
+								// check if previous way segment is on the same
+								// side or not
 								long isLeftPrev = lineToTest.get(k-1).isLeft(p11, p12);
 								long isLeftNext = p22.isLeft(p11, p12);
 								if (isLeftPrev< 0 && isLeftNext > 0 || isLeftPrev > 0 && isLeftNext < 0) {
-									isCrossing = true;
+									// both way segments are not on the shape
+									// segment and they are on different sides
+									isCrossing = true;  
 								}
 							}
 						}

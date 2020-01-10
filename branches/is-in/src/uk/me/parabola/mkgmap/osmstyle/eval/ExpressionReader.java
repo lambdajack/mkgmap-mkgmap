@@ -107,7 +107,11 @@ public class ExpressionReader {
 					}
 				} while (true);
 				scanner.validateNext(")");
-				saveFunction(wordInfo.getText(), funcParams);
+				try {
+					saveFunction(wordInfo.getText(), funcParams);
+				} catch (Exception e) {
+					throw new SyntaxException(scanner, e.getMessage());
+				}
 			} else {
 				pushValue(wordInfo.getText());
 			}
