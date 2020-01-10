@@ -258,7 +258,6 @@ public class IsInFunction extends StyleFunction {
 	}
 
 	private static boolean checLineAgainsShape(List<Coord> lineToTest, List<Coord> shape, String mode) {
-//		List<Coord> wayPoints = w.getPoints();
 		final int n = lineToTest.size();
 		Status statusFirst = checkPointAgainstShape(lineToTest.get(0), shape);
 		if (statusFirst == Status.IN && "any".equals(mode))
@@ -277,7 +276,6 @@ public class IsInFunction extends StyleFunction {
 				// maybe we should even skip very short segments (< 0.01 m)?
 				continue;
 			}
-			//			GpxCreator.createGpx("e:/ld/s", Arrays.asList(p11,p12));
 			for (int k = 0; k < n - 1; k++) {
 				Coord p21 = lineToTest.get(k);
 				Coord p22 = lineToTest.get(k + 1);
@@ -295,36 +293,13 @@ public class IsInFunction extends StyleFunction {
 							// first segment of line and first point on boundary
 							// nothing to do
 							if (statusFirst != Status.ON) {
-								log.error("internal error? first point is on line but status of first point is not ON");
+								log.error("rounding error? first point is on line but status of first point is not ON");
 							}
 						} else {
 							if (p21.highPrecEquals(p11)) {
-								Coord a = lineToTest.get(k-1); // prev point on way
-								Coord b = p11; // point shared by way and shape
-								Coord c = p22; // next point on way
-								Coord x = shape.get(i-1 >= 0 ? i-1 : shape.size()-2); // prev point in shape
-								Coord y = p12; // next point on shape
-								//TODO: Can we do this sorting without the costly bearing calculations? 
-								TreeMap<Double, Character> map = new TreeMap<>();
-								map.put(b.bearingTo(a), 'a');
-								map.put(b.bearingTo(c), 'c');
-								map.put(b.bearingTo(x), 'x');
-								map.put(b.bearingTo(y), 'y');
-								if (map.size() == 4) {
-									List<Character> sortedByBearing = new ArrayList<>(map.values());
-									int xpos = sortedByBearing.indexOf('x');
-									int ypos = sortedByBearing.indexOf('y');
-									
-									if (Math.abs(xpos-ypos) == 2) {
-										// pair xy is eiher on 0 and 2 or 1 and 3, so only one of a and c is between them
-										// shape segments x-b-y is nether between nor outside of way segments a-b-c
-										isCrossing = true;
-									}
-								} else {
-									// two or more segments have the same bearing, can be a spike in shape or way or an overlap
-									// ignore this for now
-								}
-								
+								Coord p20 = lineToTest.get(k - 1);
+								Coord p10 = shape.get(i - 1 >= 0 ? i - 1 : shape.size() - 2);
+								isCrossing = analyseCrossingInPoint(p11, p20, p22, p10, p12);
 							} else if (p21.highPrecEquals(p12)) {
 								// handled in next iteration (k+1) or (i+1) 
 							} else {
@@ -375,8 +350,49 @@ public class IsInFunction extends StyleFunction {
 						return midPoint == Status.IN;
 				}
 			}
+			
+			if (lineToTest.get(0) == lineToTest.get(n-1) && n > 2) {
+				// assume that a closed way is a polygon TODO: parameter from style 
+				Coord pTest = lineToTest.get(0).makeBetweenPoint(lineToTest.get(2), 0.5);
+				Status midPoint = checkPointAgainstShape(pTest, shape);
+				return midPoint == Status.IN;
+			}
 		}
 		return statusFirst ==  Status.IN || statusLast == Status.IN;
+	}
+
+	/**
+	 * two linestrings a-s-c and x-s-y the same mid point. Check if they are crossing. This is the case
+	 * if a-s-c is between x-s-y or if x-s-y is between a-s-c. 
+	 * @param s the share point
+	 * @param a 1st point 1st line-string
+	 * @param b 2nd point 1st line-string 
+	 * @param x 1st point 2nd line-string
+	 * @param y 2nd point 2nd line-string
+	 * @return true if the line strings are crossing, false if they are only touching or overlapping.
+	 */
+	private static boolean analyseCrossingInPoint(Coord s, Coord a, Coord b, Coord x, Coord y) {
+		//TODO: Can we do this sorting without the costly bearing calculations? 
+		TreeMap<Double, Character> map = new TreeMap<>();
+		map.put(s.bearingTo(a), 'a');
+		map.put(s.bearingTo(b), 'b');
+		map.put(s.bearingTo(x), 'x');
+		map.put(s.bearingTo(y), 'y');
+		if (map.size() == 4) {
+			List<Character> sortedByBearing = new ArrayList<>(map.values());
+			int xpos = sortedByBearing.indexOf('x');
+			int ypos = sortedByBearing.indexOf('y');
+			
+			if (Math.abs(xpos-ypos) == 2) {
+				// pair xy is eiher on 0 and 2 or 1 and 3, so only one of a and b is between them
+				// shape segments x-s-y is nether between nor outside of way segments a-s-b
+				return true;
+			}
+		} else {
+			// two or more segments have the same bearing, can be a spike in shape or way or an overlap
+			// ignore this for now
+		}
+		return false;
 	}
 
 	private static boolean isSequenceInShape(List<Coord> shape, Coord p1, Coord p2) {
