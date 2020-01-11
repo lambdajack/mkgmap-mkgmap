@@ -355,10 +355,8 @@ public class IsInFunction extends StyleFunction {
 			}
 			
 			if (!isLineRule && n > 2) {
-				// way is a poslygon 
-				Coord pTest = lineToTest.get(0).makeBetweenPoint(lineToTest.get(2), 0.5);
-				Status midPoint = checkPointAgainstShape(pTest, shape);
-				return midPoint == Status.IN;
+				// lineToTest is a polygon
+				// TODO: find a point inside lineToTest and check it    
 			}
 		}
 		return statusFirst ==  Status.IN || statusLast == Status.IN;
