@@ -118,7 +118,7 @@ public class IsInFunction extends StyleFunction {
 					}
 					// check if any outer intersects with the way
 					for (List<Coord> shape : outers) {
-						answer = checLineAgainsShape(w.getPoints(), shape, mode);
+						answer = isLineInShape(w.getPoints(), shape, mode);
 						if(answer) 
 							break;
 
@@ -128,7 +128,7 @@ public class IsInFunction extends StyleFunction {
 						// check if any hole intersects with the way
 						String holeMode = "all".equals(mode) ? "any" : "all";
 						for (List<Coord> hole : holes) {
-							boolean test = checLineAgainsShape(w.getPoints(), hole, holeMode);
+							boolean test = isLineInShape(w.getPoints(), hole, holeMode);
 							if (test) {
 								answer = false;
 								break;
@@ -137,7 +137,7 @@ public class IsInFunction extends StyleFunction {
 						}
 					}
 				} else if (polygons.size() == 1) {
-					answer = checLineAgainsShape(w.getPoints(), ((Way) polygons.iterator().next()).getPoints(), mode);
+					answer = isLineInShape(w.getPoints(), ((Way) polygons.iterator().next()).getPoints(), mode);
 				}
 			}
 		}
@@ -259,18 +259,16 @@ public class IsInFunction extends StyleFunction {
 		}
 	}
 
-	private boolean checLineAgainsShape(List<Coord> lineToTest, List<Coord> shape, String mode) {
+	private boolean isLineInShape(List<Coord> lineToTest, List<Coord> shape, String mode) {
 		final int n = lineToTest.size();
-		Status statusFirst = checkPointAgainstShape(lineToTest.get(0), shape);
-		if (statusFirst == Status.IN && "any".equals(mode))
+		Status statusFirst = isPointInShape(lineToTest.get(0), shape);
+		// can we stop early?
+		if (statusFirst == Status.IN && "any".equals(mode))  
 			return true;
-		if (statusFirst == Status.OUT  && "all".equals(mode))
+		if (statusFirst == Status.OUT && "all".equals(mode))
 			return false;
-		Status statusLast = checkPointAgainstShape(lineToTest.get(n-1), shape);
-		if (statusLast == Status.IN && "any".equals(mode))
-			return true;
-		if (statusLast == Status.OUT  && "all".equals(mode))
-			return false;
+		
+		
 		for (int i = 0; i < shape.size() - 1; i++) {
 			Coord p11 = shape.get(i);
 			Coord p12 = shape.get(i + 1);
@@ -293,11 +291,9 @@ public class IsInFunction extends StyleFunction {
 					if (inter.distance(p21) < 0.01) {
 						if (k == 0) {
 							// first segment of line and first point on boundary
-							// nothing to do
 							if (statusFirst != Status.ON) {
-								//TODO: reduce to info
-								log.error("Rounding error? First point is very close to shape but status is not ON at",
-										p21.toDegreeString(), params);
+//								log.error("Rounding error? First point is very close to shape but status is not ON at",
+//										p21.toDegreeString(), params);
 								statusFirst = Status.ON;
 							}
 						} else {
@@ -323,12 +319,6 @@ public class IsInFunction extends StyleFunction {
 							}
 						}
 					} else if (inter.distance(p22) < 0.01) {
-						if (k + 2 == n && statusLast != Status.ON) {
-							//TODO: reduce to info
-							log.error("Rounding error? Last point is very close to shape but status is not ON at",
-									p22.toDegreeString(), params);
-							statusLast = Status.ON;
-						}  
 						// handle next time
 					} else {
 						isCrossing = true;
@@ -344,9 +334,9 @@ public class IsInFunction extends StyleFunction {
 			}
 		}
 		// found no intersection
-		if (statusFirst == Status.ON && statusLast == Status.ON) {
+		if (statusFirst == Status.ON) {
 			for (int i = 1; i < n - 1; i++) {
-				Status inner = checkPointAgainstShape(lineToTest.get(i), shape);
+				Status inner = isPointInShape(lineToTest.get(i), shape);
 				if (inner != Status.ON)
 					return inner == Status.IN;
 			}
@@ -357,7 +347,7 @@ public class IsInFunction extends StyleFunction {
 				// TODO: may not work with b14 (element is inner ring in mp)
 				if (!isSequenceInShape(shape, p1, p2)) {
 					Coord pTest = p1.makeBetweenPoint(p2, 0.001);
-					Status midPoint = checkPointAgainstShape(pTest, shape);
+					Status midPoint = isPointInShape(pTest, shape);
 					if (midPoint != Status.ON)
 						return midPoint == Status.IN;
 				}
@@ -368,7 +358,7 @@ public class IsInFunction extends StyleFunction {
 				// TODO: find a point inside lineToTest and check it    
 			}
 		}
-		return statusFirst ==  Status.IN || statusLast == Status.IN;
+		return statusFirst ==  Status.IN;
 	}
 
 	/**
@@ -421,7 +411,7 @@ public class IsInFunction extends StyleFunction {
 		return false;
 	}
 
-	private static Status checkPointAgainstShape(Coord p, List<Coord> shape) {
+	private static Status isPointInShape(Coord p, List<Coord> shape) {
 		boolean res0 = BoundaryUtil.insidePolygon(p, true, shape.toArray(new Coord[0]));
 		Status status = res0 ? Status.IN : Status.OUT;
 		if (status == Status.IN) {
