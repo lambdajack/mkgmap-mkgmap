@@ -26,6 +26,7 @@ import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Element;
+import uk.me.parabola.mkgmap.reader.osm.FeatureKind;
 import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
 import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.Way;
@@ -57,7 +58,6 @@ import uk.me.parabola.util.Java2DConverter;
 public class IsInFunction extends StyleFunction {
 	private static final Logger log = Logger.getLogger(IsInFunction.class);
 	private static final boolean SIMULATE_UNIT_TEST = false; 
-	private boolean isLineRule; 
 
 	private ElementQuadTree qt;
 
@@ -86,8 +86,8 @@ public class IsInFunction extends StyleFunction {
 			bbox = Area.getBBox(Collections.singletonList(c));
 			polygons = qt.get(bbox);
 			for (Element e : polygons) {
-				Way shape = (Way) e;
-				if (BoundaryUtil.insidePolygon(c, true, shape.getPoints().toArray(new Coord[0]))) {
+				Way polygon = (Way) e;
+				if (BoundaryUtil.insidePolygon(c, true, polygon.getPoints())) {
 					answer = true;
 					break;
 				}
@@ -206,8 +206,8 @@ public class IsInFunction extends StyleFunction {
 	}
 	
 	@Override
-	public void setParams(List<String> params) {
-		super.setParams(params);
+	public void setParams(List<String> params, FeatureKind kind) {
+		super.setParams(params, kind);
 		if (!Arrays.asList("any", "all").contains(params.get(2))) {
 			throw new SyntaxException(String.format("Third parameter '%s' of function %s is not supported: %s. Must be 'any' or 'all'.",
 					params.get(2), getName(), params));
@@ -236,14 +236,14 @@ public class IsInFunction extends StyleFunction {
 
 	@Override
 	public String toString() {
-		// TODO: check what is needed for class ExpressionArranger and
-		// RuleSet.compile()
-		return super.toString() + params;
+		// see RuleSet.compile()
+		return getName() + "(" + kind + "," + params + ")";
 	}
 
 	@Override
-	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver, boolean isLineRule) {
-		this.isLineRule = isLineRule;
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
+		if (qt != null)
+			return;
 		List<Element> matchingPolygons = new ArrayList<>();
 		for (Way w : elementSaver.getWays().values()) {
 			if (w.isComplete() && w.hasIdenticalEndPoints()
@@ -333,12 +333,11 @@ public class IsInFunction extends StyleFunction {
 				}
 			}
 		}
-		// found no intersection
 		if (statusFirst == Status.ON) {
-			for (int i = 1; i < n - 1; i++) {
-				Status inner = isPointInShape(lineToTest.get(i), shape);
-				if (inner != Status.ON)
-					return inner == Status.IN;
+			// found no intersection and first point is on boundary
+			for (int i = 1; i < n; i++) {
+				if (BoundaryUtil.insidePolygon(lineToTest.get(i), false, shape))
+					return true;
 			}
 			// all points are on boundary
 			for (int i = 0; i < n-1; i++) {
@@ -353,9 +352,28 @@ public class IsInFunction extends StyleFunction {
 				}
 			}
 			
-			if (!isLineRule && n > 2) {
-				// lineToTest is a polygon
-				// TODO: find a point inside lineToTest and check it    
+			if (kind == FeatureKind.POLYGON) {
+				// lineToTest is a polygon and all segments are on boundary
+				// find a node inside lineToTest and check if this point is in shape
+				int maxLat = Integer.MIN_VALUE;
+				List<Coord> topNodes = new ArrayList<>();
+				for (Coord c : lineToTest) {
+					int latHp = c.getHighPrecLat();
+					if (latHp > maxLat) {
+						maxLat = latHp;
+						topNodes.clear();
+						topNodes.add(c);
+					} else if (latHp == maxLat) {
+						topNodes.add(c);
+					}
+				}
+				for (Coord c: topNodes) {
+					for (int d : Arrays.asList(0,-1,1)) {
+						Coord pTest = Coord.makeHighPrecCoord(c.getHighPrecLat() - 1, c.getHighPrecLon() + d);
+						if (isPointInShape(pTest, lineToTest) == Status.IN)
+							return isPointInShape(pTest, shape) == Status.IN;
+					}
+				}
 			}
 		}
 		return statusFirst ==  Status.IN;
@@ -384,7 +402,7 @@ public class IsInFunction extends StyleFunction {
 			int ypos = sortedByBearing.indexOf('y');
 			
 			if (Math.abs(xpos-ypos) == 2) {
-				// pair xy is eiher on 0 and 2 or 1 and 3, so only one of a and b is between them
+				// pair xy is either on 0 and 2 or 1 and 3, so only one of a and b is between them
 				// shape segments x-s-y is nether between nor outside of way segments a-s-b
 				return true;
 			}
@@ -412,11 +430,11 @@ public class IsInFunction extends StyleFunction {
 	}
 
 	private static Status isPointInShape(Coord p, List<Coord> shape) {
-		boolean res0 = BoundaryUtil.insidePolygon(p, true, shape.toArray(new Coord[0]));
+		boolean res0 = BoundaryUtil.insidePolygon(p, true, shape);
 		Status status = res0 ? Status.IN : Status.OUT;
 		if (status == Status.IN) {
 			// point is in or on
-			boolean res1 = BoundaryUtil.insidePolygon(p, false, shape.toArray(new Coord[0]));
+			boolean res1 = BoundaryUtil.insidePolygon(p, false, shape);
 			if (res0 != res1) {
 				status = Status.ON;
 			}

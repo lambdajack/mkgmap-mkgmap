@@ -305,7 +305,7 @@ public class ExpressionReader {
 		StyleFunction function = FunctionFactory.createFunction(functionName);
 		if (function == null)
 			throw new SyntaxException(String.format("No function with name '%s()'", functionName));
-		function.setParams(functionParams);
+		function.setParams(functionParams, kind);
 
 		// TODO: supportsWay split into supportsPoly{line,gon}, or one function supports(kind)
 		boolean supported = false;

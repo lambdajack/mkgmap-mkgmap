@@ -313,11 +313,10 @@ public class RuleSet implements Rule, Iterable<Rule> {
 	}
 	
 	@Override
-	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver, boolean isLineRule) {
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
 		if (rules == null)
 			return;
 		for (Rule rule: rules)
-			rule.augmentWith(elementSaver, isLineRule);
+			rule.augmentWith(elementSaver);
 	}
-			     
 } 

@@ -31,7 +31,7 @@ public interface Rule {
 	 * @param el The element as read from an OSM xml file in 'tag' format.
 	 * @param result The resolved Garmin type that will go into the map.
 	 */
-	public void resolveType(Element el, TypeResult result);
+	void resolveType(Element el, TypeResult result);
 	
 	/**
 	 * 
@@ -43,7 +43,7 @@ public interface Rule {
 	 * @param result The resolved Garmin type that will go into the map.
 	 * @return
 	 */
-	public int resolveType(int cacheId, Element el, TypeResult result);
+	int resolveType(int cacheId, Element el, TypeResult result);
 	
 	/**
 	 * Sets the finalize rules that are executed when 
@@ -51,15 +51,14 @@ public interface Rule {
 	 * 
 	 * @param finalizeRule finalize rule(s)
 	 */
-	public void setFinalizeRule(Rule finalizeRule);
+	void setFinalizeRule(Rule finalizeRule);
 	
-	public void printStats(String header);
+	void printStats(String header);
 
-	public Rule getFinalizeRule();
+	Rule getFinalizeRule();
 
-	public boolean containsExpression(String exp);
+	boolean containsExpression(String exp);
 
-	public default void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver, boolean isLineRule) {
-	}
+	default void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {}
 
 }

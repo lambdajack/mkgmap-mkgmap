@@ -171,11 +171,11 @@ public class LinkedOp implements Op {
 	}
 
 	@Override
-	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver, boolean isLineRule) {
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
 		if (wrapped != null)	    
-			wrapped.augmentWith(elementSaver, isLineRule);
+			wrapped.augmentWith(elementSaver);
 		if (link != null)	    
-			link.augmentWith(elementSaver, isLineRule);
+			link.augmentWith(elementSaver);
 	}
 
 }

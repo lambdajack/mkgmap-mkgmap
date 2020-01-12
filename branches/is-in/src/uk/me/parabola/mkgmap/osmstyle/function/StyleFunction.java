@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 
 import uk.me.parabola.mkgmap.osmstyle.eval.ValueOp;
+import uk.me.parabola.mkgmap.reader.osm.FeatureKind;
 import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
@@ -36,16 +37,18 @@ public abstract class StyleFunction extends ValueOp {
 
 	protected int reqdNumParams = 0;
 	protected List<String> params;
+	protected FeatureKind kind;
 
 	public StyleFunction(String value) {
 		super(value);
 		setType(FUNCTION);
 	}
 
-	public void setParams(List<String> params) {
+	public void setParams(List<String> params, FeatureKind kind) {
 		if (params.size() != reqdNumParams)
 			throw new SyntaxException(String.format("Function %s takes %d parameters, %d given", getName(), reqdNumParams, params.size()));
 		this.params = new ArrayList<>(params);
+		this.kind = kind;
 	}
 
 	/**

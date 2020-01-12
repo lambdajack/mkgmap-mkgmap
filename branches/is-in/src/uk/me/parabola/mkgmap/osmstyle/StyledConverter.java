@@ -701,10 +701,10 @@ public class StyledConverter implements OsmConverter {
 	@Override
 	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
 		// wayRules doesn't need to be done (or must be done first) because is concat. of line & polygon rules
-		//wayRules.augmentWith(elementSaver, both);
-		nodeRules.augmentWith(elementSaver, false);
-		lineRules.augmentWith(elementSaver, true);
-		polygonRules.augmentWith(elementSaver, false);
+		//wayRules.augmentWith(elementSaver);
+		nodeRules.augmentWith(elementSaver);
+		lineRules.augmentWith(elementSaver);
+		polygonRules.augmentWith(elementSaver);
 	}
 
 	/**

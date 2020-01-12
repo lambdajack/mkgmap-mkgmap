@@ -189,8 +189,8 @@ public class ActionRule implements Rule {
 	}
 
 	@Override
-	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver, boolean isLineRule) {
-		expression.augmentWith(elementSaver, isLineRule);
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
+		expression.augmentWith(elementSaver);
 	}
 
 }

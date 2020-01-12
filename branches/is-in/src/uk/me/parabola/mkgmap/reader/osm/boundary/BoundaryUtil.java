@@ -836,7 +836,7 @@ public class BoundaryUtil {
     	if (polygonNodes == null)
     		return false;
 
-    	return insidePolygon(point, onBoundary, polygonNodes.toArray(new Coord[0]));
+    	return insidePolygon(point, onBoundary, polygonNodes);
     }
     
     /**
@@ -844,7 +844,7 @@ public class BoundaryUtil {
      * Based on code from Dan Sunday, but allows to define how to handle nodes on boundary.   
      * @param p the point to test
      * @param onBoundary the value that should be returned if the point is on the boundary
-     * @param v vector of points describing the polygon
+     * @param shape list of points describing the polygon
      * @return true if p is inside the polygon, false if outside, the value of onBoundary if its on the boundary
      * <p>
      * Copyright 2000 softSurfer, 2012 Dan Sunday
@@ -855,15 +855,15 @@ public class BoundaryUtil {
      * Users of this code must verify correctness for their application.     
      * See http://geomalgorithms.com/a03-_inclusion.html
      */
-    public static final boolean insidePolygon (final Coord p, boolean onBoundary, final Coord... v) {
+    public static final boolean insidePolygon (final Coord p, boolean onBoundary, List<Coord> shape) {
         final int y = p.getHighPrecLat();
-        final int len = v.length;
+        final int len = shape.size();
         // the winding number counter
         int wn = 0;
-        Coord c = v[0], n; // current & next points from vertex array
+        Coord c = shape.get(0), n; // current & next points from vertex array
        
 		for (int i = 0; ++i < len; c = n) {
-			n = v[i];
+			n = shape.get(i);
 			if (p.highPrecEquals(n)) {
 				return onBoundary;
 			}
