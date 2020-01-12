@@ -263,10 +263,10 @@ public class IsInFunction extends StyleFunction {
 		final int n = lineToTest.size();
 		Status statusFirst = isPointInShape(lineToTest.get(0), shape);
 		// can we stop early?
-		if (statusFirst == Status.IN && "any".equals(mode))  
-			return true;
-		if (statusFirst == Status.OUT && "all".equals(mode))
-			return false;
+//		if (statusFirst == Status.IN && "any".equals(mode))  
+//			return true;
+//		if (statusFirst == Status.OUT && "all".equals(mode))
+//			return false;
 		
 		
 		for (int i = 0; i < shape.size() - 1; i++) {
