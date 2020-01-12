@@ -295,7 +295,10 @@ public class IsInFunction extends StyleFunction {
 							// first segment of line and first point on boundary
 							// nothing to do
 							if (statusFirst != Status.ON) {
-								log.error("rounding error? first point is on line but status of first point is not ON");
+								//TODO: reduce to info
+								log.error("Rounding error? First point is very close to shape but status is not ON at",
+										p21.toDegreeString(), params);
+								statusFirst = Status.ON;
 							}
 						} else {
 							if (p21.highPrecEquals(p11)) {
@@ -320,6 +323,12 @@ public class IsInFunction extends StyleFunction {
 							}
 						}
 					} else if (inter.distance(p22) < 0.01) {
+						if (k + 2 == n && statusLast != Status.ON) {
+							//TODO: reduce to info
+							log.error("Rounding error? Last point is very close to shape but status is not ON at",
+									p22.toDegreeString(), params);
+							statusLast = Status.ON;
+						}  
 						// handle next time
 					} else {
 						isCrossing = true;
