@@ -14,8 +14,10 @@
 package uk.me.parabola.mkgmap.osmstyle.function;
 
 import java.awt.geom.Path2D;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -79,12 +81,12 @@ public class IsInFunction extends StyleFunction {
 		String mode = params.get(2);
 		
 		Set<Element> polygons;
-		Area bbox;
+		Area elementBbox;
 		// this is just some test code to give different answers...
 		if (el instanceof Node) {
 			Coord c = ((Node) el).getLocation();
-			bbox = Area.getBBox(Collections.singletonList(c));
-			polygons = qt.get(bbox);
+			elementBbox = Area.getBBox(Collections.singletonList(c));
+			polygons = qt.get(elementBbox);
 			for (Element e : polygons) {
 				Way polygon = (Way) e;
 				if (BoundaryUtil.insidePolygon(c, true, polygon.getPoints())) {
@@ -95,8 +97,8 @@ public class IsInFunction extends StyleFunction {
 		} else if (el instanceof Way) {
 			Way w = (Way) el;
 			if (w.isComplete()) {
-				bbox = Area.getBBox(w.getPoints());
-				polygons = qt.get(bbox);
+				elementBbox = Area.getBBox(w.getPoints());
+				polygons = qt.get(elementBbox);
 				if (polygons.size() > 1) {
 					// combine all polygons which intersect the bbox of the
 					// element if possible
@@ -118,7 +120,7 @@ public class IsInFunction extends StyleFunction {
 					}
 					// check if any outer intersects with the way
 					for (List<Coord> shape : outers) {
-						answer = isLineInShape(w.getPoints(), shape, mode);
+						answer = isLineInShape(w.getPoints(), shape, mode, elementBbox);
 						if(answer) 
 							break;
 
@@ -128,7 +130,7 @@ public class IsInFunction extends StyleFunction {
 						// check if any hole intersects with the way
 						String holeMode = "all".equals(mode) ? "any" : "all";
 						for (List<Coord> hole : holes) {
-							boolean test = isLineInShape(w.getPoints(), hole, holeMode);
+							boolean test = isLineInShape(w.getPoints(), hole, holeMode, elementBbox);
 							if (test) {
 								answer = false;
 								break;
@@ -137,7 +139,7 @@ public class IsInFunction extends StyleFunction {
 						}
 					}
 				} else if (polygons.size() == 1) {
-					answer = isLineInShape(w.getPoints(), ((Way) polygons.iterator().next()).getPoints(), mode);
+					answer = isLineInShape(w.getPoints(), ((Way) polygons.iterator().next()).getPoints(), mode, elementBbox);
 				}
 			}
 		}
@@ -259,16 +261,10 @@ public class IsInFunction extends StyleFunction {
 		}
 	}
 
-	private boolean isLineInShape(List<Coord> lineToTest, List<Coord> shape, String mode) {
+	private boolean isLineInShape(List<Coord> lineToTest, List<Coord> shape, String mode, Area elementBbox) {
 		final int n = lineToTest.size();
-		Status statusFirst = isPointInShape(lineToTest.get(0), shape);
-		// can we stop early?
-//		if (statusFirst == Status.IN && "any".equals(mode))  
-//			return true;
-//		if (statusFirst == Status.OUT && "all".equals(mode))
-//			return false;
-		
-		
+		Status status = isPointInShape(lineToTest.get(0), shape);
+		BitSet onBoundary = new BitSet();
 		for (int i = 0; i < shape.size() - 1; i++) {
 			Coord p11 = shape.get(i);
 			Coord p12 = shape.get(i + 1);
@@ -276,6 +272,12 @@ public class IsInFunction extends StyleFunction {
 				// maybe we should even skip very short segments (< 0.01 m)?
 				continue;
 			}
+			// check if shape segment is clearly below, above, right or left of bbox
+			if ((Math.min(p11.getLatitude(), p12.getLatitude()) > elementBbox.getMaxLat() + 1)
+					|| (Math.max(p11.getLatitude(), p12.getLatitude()) < elementBbox.getMinLat() - 1)
+					|| (Math.min(p11.getLongitude(), p12.getLongitude()) > elementBbox.getMaxLong() + 1)
+					|| (Math.max(p11.getLongitude(), p12.getLongitude()) < elementBbox.getMinLong() - 1))
+				continue;
 			for (int k = 0; k < n - 1; k++) {
 				Coord p21 = lineToTest.get(k);
 				Coord p22 = lineToTest.get(k + 1);
@@ -289,12 +291,14 @@ public class IsInFunction extends StyleFunction {
 					// segments have at least one common point 
 					boolean isCrossing = false;
 					if (inter.distance(p21) < 0.01) {
+						onBoundary.set(k);
 						if (k == 0) {
 							// first segment of line and first point on boundary
-							if (statusFirst != Status.ON) {
-//								log.error("Rounding error? First point is very close to shape but status is not ON at",
-//										p21.toDegreeString(), params);
-								statusFirst = Status.ON;
+							if (status != Status.ON) {
+								log.info(p21.toDegreeString(),
+										"First point of way is very close to shape, changing status from", status,
+										"to", Status.ON, params);
+								status = Status.ON;
 							}
 						} else {
 							if (p21.highPrecEquals(p11)) {
@@ -319,7 +323,8 @@ public class IsInFunction extends StyleFunction {
 							}
 						}
 					} else if (inter.distance(p22) < 0.01) {
-						// handle next time
+						onBoundary.set(k + 1);
+						// handle intersection on next iteration
 					} else {
 						isCrossing = true;
 					}
@@ -333,11 +338,11 @@ public class IsInFunction extends StyleFunction {
 				}
 			}
 		}
-		if (statusFirst == Status.ON) {
+		if (status == Status.ON) {
 			// found no intersection and first point is on boundary
-			for (int i = 1; i < n; i++) {
-				if (BoundaryUtil.insidePolygon(lineToTest.get(i), false, shape))
-					return true;
+			if (onBoundary.cardinality() != n) {
+				// return result for first point which is not on boundary
+				return BoundaryUtil.insidePolygon(lineToTest.get(onBoundary.nextClearBit(0)), false, shape);
 			}
 			// all points are on boundary
 			for (int i = 0; i < n-1; i++) {
@@ -355,39 +360,55 @@ public class IsInFunction extends StyleFunction {
 			if (kind == FeatureKind.POLYGON) {
 				// lineToTest is a polygon and all segments are on boundary
 				// find a node inside lineToTest and check if this point is in shape
+				
+				// find topmost node(s)  
 				int maxLat = Integer.MIN_VALUE;
-				List<Coord> topNodes = new ArrayList<>();
-				for (Coord c : lineToTest) {
+				List<SimpleEntry<Coord, Integer>> topNodes = new ArrayList<>();
+				for (int i = 0; i < lineToTest.size(); i++) {
+					Coord c = lineToTest.get(i);
 					int latHp = c.getHighPrecLat();
 					if (latHp > maxLat) {
 						maxLat = latHp;
 						topNodes.clear();
-						topNodes.add(c);
-					} else if (latHp == maxLat) {
-						topNodes.add(c);
+					} 
+					if (latHp >= maxLat) {
+						topNodes.add(new SimpleEntry<>(c,i));
 					}
 				}
-				for (Coord c: topNodes) {
-					for (int d : Arrays.asList(0,-1,1)) {
-						Coord pTest = Coord.makeHighPrecCoord(c.getHighPrecLat() - 1, c.getHighPrecLon() + d);
-						if (isPointInShape(pTest, lineToTest) == Status.IN)
-							return isPointInShape(pTest, shape) == Status.IN;
+				for (SimpleEntry<Coord, Integer> topNode : topNodes) {
+					int pos = topNode.getValue();
+					Coord top = topNode.getKey();
+					Coord prev = lineToTest.get(pos == 0 ? n - 2 : pos - 1);
+					Coord next = lineToTest.get(pos == n - 1 ? 1 : pos + 1);
+					double b1 = top.bearingTo(prev);
+					double b2 = top.bearingTo(next);
+					// b1 and b2 must be heading south or exactly east or west
+					// find heading of angle bisector
+					double bisectorBearing = (b1 + b2) / 2;
+					if (bisectorBearing > -90 && bisectorBearing < 90) {
+						// don't go north of top 
+						bisectorBearing -= 180;
 					}
+					Coord pTest = topNode.getKey().destOnRhumLine(0.1, bisectorBearing);
+					// double check: the calculated point may not be inside the element
+					if (isPointInShape(pTest, lineToTest) == Status.IN)
+						return isPointInShape(pTest, shape) == Status.IN;
 				}
+				log.error("Could not find out if polygon is IN or OUT", lineToTest.get(0).toDegreeString(), this);
 			}
 		}
-		return statusFirst ==  Status.IN;
+		return status ==  Status.IN;
 	}
 
 	/**
-	 * two linestrings a-s-c and x-s-y the same mid point. Check if they are crossing. This is the case
+	 * two line-strings a-s-c and x-s-y the same mid point. Check if they are crossing. This is the case
 	 * if a-s-c is between x-s-y or if x-s-y is between a-s-c. 
 	 * @param s the share point
 	 * @param a 1st point 1st line-string
 	 * @param b 2nd point 1st line-string 
 	 * @param x 1st point 2nd line-string
 	 * @param y 2nd point 2nd line-string
-	 * @return true if the line strings are crossing, false if they are only touching or overlapping.
+	 * @return true if the line-strings are crossing, false if they are only touching or overlapping.
 	 */
 	private static boolean analyseCrossingInPoint(Coord s, Coord a, Coord b, Coord x, Coord y) {
 		//TODO: Can we do this sorting without the costly bearing calculations? 
