@@ -101,7 +101,7 @@
 	<target name="download-ivy" unless="ivy.available" description="Downloads the ivy library from public repositories.">
 		<delete dir="${ivy.jar.dir}"/>
 		<mkdir dir="${ivy.jar.dir}" />
-		<get src="http://repo1.maven.org/maven2/org/apache/ivy/ivy/${ivy.version}/ivy-${ivy.version}.jar"
+		<get src="https://repo1.maven.org/maven2/org/apache/ivy/ivy/${ivy.version}/ivy-${ivy.version}.jar"
 		     dest="${ivy.jar.file}" usetimestamp="true"/>
 	</target>
 
