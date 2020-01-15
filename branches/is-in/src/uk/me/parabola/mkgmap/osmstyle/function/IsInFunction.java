@@ -150,6 +150,10 @@ public class IsInFunction extends StyleFunction {
 		IN, ON, OUT;
 	}
 
+	private enum IntersectionStatus {
+		TOUCHING, CROSSING, SPLITTING, JOINING,SIMILAR, DOUBLE_SPIKE
+	}
+	
 	@Override
 	public String value(Element el) {
 //		if ("w15".equals(el.getTag("name"))) {
@@ -178,7 +182,6 @@ public class IsInFunction extends StyleFunction {
 								log.error(el.getTag("name"), res, res2, params, "oops rotate",i);
 								calcImpl(w2);
 							}
-
 						}
 					}
 				}
@@ -265,6 +268,8 @@ public class IsInFunction extends StyleFunction {
 		final int n = lineToTest.size();
 		Status status = isPointInShape(lineToTest.get(0), shape);
 		BitSet onBoundary = new BitSet();
+		boolean statusFromFirst = true;
+		
 		for (int i = 0; i < shape.size() - 1; i++) {
 			Coord p11 = shape.get(i);
 			Coord p12 = shape.get(i + 1);
@@ -294,17 +299,33 @@ public class IsInFunction extends StyleFunction {
 						onBoundary.set(k);
 						if (k == 0) {
 							// first segment of line and first point on boundary
-							if (status != Status.ON) {
-								log.info(p21.toDegreeString(),
-										"First point of way is very close to shape, changing status from", status,
-										"to", Status.ON, params);
+							if (status != Status.ON && statusFromFirst) {
 								status = Status.ON;
 							}
 						} else {
 							if (p21.highPrecEquals(p11)) {
 								Coord p20 = lineToTest.get(k - 1);
 								Coord p10 = shape.get(i - 1 >= 0 ? i - 1 : shape.size() - 2);
-								isCrossing = analyseCrossingInPoint(p11, p20, p22, p10, p12);
+								IntersectionStatus x = analyseCrossingInPoint(p11, p20, p22, p10, p12);
+								Coord pTest = null;
+								if (x == IntersectionStatus.CROSSING) {
+									isCrossing = true;
+								} else if (x == IntersectionStatus.JOINING) {
+									pTest = p21.makeBetweenPoint(p20, 0.01);
+								} else if (x == IntersectionStatus.SPLITTING) {
+									// line p21,p22 is probably not on boundary
+									pTest = p21.makeBetweenPoint(p22, 0.01);
+								}
+								if (pTest != null) {
+									// it is unlikely but not impossible that pTest is on boundary :( 
+									Status testStat = isPointInShape(pTest, shape);
+									if (status == Status.ON) {
+										status = testStat;
+										statusFromFirst = false;
+									} else if (status != testStat) {
+										return "any".equals(mode);
+									}
+								}
 							} else if (p21.highPrecEquals(p12)) {
 								// handled in next iteration (k+1) or (i+1) 
 							} else {
@@ -329,11 +350,8 @@ public class IsInFunction extends StyleFunction {
 						isCrossing = true;
 					}
 					if (isCrossing) {
-						// real intersection found 
-						if ("any".equals(mode))
-							return true;
-						if ("all".equals(mode))
-							return false;
+						// real intersection found
+						return "any".equals(mode);
 					}
 				}
 			}
@@ -357,6 +375,7 @@ public class IsInFunction extends StyleFunction {
 				}
 			}
 			
+			// if we get here we can assume that the line runs along the shape
 			if (kind == FeatureKind.POLYGON) {
 				// lineToTest is a polygon and all segments are on boundary
 				// find a node inside lineToTest and check if this point is in shape
@@ -408,30 +427,60 @@ public class IsInFunction extends StyleFunction {
 	 * @param b 2nd point 1st line-string 
 	 * @param x 1st point 2nd line-string
 	 * @param y 2nd point 2nd line-string
-	 * @return true if the line-strings are crossing, false if they are only touching or overlapping.
+	 * @return kind of crossing or touching
 	 */
-	private static boolean analyseCrossingInPoint(Coord s, Coord a, Coord b, Coord x, Coord y) {
+	private static IntersectionStatus analyseCrossingInPoint(Coord s, Coord a, Coord b, Coord x, Coord y) {
 		//TODO: Can we do this sorting without the costly bearing calculations? 
-		TreeMap<Double, Character> map = new TreeMap<>();
-		map.put(s.bearingTo(a), 'a');
-		map.put(s.bearingTo(b), 'b');
-		map.put(s.bearingTo(x), 'x');
-		map.put(s.bearingTo(y), 'y');
+		TreeMap<Long, Character> map = new TreeMap<>();
+		long ba = Math.round(s.bearingTo(a) * 1000);
+		long bb = Math.round(s.bearingTo(b) * 1000);
+		long bx = Math.round(s.bearingTo(x) * 1000);
+		long by = Math.round(s.bearingTo(y) * 1000);
+		map.put(ba, 'a');
+		map.put(bb, 'b');
+		map.put(bx, 'x');
+		map.put(by, 'y');
+		List<Character> sortedByBearing = new ArrayList<>(map.values());
+		int apos = sortedByBearing.indexOf('a');
+		int bpos = sortedByBearing.indexOf('b');
+		int xpos = sortedByBearing.indexOf('x');
+		int ypos = sortedByBearing.indexOf('y');
+		
 		if (map.size() == 4) {
-			List<Character> sortedByBearing = new ArrayList<>(map.values());
-			int xpos = sortedByBearing.indexOf('x');
-			int ypos = sortedByBearing.indexOf('y');
-			
 			if (Math.abs(xpos-ypos) == 2) {
 				// pair xy is either on 0 and 2 or 1 and 3, so only one of a and b is between them
 				// shape segments x-s-y is nether between nor outside of way segments a-s-b
-				return true;
-			}
-		} else {
-			// two or more segments have the same bearing, can be a spike in shape or way or an overlap
-			// ignore this for now
+				return IntersectionStatus.CROSSING;
+			} 
+			return IntersectionStatus.TOUCHING;
 		}
-		return false;
+//		GpxCreator.createGpx("e:/ld/s", Arrays.asList(x,s,y));
+//		GpxCreator.createGpx("e:/ld/l", Arrays.asList(a,s,b));
+
+		if (map.size() == 3) {
+			if (xpos < 0) {
+				// x-s-y is a spike that touches a-s-b
+				return IntersectionStatus.TOUCHING; 
+			}
+			if (bpos < 0) {
+				// either s-x or s-y is overlaps s-b
+				return IntersectionStatus.JOINING;
+			}
+			if (ba == bx || ba == by) {
+				return IntersectionStatus.SPLITTING;
+			}
+			return IntersectionStatus.TOUCHING;
+		}
+		if (map.size() == 2) {
+			if (apos > 0 || bpos > 0) {
+				// two spikes meeting
+				return IntersectionStatus.TOUCHING;
+			}
+			// a-s-b and x-s-y are overlapping (maybe have different directions) 
+			return IntersectionStatus.SIMILAR;
+		}
+		// both a-s-b and x-s-y come from and go to the same direction 
+		return IntersectionStatus.DOUBLE_SPIKE; 
 	}
 
 	private static boolean isSequenceInShape(List<Coord> shape, Coord p1, Coord p2) {
