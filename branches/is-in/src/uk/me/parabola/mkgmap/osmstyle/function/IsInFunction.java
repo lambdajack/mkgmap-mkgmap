@@ -100,16 +100,13 @@ public class IsInFunction extends StyleFunction {
 				elementBbox = Area.getBBox(w.getPoints());
 				polygons = qt.get(elementBbox);
 				if (polygons.size() > 1) {
-					// combine all polygons which intersect the bbox of the
-					// element if possible
+					// combine all polygons which intersect the bbox of the element if possible
 					Path2D.Double path = new Path2D.Double();
 					for (Element e : polygons) {
-						Way poly = (Way) e;
-						Path2D polyPath = Java2DConverter.createPath2D(poly.getPoints());
-						path.append(polyPath, false);
+						List<Coord> points = ((Way) e).getPoints();
+						path.append(Java2DConverter.createPath2D(points), false);
 					}
 					java.awt.geom.Area polygonsArea = new java.awt.geom.Area(path);
-
 					List<List<Coord>> mergedShapes = Java2DConverter.areaToShapes(polygonsArea);
 
 					// combination of polygons may contain holes. They are counter clockwise.
@@ -367,14 +364,16 @@ public class IsInFunction extends StyleFunction {
 				Coord p1 = lineToTest.get(i);
 				Coord p2 = lineToTest.get(i + 1);
 				// TODO: may not work with b14 (element is inner ring in mp)
-				if (!isSequenceInShape(shape, p1, p2)) {
-					Coord pTest = p1.makeBetweenPoint(p2, 0.001);
+				if (!isOnOrCloseToEdgeOfShape(shape, p1, p2)) {
+					Coord pTest = p1.makeBetweenPoint(p2, 0.01);
 					Status midPoint = isPointInShape(pTest, shape);
 					if (midPoint != Status.ON)
 						return midPoint == Status.IN;
 				}
 			}
-			
+//			if (kind == FeatureKind.POLYLINE) {
+//				log.error("Please check: line all on shape boundary, starts at", lineToTest.get(0).toDegreeString(),this);
+//			}
 			// if we get here we can assume that the line runs along the shape
 			if (kind == FeatureKind.POLYGON) {
 				// lineToTest is a polygon and all segments are on boundary
@@ -383,7 +382,7 @@ public class IsInFunction extends StyleFunction {
 				// find topmost node(s)  
 				int maxLat = Integer.MIN_VALUE;
 				List<SimpleEntry<Coord, Integer>> topNodes = new ArrayList<>();
-				for (int i = 0; i < lineToTest.size(); i++) {
+				for (int i = 0; i < lineToTest.size() - 1; i++) {
 					Coord c = lineToTest.get(i);
 					int latHp = c.getHighPrecLat();
 					if (latHp > maxLat) {
@@ -407,6 +406,8 @@ public class IsInFunction extends StyleFunction {
 					if (bisectorBearing > -90 && bisectorBearing < 90) {
 						// don't go north of top 
 						bisectorBearing -= 180;
+						if (bisectorBearing < -180)
+							bisectorBearing += 360;
 					}
 					Coord pTest = topNode.getKey().destOnRhumLine(0.1, bisectorBearing);
 					// double check: the calculated point may not be inside the element
@@ -483,16 +484,35 @@ public class IsInFunction extends StyleFunction {
 		return IntersectionStatus.DOUBLE_SPIKE; 
 	}
 
-	private static boolean isSequenceInShape(List<Coord> shape, Coord p1, Coord p2) {
+	/**
+	 * Check if the sequence p1-p2 or p2-p1 appears in the shape or if there is only one point c between and the sequence p1-c-p2
+	 * is nearly straight.       
+	 * @param shape list of points describing the shape 
+	 * @param p1 first point
+	 * @param p2 second point
+	 * @return true if the sequence p1-p2 or p2-p1 appears in the shape or if there is only one point c between and the sequence p1-c-p2
+	 * is nearly straight, else false.
+	 */
+	private static boolean isOnOrCloseToEdgeOfShape(List<Coord> shape, Coord p1, Coord p2) {
 		for (int i  = 0; i < shape.size(); i++) {
 			Coord p = shape.get(i);
-			if (p.highPrecEquals(p1)) {
-				int pos2Prev = i > 0 ? i - 1 : shape.size() - 2;
-				if (shape.get(pos2Prev).highPrecEquals(p2))
-					return true;
-				int pos2Next = i < shape.size() - 1 ? i + 1 : 1;
-				if (shape.get(pos2Next).highPrecEquals(p2))
-					return true;
+			if (!p.highPrecEquals(p1)) 
+				continue;
+			
+			int posPrev = i > 0 ? i - 1 : shape.size() - 2;
+			int posNext = i < shape.size() - 1 ? i + 1 : 1;
+			if (shape.get(posPrev).highPrecEquals(p2) || shape.get(posNext).highPrecEquals(p2))
+				return true;
+
+			int posPrev2 = posPrev > 0 ? posPrev - 1 : shape.size() - 2;
+			int posNext2 = posNext < shape.size() - 1 ? posNext + 1 : 1;
+			if (shape.get(posPrev2).highPrecEquals(p2) && Math.abs(Utils.getAngle(p1, shape.get(posPrev), p2)) < 0.1) {
+				// shape segments between p1 and p2 are almost straight
+				return true;
+			}
+			if (shape.get(posNext2).highPrecEquals(p2) && Math.abs(Utils.getAngle(p1, shape.get(posNext), p2)) < 0.1) {
+				// shape segments between p1 and p2 are almost straight
+				return true;
 			}
 		}
 		
