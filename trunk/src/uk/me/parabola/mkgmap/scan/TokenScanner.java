@@ -28,6 +28,7 @@ import java.util.LinkedList;
  */
 public class TokenScanner {
 	private static final int NO_PUSHBACK = 0;
+	private String charset = "utf-8";
 
 	// Reading state
 	private final Reader reader;
@@ -51,6 +52,10 @@ public class TokenScanner {
 		else
 			this.reader = new BufferedReader(reader);
 		fileName = filename;
+	}
+
+	public void setCharset(String charset) {
+		this.charset = charset;
 	}
 
 	/**
@@ -236,7 +241,7 @@ public class TokenScanner {
 		try {
 			c = reader.read();
 			if (c == 0xfffd)
-				throw new SyntaxException(this, "Bad character in input, file probably not in utf-8");
+				throw new SyntaxException(this, "Bad character in input, file probably not in " + charset);
 		} catch (IOException e) {
 			isEOF = true;
 			c = -1;

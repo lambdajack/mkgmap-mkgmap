@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.app.srt.Sort;
+import uk.me.parabola.log.Logger;
 
 /**
  * Holds all the data for a typ file.
@@ -24,6 +25,8 @@ import uk.me.parabola.imgfmt.app.srt.Sort;
  * @author Steve Ratcliffe
  */
 public class TypData {
+	private static final Logger log = Logger.getLogger(TypData.class);
+
 	private final ShapeStacking stacking = new ShapeStacking();
 	private final TypParam param = new TypParam();
 	private final List<TypPolygon> polygons = new ArrayList<TypPolygon>();
@@ -51,10 +54,11 @@ public class TypData {
 			if (origCodepage != 0) {
 				if (origCodepage != sort.getCodepage()) {
 					// This is just a warning, not a definite problem
-					System.out.println("WARNING: SortCode in TYP txt file different from" +
-							" command line setting");
+					// and is to be expected if have general UTF-8 TYP.txt
+					log.warn("CodePage in TYP txt file:", sort.getCodepage(), "different from --code-page:", origCodepage);
 				}
 			}
+			return;  // want to use the command line one
 		}
 		this.sort = sort;
 		encoder = sort.getCharset().newEncoder();

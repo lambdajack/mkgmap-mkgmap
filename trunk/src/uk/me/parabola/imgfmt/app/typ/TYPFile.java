@@ -121,12 +121,13 @@ public class TYPFile extends ImgFile {
 					// If we succeeded then note offsets for indexes
 					strToType.put(off, type);
 					typeToStr.put(type, off);
-
+					writer.put1u(0);
 				} catch (CharacterCodingException ignore) {
+					//ignore.printStackTrace();
 					String name = encoder.charset().name();
-					throw new TypLabelException(name);
+					log.warn("Cannot represent icon String", label, "in CodePage", name);
+					//throw new TypLabelException(name);
 				}
-				writer.put1u(0);
 			}
 		}
 		Utils.closeFile(writer);
