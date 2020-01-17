@@ -30,10 +30,10 @@ public class TypeReader {
 	}
 
 	public GType readType(TokenScanner ts){
-		return readType(ts, false, null);
+		return readType(ts, false, false, null);
 	}
 	
-	public GType readType(TokenScanner ts, boolean performChecks, Map<Integer, List<Integer>> overlays) {
+	public GType readType(TokenScanner ts, boolean performChecks, boolean forRoutableMap, Map<Integer, List<Integer>> overlays) {
 		// We should have a '[' to start with
 		Token t = ts.nextToken();
 		if (t == null || t.getType() == TokType.EOF)
@@ -52,7 +52,7 @@ public class TypeReader {
 		
 
 		GType gt = new GType(kind, type);
-		if (GType.checkType(gt.getFeatureKind(), gt.getType()) == false){
+		if (!GType.checkType(gt.getFeatureKind(), gt.getType())) {
 			if (!performChecks && (kind != FeatureKind.POLYLINE || overlays == null || overlays.get(gt.getType()) == null))
 				throw new SyntaxException("invalid type " + type + " for " + kind + " in style file " + ts.getFileName() + ", line " + ts.getLinenumber());
 		}
@@ -92,17 +92,17 @@ public class TypeReader {
 			}
 		}
 		
+		gt.fixLevels(levels);
 		int maxResLevel0 = toResolution(0);
 		if (gt.getMaxResolution() > maxResLevel0 && gt.getMinResolution() > maxResLevel0) {
-			String msg = "Cannot use type " + gt + " with level 0 at resolution " + maxResLevel0
-					+ " in style file " + ts.getFileName() + ", line " + ts.getLinenumber(); 
+			String msg = "Type " + GType.formatType(gt.getType()) +  " min-res:" + gt.getMinResolution() + " will not be written with level 0 at resolution " + maxResLevel0
+					+ " in style file " + ts.getFileName() + ", line " + ts.getLinenumber();
 			if (performChecks) {
 				log.error(msg);
-			} else { 
-				throw new SyntaxException(msg);
+			} else if (kind == FeatureKind.POLYLINE && gt.isRoad() && forRoutableMap) {
+				log.error(msg , "-> routing may not work");
 			}
 		}
-		gt.fixLevels(levels);
 		if ("lines".equals(ts.getFileName())){
 			if(gt.getRoadClass() < 0 || gt.getRoadClass() > 4)
 				log.error("road class value", gt.getRoadClass(), "not in the range 0-4 in style file lines, line " + ts.getLinenumber());

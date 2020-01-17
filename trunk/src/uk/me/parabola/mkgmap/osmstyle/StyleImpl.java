@@ -149,7 +149,7 @@ public class StyleImpl implements Style {
 		// read overlays before the style rules to be able to ignore overlaid "wrong" types. 
 		readOverlays(); 
 
-		readRules(props.getProperty("levels"));
+		readRules(props.getProperty("levels"), props.containsKey("route"));
 
 		ListIterator<StyleImpl> listIterator = baseStyles.listIterator(baseStyles.size());
 		while (listIterator.hasPrevious())
@@ -241,9 +241,8 @@ public class StyleImpl implements Style {
 		return set;
 	}
 
-	private void readRules(String l) {
-		if (l == null)
-			l = generalOptions.get("levels");
+	private void readRules(String levelsFromProps, boolean routable) {
+		String l = generalOptions.get("levels");
 		if (l == null)
 			l = LevelInfo.DEFAULT_LEVELS;
 		LevelInfo[] levels = LevelInfo.createFromString(l);
@@ -288,6 +287,14 @@ public class StyleImpl implements Style {
 		try {
 			RuleFileReader reader = new RuleFileReader(FeatureKind.POLYLINE, levels, lines, performChecks, getOverlaidTypeMap());
 			reader.load(fileLoader, "lines");
+			if (routable && levelsFromProps != null && !levelsFromProps.equals(l)) {
+				LevelInfo[] pl = LevelInfo.createFromString(levelsFromProps);
+				if (levels[levels.length - 1].getBits() > pl[pl.length - 1].getBits()) {
+					RuleFileReader checker = new RuleFileReader(FeatureKind.POLYLINE, pl, new RuleSet(), false,
+							routable, getOverlaidTypeMap());
+					checker.load(fileLoader, "lines");
+				}
+			}
 		} catch (FileNotFoundException e) {
 			log.debug("no lines file");
 		}

@@ -67,6 +67,7 @@ public class RuleFileReader {
 	private final RuleSet rules;
 	private RuleSet finalizeRules;
 	private final boolean performChecks;
+	private final boolean forRoutableMap;
 	private final Map<Integer, List<Integer>> overlays;
 
 	private final Deque<Op[]> ifStack = new LinkedList<>();
@@ -78,9 +79,15 @@ public class RuleFileReader {
 
 	public RuleFileReader(FeatureKind kind, LevelInfo[] levels, RuleSet rules, boolean performChecks, 
 			Map<Integer, List<Integer>> overlays) {
+		this(kind, levels, rules, performChecks, false, overlays);
+	}
+
+	public RuleFileReader(FeatureKind kind, LevelInfo[] levels, RuleSet rules, boolean performChecks, boolean forRoutableMap,
+			Map<Integer, List<Integer>> overlays) {
 		this.kind = kind;
 		this.rules = rules;
 		this.performChecks = performChecks;
+		this.forRoutableMap = forRoutableMap;
 		this.overlays = overlays;
 		typeReader = new TypeReader(kind, levels);
 	}
@@ -136,7 +143,7 @@ public class RuleFileReader {
 
 			List<GType> types = new ArrayList<>();
 			while (scanner.checkToken("[")) {
-				GType type = typeReader.readType(scanner, performChecks, overlays);
+				GType type = typeReader.readType(scanner, performChecks, forRoutableMap, overlays);
 				types.add(type);
 				scanner.skipSpace();
 			}
