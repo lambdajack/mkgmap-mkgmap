@@ -239,7 +239,7 @@ public class IsInFunction extends StyleFunction {
 	@Override
 	public String toString() {
 		// see RuleSet.compile()
-		return getName() + "(" + kind + "," + params + ")";
+		return getName() + "(" + kind + ", " + String.join(", ", params) + ")";
 	}
 
 	@Override
