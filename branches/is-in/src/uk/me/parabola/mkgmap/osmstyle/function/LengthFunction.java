@@ -80,4 +80,9 @@ public class LengthFunction extends CachedFunction {
 	public boolean supportsRelation() {
 		return true;
 	}
+	
+	@Override
+	public int getComplexity() {
+		return 2;
+	}
 }

@@ -261,6 +261,11 @@ public class IsInFunction extends StyleFunction {
 		}
 	}
 
+	@Override
+	public int getComplexity() {
+		return 5;
+	}
+	
 	private boolean isLineInShape(List<Coord> lineToTest, List<Coord> shape, String mode, Area elementBbox) {
 		final int n = lineToTest.size();
 		Status status = isPointInShape(lineToTest.get(0), shape);

@@ -88,6 +88,7 @@ public abstract class StyleFunction extends ValueOp {
 		return getKeyValue();
 	}
 
+	@Override
 	public String toString() {
 		return getName() + "()";
 	}
@@ -97,5 +98,13 @@ public abstract class StyleFunction extends ValueOp {
 	 */
 	public Set<String> getUsedTags() {
 		return Collections.emptySet();
+	}
+
+	/**
+	 * 
+	 * @return an estimate for the complexity of this function, a value >= 1 and <= 10
+	 */
+	public int getComplexity() {
+		return 1;
 	}
 }
