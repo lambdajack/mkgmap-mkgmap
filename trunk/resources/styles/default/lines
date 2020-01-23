@@ -67,11 +67,6 @@ mkgmap:exit_hint=true {
 mkgmap:exit_hint=true | mkgmap:dest_hint=* {name '${tmp:exit_hint} ${tmp:dest_hint}' | '${tmp:dest_hint}' | '${tmp:exit_hint}'}
 # end of rules for process-exits and process-destination options
 
-railway=abandoned & highway!=* &
-  ((bicycle=* & bicycle!=no & bicycle!=proposed) |
-   (foot=* & foot!=no & foot!=proposed))
-    {set highway=path}
-
 # Flag paved roads
 highway=* & (surface=asphalt | surface=paved | surface=sett |
     surface=concrete | surface=concrete:lanes | surface=concrete:plates |
