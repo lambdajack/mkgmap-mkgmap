@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -102,15 +103,15 @@ public class SrtTextReader {
 	private Map<Integer, Integer> maxTert;
 	private List<CodePosition> expansions;
 
-	public SrtTextReader(Reader r) throws IOException {
+	public SrtTextReader(Reader r) {
 		this("stream", r);
 	}
 
 	private SrtTextReader(String filename) throws IOException {
-		this(filename, new InputStreamReader(new FileInputStream(filename), "utf-8"));
+		this(filename, new InputStreamReader(new FileInputStream(filename), StandardCharsets.UTF_8));
 	}
 
-	private SrtTextReader(String filename, Reader r) throws IOException {
+	private SrtTextReader(String filename, Reader r) {
 		maxSec = new HashMap<>();
 		maxTert = new HashMap<>();
 		expansions = new ArrayList<>();
@@ -125,23 +126,22 @@ public class SrtTextReader {
 	 */
 	public static Sort sortForCodepage(int codepage) {
 		String name = "sort/cp" + codepage + ".txt";
-		InputStream is = Sort.class.getClassLoader().getResourceAsStream(name);
-		if (is == null) {
-			if (codepage == 1252)
-				throw new ExitException("No sort description for code-page 1252 available");
+		try (InputStream is = Sort.class.getClassLoader().getResourceAsStream(name)) {
+			if (is == null) {
+				if (codepage == 1252)
+					throw new ExitException("No sort description for code-page 1252 available");
 
-			Sort defaultSort = SrtTextReader.sortForCodepage(1252);
-			defaultSort.setCodepage(codepage);
-			defaultSort.setDescription("Default sort");
-			return defaultSort;
-		}
+				Sort defaultSort = SrtTextReader.sortForCodepage(1252);
+				defaultSort.setCodepage(codepage);
+				defaultSort.setDescription("Default sort");
+				return defaultSort;
+			}
 
-		try {
-			InputStreamReader r = new InputStreamReader(is, "utf-8");
+			InputStreamReader r = new InputStreamReader(is, StandardCharsets.UTF_8);
 			SrtTextReader sr = new SrtTextReader(r);
 			return sr.getSort();
 		} catch (IOException e) {
-			return SrtTextReader.sortForCodepage(codepage);
+			throw new ExitException("Exception " + e + " getting sortForCodepage " + codepage);
 		}
 	}
 
@@ -311,7 +311,7 @@ public class SrtTextReader {
 		Code code = new Code(scanner, val).read();
 
 		String s = scanner.nextValue();
-		if (!s.equals("to"))
+		if (!"to".equals(s))
 			throw new SyntaxException(scanner, "Expected the word 'to' in expand command");
 
 		int secondary = 0;

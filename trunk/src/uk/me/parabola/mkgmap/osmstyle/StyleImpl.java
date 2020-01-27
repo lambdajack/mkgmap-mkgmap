@@ -24,6 +24,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -223,7 +224,7 @@ public class StyleImpl implements Style {
 		// There are a lot of tags that are used within mkgmap that 
 		try (InputStream is = this.getClass().getResourceAsStream("/styles/builtin-tag-list");) {
 			if (is != null) {
-				BufferedReader br = new BufferedReader(new InputStreamReader(is));
+				BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
 				// System.out.println("Got built in list");
 				String line;
 				while ((line = br.readLine()) != null) {
@@ -518,16 +519,12 @@ public class StyleImpl implements Style {
 			name = "default";
 
 		if (name == null){
-			StyleFileLoader loader = null;
-			try {
-				loader = StyleFileLoader.createStyleLoader(loc, null);
+			try (StyleFileLoader loader = StyleFileLoader.createStyleLoader(loc, null)) {
 				int numEntries = loader.list().length;
 				if (numEntries > 1)
 					throw new ExitException("Style file " + loc + " contains multiple styles, use option --style to select one.");
 			} catch (FileNotFoundException e) {
 				throw new ExitException("Could not open style file " + loc);
-			} finally {
-				Utils.closeFile(loader);
 			}
 		}
 

@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
@@ -201,19 +202,18 @@ public class Main implements ArgumentProcessor {
 	 * Grab the options help file and print it.
 	 * @param err The output print stream to write to.
 	 * @param lang A language hint.  The help will be displayed in this
-     * language if it has been translated.
+	 * language if it has been translated.
 	 * @param file The help file to display.
 	 */
 	private static void printHelp(PrintStream err, String lang, String file) {
 		String path = "/help/" + lang + '/' + file;
-		InputStream stream = Main.class.getResourceAsStream(path);
-		if (stream == null) {
-			err.println("Could not find the help topic: " + file + ", sorry");
-			return;
-		}
+		try (InputStream stream = Main.class.getResourceAsStream(path)) {
+			if (stream == null) {
+				err.println("Could not find the help topic: " + file + ", sorry");
+				return;
+			}
 
-		BufferedReader r = new BufferedReader(new InputStreamReader(stream));
-		try {
+			BufferedReader r = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
 			String line;
 			while ((line = r.readLine()) != null)
 				err.println(line);
@@ -224,13 +224,12 @@ public class Main implements ArgumentProcessor {
 
 	private static Set<String> getValidOptions(PrintStream err) {
 		String path = "/help/en/options";
-		InputStream stream = Main.class.getResourceAsStream(path);
-		if (stream == null)
-			return null;
+		try (InputStream stream = Main.class.getResourceAsStream(path)) {
+			if (stream == null)
+				return null;
 
-		Set<String> result = new HashSet<>();
-		try {
-			BufferedReader r = new BufferedReader(new InputStreamReader(stream, "utf-8"));
+			Set<String> result = new HashSet<>();
+			BufferedReader r = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
 
 			Pattern p = Pattern.compile("^--?([a-zA-Z0-9-]*).*$");
 			String line;
@@ -241,12 +240,12 @@ public class Main implements ArgumentProcessor {
 					result.add(opt);
 				}
 			}
+			return result;
+
 		} catch (IOException e) {
-			err.println("Could not read valid optoins");
+			err.println("Could not read valid options");
 			return null;
 		}
-
-		return result;
 	}
 
 	public void startOptions() {

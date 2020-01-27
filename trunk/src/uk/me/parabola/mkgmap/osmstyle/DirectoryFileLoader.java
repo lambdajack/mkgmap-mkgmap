@@ -23,6 +23,7 @@ import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,17 +55,7 @@ public class DirectoryFileLoader extends StyleFileLoader {
 	 * @return An open file reader for the file.
 	 */
 	public Reader open(String filename) throws FileNotFoundException {
-		File file = new File(dir, filename);
-		
-		Reader r = null;
-		try {
-			r = new InputStreamReader(new FileInputStream(file), "UTF-8");
-        } catch (UnsupportedEncodingException uee) {
-            System.out.println("DirectoryFileLoader: Encoding UTF-8 not supported");
-            r = new InputStreamReader(new FileInputStream(file));
-        }
-
-		return new BufferedReader(r);
+	    return new BufferedReader(new InputStreamReader(new FileInputStream(new File(dir, filename)), StandardCharsets.UTF_8));
 	}
 
 	/**

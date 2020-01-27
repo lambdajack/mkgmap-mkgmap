@@ -16,8 +16,8 @@
  */
 package uk.me.parabola.imgfmt.app.labelenc;
 
-import java.io.UnsupportedEncodingException;
 import java.util.Locale;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Encoder for labels in utf-8.
@@ -37,17 +37,11 @@ public class Utf8Encoder extends BaseEncoder implements CharacterEncoder {
 			uctext = text;
 
 		EncodedText et;
-		try {
-			byte[] buf = uctext.getBytes("utf-8");
-			byte[] res = new byte[buf.length + 1];
-			System.arraycopy(buf, 0, res, 0, buf.length);
-			res[buf.length] = 0;
-			et = new EncodedText(res, res.length, uctext.toCharArray());
-		} catch (UnsupportedEncodingException e) {
-			// As utf-8 must be supported, this can't happen
-			byte[] buf = uctext.getBytes();
-			et = new EncodedText(buf, buf.length, uctext.toCharArray());
-		}
+		byte[] buf = uctext.getBytes(StandardCharsets.UTF_8);
+		byte[] res = new byte[buf.length + 1];
+		System.arraycopy(buf, 0, res, 0, buf.length);
+		res[buf.length] = 0;
+		et = new EncodedText(res, res.length, uctext.toCharArray());
 		return et;
 	}
 }

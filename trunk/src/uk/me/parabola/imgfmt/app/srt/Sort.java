@@ -19,6 +19,7 @@ import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.text.CollationKey;
 import java.text.Collator;
 import java.util.ArrayList;
@@ -546,10 +547,10 @@ public class Sort {
 		Charset charset;
 		switch (codepage) {
 		case 0:
-			charset = Charset.forName("ascii");
+			charset = StandardCharsets.US_ASCII;
 			break;
 		case 65001:
-			charset = Charset.forName("UTF-8");
+			charset = StandardCharsets.UTF_8;
 			break;
 		case 932:
 			// Java uses "ms932" for code page 932
