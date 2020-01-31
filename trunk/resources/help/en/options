@@ -248,7 +248,7 @@ filename
     mkgmap:region etc. using these values.
 
      The following special tags are added:
-::mkgmap:admin_level2 : Name of the admin_level=2 boundary 
+  mkgmap:admin_level2 : Name of the admin_level=2 boundary 
   mkgmap:admin_level3 : Name of the admin_level=3 boundary
   ..
   mkgmap:admin_level11
