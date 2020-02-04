@@ -56,6 +56,7 @@ import uk.me.parabola.mkgmap.general.MapShape;
 import uk.me.parabola.mkgmap.general.ZipCodeInfo;
 import uk.me.parabola.mkgmap.reader.MapperBasedMapDataSource;
 import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
+import uk.me.parabola.mkgmap.reader.osm.FeatureKind;
 import uk.me.parabola.mkgmap.reader.osm.GType;
 import uk.me.parabola.mkgmap.reader.osm.GeneralRelation;
 import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
@@ -419,10 +420,12 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			if (type <= 0xff)
 				type <<= 8;
 			point.setType(type);
+			checkType(FeatureKind.POINT, point.getType());
 		} else if (name.equals("SubType")) {
 			int subtype = Integer.decode(value);
 			int type = point.getType();
 			point.setType(type | subtype);
+			checkType(FeatureKind.POINT, point.getType());
 		} else if (name.startsWith("Data") || name.startsWith("Origin")) {
 			Coord co = makeCoord(value);
 			setResolution(point, name);
@@ -447,6 +450,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	private void line(String name, String value) {
 		if (name.equals("Type")) {
 			polyline.setType(Integer.decode(value));
+			checkType(FeatureKind.POLYLINE, polyline.getType());
 		} else if (name.startsWith("Data")) {
 			extractResolution(name);
 			addLineString(value, false);
@@ -585,6 +589,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			if (type == 0x4a00)
 				type = 0x4a;
 			shape.setType(type);
+			checkType(FeatureKind.POLYGON, type);
 			if(type == 0x4b)
 				havePolygon4B = true;
 		} else if (name.startsWith("Data")) {
@@ -1023,4 +1028,11 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	public String getDefaultRegion() {
 		return defaultRegion;
 	}
+	
+	private void checkType(FeatureKind kind, int type) {
+		if (!GType.checkType(kind, type)) {
+			throw new MapFailedException("invalid type " + GType.formatType(type) + " for " + kind + ", line " + lineNo);
+		}
+	}
+
 }
