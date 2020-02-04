@@ -51,7 +51,8 @@ public class LinePreparer {
 	private final boolean ignoreNumberOnlyNodes;
 
 	LinePreparer(Polyline line) {
-		extraBit = line.isRoad() && line.getSubdiv().getZoom().getLevel() == 0 && line.hasInternalNodes();
+		extraBit = line.isRoad() && line.getSubdiv().getZoom().getLevel() == 0
+				&& (line.hasInternalNodes() || !line.isLastSegment());
 		ignoreNumberOnlyNodes = !line.hasHouseNumbers();
 		extTypeLine = line.hasExtendedType();
 
