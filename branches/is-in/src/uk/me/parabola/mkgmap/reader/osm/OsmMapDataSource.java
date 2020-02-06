@@ -19,7 +19,8 @@ package uk.me.parabola.mkgmap.reader.osm;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
+import java.io.InputStreamReader;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -145,8 +146,12 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 	
 	@Override
 	public void load(String name, boolean addBackground) throws FileNotFoundException {
-		InputStream is = Utils.openFile(name);
-		parse(is, name);
+		try (InputStream is = Utils.openFile(name)) {
+			parse(is, name);
+		} catch (IOException e) {
+			// exception thrown from implicit call to close() on resource variable 'is'
+		}
+		
 		elementSaver.finishLoading();
 
 		osmReadingHooks.end();
@@ -291,11 +296,20 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 
 	private static Map<String, Set<String>> readDeleteTagsFile(String fileName) {
 		Map<String, Set<String>> deletedTags = new HashMap<>();
-		try (BufferedReader br = new BufferedReader(new FileReader(fileName))) { 
+		
+		// 14Jan20 Changed from using DefaultCharset to UTF-8
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(fileName), StandardCharsets.UTF_8))) {
 			String line;
-			while((line = br.readLine()) != null) {
+			while ((line = br.readLine()) != null) {
 				line = line.trim();
-				if(line.length() > 0 && !line.startsWith("#") && !line.startsWith(";")) {
+				if (line.isEmpty())
+					continue;
+				if (line.charAt(0) == '\uFEFF') { // BOM
+					line = line.substring(1);
+					if (line.isEmpty())
+						continue;
+				}
+				if (!line.startsWith("#") && !line.startsWith(";")) {
 					String[] parts = line.split("=");
 					if (parts.length == 2) {
 						parts[0] = parts[0].trim();

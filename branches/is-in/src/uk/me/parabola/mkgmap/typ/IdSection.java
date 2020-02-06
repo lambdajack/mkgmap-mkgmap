@@ -42,7 +42,8 @@ class IdSection implements ProcessSection {
 		} else if (name.equalsIgnoreCase("ProductCode")) {
 			data.setProductId(ival);
 		} else if (name.equalsIgnoreCase("CodePage")) {
-			data.setSort(SrtTextReader.sortForCodepage(ival));
+			if (data.getSort() == null) // ignore if --code-page
+				data.setSort(SrtTextReader.sortForCodepage(ival));
 		} else {
 			throw new SyntaxException(scanner, "Unrecognised keyword in id section: " + name);
 		}

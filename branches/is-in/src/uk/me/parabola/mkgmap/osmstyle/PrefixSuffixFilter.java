@@ -16,6 +16,7 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -76,7 +77,7 @@ public class PrefixSuffixFilter {
 	private boolean readConfig(String cfgFile) {
 		if (cfgFile == null) 
 			return false;
-		try (InputStreamReader reader = new InputStreamReader(new FileInputStream(cfgFile), "utf-8")) {
+		try (InputStreamReader reader = new InputStreamReader(new FileInputStream(cfgFile), StandardCharsets.UTF_8)) {
 			readOptionFile(reader, cfgFile);
 			return true;
 		} catch (Exception e) {

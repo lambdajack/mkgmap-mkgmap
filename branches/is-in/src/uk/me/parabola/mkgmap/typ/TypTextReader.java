@@ -32,9 +32,10 @@ public class TypTextReader {
 	// As the file is read in, the information is saved into this data structure.
 	private final TypData data = new TypData();
 
-	public void read(String filename, Reader r) {
+	public void read(String filename, Reader r, String charset) {
 		TokenScanner scanner = new TokenScanner(filename, r);
 		scanner.setCommentChar(null); // the '#' comment character is not appropriate for this file
+		scanner.setCharset(charset);
 
 		ProcessSection currentSection = null;
 

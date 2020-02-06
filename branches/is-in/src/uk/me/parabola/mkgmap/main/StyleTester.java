@@ -15,7 +15,9 @@ package uk.me.parabola.mkgmap.main;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -221,9 +223,8 @@ public class StyleTester implements OsmConverter {
 	 * file all in one.
 	 */
 	public static void runSimpleTest(String filename) {
-		try {
-			FileReader reader = new FileReader(filename);
-			BufferedReader br = new BufferedReader(reader);
+		// 14Jan20 Changed from using DefaultCharset to UTF-8	    
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(filename), StandardCharsets.UTF_8))) {
 			List<Way> ways = readSimpleTestFile(br);
 
 			List<String> givenList = readGivenResults();
@@ -346,7 +347,6 @@ public class StyleTester implements OsmConverter {
 				// ignore blank lines.
 			}*/
 		}
-		br.close();
 
 		return ways;
 	}

@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
+import uk.me.parabola.log.Logger;
 
 /**
  * Base routines and data used by points, lines and polygons.
@@ -30,6 +31,8 @@ import uk.me.parabola.imgfmt.app.ImgFileWriter;
  * @author Steve Ratcliffe
  */
 public abstract class TypElement implements Comparable<TypElement> {
+	private static final Logger log = Logger.getLogger(TypElement.class);
+
 	private int type;
 	private int subType;
 
@@ -124,17 +127,19 @@ public abstract class TypElement implements Comparable<TypElement> {
 	protected ByteBuffer makeLabelBlock(CharsetEncoder encoder) {
 		ByteBuffer out = ByteBuffer.allocate(256 * labels.size());
 		for (TypLabel tl : labels) {
-			out.put((byte) tl.getLang());
 			CharBuffer cb = CharBuffer.wrap(tl.getText());
 			try {
 				ByteBuffer buffer = encoder.encode(cb);
+				out.put((byte) tl.getLang());
 				out.put(buffer);
+				out.put((byte) 0);
 			} catch (CharacterCodingException ignore) {
+				//ignore.printStackTrace();
 				String name = encoder.charset().name();
 				//System.out.println("cs " + name);
-				throw new TypLabelException(name);
+				log.warn("Cannot represent String", tl.getText(), "for language", tl.getLang(), "in CodePage", name);
+				//throw new TypLabelException(name);
 			}
-			out.put((byte) 0);
 		}
 
 		return out;

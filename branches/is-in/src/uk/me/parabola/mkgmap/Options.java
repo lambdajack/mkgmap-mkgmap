@@ -18,7 +18,8 @@ package uk.me.parabola.mkgmap;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Collection;
@@ -76,16 +77,22 @@ public class Options {
 			return;
 		}
 
-		try (Reader r = new FileReader(filename)) {
+		try (Reader r = new InputStreamReader(new FileInputStream(filename)/*NB: DefaultCharset*/)) {
 			readOptionFile(r, filename);
 		}
 		
 	}
 
 	public void readOptionFile(Reader r, String filename) {
-		BufferedReader br = new BufferedReader(r);
+		BufferedReader br;
+		if (r instanceof BufferedReader)
+			br = (BufferedReader)r;
+		else
+			br = new BufferedReader(r);
 		TokenScanner ts = new TokenScanner(filename, br);
 		ts.setExtraWordChars("-");
+		if (r instanceof InputStreamReader)
+			ts.setCharset(((InputStreamReader)r).getEncoding());
 
 		File file = new File(filename);
 		String parent = file.getParent();

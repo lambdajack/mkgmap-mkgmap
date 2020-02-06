@@ -20,6 +20,7 @@ import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.io.Reader;
 import java.io.StringReader;
+import java.nio.charset.Charset;
 import java.nio.channels.FileChannel;
 import java.util.List;
 
@@ -269,7 +270,7 @@ public class TypTextReaderTest {
 	public void testFromFile() throws IOException, InterruptedException {
 		Reader r = new BufferedReader(new FileReader("test/resources/typ/test.txt"));
 		tr = new TypTextReader();
-		tr.read("test.typ", r);
+		tr.read("test.typ", r, Charset.defaultCharset().name());
 
 		TestUtils.registerFile("ts__test.typ");
 		RandomAccessFile raf = new RandomAccessFile("ts__test.typ", "rw");
@@ -312,7 +313,7 @@ public class TypTextReaderTest {
 		Reader r = new StringReader(in);
 
 		TypTextReader tr = new TypTextReader();
-		tr.read("string", r);
+		tr.read("string", r, "N/A");
 		if (tr.getData().getSort() == null)
 			tr.getData().setSort(SrtTextReader.sortForCodepage(1252));
 		return tr;

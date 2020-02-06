@@ -28,8 +28,8 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.logging.Level;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -118,7 +118,7 @@ public class StyledConverter implements OsmConverter {
 	private IdentityHashMap<Coord, CoordNode> nodeIdMap = new IdentityHashMap<>();
 
 	public static final String WAY_POI_NODE_IDS = "mkgmap:way-poi-node-ids";
-	private final HashMap<Integer, Map<String,MapPoint>> pointMap;
+	private final HashMap<Integer, Map<String, MapPoint>> pointMap;
 	
 	/** boundary ways with admin_level=2 */
 	private final Set<Way> borders = new LinkedHashSet<>();
@@ -128,8 +128,7 @@ public class StyledConverter implements OsmConverter {
 	
 	private List<ConvertedWay> roads = new ArrayList<>();
 	private List<ConvertedWay> lines = new ArrayList<>();
-	private HashMap<Long, ConvertedWay> modifiedRoads = new HashMap<>();
-	private HashSet<Long> deletedRoads = new HashSet<>();
+	private List<MapPoint> renderedCoordPOI = new ArrayList<>();
 
 	private int nextRoadId = 1;
 	
@@ -588,6 +587,9 @@ public class StyledConverter implements OsmConverter {
 				return;
 			}
 
+			if (node.getLocation() instanceof CoordPOI) {
+				renderedCoordPOI.add(mp);
+			}
 			collector.addPoint(mp);
 		}
 
@@ -897,12 +899,15 @@ public class StyledConverter implements OsmConverter {
 		borders.clear();
 		
 		setHighwayCounts();
+		HashMap<Long, ConvertedWay> modifiedRoads = new HashMap<>();
 		findUnconnectedRoads();
-		rotateClosedWaysToFirstNode();
+		rotateClosedWaysToFirstNode(modifiedRoads);
 		filterCoordPOI();
-		WrongAngleFixer wrongAngleFixer = new WrongAngleFixer(bbox);
-		wrongAngleFixer.optimizeWays(roads, lines, modifiedRoads, deletedRoads, restrictions);
 
+		HashSet<Long> deletedRoads = new HashSet<>();
+		WrongAngleFixer wrongAngleFixer = new WrongAngleFixer(bbox);
+		wrongAngleFixer.optimizeWays(roads, lines, modifiedRoads, deletedRoads, restrictions, renderedCoordPOI);
+		
 		// make sure that copies of modified roads have equal points 
 		for (ConvertedWay line : lines){
 			if (!line.isValid())
@@ -929,8 +934,8 @@ public class StyledConverter implements OsmConverter {
 				log.warn("Way that is used in valid restriction relation was removed, id:",wayId);
 			}
 		}
-		deletedRoads = null;
-		modifiedRoads = null;
+		deletedRoads.clear();
+		modifiedRoads.clear(); 
 		mergeRoads();
 		
 		resetHighwayCounts();
@@ -1012,9 +1017,10 @@ public class StyledConverter implements OsmConverter {
 	 * Try to make sure that closed ways start with a point that is 
 	 * also part of another road. This reduces the number of nodes
 	 * a little bit.
+	 * @param modifiedRoads Will contain roads modified by this routine  
 	 * 
 	 */
-	private void rotateClosedWaysToFirstNode() {
+	private void rotateClosedWaysToFirstNode(HashMap<Long, ConvertedWay> modifiedRoads ) {
 		for (ConvertedWay cw: roads){
 			if (!cw.isValid())
 				continue;
@@ -1958,7 +1964,6 @@ public class StyledConverter implements OsmConverter {
 		
 		return trailingWay;
 	}
-
 
 	/**
 	 * Increment the highway counter for each coord of each road.

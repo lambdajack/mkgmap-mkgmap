@@ -17,6 +17,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Locale;
 
@@ -39,7 +40,7 @@ public class TableTransliterator implements Transliterator {
 	private boolean forceUppercase;
 
 	public TableTransliterator(String targetCharset) {
-		if (targetCharset.equals("latin1") || targetCharset.equals("cp1252"))
+		if ("latin1".equals(targetCharset) || "cp1252".equals(targetCharset))
 			useLatin = true;
 		else
 			useLatin = false;
@@ -115,12 +116,10 @@ public class TableTransliterator implements Transliterator {
 	}
 
 	private void readCharFile(String name, String[] newRow) {
-		InputStream is = getClass().getResourceAsStream(name);
-		if (is == null)
-			return;
-
-		try {
-			BufferedReader br = new BufferedReader(new InputStreamReader(is, "utf-8"));
+		try (InputStream is = getClass().getResourceAsStream(name)) {
+			if (is == null)
+				return;
+			BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
 
 			String line;
 			while ((line = br.readLine()) != null) {
@@ -140,7 +139,7 @@ public class TableTransliterator implements Transliterator {
 
 				// The first field must look like 'U+RRXX', we extract the XX part
 				int index = Integer.parseInt(upoint.substring(4), 16);
-				if (newRow[index].equals("?")) {
+				if ("?".equals(newRow[index])) {
 					if (forceUppercase)
 						newRow[index] = translation.toUpperCase(Locale.ENGLISH);
 					else

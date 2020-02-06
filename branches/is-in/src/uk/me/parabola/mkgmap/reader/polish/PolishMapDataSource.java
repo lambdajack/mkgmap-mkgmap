@@ -20,14 +20,13 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -57,6 +56,7 @@ import uk.me.parabola.mkgmap.general.MapShape;
 import uk.me.parabola.mkgmap.general.ZipCodeInfo;
 import uk.me.parabola.mkgmap.reader.MapperBasedMapDataSource;
 import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
+import uk.me.parabola.mkgmap.reader.osm.FeatureKind;
 import uk.me.parabola.mkgmap.reader.osm.GType;
 import uk.me.parabola.mkgmap.reader.osm.GeneralRelation;
 import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
@@ -76,7 +76,7 @@ import uk.me.parabola.mkgmap.reader.osm.Way;
 public class PolishMapDataSource extends MapperBasedMapDataSource implements LoadableMapDataSource {
 	private static final Logger log = Logger.getLogger(PolishMapDataSource.class);
 
-	private static final String READING_CHARSET = "iso-8859-1";
+	private static final Charset READING_CHARSET = StandardCharsets.ISO_8859_1;
 
 	private static final int S_IMG_ID = 1;
 	private static final int S_POINT = 2;
@@ -127,20 +127,11 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 
 	@Override
 	public void load(String name, boolean addBackground) throws FileNotFoundException {
-		Reader reader;
-		try {
-			reader = new InputStreamReader(Utils.openFile(name), READING_CHARSET);
-		} catch (UnsupportedEncodingException e) {
-			// Java is required to support iso-8859-1 so this is unlikely
-			throw new FormatException("Unrecognised charset " + READING_CHARSET);
-		}
-
 		// If no code page is given then we read labels in utf-8
-		dec = Charset.forName("utf-8").newDecoder();
+		dec = StandardCharsets.UTF_8.newDecoder();
 		dec.onUnmappableCharacter(CodingErrorAction.REPLACE);
 
-        
-		try (BufferedReader in = new BufferedReader(reader)){
+		try (BufferedReader in = new BufferedReader(new InputStreamReader(Utils.openFile(name), READING_CHARSET))) {
 			String line;
 			while ((line = in.readLine()) != null) {
 				++lineNo;
@@ -154,15 +145,15 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 				else
 					processLine(line);
 			}
-
-            // Add all restrictions to the map after reading the full map.
-            // The reason being, the restrictions section appear in the beginning of the map.
-            // All the nodes will only be read later on.
-            // Required to pass the road helper instance as it contains all node data.
-            restrictionHelper.processAndAddRestrictions(roadHelper, mapper);
 		} catch (IOException e) {
 			throw new FormatException("Reading file failed", e);
 		}
+
+		// Add all restrictions to the map after reading the full map.
+		// The reason being, the restrictions section appear in the beginning of the map.
+		// All the nodes will only be read later on.
+		// Required to pass the road helper instance as it contains all node data.
+		restrictionHelper.processAndAddRestrictions(roadHelper, mapper);
 
 		if (addBackground && !havePolygon4B)
 			addBackground();
@@ -429,10 +420,12 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			if (type <= 0xff)
 				type <<= 8;
 			point.setType(type);
+			checkType(FeatureKind.POINT, point.getType());
 		} else if (name.equals("SubType")) {
 			int subtype = Integer.decode(value);
 			int type = point.getType();
 			point.setType(type | subtype);
+			checkType(FeatureKind.POINT, point.getType());
 		} else if (name.startsWith("Data") || name.startsWith("Origin")) {
 			Coord co = makeCoord(value);
 			setResolution(point, name);
@@ -457,6 +450,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	private void line(String name, String value) {
 		if (name.equals("Type")) {
 			polyline.setType(Integer.decode(value));
+			checkType(FeatureKind.POLYLINE, polyline.getType());
 		} else if (name.startsWith("Data")) {
 			extractResolution(name);
 			addLineString(value, false);
@@ -595,6 +589,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			if (type == 0x4a00)
 				type = 0x4a;
 			shape.setType(type);
+			checkType(FeatureKind.POLYGON, type);
 			if(type == 0x4b)
 				havePolygon4B = true;
 		} else if (name.startsWith("Data")) {
@@ -712,17 +707,14 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	 */
 	private String recode(String value) {
 		if (dec != null) {
-			try {
-				// Get the bytes that were actually in the file.
-				byte[] bytes = value.getBytes(READING_CHARSET);
-				ByteBuffer buf = ByteBuffer.wrap(bytes);
+			// Get the bytes that were actually in the file.
+			byte[] bytes = value.getBytes(READING_CHARSET);
+			ByteBuffer buf = ByteBuffer.wrap(bytes);
 
+			try {
 				// Decode from bytes with the correct code page.
 				CharBuffer out = dec.decode(buf);
 				return out.toString();
-			} catch (UnsupportedEncodingException e) {
-				// Java requires this support, so unlikely to happen
-				log.warn("no support for " + READING_CHARSET);
 			} catch (CharacterCodingException e) {
 				log.error("error decoding label", e);
 			}
@@ -1036,4 +1028,11 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	public String getDefaultRegion() {
 		return defaultRegion;
 	}
+	
+	private void checkType(FeatureKind kind, int type) {
+		if (!GType.checkType(kind, type)) {
+			throw new MapFailedException("invalid type " + GType.formatType(type) + " for " + kind + ", line " + lineNo);
+		}
+	}
+
 }

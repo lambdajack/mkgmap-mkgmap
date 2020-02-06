@@ -1,11 +1,5 @@
-
-[_id]
-ProductCode=1
-CodePage=65001
-[End]
-[_comments]
-;https://github.com/Jorisbo/Mkgmap-Mapnik-Style-Garmin
-;Jorisbo@hotmail.com
+﻿; TYP file to give mapnik rendering
+; -*- coding: UTF-8 -*- NB: first 3 bytes/char in file is UTF-8 encoded ByteOrderMark (BOM)
 ;
 ;This program is free software; you can redistribute it and/or modify
 ;it under the terms of the GNU General Public License version 3 or
@@ -16,14 +10,19 @@ CodePage=65001
 ;MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ;General Public License for more details.
 ;
-;Auto generated: 20191209 18:13
-;From master: MKG
-;As subset: mkgmap
-;Based on mkgmap default style version: r4389
+;Author: Jorisbo@hotmail.com
 ;
+;Based on mkgmap default style version: r4293...4288
+;
+[_id]
+;ProductCode=1   set from --product-id
+;FID=8094        set from --family-id
+;CodePage=65001  set from --code-page
 [End]
+;
 [_drawOrder]
 Type=0x04b,1
+Type=0x03d,1
 Type=0x002,2
 Type=0x003,2
 Type=0x007,2
@@ -45,7 +44,6 @@ Type=0x024,2
 Type=0x025,2
 Type=0x026,2
 Type=0x03b,2
-Type=0x03d,2
 Type=0x046,2
 Type=0x047,2
 Type=0x048,2
@@ -77,12 +75,13 @@ Type=0x06a,7
 Type=0x06c,8
 Type=0x004,9
 [End]
+;
 [_polygon]
 type=0x02
 ;GRMN_TYPE: Urban Areas/SMALL_CITY/Small urban area, less than 200 000 inhabitants/Non NT
+String=Suburb
 String1=0x01,Résidentiel
 String2=0x02,Wohngebiet
-String3=0x04,Residential
 String4=0x03,Bebouwing
 String7=0x15,Obszar mieszkalny
 String8=0x10,Residencial
@@ -96,9 +95,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x03
 ;GRMN_TYPE: Urban Areas/TOWN/Urban area, less than 50 000 inhabitants/Non NT
+String=Village
 String1=0x01,Résidentiel
 String2=0x02,Wohngebiet
-String3=0x04,Residential
 String4=0x03,Bebouwing
 String7=0x15,Obszar mieszkalny
 String8=0x10,Residencial
@@ -112,9 +111,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x04
 ;GRMN_TYPE: Large Manmade Areas/MILITARY_BASE/Military base area/Non NT
+String=Military Base
 String1=0x01,Domaine militaire
 String2=0x02,Militärisches Sperrgebiet
-String3=0x04,Military
 String4=0x03,Militair domein
 String7=0x15,Teren wojskowy
 String8=0x10,Militar
@@ -162,9 +161,10 @@ Xpm="32 32 2 1"
 [_polygon]
 type=0x05
 ;GRMN_TYPE: Large Manmade Areas/PARKING_LOT/Parking lot area/Non NT
+String=Parking Lot
 String1=0x01,Parking
 String2=0x02,Parkplatz
-String3=0x04,Parking
+String3=0x04,Car Park
 String4=0x03,Parkeerterrein
 String7=0x15,Parking
 String8=0x10,Estacionamento
@@ -178,9 +178,10 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x06
 ;GRMN_TYPE: Large Manmade Areas/PARKING_GARAGE/Parking garage area/Non NT
+String=Parking Garage
 String1=0x01,Garages
 String2=0x02,Garagen
-String3=0x04,Garages
+String3=0x04,Parking
 String4=0x03,Garages
 String7=0x15,Garaże
 String8=0x10,Garagem
@@ -194,9 +195,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x07
 ;GRMN_TYPE: Large Manmade Areas/AIRPORT/Airport area/Non NT
+String=Airport
 String1=0x01,Aéroport
 String2=0x02,Flughafen
-String3=0x04,Airport
 String4=0x03,Vliegveld
 String7=0x15,Lotnisko
 String8=0x10,Aeroporto
@@ -210,9 +211,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x08
 ;GRMN_TYPE: Large Manmade Areas/SHOPPING_AREA/Shopping area/Non NT
+String=Shopping Center
 String1=0x01,Zone commerciale
 String2=0x02,Gewerbegebiet
-String3=0x04,Commercial area
 String4=0x03,Commercieel gebied
 String7=0x15,Obszar handlowy
 String8=0x10,Área comercial
@@ -226,9 +227,10 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x09
 ;GRMN_TYPE: Large Manmade Areas/MARINA/Marina area/Non NT
+String=Marina
 String1=0x01,Piscine
 String2=0x02,Schwimmbad
-String3=0x04,Swimmingpool
+String3=0x04,Water Park
 String4=0x03,Zwembad
 String7=0x15,Basen
 String8=0x10,Piscina
@@ -242,6 +244,7 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x0a
 ;GRMN_TYPE: Large Manmade Areas/COLLEGE/College or university area/Non NT
+String=University/College
 String1=0x01,École
 String2=0x02,Schule
 String3=0x04,Education
@@ -258,9 +261,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x0b
 ;GRMN_TYPE: Large Manmade Areas/HOSPITAL/Hospital area/Non NT
+String=Hospital
 String1=0x01,Hôpital
 String2=0x02,Krankenhaus
-String3=0x04,Hospital
 String4=0x03,Ziekenhuis
 String7=0x15,Szpital
 String8=0x10,Hospital
@@ -274,6 +277,7 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x0c
 ;GRMN_TYPE: Large Manmade Areas/INDUSTRIAL_COMPLEX/Industrial complex area/Non NT
+String=Industrial Complex
 String1=0x01,Zone industrielle
 String2=0x02,Industriegebiet
 String3=0x04,Industrial area
@@ -290,9 +294,10 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x0e
 ;GRMN_TYPE: Large Manmade Areas/AIRPORT_RUNWAYS/Airport runway area/Non NT
+String=Aircraft Road
 String1=0x01,Aérodrome
 String2=0x02,Flugfeld
-String3=0x04,Aeroway
+String3=0x04,Runway
 String4=0x03,Landingsbaan
 String7=0x15,Pas startowy
 String8=0x10,Aeródromo
@@ -306,9 +311,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x0f
 ;GRMN_TYPE: //
+String=Commercial Area
 String1=0x01,Zone commerciale
 String2=0x02,Gewerbegebiet
-String3=0x04,Commercial area
 String4=0x03,Commercieel gebied
 String7=0x15,Obszar handlowy
 String8=0x10,Área comercial
@@ -322,9 +327,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x10
 ;GRMN_TYPE: //
+String=Residential
 String1=0x01,Résidentiel
 String2=0x02,Wohngebiet
-String3=0x04,Residential
 String4=0x03,Bebouwing
 String7=0x15,Obszar mieszkalny
 String8=0x10,Residencial
@@ -338,9 +343,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x11
 ;GRMN_TYPE: //
+String=Danger Area
 String1=0x01,Domaine militair
 String2=0x02,Militärisches Sperrgebiet
-String3=0x04,Military dangerzone
 String4=0x03,Miltaire gevarenzone
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
@@ -385,9 +390,9 @@ Xpm="32 32 2 1"
 [_polygon]
 type=0x12
 ;GRMN_TYPE: //
+String=Retail
 String1=0x01,Aire
 String2=0x02,Raststätte
-String3=0x04,Service
 String4=0x03,Snelweg rustplaats
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
@@ -398,9 +403,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x13
 ;GRMN_TYPE: Large Manmade Areas/GENERIC_MANMADE/Other or generic manmade area, such as a building/Non NT
+String=Building
 String1=0x01,Bâtiment
 String2=0x02,Gebäude
-String3=0x04,Building
 String4=0x03,Gebouw
 String7=0x15,Budynek
 String8=0x10,Edifício
@@ -414,9 +419,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x15
 ;GRMN_TYPE: Park Areas/NATIONAL_PARK/National park/Non NT
+String=Village Green
 String1=0x01,Espace vert
 String2=0x02,Grün
-String3=0x04,Village green
 String4=0x03,Stadsgroen
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
@@ -427,9 +432,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x16
 ;GRMN_TYPE: Park Areas/NATIONAL_PARK_OTHER/Small or misc sized national park/Non NT
+String=Nature Reserve
 String1=0x01,Espace vert
 String2=0x02,Grün
-String3=0x04,Green area
 String4=0x03,Groen
 String7=0x15,Zieleń
 String8=0x10,Área verde
@@ -443,9 +448,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x17
 ;GRMN_TYPE: Park Areas/URBAN_PARK/Small urban park, typically only a few square blocks in size/Non NT
+String=City Park/Playground
 String1=0x01,Parc
 String2=0x02,Park
-String3=0x04,Park
 String4=0x03,Park
 String7=0x15,Park
 String8=0x10,Parque
@@ -459,9 +464,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x18
 ;GRMN_TYPE: Large Manmade Areas/GOLF_COURSE/Golf course area/Non NT
+String=Golf Course
 String1=0x01,Golf
 String2=0x02,Golfplatz
-String3=0x04,Golf course
 String4=0x03,Golfbaan
 String7=0x15,Pole golfowe
 String8=0x10,Campo de Golfe
@@ -475,6 +480,7 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x19
 ;GRMN_TYPE: Large Manmade Areas/SPORTS_COMPLEX/Sports arena or stadium/Non NT
+String=Sports Complex
 String1=0x01,Terrain de sport
 String2=0x02,Sportplatz
 String3=0x04,Sports pitch
@@ -491,9 +497,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x1a
 ;GRMN_TYPE: Large Manmade Areas/CEMETARY/Cemetary/Non NT
+String=Cemetery
 String1=0x01,Cimetière
 String2=0x02,Friedhof
-String3=0x04,Cemetry
 String4=0x03,Begraafplaats
 String7=0x15,Cmentarz
 String8=0x10,Cemitério
@@ -541,8 +547,8 @@ Xpm="32 32 2 1"
 [_polygon]
 type=0x1c
 ;GRMN_TYPE: //
+String=Meadow
 String2=0x02,Wiese
-String3=0x04,Meadow
 String4=0x03,Weide
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
@@ -553,9 +559,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x1d
 ;GRMN_TYPE: //
+String=Common
 String1=0x01,Parc
 String2=0x02,Park
-String3=0x04,Park
 String4=0x03,Park
 String7=0x15,Park
 String8=0x10,Parque
@@ -569,9 +575,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x20
 ;GRMN_TYPE: Park Areas/STATE_PARK_OTHER/Small or misc sized state park/Non NT
+String=Garden
 String1=0x01,Jardin
 String2=0x02,Garten
-String3=0x04,Garden
 String4=0x03,Tuin
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
@@ -616,7 +622,7 @@ Xpm="32 32 2 1"
 [_polygon]
 type=0x21
 ;GRMN_TYPE: //
-String3=0x04,Tourism
+String=Tourism
 String4=0x03,Toeristische attractie
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
@@ -627,9 +633,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x22
 ;GRMN_TYPE: //
+String=Historic
 String1=0x01,Patrimoine historique
 String2=0x02,Historisches Gebiet / Gebäude
-String3=0x04,Historic area/building
 String4=0x03,Historisch gebied/gebouw
 String7=0x15,Historyczny teren / budynek
 String8=0x10,Edifício histórico
@@ -643,9 +649,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x23
 ;GRMN_TYPE: //
+String=Amenity
 String1=0x01,Bâtiment
 String2=0x02,Gebäude
-String3=0x04,Building
 String4=0x03,Gebouw
 String7=0x15,Budynek
 String8=0x10,Edifício
@@ -659,8 +665,8 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x24
 ;GRMN_TYPE: //
+String=Man-made
 String2=0x02,Konstruktion
-String3=0x04,Construction
 String4=0x03,Constructie
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
@@ -671,13 +677,13 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x25
 ;GRMN_TYPE: //
-String1=0x01,Zone piétonne
-String2=0x02,Fußgängerzone
-String3=0x04,Pedestrians
-String4=0x03,Voetgangersgebied
-String7=0x15,Pieszy
-String8=0x10,Pedestre
-String9=0x05,Area pedonale
+;See also 0x6b for pedestrian area
+String=Square
+String1=0x01,Place
+String1=0x02,Platz
+String1=0x03,Markt
+String1=0x05,Piazza
+String1=0x08,Plaza
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
 CustomColor=No
@@ -687,9 +693,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x26
 ;GRMN_TYPE: //
+String=Farm / Yard
 String1=0x01,Ferme
 String2=0x02,Bauernhof
-String3=0x04,Farm
 String4=0x03,Boerenbedrijf
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
@@ -700,9 +706,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x32
 ;GRMN_TYPE: Water Areas/SEA/Sea/Non NT
+String=Sea
 String1=0x01,Mer
 String2=0x02,Meer
-String3=0x04,Sea
 String4=0x03,Zee
 String7=0x15,Morze
 String8=0x10,Mar
@@ -717,9 +723,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x3b
 ;GRMN_TYPE: //
+String=Waterway
 String1=0x01,Eau
 String2=0x02,Wasser
-String3=0x04,Water
 String4=0x03,Water
 String7=0x15,Woda
 String8=0x10,Água
@@ -734,9 +740,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x3c
 ;GRMN_TYPE: Water Areas/LAKE_100MI/Lake less than 250 sq mi but greater or equal to 100 sq mi in area/Non NT
+String=Lake
 String1=0x01,Eau
 String2=0x02,Wasser
-String3=0x04,Water
 String4=0x03,Water
 String7=0x15,Woda
 String8=0x10,Água
@@ -751,9 +757,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x3d
 ;GRMN_TYPE: Water Areas/LAKE_30MI, LARGE_LAKE/Large lake, typically between 30 and 500 sq mi in area/Non NT
+String=Bay
 String1=0x01,Baie
 String2=0x02,Bucht
-String3=0x04,Bay
 String4=0x03,Baai
 String7=0x15,Zatoka
 String8=0x10,Baia
@@ -761,15 +767,49 @@ String9=0x05,Baia
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
 CustomColor=No
-Xpm="0 0 1 0"
-"1 c #F2EFE9"
+Xpm="32 32 2 1"
+    ". c none"
+    "1 c #FFFFFF"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+    "................................"
+;   "12345678901234567890123456789012"
 [end]
 [_polygon]
 type=0x3f
 ;GRMN_TYPE: Water Areas/LAKE, LAKE_5MI/Medium sized lake, typically between 5 and 30 sq mi in area/Non NT
+String=Reservoir/Basin
 String1=0x01,Eau
 String2=0x02,Wasser
-String3=0x04,Water
 String4=0x03,Water
 String7=0x15,Woda
 String8=0x10,Água
@@ -783,9 +823,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x41
 ;GRMN_TYPE: Water Areas/LAKE_LT_1MI, SMALL_LAKE/Small lake, typically less than 5 sq mi in area/Non NT
+String=Small Lake
 String1=0x01,Eau
 String2=0x02,Wasser
-String3=0x04,Water
 String4=0x03,Water
 String7=0x15,Woda
 String8=0x10,Água
@@ -800,9 +840,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x46
 ;GRMN_TYPE: Water Areas/LARGE_RIVER/Major river, typically at least 700 ft in width/Non NT
+String=River
 String1=0x01,Eau
 String2=0x02,Wasser
-String3=0x04,Water
 String4=0x03,Water
 String7=0x15,Woda
 String8=0x10,Água
@@ -816,9 +856,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x47
 ;GRMN_TYPE: Water Areas/RIVER_GT_700FT/Major river greater or equal to 700 ft in width/Non NT
+String=Waterfall
 String1=0x01,Eau
 String2=0x02,Wasser
-String3=0x04,Water
 String4=0x03,Water
 String7=0x15,Woda
 String8=0x10,Água
@@ -833,9 +873,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x48
 ;GRMN_TYPE: Water Areas/RIVER_100FT, SMALL_RIVER/Minor river, typically less than 700 ft in width/Non NT
+String=Canal
 String1=0x01,Eau
 String2=0x02,Wasser
-String3=0x04,Water
 String4=0x03,Water
 String7=0x15,Woda
 String8=0x10,Água
@@ -850,9 +890,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x4b
 ;GRMN_TYPE: Map Bounds/DATA_BOUNDS/Bounds of map after creation/Non NT
+String=Area of Map Coverage
 String1=0x01,Sol
 String2=0x02,Hintergrund
-String3=0x04,Non mapped area
 String4=0x03,Achtergrond
 String7=0x15,Obszar niezmapowany
 String8=0x10,Área não mapeada
@@ -867,9 +907,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x4c
 ;GRMN_TYPE: Water Areas/INTERMITTENT_LAKE/An intermittent or dry lake/Non NT
+String=Intermittent Water
 String1=0x01,Eau
 String2=0x02,Wasser
-String3=0x04,Water
 String4=0x03,Water
 String7=0x15,Woda
 String8=0x10,Água
@@ -884,9 +924,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x4d
 ;GRMN_TYPE: Surface Cover Areas/GLACIER/Large area of compacted snow and ice/Non NT
+String=Glacier
 String1=0x01,Glacier
 String2=0x02,Gletscher
-String3=0x04,Glacier
 String4=0x03,Gletsjer
 String7=0x15,Lodowiec
 String8=0x10,Geleira
@@ -901,6 +941,7 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x4e
 ;GRMN_TYPE: Surface Cover Areas/ORCHARD/Orchard or plantation area/Non NT
+String=Orchard
 String1=0x01,Agriculture
 String2=0x02,Ackerland
 String3=0x04,Farmland
@@ -917,9 +958,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x4f
 ;GRMN_TYPE: Surface Cover Areas/SCRUB/Scrub brush area/Non NT
+String=Scrub
 String1=0x01,Broussailles
 String2=0x02,Gebüsch
-String3=0x04,Scrub
 String4=0x03,Kreupelbos
 String7=0x15,Zarośla
 String8=0x10,Arbusto
@@ -967,9 +1008,9 @@ Xpm="32 32 2 1"
 [_polygon]
 type=0x50
 ;GRMN_TYPE: Surface Cover Areas/WOODS/Wooded or forested area/Non NT
+String=Woods
 String1=0x01,Forêt
 String2=0x02,Wald
-String3=0x04,Forest
 String4=0x03,Bos
 String7=0x15,Las
 String8=0x10,Floresta
@@ -1017,6 +1058,7 @@ Xpm="32 32 2 1"
 [_polygon]
 type=0x51
 ;GRMN_TYPE: Surface Cover Areas/WETLAND/Wetland or swamp area/Non NT
+String=Wetland
 String1=0x01,Marais
 String2=0x02,Sumpf
 String3=0x04,Marsh
@@ -1067,7 +1109,7 @@ Xpm="32 32 2 1"
 [_polygon]
 type=0x52
 ;GRMN_TYPE: Surface Cover Areas/TUNDRA/Area of nearly always freezing soil/Non NT
-String3=0x04,Tundra
+String=Tundra
 String4=0x03,Toendra
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
@@ -1078,9 +1120,9 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x53
 ;GRMN_TYPE: Surface Cover Areas/FLAT/Sand, tidal, mud, etc. flat area/Non NT
+String=Tidal Sand/Mud Flats
 String1=0x01,Terre
 String2=0x02,Land
-String3=0x04,Land
 String4=0x03,Land
 String7=0x15,Land
 String8=0x10,Terra
@@ -1094,9 +1136,10 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x6a
 ;GRMN_TYPE: //
+; not used by default style
+String=Station
 String1=0x01,Gare
 String2=0x02,Bahnhof
-String3=0x04,Station
 String4=0x03,Station
 String7=0x15,Stacja
 String8=0x10,Estação
@@ -1110,9 +1153,10 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x6b
 ;GRMN_TYPE: //
+; not used by default style
+String=Pedestrian Zone
 String1=0x01,Zone piétonne
 String2=0x02,Fußgängerzone
-String3=0x04,Pedestrians
 String4=0x03,Voetgangersgebied
 String7=0x15,Pieszy
 String8=0x10,Pedestre
@@ -1126,9 +1170,10 @@ Xpm="0 0 1 0"
 [_polygon]
 type=0x6c
 ;GRMN_TYPE: //
+; not used by default style
+String=Platform
 String1=0x01,Quai
 String2=0x02,Bahnsteig
-String3=0x04,Platform
 String4=0x03,Perron
 String7=0x15,Platform
 String8=0x10,Plataforma
@@ -1139,6 +1184,7 @@ CustomColor=No
 Xpm="0 0 1 0"
 "1 c #BBBBBB"
 [end]
+;
 [_line]
 type=0x01
 ;GRMN_TYPE: Roads/INTERSTATE, MAJOR_HWY/Primary, divided, limited-access highway, akin to an interstate in the US/Non NT, NT
@@ -1148,9 +1194,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #E892A2"
 "2 c #FF008B"
+String=Motorway
 String1=0x01,Autoroute
 String2=0x02,Autobahn
-String3=0x04,Motorway
 String4=0x03,Snelweg
 String7=0x15,Autostrada
 String8=0x10,Autoestrada
@@ -1168,9 +1214,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #F9B29C"
 "2 c #D87559"
+String=Trunk Road
 String1=0x01,Voie rapide
 String2=0x02,Schnellstraße
-String3=0x04,Trunk
 String4=0x03,Autoweg
 String7=0x15,Droga szybkiego ruchu
 String8=0x10,Via expressa
@@ -1188,9 +1234,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #FCD6A4"
 "2 c #C5A363"
+String=Primary Road
 String1=0x01,Route primaire
 String2=0x02,Bundesstraße
-String3=0x04,Primary
 String4=0x03,Primair
 String7=0x15,Droga krajowa
 String8=0x10,Via primária
@@ -1208,9 +1254,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #F7FABF"
 "2 c #BBC279"
+String=Secondary Road
 String1=0x01,Route secondaire
 String2=0x02,Bundesstraße
-String3=0x04,Secondary
 String4=0x03,Secundair
 String7=0x15,Droga wojewódzka
 String8=0x10,Via secundária
@@ -1228,9 +1274,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #FFFFFF"
 "2 c #C5C5C5"
+String=Tertiary Road
 String1=0x01,Route tertiaire
 String2=0x02,Straße
-String3=0x04,Tertiary
 String4=0x03,Tertiair
 String7=0x15,Droga powiatowa
 String8=0x10,Via terciária
@@ -1248,9 +1294,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #FFFFFF"
 "2 c #C5C5C5"
+String=Residential/Minor/Unclassified
 String1=0x01,Rue
 String2=0x02,Straße
-String3=0x04,Residential
 String4=0x03,Weg
 String7=0x15,Droga
 String8=0x10,Residencial
@@ -1268,9 +1314,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #FFFFFF"
 "2 c #C5C5C5"
+String=Alley
 String1=0x01,Rue
 String2=0x02,Straße
-String3=0x04,Street
 String4=0x03,Straat
 String7=0x15,Ulica
 String8=0x10,Rua
@@ -1289,9 +1335,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #F7FABF"
 "2 c #BBC279"
+String=Link Road
 String1=0x01,Voie d’accès
 String2=0x02,Bundesstraße (Verbindung)
-String3=0x04,Secondary (Link)
 String4=0x03,Secundair (Verbinding)
 String7=0x15,Droga wojewódzka (łącznik)
 String8=0x10,Ligação de via secundária
@@ -1309,9 +1355,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #F9B29C"
 "2 c #D87559"
+String=Motorway Link
 String1=0x01,Voie d’accès
 String2=0x02,Schnellstraße (verbindung)
-String3=0x04,Trunk (Link)
 String4=0x03,Autoweg (Verbinding)
 String7=0x15,Droga szybkiego ruchu  (łącznik)
 String8=0x10,Ligação de via expressa
@@ -1330,6 +1376,7 @@ Xpm="32 2 2  1"
 "!!!!!  !!  !!!!!  !!  !!!!!  !! "
 "!!!!!  !!  !!!!!  !!  !!!!!  !! "
 ;12345678901234567890123456789012
+String=Unpaved Road
 String1=0x01,Sans revêtement
 String2=0x02,Unbefestigt
 String3=0x04,Track (Grade unknown)
@@ -1350,9 +1397,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #F9B29C"
 "2 c #D87559"
+String=Naming Link
 String1=0x01,Voie d’accès
 String2=0x02,Schnellstraße (verbindung)
-String3=0x04,Trunk (Link)
 String4=0x03,Autoweg (Verbinding)
 String7=0x15,Droga szybkiego ruchu  (łącznik)
 String8=0x10,Ligação de via expressa
@@ -1370,9 +1417,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #FFFFFF"
 "2 c #C5C5C5"
+String=Roundabout
 String1=0x01,Rond point
 String2=0x02,Kreisverkehr
-String3=0x04,Roundabout
 String4=0x03,Rotonde
 String7=0x15,Rondo
 String8=0x10,Rotatória
@@ -1391,9 +1438,9 @@ Xpm="32 2 2  1"
 "  !!!!    !!!!    !!!!    !!!!  "
 "  !!!!    !!!!    !!!!    !!!!  "
 ;12345678901234567890123456789012
+String=Cycleway
 String1=0x01,Piste cyclable
 String2=0x02,Radweg
-String3=0x04,Cycleway
 String4=0x03,Fietspad
 String7=0x15,Ścieżka rowerowa
 String8=0x10,Ciclovia
@@ -1414,6 +1461,7 @@ Xpm="32 3 2  1"
 "!!!!!!!!########!!!!!!!!########"
 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 ;12345678901234567890123456789012
+String=Railroad
 String1=0x01,Voie ferrée
 String2=0x02,Gleis
 String3=0x04,Railway
@@ -1434,9 +1482,9 @@ Xpm="32 1 2  1"
 "  c none"
 "                                "
 ;12345678901234567890123456789012
+String=Coastline
 String1=0x01,Littoral
 String2=0x02,Küstelinien
-String3=0x04,Coastline
 String4=0x03,Kustlijn
 String7=0x15,Wybrzeże
 String8=0x10,Litoral / Costal
@@ -1455,6 +1503,7 @@ Xpm="32 1 2  1"
 "  c none"
 "  !!!!!   !!!!!   !!!!!   !!!!! "
 ;12345678901234567890123456789012
+String=Trail
 String1=0x01,Sentier
 String2=0x02,Fußweg
 String3=0x04,Path
@@ -1473,7 +1522,7 @@ UseOrientation=N
 LineWidth=1
 Xpm="0 0 1 0"
 "1 c #AAAAAA"
-String3=0x04,Barrier
+String=Barrier
 String4=0x03,Barrière
 ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
@@ -1486,9 +1535,9 @@ UseOrientation=Y
 LineWidth=2
 Xpm="0 0 1 0"
 "1 c #AAD3DF"
+String=Stream
 String1=0x01,Ruisseau
 String2=0x02,Bach
-String3=0x04,Stream
 String4=0x03,Beek
 String7=0x15,Strumień
 String8=0x10,Córrego
@@ -1507,9 +1556,9 @@ Xpm="32 1 2  1"
 "  c none"
 "  !!!!    !!!!    !!!!    !!!!  "
 ;12345678901234567890123456789012
+String=Car Ferry
 String1=0x01,Ferry
 String2=0x02,Fähre
-String3=0x04,Ferry
 String4=0x03,Ferry
 String7=0x15,Prom
 String8=0x10,Balsa
@@ -1528,9 +1577,9 @@ Xpm="32 1 2  1"
 "  c none"
 "  !!!!    !!!!    !!!!    !!!!  "
 ;12345678901234567890123456789012
+String=Pedestrian Ferry
 String1=0x01,Ferry
 String2=0x02,Fähre
-String3=0x04,Ferry
 String4=0x03,Ferry
 String7=0x15,Prom
 String8=0x10,Balsa
@@ -1557,6 +1606,7 @@ Xpm="32 9 2  1"
 "                                "
 "                                "
 ;12345678901234567890123456789012
+String=St/Prv Border
 String1=0x01,Limite communale
 String2=0x02,Grenze
 String3=0x04,Boundary
@@ -1585,6 +1635,7 @@ Xpm="32 9 2  1"
 "                                "
 "                                "
 ;12345678901234567890123456789012
+String=Country Border
 String1=0x01,Limite départementale
 String2=0x02,Landesgrenze
 String3=0x04,State Boundary
@@ -1614,6 +1665,7 @@ Xpm="32 9 2  1"
 "!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#"
 "#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!#!"
 ;12345678901234567890123456789012
+String=Intl Border
 String1=0x01,Frontière nationale
 String2=0x02,Staatsgrenze
 String3=0x04,National boundary
@@ -1633,6 +1685,7 @@ UseOrientation=Y
 LineWidth=7
 Xpm="0 0 1 0"
 "1 c #AAD3DF"
+String=River
 String1=0x01,Rivière, Canal
 String2=0x02,Fluß, Kanal
 String3=0x04,River, Canal
@@ -1654,6 +1707,7 @@ Xpm="32 1 2  1"
 "  c none"
 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 ;12345678901234567890123456789012
+String=Contour Line
 String1=0x01,Courbe de niveau (20 m)
 String2=0x02,Höhenlinie (20 m)
 String3=0x04,Contour (20 m)
@@ -1672,6 +1726,7 @@ UseOrientation=N
 LineWidth=1
 Xpm="0 0 1 0"
 "1 c #D3A87C"
+String=Contour Line
 String1=0x01,Courbe de niveau (100 m)
 String2=0x02,Höhenlinie(100 m)
 String3=0x04,Contour (100 m)
@@ -1691,6 +1746,7 @@ UseOrientation=N
 LineWidth=1
 Xpm="0 0 1 0"
 "1 c #CC9966"
+String=Contour Line
 String1=0x01,Courbe de niveau (500 m)
 String2=0x02,Höhenlinie (500 m)
 String3=0x04,Contour (500 m)
@@ -1714,9 +1770,9 @@ Xpm="32 3 2  1"
 " !!!!!   !!!!!   !!!!!   !!!!!  "
 " !!!!!   !!!!!   !!!!!   !!!!!  "
 ;12345678901234567890123456789012
+String=Intermittent Stream
 String1=0x01,Ruisseau intermittent
 String2=0x02,Wasserlauf (periodisch)
-String3=0x04,Stream (Intermittent)
 String4=0x03,Beek (Periodiek)
 String7=0x15,Strumień
 String8=0x10,Córrego intermitente
@@ -1733,9 +1789,9 @@ UseOrientation=Y
 LineWidth=12
 Xpm="0 0 1 0"
 "1 c #BBBBCC"
+String=Runway
 String1=0x01,Piste d’aviation
 String2=0x02,Startbahn
-String3=0x04,Runway
 String4=0x03,Landingsbaan
 String7=0x15,Pas startowy
 String8=0x10,Pista
@@ -1757,9 +1813,9 @@ Xpm="32 5 2  1"
 " !            !  !            ! "
 " !            !  !            ! "
 ;12345678901234567890123456789012
+String=Pipeline
 String1=0x01,Pipeline
 String2=0x02,Rohr
-String3=0x04,Pipe
 String4=0x03,Pijpleiding
 String7=0x15,Rurociąg
 String8=0x10,Tubulação
@@ -1776,9 +1832,9 @@ LineWidth=1
 Xpm="0 0 2 0"
 "1 c #737373"
 "2 c #FFFFFF"
+String=Powerline
 String1=0x01,Ligne électrique
 String2=0x02,Hochspannungskabel
-String3=0x04,Power cable
 String4=0x03,Hoogspanningskabel
 String7=0x15,Kabel wysokiego napięcia
 String8=0x10,Cabo de força
@@ -1794,9 +1850,9 @@ UseOrientation=Y
 LineWidth=7
 Xpm="0 0 1 0"
 "1 c #FFC0CB"
+String=Raceway
 String1=0x01,Circuit
 String2=0x02,Rennstrecke
-String3=0x04,Raceway
 String4=0x03,Circuit
 String7=0x15,Tor wyścigowy
 String8=0x10,Pista de corrida
@@ -1814,9 +1870,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #F9B29C"
 "2 c #D87559"
+String=Roundabout
 String1=0x01,Voie d’accès
 String2=0x02,Schnellstraße (verbindung)
-String3=0x04,Trunk (Link)
 String4=0x03,Autoweg (Verbinding)
 String7=0x15,Droga szybkiego ruchu  (łącznik)
 String8=0x10,Ligação de via expressa
@@ -1834,9 +1890,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #FCD6A4"
 "2 c #C5A363"
+String=Roundabout
 String1=0x01,Voie d’accès
 String2=0x02,Bundesstraße (Verbindung)
-String3=0x04,Primary (Link)
 String4=0x03,Primair (Verbinding)
 String7=0x15,Droga krajowa (łącznik)
 String8=0x10,Ligação de via primária
@@ -1854,9 +1910,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #F7FABF"
 "2 c #BBC279"
+String=Roundabout
 String1=0x01,Voie d’accès
 String2=0x02,Bundesstraße (Verbindung)
-String3=0x04,Secondary (Link)
 String4=0x03,Secundair (Verbinding)
 String7=0x15,Droga wojewódzka (łącznik)
 String8=0x10,Ligação de via secundária
@@ -1874,9 +1930,9 @@ BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #FFFFFF"
 "2 c #C5C5C5"
+String=Roundabout
 String1=0x01,Route tertiaire
 String2=0x02,Straße
-String3=0x04,Tertiary
 String4=0x03,Tertiair
 String7=0x15,Droga powiatowa
 String8=0x10,Via terciária
@@ -1888,6 +1944,7 @@ CustomColor=No
 [_line]
 type=0x10a02
 ;GRMN_TYPE: Water Features/INTERMITTENT_STREAM(NT)/Intermittent or dry stream, creek, or ditch/NT
+; not used by default style
 UseOrientation=Y
 Xpm="32 6 2  1"
 "! c #AAD3DF"
@@ -1899,9 +1956,9 @@ Xpm="32 6 2  1"
 " !!  !!  !!  !!  !!  !!  !!  !! "
 " !!  !!  !!  !!  !!  !!  !!  !! "
 ;12345678901234567890123456789012
+String=River, Wadi (Intermittent)
 String1=0x01,Cours d’eau (intermittent)
 String2=0x02,Fluß (Periodisch)
-String3=0x04,River, Wadi (Intermittent)
 String4=0x03,Rivier (Periodiek)
 String7=0x15,Rzeka
 String8=0x10,Rio intermitente
@@ -1913,15 +1970,16 @@ CustomColor=No
 [_line]
 type=0x10a06
 ;GRMN_TYPE: //
+; not used by default style
 UseOrientation=N
 LineWidth=4
 BorderWidth=1
 Xpm="0 0 2 0"
 "1 c #BBBBBB"
 "2 c #949494"
+String=Platform
 String1=0x01,Quai
 String2=0x02,Plattform
-String3=0x04,Platform
 String4=0x03,Perron
 String7=0x15,Peron
 String8=0x10,Plataforma
@@ -1933,6 +1991,7 @@ CustomColor=No
 [_line]
 type=0x10c06
 ;GRMN_TYPE: //
+; not used by default style
 UseOrientation=Y
 Xpm="32 7 2  1"
 "! c #99CCCC"
@@ -1945,9 +2004,9 @@ Xpm="32 7 2  1"
 "!!####!!!!####!!!!####!!!!####!!"
 "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 ;12345678901234567890123456789012
+String=Road (Construction)
 String1=0x01,Route (en travaux)
 String2=0x02,Weg (Im bau)
-String3=0x04,Road (Construction)
 String4=0x03,Weg (In aanleg)
 String7=0x15,Droga (w budowie)
 String8=0x10,Rodovia em construção
@@ -1956,13 +2015,14 @@ ExtendedLabels=Y
 FontStyle=NoLabel (invisible)
 CustomColor=No
 [end]
+;
 [_point]
 type=0x001
 subtype=0x00
 ;GRMN_TYPE: Political Entities/CITY_10M/Large city with >10 million inhabitants/Non NT
+String=City (>1m)
 String1=0x01,Capitale
 String2=0x02,Hauptstadt
-String3=0x04,Capital
 String4=0x03,Hoofdstad
 String7=0x15,Stolica
 String8=0x10,Capital
@@ -1991,9 +2051,9 @@ DayXpm="11 11 2 1"   Colormode=16
 type=0x002
 subtype=0x00
 ;GRMN_TYPE: Political Entities/CITY_5M, LARGE_CITY/Large city center, typically 1M+ inhabitants/Non NT
+String=City (>800k)
 String1=0x01,Capitale
 String2=0x02,Hauptstadt
-String3=0x04,Capital
 String4=0x03,Hoofdstad
 String7=0x15,Stolica
 String8=0x10,Capital
@@ -2022,9 +2082,9 @@ DayXpm="11 11 2 1"   Colormode=16
 type=0x003
 subtype=0x00
 ;GRMN_TYPE: Political Entities/CITY_2M/Large city with a range of (2, 5] million inhabitants/Non NT
+String=City (>400k)
 String1=0x01,Ville (>200k)
 String2=0x02,Stadt (200t)
-String3=0x04,City (>200k)
 String4=0x03,Stad (>200k)
 String7=0x15,Miasto (>200 tys.)
 String8=0x10,Cidade (>200k)
@@ -2051,9 +2111,9 @@ DayXpm="9 9 2 1"   Colormode=16
 type=0x004
 subtype=0x00
 ;GRMN_TYPE: Political Entities/CITY_1M/Large city with a range of (1, 2] million inhabitants/Non NT
+String=City (>300k)
 String1=0x01,Ville (>200k)
 String2=0x02,Stadt (200t)
-String3=0x04,City (>200k)
 String4=0x03,Stad (>200k)
 String7=0x15,Miasto (>200 tys.)
 String8=0x10,Cidade (>200k)
@@ -2080,9 +2140,9 @@ DayXpm="9 9 2 1"   Colormode=16
 type=0x005
 subtype=0x00
 ;GRMN_TYPE: Political Entities/CITY_500K/City with the range of (0.5, 1] million inhabitants/Non NT
+String=City (>200k)
 String1=0x01,Ville (>200k)
 String2=0x02,Stadt (200t)
-String3=0x04,City (>200k)
 String4=0x03,Stad (>200k)
 String7=0x15,Miasto (>200 tys.)
 String8=0x10,Cidade (>200k)
@@ -2109,9 +2169,9 @@ DayXpm="9 9 2 1"   Colormode=16
 type=0x006
 subtype=0x00
 ;GRMN_TYPE: Political Entities/CITY_200K/City with the range of (200, 500] thousand inhabitants/Non NT
+String=Small City / Large Town
 String1=0x01,Ville (>50k)
 String2=0x02,Stadt (50t)
-String3=0x04,City (>50k)
 String4=0x03,Woonplaats (>50k)
 String7=0x15,Miasto (>50 tys.)
 String8=0x10,Cidade (>50k)
@@ -2138,9 +2198,9 @@ DayXpm="9 9 2 1"   Colormode=16
 type=0x007
 subtype=0x00
 ;GRMN_TYPE: Political Entities/CITY_100K/City with the range of (100, 200] thousand inhabitants/Non NT
+String=Small City / Medium Town
 String1=0x01,Ville (>10k)
 String2=0x02,Stadt (10t)
-String3=0x04,City (>10k)
 String4=0x03,Woonplaats (>10k)
 String7=0x15,Miasto (>10 tys.)
 String8=0x10,Cidade (>10k)
@@ -2159,9 +2219,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x008
 subtype=0x00
 ;GRMN_TYPE: Political Entities/CITY_50K, MEDIUM_CITY/Medium city center, typically 50K-1M inhabitants/Non NT
+String=Small City / Town
 String1=0x01,Village (>5k)
 String2=0x02,Dorf (>5t)
-String3=0x04,Village (>5k)
 String4=0x03,Dorp (>5k)
 String7=0x15,Wieś (>5 tys.)
 String8=0x10,Povoado (>5k)
@@ -2180,9 +2240,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x009
 subtype=0x00
 ;GRMN_TYPE: Political Entities/CITY_20K/City with the range of (20, 50] thousand inhabitants/Non NT
+String=Small Town / Village
 String1=0x01,Village (>5k)
 String2=0x02,Dorf (>5t)
-String3=0x04,Village (>5k)
 String4=0x03,Dorp (>5k)
 String7=0x15,Wieś (>5 tys.)
 String8=0x10,Povoado (>5k)
@@ -2201,9 +2261,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x00a
 subtype=0x00
 ;GRMN_TYPE: Political Entities/CITY_10K/City with the range of (10, 20] thousand inhabitants/Non NT
+String=Small Town / Suburb
 String1=0x01,Hameau
 String2=0x02,Ort, Weiler
-String3=0x04,Hamlet
 String4=0x03,Gehucht
 String7=0x15,Wioska
 String8=0x10,Lugarejo
@@ -2222,9 +2282,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x00b
 subtype=0x00
 ;GRMN_TYPE: Political Entities/CITY_5K/City with the range of (5, 10] thousand inhabitants/Non NT
+String=Hamlet
 String1=0x01,Nom
 String2=0x02,Name
-String3=0x04,Name
 String4=0x03,Naam
 String7=0x15,Nazwa
 String8=0x10,Nome
@@ -2243,9 +2303,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x021
 subtype=0x00
 ;GRMN_TYPE: //
+String=Exit
 String1=0x01,Sortie
 String2=0x02,Ausfahrt
-String3=0x04,Ext
 String4=0x03,Afrit
 String7=0x15,Zjazd
 String8=0x10,Saída
@@ -2267,9 +2327,9 @@ DayXpm="8 4 2 1"   Colormode=16
 type=0x021
 subtype=0x0f
 ;GRMN_TYPE: //
+String=Services
 String1=0x01,Sortie
 String2=0x02,Ausfahrt
-String3=0x04,Ext
 String4=0x03,Afrit
 String7=0x15,Zjazd
 String8=0x10,Saída
@@ -2291,9 +2351,9 @@ DayXpm="8 4 2 1"   Colormode=16
 type=0x02a
 subtype=0x00
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT/General restaurant of unknown genre/Non NT
+String=Restaurant
 String1=0x01,Restaurant
 String2=0x02,Restaurant
-String3=0x04,Restaurant
 String4=0x03,Restaurant
 String7=0x15,Restauracja
 String8=0x10,Restaurante
@@ -2327,9 +2387,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x01
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_AMERICAN/American cuisine/Non NT
+String=Restaurant (American/Burger)
 String1=0x01,Restaurant (Américain)
 String2=0x02,Restaurant
-String3=0x04,Restaurant (American)
 String4=0x03,Restaurant (Amerikaans)
 String7=0x15,Restauracja (Amerykańska)
 String8=0x10,Restaurante americano
@@ -2363,9 +2423,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x02
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_ASIAN/Asian cuisine/Non NT
+String=Restaurant (Asian)
 String1=0x01,Restaurant (Asiatique)
 String2=0x02,Restaurant (Asiatisch)
-String3=0x04,Restaurant (Asia)
 String4=0x03,Restaurant (Aziatisch)
 String7=0x15,Restauracja (Azjatycka)
 String8=0x10,Restaurante asiático
@@ -2399,9 +2459,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x03
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_BARBECUE/Barbecue cuisine/Non NT
+String=Restaurant (BBQ/Kebab)
 String1=0x01,Restaurant (Grill)
 String2=0x02,Restaurant
-String3=0x04,Restaurant (BBQ)
 String4=0x03,Restaurant (BBQ)
 String7=0x15,Restauracja (Grill)
 String8=0x10,Churrascaria
@@ -2435,9 +2495,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x04
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_CHINESE/Chinese cuisine/Non NT
+String=Restaurant (Chinese/Vietnamese)
 String1=0x01,Restaurant (Chinois)
 String2=0x02,Restaurant (Chinesisch)
-String3=0x04,Restaurant (Chinese)
 String4=0x03,Restaurant (Chinees)
 String7=0x15,Restauracja (Chińska)
 String8=0x10,Restaurante chinês
@@ -2471,9 +2531,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x05
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_DELI/Deli or sandwich shop/Non NT
+String=Deli/Bakery
 String1=0x01,Restaurant (Grec)
 String2=0x02,Restaurant (Griechisch)
-String3=0x04,Restaurant (Greek)
 String4=0x03,Restaurant (Delicatesse)
 String7=0x15,Restauracja (Grecka)
 String8=0x10,Restaurante grego
@@ -2507,9 +2567,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x06
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_INTRNTNL/International cuisine/Non NT
+String=Restaurant (International)
 String1=0x01,Restaurant (International)
 String2=0x02,Restaurant
-String3=0x04,Restaurant (International)
 String4=0x03,Restaurant (Internationaal)
 String7=0x15,Restauracja (Międzynarodowa)
 String8=0x10,Restaurante Internacional
@@ -2543,9 +2603,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x07
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_FAST_FOOD/Fast food establishment, i.e. McDonalds/Non NT
+String=Fast Food
 String1=0x01,Restauration rapide
 String2=0x02,Restaurant (Fastfood)
-String3=0x04,Restaurant (Fastfood)
 String4=0x03,Restaurant (Fastfood)
 String7=0x15,Restauracja (Fastfood)
 String8=0x10,Lanchonete
@@ -2572,9 +2632,9 @@ DayXpm="14 9 3 1"   Colormode=16
 type=0x02a
 subtype=0x08
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_ITALIAN/Italian cuisine/Non NT
+String=Restaurant (Italian)
 String1=0x01,Restaurant (Italien)
 String2=0x02,Restaurant (Italienisch)
-String3=0x04,Restaurant (Italian)
 String4=0x03,Restaurant (Italiaans)
 String7=0x15,Restauracja (Włoska)
 String8=0x10,Restaurante italiano
@@ -2608,9 +2668,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x09
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_MEXICAN/Mexican cuisine/Non NT
-String1=0x01,Restaurant (Mexicain)
+String=Restaurant (Mexican/Spanish)
+String1=0x01,Restaurant (Mexicain/P)
 String2=0x02,Restaurant (Mexikanisch)
-String3=0x04,Restaurant (Mexican)
 String4=0x03,Restaurant (Mexicaans)
 String7=0x15,Restauracja (Meksykańska)
 String8=0x10,Restaurante mexicano
@@ -2644,9 +2704,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x0a
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_PIZZA/Pizzeria/Non NT
+String=Pizzeria
 String1=0x01,Pizzeria
 String2=0x02,Restaurant (Pizza)
-String3=0x04,Restaurant (Pizza)
 String4=0x03,Restaurant (Pizza)
 String7=0x15,Restauracja (Pizza)
 String8=0x10,Pizzaria
@@ -2680,9 +2740,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x0b
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_SEAFOOD/Seafood restaurant/Non NT
+String=Restaurant (Seafood)
 String1=0x01,Restaurant (Poissons/Fruits de mer)
 String2=0x02,Restaurant (Fisch)
-String3=0x04,Restaurant (Fisch)
 String4=0x03,Restaurant (Vis)
 String7=0x15,Restauracja (Ryby)
 String8=0x10,Restaurante Frutos do Mar
@@ -2716,9 +2776,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x0c
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_STEAK/Grill and steak brew pub restaurant/Non NT
+String=Restaurant (Steak/Grill)
 String1=0x01,Restaurant (Steak)
 String2=0x02,Restaurant (Steak)
-String3=0x04,Restaurant (Steak)
 String4=0x03,Restaurant (Steak)
 String7=0x15,Restauracja (Steki)
 String8=0x10,Restaurante de carnes
@@ -2752,9 +2812,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x0d
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_DONUTS/Donut shop/Non NT
+String=Restaurant (Bagel/Donut)
 String1=0x01,Restaurant (Beignets)
 String2=0x02,Restaurant (Bagel)
-String3=0x04,Restaurant (Donuts)
 String4=0x03,Restaurant (Donuts)
 String7=0x15,Restauracja (Pączki)
 String8=0x10,Doceria
@@ -2784,9 +2844,9 @@ DayXpm="13 12 3 1"   Colormode=16
 type=0x02a
 subtype=0x0e
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_CAFES/Cafe or coffee shop/Non NT
+String=Cafe/Diner
 String1=0x01,Café
 String2=0x02,Cafe
-String3=0x04,Cafe
 String4=0x03,Cafe
 String7=0x15,Kawiarnia
 String8=0x10,Café
@@ -2816,9 +2876,9 @@ DayXpm="13 12 3 1"   Colormode=16
 type=0x02a
 subtype=0x0f
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_FRENCH/French cuisine/Non NT
+String=Restaurant (French)
 String1=0x01,Restaurant (Français)
 String2=0x02,Restaurant
-String3=0x04,Restaurant (French)
 String4=0x03,Restaurant (Frans)
 String7=0x15,Restauracja (Francuska)
 String8=0x10,Restaurante francês
@@ -2852,9 +2912,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x10
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_GERMAN/German cuisine/Non NT
+String=Restaurant (German)
 String1=0x01,Restaurant (Allemand)
 String2=0x02,Restaurant (Deutsch)
-String3=0x04,Restaurant (German)
 String4=0x03,Restaurant (Duits)
 String7=0x15,Restauracja (Niemiecka)
 String8=0x10,Restaurante alemão
@@ -2888,9 +2948,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x11
 ;GRMN_TYPE: Business - Food and Drink/RESTAURANT_BRITISH/British cuisine/Non NT
+String=Restaurant (British/Fish & Chips)
 String1=0x01,Restaurant (Anglais)
 String2=0x02,Restaurant
-String3=0x04,Restaurant (British)
 String4=0x03,Restaurant (Brits)
 String7=0x15,Restauracja (Angielska)
 String8=0x10,Restaurante inglês
@@ -2924,9 +2984,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x12
 ;GRMN_TYPE: //
+String=Restaurant (Speciality/Regional)
 String1=0x01,Restaurant (Spécialités)
 String2=0x02,Restaurant
-String3=0x04,Restaurant (Special)
 String4=0x03,Restaurant (Speciaal)
 String7=0x15,Restauracja (Specjalna)
 String8=0x10,Restaurante especial
@@ -2960,9 +3020,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x13
 ;GRMN_TYPE: //
+String=Restaurant (Other)
 String1=0x01,Restaurant (Végétarien)
 String2=0x02,Restaurant (Vegetarisch)
-String3=0x04,Restaurant (Vegetarian)
 String4=0x03,Restaurant (Vegetarisch)
 String7=0x15,Restauracja (Wegetariańska)
 String8=0x10,Restaurante vegetariano
@@ -2996,6 +3056,7 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02a
 subtype=0x14
 ;GRMN_TYPE: //
+; not used by default style
 String1=0x01,Restaurant (Régional)
 String2=0x02,Restaurant
 String3=0x04,Restaurant (Regional)
@@ -3032,9 +3093,9 @@ DayXpm="15 16 3 1"   Colormode=16
 type=0x02b
 subtype=0x01
 ;GRMN_TYPE: Business - Lodging/HOTEL/Hotel/Non NT
+String=Hotel/Motel
 String1=0x01,Hôtel
 String2=0x02,Hotel
-String3=0x04,Hotel
 String4=0x03,Hotel
 String7=0x15,Hotel
 String8=0x10,Hotel
@@ -3062,9 +3123,9 @@ DayXpm="21 10 2 1"   Colormode=16
 type=0x02b
 subtype=0x02
 ;GRMN_TYPE: Business - Lodging/BED_AND_BREAKFAST/Bed and breakfast inn/Non NT
+String=Bed & Breakfast/Guesthouse
 String1=0x01,Chambre d'hôtes
 String2=0x02,Pension
-String3=0x04,Guesthouse
 String4=0x03,Bed en breakfast
 String7=0x15,Pensjonat
 String8=0x10,Pensão
@@ -3099,9 +3160,9 @@ DayXpm="17 16 3 1"   Colormode=16
 type=0x02b
 subtype=0x05
 ;GRMN_TYPE: //
+String=Camp/Caravan site
 String1=0x01,Camping
 String2=0x02,Campingplatz
-String3=0x04,Campsite
 String4=0x03,Camping
 String7=0x15,Kemping
 String8=0x10,Camping
@@ -3132,9 +3193,9 @@ DayXpm="22 13 2 1"   Colormode=16
 type=0x02b
 subtype=0x06
 ;GRMN_TYPE: //
+String=Shelter
 String1=0x01,Abri
 String2=0x02,Schutzhütte
-String3=0x04,Shelter
 String4=0x03,Schuilplek
 String7=0x15,Schronienie
 String8=0x10,Cabana
@@ -3167,9 +3228,9 @@ DayXpm="16 16 2 1"   Colormode=16
 type=0x02b
 subtype=0x07
 ;GRMN_TYPE: //
+String=Wilderness Hut
 String1=0x01,Refuge
 String2=0x02,Bergschutzhütte
-String3=0x04,Shelter
 String4=0x03,Bergschuilhut
 String7=0x15,Schronisko
 String8=0x10,Cabana
@@ -3201,9 +3262,9 @@ DayXpm="14 14 2 1"   Colormode=16
 type=0x02c
 subtype=0x01
 ;GRMN_TYPE: Business - Attractions/THEME_PARK/Amusement or theme park, i.e. Disneyland/Non NT
+String=Amusement/Theme Park
 String1=0x01,Parc d'attractions
 String2=0x02,Freizeitpark
-String3=0x04,Themepark
 String4=0x03,Attractiepark
 String7=0x15,Park rozrywki
 String8=0x10,Parque temático / diversão
@@ -3222,9 +3283,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x02c
 subtype=0x02
 ;GRMN_TYPE: Business - Attractions/MUSEUM/Museum or historical society/Non NT
+String=Museum/Historical
 String1=0x01,Musée
 String2=0x02,Museum
-String3=0x04,Museum
 String4=0x03,Museum
 String7=0x15,Muzeum
 String8=0x10,Museu
@@ -3255,9 +3316,9 @@ DayXpm="20 13 2 1"   Colormode=16
 type=0x02c
 subtype=0x03
 ;GRMN_TYPE: Business - Attractions/LIBRARY/Library/Non NT
+String=Library
 String1=0x01,Bibliothèque
 String2=0x02,Bibliothek
-String3=0x04,Library
 String4=0x03,Bibliotheek
 String7=0x15,Biblioteka
 String8=0x10,Biblioteca
@@ -3287,9 +3348,9 @@ DayXpm="20 12 2 1"   Colormode=16
 type=0x02c
 subtype=0x04
 ;GRMN_TYPE: Business - Attractions/LANDMARK/Landmark/Non NT
+String=Landmark/Arts/Attraction/Viewpoint
 String1=0x01,Point de vue, œuvre d'art, attraction
 String2=0x02,Aussichtspunkt, Kunstwerk, Attraktion
-String3=0x04,Artwork,Attraction, Viewpoint
 String4=0x03,Bezienswaardigheid
 String7=0x15,Sztuka, Atrakcja, Punkt widokowy
 String8=0x10,Atração
@@ -3324,9 +3385,9 @@ DayXpm="12 17 2 1"   Colormode=16
 type=0x02c
 subtype=0x05
 ;GRMN_TYPE: Business - Attractions/SCHOOL/School/Non NT
+String=Education
 String1=0x01,École
 String2=0x02,Schule
-String3=0x04,Education
 String4=0x03,Educatie
 String7=0x15,Edukacja
 String8=0x10,Escola
@@ -3345,9 +3406,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x02c
 subtype=0x06
 ;GRMN_TYPE: Business - Attractions/GARDEN, PARK/Garden, park/Non NT
+String=Park/Garden/Playground
 String1=0x01,Aire de jeu
 String2=0x02,Spielplatz
-String3=0x04,Playground
 String4=0x03,Speelplaats
 String7=0x15,Plac zabaw
 String8=0x10,Parque infantil
@@ -3381,9 +3442,9 @@ DayXpm="18 17 2 1"   Colormode=16
 type=0x02c
 subtype=0x07
 ;GRMN_TYPE: Business - Attractions/ZOO/Zoo/Non NT
+String=Zoo/Aquarium
 String1=0x01,Zoo
 String2=0x02,Zoo
-String3=0x04,Zoo
 String4=0x03,Dierentuin
 String7=0x15,Zoo
 String8=0x10,Zoológico
@@ -3402,9 +3463,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x02c
 subtype=0x08
 ;GRMN_TYPE: Business - Attractions/ARENA/Arena or track/Non NT
+String=Arena/Track
 String1=0x01,Sport
 String2=0x02,Sport
-String3=0x04,Sport
 String4=0x03,Sport
 String7=0x15,Sport
 String8=0x10,Esporte
@@ -3423,9 +3484,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x02c
 subtype=0x09
 ;GRMN_TYPE: Business - Attractions/HALL/Auditorium or hall/Non NT
+String=Hall/Auditorium
 String1=0x01,Auditorium
 String2=0x02,Konferenzzentrum
-String3=0x04,Conference
 String4=0x03,Conferentiecentrum
 String7=0x15,Centrum konferencyjne
 String8=0x10,Conferência
@@ -3443,9 +3504,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x02c
 subtype=0x0a
 ;GRMN_TYPE: Business - Attractions/WINERY/Winery/Non NT
+String=Winery
 String1=0x01,Cave à vin
 String2=0x02,Weinkeller
-String3=0x04,Winery
 String4=0x03,Wijnmaker
 String7=0x15,Winiarnia
 String8=0x10,Adega
@@ -3463,9 +3524,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x02c
 subtype=0x0b
 ;GRMN_TYPE: Business - Attractions/PLACE_OF_WORSHIP/Religious place of worship/Non NT
+String=Place of Worship
 String1=0x01,Lieu de culte
 String2=0x02,Religiöses Gebäude
-String3=0x04,Religious building
 String4=0x03,Gebedshuis
 String7=0x15,Budynek religijny
 String8=0x10,Edifício religioso
@@ -3498,9 +3559,9 @@ DayXpm="12 15 2 1"   Colormode=16
 type=0x02c
 subtype=0x0c
 ;GRMN_TYPE: //
+String=Hot Spring / Volcano
 String1=0x01,Volcan
 String2=0x02,Vulkan
-String3=0x04,Vulcano
 String4=0x03,Vulkaan
 String7=0x15,Wulkan
 String8=0x10,Vulcão
@@ -3528,9 +3589,9 @@ DayXpm="14 10 2 1"   Colormode=16
 type=0x02c
 subtype=0x0d
 ;GRMN_TYPE: Business - Attractions/POW_MOSQUE/Religious place of worship/Non NT
+String=Tourist attraction
 String1=0x01,Attraction touristique
 String2=0x02,Touristenattraktion
-String3=0x04,Tourist attraction
 String4=0x03,Touristische attractie
 String7=0x15,Atrakcja turystyczna
 String8=0x10,Atração turística
@@ -3553,9 +3614,9 @@ DayXpm="10 5 2 1"   Colormode=16
 type=0x02d
 subtype=0x01
 ;GRMN_TYPE: Business - Entertainment/LIVE_THEATER/Live theater/Non NT
+String=Live Theatre
 String1=0x01,Théâtre
 String2=0x02,Theater
-String3=0x04,Theatre
 String4=0x03,Theater
 String7=0x15,Teatr
 String8=0x10,Teatro
@@ -3586,9 +3647,10 @@ DayXpm="18 13 2 1"   Colormode=16
 type=0x02d
 subtype=0x02
 ;GRMN_TYPE: Business - Entertainment/BAR/Bar or club/Non NT
+String=Bar/Nightclub
 String1=0x01,Bar
 String2=0x02,Bar
-String3=0x04,Bar
+String3=0x04,Pub
 String4=0x03,Bar
 String7=0x15,Bar
 String8=0x10,Bar
@@ -3617,6 +3679,7 @@ DayXpm="13 12 2 1"   Colormode=16
 type=0x02d
 subtype=0x03
 ;GRMN_TYPE: Business - Entertainment/MOVIE_THEATER/Movie theater or cinema/Non NT
+String=Movie Theatre
 String1=0x01,Cinéma
 String2=0x02,Kino
 String3=0x04,Cinema
@@ -3650,9 +3713,9 @@ DayXpm="16 13 2 1"   Colormode=16
 type=0x02d
 subtype=0x04
 ;GRMN_TYPE: Business - Entertainment/CASINO/Casino/Non NT
+String=Casino
 String1=0x01,Casino
 String2=0x02,Casino
-String3=0x04,Casino
 String4=0x03,Casino
 String7=0x15,Kasyno
 String8=0x10,Cassino
@@ -3685,9 +3748,9 @@ DayXpm="16 15 2 1"   Colormode=16
 type=0x02d
 subtype=0x05
 ;GRMN_TYPE: Business - Entertainment/GOLF_COURSE/Golf course/Non NT
+String=Golf Course
 String1=0x01,Golf
 String2=0x02,Golfplatz
-String3=0x04,Golf course
 String4=0x03,Golfbaan
 String7=0x15,Golf
 String8=0x10,Campo de golfe
@@ -3723,9 +3786,9 @@ DayXpm="19 18 2 1"   Colormode=16
 type=0x02d
 subtype=0x06
 ;GRMN_TYPE: Business - Entertainment/SKI_CENTER/Ski area or resort/Non NT
+String=Skiing Center/Resort
 String1=0x01,Ski
 String2=0x02,Ski
-String3=0x04,Ski
 String4=0x03,Ski
 String7=0x15,Narty
 String8=0x10,Esqui
@@ -3756,9 +3819,10 @@ DayXpm="16 13 2 1"   Colormode=16
 type=0x02d
 subtype=0x07
 ;GRMN_TYPE: Business - Entertainment/BOWLING/Bowling alley/Non NT
+String=Bowling Center
 String1=0x01,Bowling
 String2=0x02,Bowling
-String3=0x04,Bowling alley
+String3=0x04,Bowling Alley
 String4=0x03,Bowlingbaan
 String7=0x15,Kręgle
 String8=0x10,Boliche
@@ -3792,9 +3856,9 @@ DayXpm="18 16 2 1"   Colormode=16
 type=0x02d
 subtype=0x08
 ;GRMN_TYPE: Business - Entertainment/ICE_SKATING/Ice skating rink/Non NT
+String=Ice Skating
 String1=0x01,Patinoire
 String2=0x02,Eisbahn
-String3=0x04,Ice skating
 String4=0x03,Schaatsbaan
 String7=0x15,Lodowisko
 String8=0x10,Patinação no gelo
@@ -3825,9 +3889,9 @@ DayXpm="15 12 3 1"   Colormode=16
 type=0x02d
 subtype=0x09
 ;GRMN_TYPE: Business - Entertainment/SWIMMING_POOL/Swimming pool/Non NT
+String=Swimming Pool
 String1=0x01,Piscine
 String2=0x02,Schwimmbad
-String3=0x04,Swimmingpool
 String4=0x03,Zwembad
 String7=0x15,Basen
 String8=0x10,Piscina
@@ -3858,9 +3922,9 @@ DayXpm="19 13 2 1"   Colormode=16
 type=0x02d
 subtype=0x0a
 ;GRMN_TYPE: Business - Entertainment/FITNESS_CENTER/Fitness center or gym/Non NT
+String=Sports Fitnes Center
 String1=0x01,Centre sportif
 String2=0x02,Sportzentrum
-String3=0x04,Sports centre
 String4=0x03,Sportcentrum
 String7=0x15,Centrum sportowe
 String8=0x10,Centro esportivo
@@ -3879,9 +3943,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x02d
 subtype=0x0b
 ;GRMN_TYPE: Business - Entertainment/SPORT_AIRPORT/Sport or R-C airport/Non NT
+String=Public Sport Airport
 String1=0x01,Aéroport
 String2=0x02,Flughafen
-String3=0x04,Airport
 String4=0x03,Luchthaven
 String7=0x15,Lotnisko
 String8=0x10,Aeroporto
@@ -3915,9 +3979,9 @@ DayXpm="16 16 2 1"   Colormode=16
 type=0x02e
 subtype=0x01
 ;GRMN_TYPE: Business - Shopping/DEPARTMENT_STORE/Department store/Non NT
+String=Department Store
 String1=0x01,Hypermarché
 String2=0x02,Kaufhaus
-String3=0x04,Mall
 String4=0x03,Warenhuis
 String7=0x15,Centrum handlowe
 String8=0x10,Shopping Center
@@ -3951,9 +4015,9 @@ DayXpm="14 17 2 1"   Colormode=16
 type=0x02e
 subtype=0x02
 ;GRMN_TYPE: Business - Shopping/GROCERY_STORE/Grocery store/Non NT
+String=Grocery Store
 String1=0x01,Boulangerie
 String2=0x02,Bäckerei
-String3=0x04,Backery
 String4=0x03,Bakker
 String7=0x15,Piekarnia
 String8=0x10,Padaria
@@ -3978,9 +4042,9 @@ DayXpm="14 8 2 1"   Colormode=16
 type=0x02e
 subtype=0x03
 ;GRMN_TYPE: Business - Shopping/GENERAL_STORE/General store/Non NT
+String=General Merchandise
 String1=0x01,Supermarché
 String2=0x02,Supermarkt
-String3=0x04,Generic store
 String4=0x03,Algemeen
 String7=0x15,Supermarket
 String8=0x10,Loja
@@ -4008,9 +4072,9 @@ DayXpm="13 11 2 1"   Colormode=16
 type=0x02e
 subtype=0x04
 ;GRMN_TYPE: Business - Shopping/SHOPPING_CENTER/Shopping center or mall/Non NT
+String=Shopping Center
 String1=0x01,Centre commercial
 String2=0x02,Einkaufszentrum
-String3=0x04,Shopping center
 String4=0x03,Winkelcentrum
 String7=0x15,Centrum handlowe
 String8=0x10,Shopping Center
@@ -4044,9 +4108,9 @@ DayXpm="14 17 2 1"   Colormode=16
 type=0x02e
 subtype=0x05
 ;GRMN_TYPE: Business - Shopping/PHARMACY/Pharmacy/Non NT
+String=Pharmacy/Chemist
 String1=0x01,Pharmacie
 String2=0x02,Apotheke
-String3=0x04,Pharmacy
 String4=0x03,Apotheek
 String7=0x15,Apteka
 String8=0x10,Farmácia
@@ -4077,9 +4141,9 @@ DayXpm="10 14 2 1"   Colormode=16
 type=0x02e
 subtype=0x06
 ;GRMN_TYPE: Business - Shopping/CONVENIENCE_STORE/Convenience store/Non NT
+String=Convenience with Auto Fuel
 String1=0x01,Station-service
 String2=0x02,Tankstellenshop
-String3=0x04,Gasstation shop
 String4=0x03,Tankstation shop
 String7=0x15,Sklep na stacji paliw
 String8=0x10,Loja de conveniência
@@ -4101,9 +4165,10 @@ DayXpm="5 5 2 1"   Colormode=16
 type=0x02e
 subtype=0x07
 ;GRMN_TYPE: Business - Shopping/CLOTHING_RETAIL/Clothing store/Non NT
+String=Apparel
 String1=0x01,Magasin de vêtements
 String2=0x02,Bekleidungsgeschäft
-String3=0x04,Clothing store
+String3=0x04,Clothes Shop
 String4=0x03,Kleding
 String7=0x15,Sklep odzieżowy
 String8=0x10,Loja de roupas
@@ -4131,9 +4196,10 @@ DayXpm="14 11 2 1"   Colormode=16
 type=0x02e
 subtype=0x08
 ;GRMN_TYPE: Business - Shopping/HOME_AND_GARDEN_STORE/House and garden store/Non NT
+String=House & Garden
 String1=0x01,Jardinerie
 String2=0x02,Gartencentrum
-String3=0x04,Garden center
+String3=0x04,Garden Center
 String4=0x03,Huis- en tuin
 String7=0x15,Centrum ogrodnicze
 String8=0x10,Loja de jardinagem
@@ -4165,6 +4231,7 @@ DayXpm="16 15 2 1"   Colormode=16
 type=0x02e
 subtype=0x09
 ;GRMN_TYPE: Business - Shopping/HOME_FURNISHINGS_STORE/Furniture store/Non NT
+String=Home Furnishings
 String1=0x01,Magasin d’ameublement
 String2=0x02,Möbelgeschäft
 String3=0x04,Furniture
@@ -4194,9 +4261,9 @@ DayXpm="14 10 2 1"   Colormode=16
 type=0x02e
 subtype=0x0a
 ;GRMN_TYPE: Business - Shopping/SPECIALTY_RETAIL/Specialty store/Non NT
+String=Speciality Retail / Organic
 String1=0x01,Magasin
 String2=0x02,Geschäft
-String3=0x04,Shop
 String4=0x03,Winkel
 String7=0x15,Sklep
 String8=0x10,Loja
@@ -4218,9 +4285,9 @@ DayXpm="5 5 2 1"   Colormode=16
 type=0x02e
 subtype=0x0b
 ;GRMN_TYPE: Business - Shopping/SOFTWARE_RETAIL/Computer software store/Non NT
+String=Computer/Software
 String1=0x01,Magasin d’électronique
 String2=0x02,Computerhandel
-String3=0x04,Electronics
 String4=0x03,Elektronica
 String7=0x15,Elektronika
 String8=0x10,Loja de eletrônicos
@@ -4251,9 +4318,9 @@ DayXpm="14 14 2 1"   Colormode=16
 type=0x02e
 subtype=0x0c
 ;GRMN_TYPE: //
+String=Shop
 String1=0x01,Magasin
 String2=0x02,Geschäft
-String3=0x04,Shop
 String4=0x03,Winkel
 String7=0x15,Sklep
 String8=0x10,Loja
@@ -4275,9 +4342,9 @@ DayXpm="5 5 2 1"   Colormode=16
 type=0x02f
 subtype=0x01
 ;GRMN_TYPE: Business - Services/GAS_STATION/Gas, fuel station/Non NT
+String=Auto-Fuel Station
 String1=0x01,Station-essence
 String2=0x02,Tankstelle
-String3=0x04,Gas station
 String4=0x03,Tankstation
 String7=0x15,Stacja paliw
 String8=0x10,Posto de combustível
@@ -4310,9 +4377,9 @@ DayXpm="12 14 3 1"   Colormode=16
 type=0x02f
 subtype=0x02
 ;GRMN_TYPE: Business - Services/AUTO_RENTAL/Car rental location/Non NT
+String=Car rental
 String1=0x01,Location de voitures
 String2=0x02,Autoverleih
-String3=0x04,Car rental
 String4=0x03,Autoverhuur
 String7=0x15,Wypożyczalnia samochodów
 String8=0x10,Aluguel de carro
@@ -4343,9 +4410,9 @@ DayXpm="10 14 2 1"   Colormode=16
 type=0x02f
 subtype=0x03
 ;GRMN_TYPE: Business - Services/AUTO_REPAIR/Car repair, mechanic/Non NT
+String=Car Repairs
 String1=0x01,Réparation automobile
 String2=0x02,Autowerkstatt
-String3=0x04,Garage
 String4=0x03,Autogarage
 String7=0x15,Garaż
 String8=0x10,Garagem
@@ -4376,9 +4443,9 @@ DayXpm="10 14 2 1"   Colormode=16
 type=0x02f
 subtype=0x04
 ;GRMN_TYPE: Business - Services/AIRPORT/Airport/Non NT
+String=Airport
 String1=0x01,Aéroport
 String2=0x02,Flughafen
-String3=0x04,Airport
 String4=0x03,Luchthaven
 String7=0x15,Lotnisko
 String8=0x10,Aeroporto
@@ -4412,9 +4479,9 @@ DayXpm="16 16 2 1"   Colormode=16
 type=0x02f
 subtype=0x05
 ;GRMN_TYPE: Business - Services/POST_OFFICE/Post office/Non NT
+String=Post Office
 String1=0x01,Poste
 String2=0x02,Postamt
-String3=0x04,Postoffice
 String4=0x03,Postkantoor
 String7=0x15,Poczta
 String8=0x10,Correio
@@ -4441,9 +4508,9 @@ DayXpm="14 10 2 1"   Colormode=16
 type=0x02f
 subtype=0x06
 ;GRMN_TYPE: Business - Services/BANK/Bank/Non NT
+String=Bank/ATM
 String1=0x01,Banque
 String2=0x02,Bank
-String3=0x04,Bank
 String4=0x03,Bank
 String7=0x15,Bank
 String8=0x10,Banco
@@ -4472,9 +4539,9 @@ DayXpm="16 11 2 1"   Colormode=16
 type=0x02f
 subtype=0x07
 ;GRMN_TYPE: Business - Services/DEALER/Dealer of manufactured goods/Non NT
+String=Car/Parts Dealer
 String1=0x01,Concessionnaire automobile
 String2=0x02,Autohändler
-String3=0x04,Car dealer
 String4=0x03,Autodealer
 String7=0x15,Sprzedaż samochodów
 String8=0x10,Revenda de carros
@@ -4502,9 +4569,10 @@ DayXpm="13 10 2 1"   Colormode=16
 type=0x02f
 subtype=0x08
 ;GRMN_TYPE: Business - Services/GND_TRANSPORT/Ground transportation status, i.e. a bus station/Non NT
+String=Ground Transportation
 String1=0x01,Gare routière
 String2=0x02,Busbahnhof
-String3=0x04,Busstation
+String3=0x04,Bus/Railway/Ferry Station
 String4=0x03,Busstation
 String7=0x15,Przystanek autobusowy
 String8=0x10,Estação de ônibus
@@ -4539,9 +4607,10 @@ DayXpm="21 16 3 1"   Colormode=16
 type=0x02f
 subtype=0x09
 ;GRMN_TYPE: Business - Services/MARINA/Marina/Non NT
+String=Marina/Repairs & Storage
 String1=0x01,Magasin accastillage et bateaux
 String2=0x02,Bootsgeschäft
-String3=0x04,Yacht shop
+String3=0x04,Boat Chandler
 String4=0x03,Botenwinkel
 String7=0x15,Sklep żeglarski
 String8=0x10,Loja de iates
@@ -4563,9 +4632,10 @@ DayXpm="5 5 2 1"   Colormode=16
 type=0x02f
 subtype=0x0a
 ;GRMN_TYPE: Business - Services/WRECKER_SERVICE/Wrecker service/Non NT
+String=Wrecker Service
 String1=0x01,Dépanneuse
 String2=0x02,Schleppdienst
-String3=0x04,Wrecker service
+String3=0x04,Scrap Yard
 String4=0x03,Sleepdienst
 String7=0x15,Holowanie
 String8=0x10,Guincho
@@ -4587,9 +4657,9 @@ DayXpm="5 5 2 1"   Colormode=16
 type=0x02f
 subtype=0x0b
 ;GRMN_TYPE: Business - Services/PARKING/Parking/Non NT
+String=Parking
 String1=0x01,Parking
 String2=0x02,Parking
-String3=0x04,Parking
 String4=0x03,Parkeerplaats
 String7=0x15,Parking
 String8=0x10,Estacionamento
@@ -4620,9 +4690,10 @@ DayXpm="15 13 2 1"   Colormode=16
 type=0x02f
 subtype=0x0c
 ;GRMN_TYPE: Business - Services/REST_AREA_TOURIST_INFO/Rest area, Tourist information/Non NT
+String=Rest Area / Tourist Info
 String1=0x01,WC
 String2=0x02,WC
-String3=0x04,WC
+String3=0x04,Toilets
 String4=0x03,Toilet
 String7=0x15,Toaleta
 String8=0x10,Banheiro
@@ -4653,9 +4724,9 @@ DayXpm="15 14 2 1"   Colormode=16
 type=0x02f
 subtype=0x0d
 ;GRMN_TYPE: Business - Services/AUTO_CLUB/Automobile club/Non NT
+String=Automobile Club
 String1=0x01,Club automobile
 String2=0x02,Automobilclub
-String3=0x04,Automobile club
 String4=0x03,Auto club
 String7=0x15,Klub samochodowy
 String8=0x10,Clube automobilístico
@@ -4673,9 +4744,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x02f
 subtype=0x0e
 ;GRMN_TYPE: Business - Services/CAR_WASH/Car wash/Non NT
+String=Car Wash
 String1=0x01,Lavage-auto
 String2=0x02,Autowaschanlage
-String3=0x04,Carwash
 String4=0x03,Autowasstraat
 String7=0x15,Myjnia
 String8=0x10,Lava jato
@@ -4706,6 +4777,7 @@ DayXpm="10 14 2 1"   Colormode=16
 type=0x02f
 subtype=0x10
 ;GRMN_TYPE: Business - Services/SERVICES_PERSONAL/Personal services/Non NT
+String=Personal Service
 String1=0x01,Coiffeur
 String2=0x02,Friseur
 String3=0x04,Hairdresser
@@ -4739,9 +4811,9 @@ DayXpm="14 14 2 1"   Colormode=16
 type=0x02f
 subtype=0x12
 ;GRMN_TYPE: Business - Services/COMMUNICATION_SERVICES/Communication services/Non NT
+String=Communications
 String1=0x01,Wifi
 String2=0x02,Wifi
-String3=0x04,Wifi
 String4=0x03,Wifi
 String7=0x15,Wifi
 String8=0x10,Wifi
@@ -4769,6 +4841,7 @@ DayXpm="11 11 2 1"   Colormode=16
 type=0x02f
 subtype=0x13
 ;GRMN_TYPE: Business - Services/REPAIR_SERVICE/Repair service/Non NT
+String=Repair Service
 String1=0x01,Vélo
 String2=0x02,Rad
 String3=0x04,Bicycle
@@ -4800,9 +4873,9 @@ DayXpm="16 11 2 1"   Colormode=16
 type=0x02f
 subtype=0x14
 ;GRMN_TYPE: Business - Services/SOCIAL_SERVICES/Social services/Non NT
+String=Social Service
 String1=0x01,Services sociaux
 String2=0x02,Soziale Einrichtung
-String3=0x04,Social
 String4=0x03,Sociale instelling
 String7=0x15,Social
 String8=0x10,Social
@@ -4836,9 +4909,10 @@ DayXpm="19 16 2 1"   Colormode=16
 type=0x02f
 subtype=0x15
 ;GRMN_TYPE: Business - Services/UTILITY/Utility (gas, electric, water) services/Non NT
+String=Utility
 String1=0x01,Déchetterie
 String2=0x02,Recycling
-String3=0x04,Recycling
+String3=0x04,Postbox / Recycling
 String4=0x03,Glasbak
 String7=0x15,Recykling
 String8=0x10,Reciclagem
@@ -4872,9 +4946,9 @@ DayXpm="17 17 2 1"   Colormode=16
 type=0x02f
 subtype=0x16
 ;GRMN_TYPE: Business - Services/TRUCK_STOP/Truck stop/Non NT
+String=Truck Stop
 String1=0x01,Station-essence
 String2=0x02,Tankstelle
-String3=0x04,Gas station
 String4=0x03,Tankstation
 String7=0x15,Stacja paliw
 String8=0x10,Posto de combustível
@@ -4907,9 +4981,10 @@ DayXpm="12 14 3 1"   Colormode=16
 type=0x02f
 subtype=0x17
 ;GRMN_TYPE: Business - Services/TRANSIT_SERVICES/Mass transit services/Non NT
+String=Transit Service
 String1=0x01,Arrêt de bus
 String2=0x02,Haltestelle
-String3=0x04,Busstop
+String3=0x04,Bus/Tram Stop / Taxi Rank
 String4=0x03,Bushalte
 String7=0x15,Przystanek
 String8=0x10,Parada de ônibus
@@ -4938,9 +5013,9 @@ DayXpm="9 11 3 1"   Colormode=16
 type=0x030
 subtype=0x01
 ;GRMN_TYPE: Business - Emergency and Government/POLICE_STATION/Police station/Non NT
+String=Police Station
 String1=0x01,Police
 String2=0x02,Polizei
-String3=0x04,Police
 String4=0x03,Politiekantoor
 String7=0x15,Policja
 String8=0x10,Polícia
@@ -4973,9 +5048,9 @@ DayXpm="15 15 2 1"   Colormode=16
 type=0x030
 subtype=0x02
 ;GRMN_TYPE: Business - Emergency and Government/HOSPITAL/Hospital/Non NT
+String=Hospital
 String1=0x01,Hôpital
 String2=0x02,Krankenhaus
-String3=0x04,Hospital
 String4=0x03,Ziekenhuis
 String7=0x15,Szpital
 String8=0x10,Hospital
@@ -5007,9 +5082,9 @@ DayXpm="19 14 2 1"   Colormode=16
 type=0x030
 subtype=0x03
 ;GRMN_TYPE: Business - Emergency and Government/CITY_HALL/City hall/Non NT
+String=City Hall
 String1=0x01,Mairie
 String2=0x02,Rathaus
-String3=0x04,Townhall
 String4=0x03,Stadhuis
 String7=0x15,Ratusz
 String8=0x10,Prefeitura
@@ -5041,9 +5116,9 @@ DayXpm="16 14 2 1"   Colormode=16
 type=0x030
 subtype=0x04
 ;GRMN_TYPE: Business - Emergency and Government/COURTHOUSE/Courthouse/Non NT
+String=Court House
 String1=0x01,Tribunal
 String2=0x02,Gericht
-String3=0x04,Courthouse
 String4=0x03,Gerechtsgebouw
 String7=0x15,Sąd
 String8=0x10,Tribunal
@@ -5076,9 +5151,9 @@ DayXpm="18 15 2 1"   Colormode=16
 type=0x030
 subtype=0x05
 ;GRMN_TYPE: Business - Emergency and Government/COMMUNITY_CENTER/Community center/Non NT
+String=Community Center
 String1=0x01,Associations culturelles
 String2=0x02,Gemeindezentrum
-String3=0x04,Community centre
 String4=0x03,Gemeenschapscentrum
 String7=0x15,Ośrodek kultury
 String8=0x10,Centro comunitário
@@ -5111,9 +5186,9 @@ DayXpm="18 15 2 1"   Colormode=16
 type=0x030
 subtype=0x06
 ;GRMN_TYPE: Business - Emergency and Government/BORDER_CROSSING/Border crossing/Non NT
+String=Border Control
 String1=0x01,Douane
 String2=0x02,Zoll
-String3=0x04,Bordercontrol
 String4=0x03,Douane
 String7=0x15,Kontrola graniczna
 String8=0x10,Alfândega
@@ -5131,9 +5206,10 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x030
 subtype=0x07
 ;GRMN_TYPE: Business - Emergency and Government/GOV_OFFICE/Government Office/Non NT
+String=Government Office
 String1=0x01,Prison
 String2=0x02,Gefängnis
-String3=0x04,Prison
+String3=0x04,Prison / Public Building
 String4=0x03,Gevangenis
 String7=0x15,Więzienie
 String8=0x10,Prisão
@@ -5165,9 +5241,9 @@ DayXpm="16 14 2 1"   Colormode=16
 type=0x030
 subtype=0x08
 ;GRMN_TYPE: Business - Emergency and Government/FIRE_DEPT/Fire department/Non NT
+String=Fire Station
 String1=0x01,Pompiers
 String2=0x02,Feuerwehr
-String3=0x04,Firestation
 String4=0x03,Brandweer
 String7=0x15,Straż pożarna
 String8=0x10,Bombeiros
@@ -5202,9 +5278,9 @@ DayXpm="13 17 2 1"   Colormode=16
 type=0x032
 subtype=0x00
 ;GRMN_TYPE: //
+String=Barrier
 String1=0x01,Barrière
 String2=0x02,Poller
-String3=0x04,Bollard
 String4=0x03,Paaltje
 String7=0x15,Słupek
 String8=0x10,Barreira
@@ -5226,9 +5302,9 @@ DayXpm="5 5 2 1"   Colormode=16
 type=0x043
 subtype=0x00
 ;GRMN_TYPE: //
+String=Marina
 String1=0x01,Marina
 String2=0x02,Bootshafen
-String3=0x04,Marina
 String4=0x03,Jachthaven
 String7=0x15,Przystań
 String8=0x10,Marina
@@ -5247,6 +5323,7 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x043
 subtype=0x01
 ;GRMN_TYPE: //
+; not used by default style
 String1=0x01,Gare
 String2=0x02,Bahnhof
 String3=0x04,Trainstation
@@ -5274,6 +5351,7 @@ DayXpm="12 7 2 1"   Colormode=16
 type=0x043
 subtype=0x02
 ;GRMN_TYPE: //
+; not used by default style
 String1=0x01,Tramway
 String2=0x02,Straßenbahn
 String3=0x04,Tram / Metro
@@ -5298,6 +5376,7 @@ DayXpm="8 4 2 1"   Colormode=16
 type=0x043
 subtype=0x03
 ;GRMN_TYPE: //
+; not used by default style
 String1=0x01,Terminal Ferry
 String2=0x02,Fährhafen
 String3=0x04,Ferry terminal
@@ -5333,9 +5412,9 @@ DayXpm="11 15 2 1"   Colormode=16
 type=0x04a
 subtype=0x00
 ;GRMN_TYPE: Misc. Points of Interest/PICNIC_AREA/Picnic area/Non NT, NT
+String=Picnic Area
 String1=0x01,Pique-nique
 String2=0x02,Picknick
-String3=0x04,Picnic area
 String4=0x03,Picknick plaats
 String7=0x15,Miejsce piknikowe
 String8=0x10,Piquenique
@@ -5362,9 +5441,9 @@ DayXpm="13 10 2 1"   Colormode=16
 type=0x04c
 subtype=0x00
 ;GRMN_TYPE: Misc. Points of Interest/INFORMATION/Information/Non NT, NT
+String=Tourist information
 String1=0x01,Office du Tourisme
 String2=0x02,Touristeninformation
-String3=0x04,Tourist information
 String4=0x03,Touristen informatie
 String7=0x15,Informacja turystyczna
 String8=0x10,Informações turísticas
@@ -5394,6 +5473,7 @@ DayXpm="6 13 2 1"   Colormode=16
 type=0x04e
 subtype=0x00
 ;GRMN_TYPE: Misc. Points of Interest/RESTROOMS/Restrooms/Non NT, NT
+; not used by default style
 String1=0x01,WC
 String2=0x02,WC
 String3=0x04,WC
@@ -5427,9 +5507,9 @@ DayXpm="15 14 2 1"   Colormode=16
 type=0x050
 subtype=0x00
 ;GRMN_TYPE: Misc. Points of Interest/DRINKING_WATER/Drinking water/Non NT, NT
+String=Drinking Water
 String1=0x01,Eau potable
 String2=0x02,Trinkwasser
-String3=0x04,Drinking water
 String4=0x03,Drinkwater
 String7=0x15,Woda pitna
 String8=0x10,Bebedouro
@@ -5462,9 +5542,9 @@ DayXpm="13 16 2 1"   Colormode=16
 type=0x059
 subtype=0x04
 ;GRMN_TYPE: //
+String=Helipad
 String1=0x01,Héliport
 String2=0x02,Hubschrauberlandeplatz
-String3=0x04,Heli
 String4=0x03,Helihaven
 String7=0x15,Lądowisko helikopterowe
 String8=0x10,Heliponto
@@ -5498,9 +5578,9 @@ DayXpm="18 17 2 1"   Colormode=16
 type=0x064
 subtype=0x03
 ;GRMN_TYPE: Geographical Named Points of Interest/CEMETERY/Cemetery/Non NT, NT
+String=Cemetery
 String1=0x01,Cimetière
 String2=0x02,Friedhof
-String3=0x04,Cemetry
 String4=0x03,Begraafplaats
 String7=0x15,Cmentarz
 String8=0x10,Cemitério
@@ -5519,9 +5599,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x064
 subtype=0x0b
 ;GRMN_TYPE: Geographical Named Points of Interest/MILITARY/Military point of interest/Non NT, NT
+String=Military
 String1=0x01,Militaire
 String2=0x02,Militär
-String3=0x04,Military
 String4=0x03,Militair
 String7=0x15,Wojsko
 String8=0x10,Militar
@@ -5540,9 +5620,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x064
 subtype=0x11
 ;GRMN_TYPE: Geographical Named Points of Interest/TOWER/Tower/Non NT, NT
+String=Tower
 String1=0x01,Tour/Pylône
 String2=0x02,Turm
-String3=0x04,Tower
 String4=0x03,Toren
 String7=0x15,Wieża
 String8=0x10,Torre
@@ -5574,9 +5654,9 @@ DayXpm="10 15 2 1"   Colormode=16
 type=0x065
 subtype=0x05
 ;GRMN_TYPE: Geographical Named Points of Interest - Water Related/CANAL/Canal/Non NT, NT
+String=Canal / Lock
 String1=0x01,Barrage
 String2=0x02,Wehr
-String3=0x04,Weir
 String4=0x03,Stuw
 String7=0x15,Tama
 String8=0x10,Açude
@@ -5603,9 +5683,9 @@ DayXpm="9 9 2 1"   Colormode=16
 type=0x065
 subtype=0x08
 ;GRMN_TYPE: Geographical Named Points of Interest - Water Related/WATERFALL/Waterfall/Non NT, NT
+String=Waterfall
 String1=0x01,Chute d'eau
 String2=0x02,Wasserfall
-String3=0x04,Waterfall
 String4=0x03,Waterval
 String7=0x15,Wodospad
 String8=0x10,Cachoeira
@@ -5637,9 +5717,9 @@ DayXpm="15 14 2 1"   Colormode=16
 type=0x065
 subtype=0x0a
 ;GRMN_TYPE: Geographical Named Points of Interest - Water Related/GLACIER/Glacier/Non NT, NT
+String=Glacier
 String1=0x01,Glacier
 String2=0x02,Gletscher
-String3=0x04,Gletcher
 String4=0x03,Gletsjer
 String7=0x15,Lodowiec
 String8=0x10,Geleira
@@ -5657,9 +5737,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x065
 subtype=0x0c
 ;GRMN_TYPE: //
+String=Island
 String1=0x01,Île
 String2=0x02,Insel
-String3=0x04,Island
 String4=0x03,Eiland
 String7=0x15,Wyspa
 String8=0x10,Ilha
@@ -5678,9 +5758,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x065
 subtype=0x0f
 ;GRMN_TYPE: Geographical Named Points of Interest - Water Related/RESERVOIR/Reservoir/Non NT, NT
+String=Reserviour
 String1=0x01,Eau
 String2=0x02,Wasser
-String3=0x04,Water
 String4=0x03,Water
 String7=0x15,Woda
 String8=0x10,Água
@@ -5699,9 +5779,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x065
 subtype=0x11
 ;GRMN_TYPE: Geographical Named Points of Interest - Water Related/SPRING/Spring/Non NT, NT
+String=Spring
 String1=0x01,Source
 String2=0x02,Quelle
-String3=0x04,Well
 String4=0x03,Waterbron
 String7=0x15,Źródło
 String8=0x10,Poço
@@ -5728,9 +5808,9 @@ DayXpm="9 9 2 1"   Colormode=16
 type=0x065
 subtype=0x12
 ;GRMN_TYPE: Geographical Named Points of Interest - Water Related/STREAM/Stream/Non NT, NT
+String=Stream
 String1=0x01,Eau
 String2=0x02,Wasser
-String3=0x04,Water
 String4=0x03,Water
 String7=0x15,Woda
 String8=0x10,Água
@@ -5749,9 +5829,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x065
 subtype=0x13
 ;GRMN_TYPE: Geographical Named Points of Interest - Water Related/SWAMP/Swamp/Non NT, NT
+String=Swamp
 String1=0x01,Marais
 String2=0x02,Sumpf
-String3=0x04,Swamp
 String4=0x03,Moeras
 String7=0x15,Bagno
 String8=0x10,Pântano
@@ -5770,6 +5850,7 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x066
 subtype=0x01
 ;GRMN_TYPE: Geographical Named Points of Interest - Land Related/ARCH/Arch/Non NT, NT
+String=Arch
 String1=0x01,Grotte
 String2=0x02,Höhle
 String3=0x04,Cave
@@ -5795,6 +5876,7 @@ DayXpm="11 6 2 1"   Colormode=16
 type=0x066
 subtype=0x03
 ;GRMN_TYPE: Geographical Named Points of Interest - Land Related/BASIN/Basin/Non NT, NT
+String=Basin
 String1=0x01,Eau
 String2=0x02,Wasser
 String3=0x04,Water
@@ -5816,9 +5898,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x066
 subtype=0x04
 ;GRMN_TYPE: Geographical Named Points of Interest - Land Related/BEACH/Beach/Non NT, NT
+String=Beach
 String1=0x01,Plage
 String2=0x02,Strand
-String3=0x04,Beach
 String4=0x03,Strand
 String7=0x15,Plaża
 String8=0x10,Praia
@@ -5837,9 +5919,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x066
 subtype=0x06
 ;GRMN_TYPE: Geographical Named Points of Interest - Land Related/CAPE/Cape/Non NT, NT
+String=Cape
 String1=0x01,Cap
 String2=0x02,Kap
-String3=0x04,Cape
 String4=0x03,Kaap
 String7=0x15,Przylądek
 String8=0x10,Cabo
@@ -5857,9 +5939,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x066
 subtype=0x07
 ;GRMN_TYPE: Geographical Named Points of Interest - Land Related/CLIFF/Cliff/Non NT, NT
+String=Cliff
 String1=0x01,Falaise
 String2=0x02,Klippe
-String3=0x04,Cliff
 String4=0x03,Klif
 String7=0x15,Klif
 String8=0x10,Penhasco
@@ -5877,9 +5959,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x066
 subtype=0x12
 ;GRMN_TYPE: Geographical Named Points of Interest - Land Related/RESERVE/Reserve/Non NT, NT
+String=Nature Reserve
 String1=0x01,Réserve naturelle
 String2=0x02,Naturschutzgebiet
-String3=0x04,Nature reserve
 String4=0x03,Natuurgebied
 String7=0x15,Rezerwat przyrody
 String8=0x10,Reserva natural
@@ -5898,9 +5980,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x066
 subtype=0x14
 ;GRMN_TYPE: Geographical Named Points of Interest - Land Related/ROCK/Rock/Non NT, NT
+String=Rock
 String1=0x01,Roche
 String2=0x02,Felsen
-String3=0x04,Rock
 String4=0x03,Rotsen
 String7=0x15,Skała
 String8=0x10,Rochedo
@@ -5919,9 +6001,9 @@ DayXpm="1 1 2 1"   Colormode=16
 type=0x066
 subtype=0x16
 ;GRMN_TYPE: Geographical Named Points of Interest - Land Related/SUMMIT/Summit, top of a hill or mountain/Non NT, NT
+String=Summit
 String1=0x01,Sommet
 String2=0x02,Gipfel
-String3=0x04,Summit
 String4=0x03,Bergtop
 String7=0x15,Szczyt
 String8=0x10,Pico
@@ -5949,9 +6031,9 @@ DayXpm="14 10 2 1"   Colormode=16
 type=0x066
 subtype=0x18
 ;GRMN_TYPE: Geographical Named Points of Interest - Land Related/WOODS/Wooded area/Non NT, NT
+String=Woods
 String1=0x01,Forêt
 String2=0x02,Wald
-String3=0x04,Woods
 String4=0x03,Bos
 String7=0x15,Drzewa
 String8=0x10,Mata / Bosque

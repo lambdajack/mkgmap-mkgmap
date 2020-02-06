@@ -17,21 +17,19 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
-import java.nio.CharBuffer;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
-import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CharsetDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.MapFailedException;
-import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.srt.Sort;
 import uk.me.parabola.imgfmt.app.typ.TYPFile;
 import uk.me.parabola.imgfmt.app.typ.TypData;
@@ -85,7 +83,7 @@ public class TypCompiler implements MapProcessor {
 			param.setFamilyId(family);
 		if (product != -1)
 			param.setProductId(product);
-		if (cp != -1 && param.getCodePage() == 0)
+		if (cp != -1)
 			param.setCodePage(cp);
 
 		File outFile = new File(filename);
@@ -123,7 +121,7 @@ public class TypCompiler implements MapProcessor {
 	 * @throws FileNotFoundException If the file doesn't exist.
 	 * @throws SyntaxException All user correctable problems in the input file.
 	 */
-	private TypData compile(String filename, String charset, Sort sort)
+	private static TypData compile(String filename, String charset, Sort sort)
 			throws FileNotFoundException, SyntaxException
 	{
 		TypTextReader tr = new TypTextReader();
@@ -131,16 +129,13 @@ public class TypCompiler implements MapProcessor {
 		TypData data = tr.getData();
 
 		data.setSort(sort);
-		try {
-			Reader r = new BufferedReader(new InputStreamReader(new FileInputStream(filename), charset));
-			try {
-				tr.read(filename, r);
-			} finally {
-				Utils.closeFile(r);
-			}
+		try (Reader r = new BufferedReader(new InputStreamReader(new FileInputStream(filename), charset))) {
+			tr.read(filename, r, charset);
 		} catch (UnsupportedEncodingException e) {
 			// Not likely to happen as we should have already used this character set!
 			throw new MapFailedException("Unsupported character set", e);
+		} catch (IOException e) {
+			throw new ExitException("Unable to read/close file " + filename);
 		}
 
 		return tr.getData();
@@ -149,7 +144,7 @@ public class TypCompiler implements MapProcessor {
 	/**
 	 * Write the type file out from the compiled form to the given name.
 	 */
-	private void writeTyp(TypData data, File file) throws IOException {
+	private static void writeTyp(TypData data, File file) throws IOException {
 		try (FileChannel channel = FileChannel.open(file.toPath(),
 				StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.READ))
 		{
@@ -204,79 +199,88 @@ public class TypCompiler implements MapProcessor {
 
 
 	class CharsetProbe {
-		private String codePage;
-		private CharsetEncoder encoder;
-
-		public CharsetProbe() {
-			setCodePage("latin1");
-		}
-
-		private void setCodePage(String codePage) {
-			if ("cp65001".equalsIgnoreCase(codePage)) {
-				this.codePage = "utf-8";
-				this.encoder = StandardCharsets.UTF_8.newEncoder();
-			} else {
-				this.codePage = codePage;
-				this.encoder = Charset.forName(codePage).newEncoder();
-			}
-		}
+		// TODO: this should could be moved to somewhere like util and used on other text files
+		// except looking for Codepage is particular to Typ files
+		// and want to have ability to return default environment decoder
+		// (ie inputStream without 2nd parameter)
 
 		private String probeCharset(String file) {
-			String readingCharset = "utf-8";
 
-			try {
-				tryCharset(file, readingCharset);
-				return readingCharset;
-			} catch (TypLabelException e) {
-				try {
-					readingCharset = e.getCharsetName();
-					tryCharset(file, readingCharset);
-				} catch (Exception e1) {
-					return "utf-8";
-				}
-			}
+			final String BOM_UTF_8    = "\u00EF\u00BB\u00BF";
+			final String BOM_UTF_16LE = "\u00FF\u00FE";
+			final String BOM_UTF_16BE = "\u00FE\u00FF";
+			final String BOM_UTF_32LE = "\u00FF\u00FE\u0000\u0000";
+			final String BOM_UTF_32BE = "\u0000\u0000\u00FE\u00FF";
 
-			return readingCharset;
-		}
+			final Charset byteCharNoMap = StandardCharsets.ISO_8859_1; // byteVal == charVal
+			final CharsetDecoder utf8Decoder = StandardCharsets.UTF_8.newDecoder();
 
-		private void tryCharset(String file, String readingCharset) {
-
-			try (InputStream is = new FileInputStream(file); BufferedReader br = new BufferedReader(new InputStreamReader(is, readingCharset))) {
-
+			String charset = null;
+			boolean validUTF8 = true;
+			try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), byteCharNoMap))) {
 				String line;
-				while ((line = br.readLine()) != null) {
+				int lineNo = 0;
+				do {
+					line = br.readLine();
+					if (line == null)
+						break;
+					++lineNo;
 					if (line.isEmpty())
 						continue;
+					if (lineNo <= 2) { // only check the first few lines for these
+						if (line.contains(BOM_UTF_8))
+							charset = "UTF-8";
+						else if (line.contains(BOM_UTF_32LE)) // must test _32 before _16
+							charset = "UTF-32LE";
+						else if (line.contains(BOM_UTF_32BE))
+							charset = "UTF-32BE";
+						else if (line.contains(BOM_UTF_16LE))
+							charset = "UTF-16LE";
+						else if (line.contains(BOM_UTF_16BE))
+							charset = "UTF-16BE";
+						if (charset != null)
+							break;
 
-					// This is a giveaway the file is in utf-something, so ignore anything else
-					if (line.charAt(0) == 0xfeff)
-						return;
-
-					if (line.startsWith("CodePage=")) {
-						String[] split = line.split("=");
-						try {
-							if (split.length > 1)
-								setCodePage("cp" + Integer.decode(split[1].trim()));
-						} catch (NumberFormatException e) {
-							setCodePage("cp1252");
+						int strInx = line.indexOf("-*- coding:"); // be lax about start/end
+						if (strInx >= 0) {
+							charset = line.substring(strInx+11).trim();
+							strInx = charset.indexOf(' ');
+							if (strInx >= 0)
+								charset = charset.substring(0, strInx);
+							break;
 						}
 					}
 
-					if (line.startsWith("String")) {
-						CharBuffer cb = CharBuffer.wrap(line);
-						if (encoder != null)
-							encoder.encode(cb);
+					// special for TypFile; to be compatible with possible old usage
+					if (line.startsWith("CodePage=")) {
+						charset = line.substring(9).trim();
+						try {
+							int codePage = Integer.decode(charset);
+							if (codePage == 65001)
+								charset = "UTF-8";
+							else
+								charset = "cp" + codePage;
+						} catch (NumberFormatException e) {
+						}
+						break;
 					}
-				}
-			} catch (UnsupportedEncodingException | CharacterCodingException e) {
-				throw new TypLabelException(codePage);
 
+					if (validUTF8) { // test the line for being valid UTF-8
+						ByteBuffer asBytes = byteCharNoMap.encode(line);
+						try { // arbitrary sequences of bytes > 127 tend not to be UTF8
+							/*CharBuffer asChars =*/ utf8Decoder.decode(asBytes);
+						} catch (CharacterCodingException e) {
+							validUTF8 = false;
+							// don't stop as might still get coding directive
+						}
+					}
+				} while (true);
 			} catch (FileNotFoundException e) {
 				throw new ExitException("File not found " + file);
-
 			} catch (IOException e) {
-				throw new ExitException("Could not read file " + file);
+				throw new ExitException("Unable to read file " + file);
 			}
+			return charset != null ? charset : (validUTF8 ? "UTF-8" : "cp1252");
 		}
 	}
 }

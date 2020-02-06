@@ -36,12 +36,12 @@ public class ConvertedWay {
 	private final int index;
 	private final Way way;				// with tags after Style processing
 	private final GType gt;
+	private final boolean isRoad;
 
 	private byte roadClass;			// 0-4
 	private byte roadSpeed;			// 0-7
 	private byte mkgmapAccess; 		// bit mask, see ACCESS_TAGS 
 	private final byte routeFlags;	// bit mask, see ROUTING_TAGS
-	private boolean isRoad;
 	private boolean reversed;		// points were reversed
 	private boolean overlay;		// this is a non-routable overlay line that for a road 
 	
@@ -73,10 +73,12 @@ public class ConvertedWay {
 		// copy all other attributes
 		this.index = other.index;
 		this.gt = other.gt;
+		this.isRoad	 = other.isRoad;
 		this.roadClass = other.roadClass;
 		this.roadSpeed = other.roadSpeed;
 		this.mkgmapAccess = other.mkgmapAccess;
 		this.routeFlags = other.routeFlags;
+		this.overlay = other.overlay;
 	}
 	
 	public int getIndex(){

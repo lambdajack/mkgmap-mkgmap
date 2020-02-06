@@ -13,7 +13,8 @@
 package uk.me.parabola.mkgmap.reader.hgt;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
@@ -88,7 +89,8 @@ public class HGTList {
 	 */
 	private static BitSet compileHGTList(String filename) throws IOException {
 		final Pattern hgtPattern =  Pattern.compile("([sSnN])(\\d{2})([eEwW])(\\d{3}).*");
-		try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+		// maybe should be changed from using DefaultCharset to UTF-8
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(filename)/*NB: DefaultCharset*/))) {
 			BitSet bs = new BitSet(180*360);
 			String strLine;
 			while ((strLine = br.readLine()) != null) {
