@@ -47,6 +47,7 @@ import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Tags;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.util.EnhancedProperties;
+import uk.me.parabola.util.IsInUtil;
 import uk.me.parabola.util.Java2DConverter;
 import uk.me.parabola.util.MultiHashMap;
 import uk.me.parabola.util.ShapeSplitter;
@@ -800,6 +801,7 @@ public class BoundaryUtil {
 		}
 		return splits;
 	}
+	
     /**
      * Tests if point is inside an area. 
      * @param point the point to test
@@ -836,60 +838,7 @@ public class BoundaryUtil {
     	if (polygonNodes == null)
     		return false;
 
-    	return insidePolygon(point, onBoundary, polygonNodes);
+    	return IsInUtil.insidePolygon(point, onBoundary, polygonNodes);
     }
     
-    /**
-     * Check if node is in polygon using winding counter. 
-     * Based on code from Dan Sunday, but allows to define how to handle nodes on boundary.   
-     * @param p the point to test
-     * @param onBoundary the value that should be returned if the point is on the boundary
-     * @param shape list of points describing the polygon
-     * @return true if p is inside the polygon, false if outside, the value of onBoundary if its on the boundary
-     * <p>
-     * Copyright 2000 softSurfer, 2012 Dan Sunday
-     * This code may be freely used and modified for any purpose
-     * providing that this copyright notice is included with it.
-     * SoftSurfer makes no warranty for this code, and cannot be held
-     * liable for any real or imagined damage resulting from its use.
-     * Users of this code must verify correctness for their application.     
-     * See http://geomalgorithms.com/a03-_inclusion.html
-     */
-    public static final boolean insidePolygon (final Coord p, boolean onBoundary, List<Coord> shape) {
-        final int y = p.getHighPrecLat();
-        final int len = shape.size();
-        // the winding number counter
-        int wn = 0;
-        Coord c = shape.get(0), n; // current & next points from vertex array
-       
-		for (int i = 0; ++i < len; c = n) {
-			n = shape.get(i);
-			if (p.highPrecEquals(n)) {
-				return onBoundary;
-			}
-			if (c.getHighPrecLat() <= y) { // starting y <= p.y
-				// an upward crossing and p left of edge:
-				if (n.getHighPrecLat() > y) {
-					long l = p.isLeft(c, n);
-					if (l > 0) {
-						++wn;
-					} else if (l == 0) {
-						return onBoundary; 
-					}
-				}
-
-			} else if (n.getHighPrecLat() <= y) {
-				// a downward crossing and p right of edge.
-				long l = p.isLeft(c, n);
-				if (l < 0) {
-					--wn;
-				} else if (l == 0) {
-					return onBoundary; 
-				}
-			}
-		}
-       
-        return wn != 0; // if 0 point is outside
-    }
-	
 }
