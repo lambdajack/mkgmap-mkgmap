@@ -39,7 +39,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import uk.me.parabola.imgfmt.ExitException;
-import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.Options;
 import uk.me.parabola.mkgmap.general.LevelInfo;

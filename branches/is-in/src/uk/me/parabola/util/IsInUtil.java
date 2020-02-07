@@ -16,7 +16,6 @@ package uk.me.parabola.util;
 import java.awt.geom.Path2D;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Set;
@@ -415,8 +414,6 @@ public class IsInUtil {
 			} 
 			return IntersectionStatus.TOUCHING;
 		}
-		GpxCreator.createGpx("e:/ld/s", Arrays.asList(x,s,y));
-		GpxCreator.createGpx("e:/ld/l", Arrays.asList(a,s,b));
 
 		if (map.size() == 3) {
 			if (xpos < 0) {

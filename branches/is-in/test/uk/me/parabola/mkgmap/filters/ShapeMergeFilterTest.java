@@ -474,11 +474,6 @@ public class ShapeMergeFilterTest {
 		List<MapShape> res = smf.merge(Arrays.asList(s1,s2));
 		assertTrue(testId, res != null);
 		assertEquals(testId,expectedNumShapes, res.size() );
-//		if (res.get(0).getPoints().size() != expectedNumPoints){
-//			GpxCreator.createGpx("e:/ld/s1", s1.getPoints());
-//			GpxCreator.createGpx("e:/ld/s2", s2.getPoints());
-//			GpxCreator.createGpx("e:/ld/res", res.get(0).getPoints());
-//		}
 		assertEquals(testId, expectedNumPoints, res.get(0).getPoints().size());
 		// TODO: test shape size
 	}
