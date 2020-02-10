@@ -16,7 +16,6 @@ package uk.me.parabola.util;
 import java.awt.geom.Path2D;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Set;
