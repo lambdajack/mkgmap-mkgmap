@@ -1,4 +1,4 @@
-/*
+	/*
  * Copyright (C) 2019.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -22,13 +22,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import uk.me.parabola.imgfmt.app.Area;
-import uk.me.parabola.imgfmt.app.Coord;
-import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Element;
+import uk.me.parabola.mkgmap.reader.osm.ElementSaver;
 import uk.me.parabola.mkgmap.reader.osm.FeatureKind;
 import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
-import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.mkgmap.reader.osm.Node;
+import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.mkgmap.scan.SyntaxException;
 import uk.me.parabola.util.ElementQuadTree;
 import uk.me.parabola.util.IsInUtil;
@@ -39,11 +38,8 @@ import uk.me.parabola.util.IsInUtil;
  *
  */
 public class IsInFunction extends StyleFunction {
-	private static final Logger log = Logger.getLogger(IsInFunction.class);
-	private static final boolean SIMULATE_UNIT_TEST = false; 
-
 	private ElementQuadTree qt;
-
+	
 	public IsInFunction() {
 		super(null);
 		reqdNumParams = 3; // ??? maybe have something to indicate variable...
@@ -74,8 +70,6 @@ public class IsInFunction extends StyleFunction {
 			answer = true;
 		else if ((flags & IsInUtil.IN) != 0 && ("any".equals(mode) || (flags & IsInUtil.OUT) == 0)) {
 			answer = true;
-		} else if (flags == (IsInUtil.ON | IsInUtil.HAS_COMMON_POINTS)) {
-			answer = true;
 		} 
 		
 		return String.valueOf(answer);
@@ -83,58 +77,7 @@ public class IsInFunction extends StyleFunction {
 
 	@Override
 	public String value(Element el) {
-//		if ("w15".equals(el.getTag("name"))) {
-//			long dd = 4;
-//		}
-		String res = calcImpl(el);
-		if (SIMULATE_UNIT_TEST) { 
-			String expected = el.getTag("expected");
-			if (expected != null && !"?".equals(expected) && "landuse".equals(params.get(0)) && "residential".equals(params.get(1))) {
-				if (el instanceof Way) {
-
-					Way w2 = (Way) el.copy();
-					Collections.reverse(w2.getPoints());
-					String res2 = calcImpl(w2);
-					if (!res.equals(res2)) {
-						log.error(el.getTag("name"), res, res2, params, "oops reverse");
-					}
-					if (w2.hasIdenticalEndPoints()) {
-						List<Coord> points = w2.getPoints();
-						for (int i = 1; i < w2.getPoints().size(); i++) {
-							points.remove(points.size() - 1);
-							Collections.rotate(points, 1);
-							points.add(points.get(0));
-							res2 = calcImpl(w2);
-							if (!res.equals(res2)) {
-								log.error(el.getTag("name"), res, res2, params, "oops rotate",i);
-								calcImpl(w2);
-							}
-						}
-					}
-				}
-				boolean b1 = Boolean.parseBoolean(res);
-				boolean in = "in".equals(expected);
-				boolean straddle = "straddle".equals(expected);
-				boolean out = "out".equals(expected);
-				if (b1 && out) {
-					log.error(el.getTag("name"), res, params, "oops");
-				}
-				if ("any".equals(params.get(2))) {
-					if (!b1 && (in || straddle)) {
-						log.error(el.getTag("name"), res, params, "oops");
-					}
-				}
-				if ("all".equals(params.get(2))) {
-					if (!b1 && in) {
-						log.error(el.getTag("name"), res, params, "oops");
-					}
-					if (b1 && (straddle)) {
-						log.error(el.getTag("name"), res, params, "oops");
-					}
-				}
-			}
-		}
-		return res;
+		return calcImpl(el);
 	}
 	
 	@Override
@@ -176,19 +119,25 @@ public class IsInFunction extends StyleFunction {
 	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
 		if (qt != null)
 			return;
+		qt = buildTree(elementSaver, params.get(0), params.get(1));
+	}
+
+	
+	public static ElementQuadTree buildTree(ElementSaver elementSaver, String tagKey, String tagVal) {
 		List<Element> matchingPolygons = new ArrayList<>();
 		for (Way w : elementSaver.getWays().values()) {
 			if (w.isComplete() && w.hasIdenticalEndPoints()
 					&& !"polyline".equals(w.getTag(MultiPolygonRelation.STYLE_FILTER_TAG))) {
-				String val = w.getTag(params.get(0));
-				if (val != null && val.equals(params.get(1))) {
+				String val = w.getTag(tagKey);
+				if (val != null && val.equals(tagVal)) {
 					matchingPolygons.add(w);
 				}
 			}
 		}
 		if (!matchingPolygons.isEmpty()) {
-			qt = new ElementQuadTree(elementSaver.getBoundingBox(), matchingPolygons);
+			return new ElementQuadTree(elementSaver.getBoundingBox(), matchingPolygons);
 		}
+		return null;
 	}
 
 	@Override

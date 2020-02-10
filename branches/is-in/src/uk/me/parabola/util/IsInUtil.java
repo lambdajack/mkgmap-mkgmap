@@ -16,6 +16,7 @@ package uk.me.parabola.util;
 import java.awt.geom.Path2D;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Set;
@@ -50,11 +51,9 @@ import uk.me.parabola.mkgmap.reader.osm.Way;
  *
  */
 public class IsInUtil {
-
 	public static final int IN = 0x01;
 	public static final int ON = 0x02;
 	public static final int OUT = 0x04;
-	public static final int HAS_COMMON_POINTS = 0x08;
 
 	public static final int IN_ON_OUT = IN | ON | OUT;
 
@@ -63,11 +62,11 @@ public class IsInUtil {
 	}
 
 	/**
-	 * Calculate status 
-	 * @param kind
-	 * @param el
-	 * @param polygons
-	 * @return
+	 * Calculate status of element regarding a list of polygons.  
+	 * @param kind type of rule (POINT, POLYLINE, POLYGON) 
+	 * @param el the element 
+	 * @param polygons the polygons which should be tested 
+	 * @return integer containing flags IN, ON, and OUT 
 	 */
 	public static int calcInsideness(FeatureKind kind, Element el, Set<Way> polygons) {
 		int result = 0;  
@@ -107,13 +106,16 @@ public class IsInUtil {
 					for (List<Coord> shape : mergedShapes) {
 						(Way.clockwise(shape) ? outers : holes).add(shape);
 					}
+					
 					// check if any outer intersects with the way
 					for (List<Coord> shape : outers) {
 						int tmpRes = isLineInShape(kind, w.getPoints(), shape, elementBbox);
-						result |= tmpRes & ON;
-						if ((tmpRes & IN) != 0 || tmpRes == (ON | HAS_COMMON_POINTS)) {
-							result = tmpRes;
-							break;
+						if (tmpRes != OUT) {
+							result |= tmpRes;
+							if ((tmpRes & IN) != 0) {
+								result = tmpRes;
+								break;
+							}
 						}
 					}
 					if ((result & IN) != 0 && !holes.isEmpty()) {
@@ -121,8 +123,6 @@ public class IsInUtil {
 						// check if any hole intersects with the way
 						for (List<Coord> hole : holes) {
 							int tmpRes = isLineInShape(kind, w.getPoints(), hole, elementBbox);
-							if((tmpRes & HAS_COMMON_POINTS) != 0)
-								return ON; // hole equals element 
 							if (tmpRes == IN_ON_OUT)
 								return tmpRes;
 							if ((tmpRes & IN) != 0) 
@@ -131,69 +131,17 @@ public class IsInUtil {
 							
 						}
 					}
+					
 				} else if (polygons.size() == 1) {
 					result = isLineInShape(kind, w.getPoints(), (polygons.iterator().next()).getPoints(), elementBbox);
 				}
 			}
 		}
+		if (result == 0)
+			result = OUT;
 		return result;
 	}
 
-//	public String value(Element el) {
-//		if ("w15".equals(el.getTag("name"))) {
-//			long dd = 4;
-//		}
-//		String res = calcImpl(el);
-//		if (SIMULATE_UNIT_TEST) { 
-//			String expected = el.getTag("expected");
-//			if (expected != null && !"?".equals(expected) && "landuse".equals(params.get(0)) && "residential".equals(params.get(1))) {
-//				if (el instanceof Way) {
-//
-//					Way w2 = (Way) el.copy();
-//					Collections.reverse(w2.getPoints());
-//					String res2 = calcImpl(w2);
-//					if (!res.equals(res2)) {
-//						log.error(el.getTag("name"), res, res2, params, "oops reverse");
-//					}
-//					if (w2.hasIdenticalEndPoints()) {
-//						List<Coord> points = w2.getPoints();
-//						for (int i = 1; i < w2.getPoints().size(); i++) {
-//							points.remove(points.size() - 1);
-//							Collections.rotate(points, 1);
-//							points.add(points.get(0));
-//							res2 = calcImpl(w2);
-//							if (!res.equals(res2)) {
-//								log.error(el.getTag("name"), res, res2, params, "oops rotate",i);
-//								calcImpl(w2);
-//							}
-//						}
-//					}
-//				}
-//				boolean b1 = Boolean.parseBoolean(res);
-//				boolean in = "in".equals(expected);
-//				boolean straddle = "straddle".equals(expected);
-//				boolean out = "out".equals(expected);
-//				if (b1 && out) {
-//					log.error(el.getTag("name"), res, params, "oops");
-//				}
-//				if ("any".equals(params.get(2))) {
-//					if (!b1 && (in || straddle)) {
-//						log.error(el.getTag("name"), res, params, "oops");
-//					}
-//				}
-//				if ("all".equals(params.get(2))) {
-//					if (!b1 && in) {
-//						log.error(el.getTag("name"), res, params, "oops");
-//					}
-//					if (b1 && (straddle)) {
-//						log.error(el.getTag("name"), res, params, "oops");
-//					}
-//				}
-//			}
-//		}
-//		return res;
-//	}
-	
 	private enum IntersectionStatus {
 		TOUCHING, CROSSING, SPLITTING, JOINING,SIMILAR, DOUBLE_SPIKE
 	}
@@ -225,7 +173,6 @@ public class IsInUtil {
 					// maybe we should even skip very short segments (< 0.01 m)?
 					continue;
 				}
-				
 				Coord inter = Utils.getSegmentSegmentIntersection(p11, p12, p21, p22);
 				if (inter != null) {
 					// segments have at least one common point 
@@ -250,7 +197,6 @@ public class IsInUtil {
 										pTest = p21.makeBetweenPoint(p20, 0.01);
 									}
 								} else if (x == IntersectionStatus.SPLITTING) {
-									// line p21,p22 is probably not on boundary
 									if (!isOnOrCloseToEdgeOfShape(shape, p21, p22)) {
 										pTest = p21.makeBetweenPoint(p22, 0.01);
 									}
@@ -296,12 +242,14 @@ public class IsInUtil {
 			}
 		}
 		
+		if (!onBoundary.isEmpty())
+			status |= ON;
 		if (status == ON) {
 			// found no intersection and first point is on boundary
 			if (onBoundary.cardinality() != n) {
 				// return result for first point which is not on boundary
-				status |= insidePolygon(lineToTest.get(onBoundary.nextClearBit(0)), false, shape) ? IN
-						: OUT;
+				Coord pTest = lineToTest.get(onBoundary.nextClearBit(0));
+				status |= insidePolygon(pTest, false, shape) ? IN : OUT;
 				return status;
 			}
 			status |= checkAllOn(kind, lineToTest, shape);
@@ -372,7 +320,7 @@ public class IsInUtil {
 				// double check: the calculated point may not be inside the
 				// element
 				if (isPointInShape(pTest, lineToTest) == IN && isPointInShape(pTest, shape) == IN) {
-					return HAS_COMMON_POINTS; // all ON and areas intersect
+					return IN; // all ON and areas intersect
 				}
 			}
 		}

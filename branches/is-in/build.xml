@@ -312,6 +312,9 @@
 		<get src="http://www.mkgmap.org.uk/testinput/osm/uk-test-2.osm.gz"
 			dest="test/resources/in/osm/uk-test-2.osm.gz" usetimestamp="true"
 			ignoreerrors="true"/>
+		<get src="http://www.mkgmap.org.uk/testinput/osm/is-in-samples.osm"
+			dest="test/resources/in/osm/is-in-samples.osm" usetimestamp="true"
+			ignoreerrors="true"/>
 		<get src="http://www.mkgmap.org.uk/testinput/mp/test1.mp"
 			dest="test/resources/in/mp/test1.mp" usetimestamp="true"
 			ignoreerrors="true"/>
