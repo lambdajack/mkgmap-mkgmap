@@ -1,4 +1,4 @@
-	/*
+/*
  * Copyright (C) 2019.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -14,7 +14,6 @@
 package uk.me.parabola.mkgmap.osmstyle.function;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -33,46 +32,93 @@ import uk.me.parabola.util.ElementQuadTree;
 import uk.me.parabola.util.IsInUtil;
 
 /**
- * 
+ *
  * @author Ticker Berkin
  *
  */
 public class IsInFunction extends StyleFunction {
+
+	private enum MethodArg {
+		// TODO: also maybe aliases, which flags can stop processing, etc
+
+		POINT_IN("in", FeatureKind.POINT),
+		POINT_IN_OR_ON("in_or_on", FeatureKind.POINT),
+		POINT_ON("on", FeatureKind.POINT),
+
+		LINE_SOME_IN_NONE_OUT("all", FeatureKind.POLYLINE),
+		LINE_ALL_IN_OR_ON("all_in_or_on", FeatureKind.POLYLINE),
+		LINE_ALL_ON("on", FeatureKind.POLYLINE),
+		LINE_ANY_IN("any", FeatureKind.POLYLINE),
+		LINE_ANY_IN_OR_ON("any_in_or_on", FeatureKind.POLYLINE),
+
+		POLYGON_ALL("all", FeatureKind.POLYGON),
+		POLYGON_ANY("any", FeatureKind.POLYGON);
+
+		private final String methodName;
+		private final FeatureKind kind;
+
+		MethodArg(String methodName, FeatureKind kind) {
+			this.methodName = methodName;
+			this.kind = kind;
+		}
+
+		public String toString() {
+			return methodName;
+		}
+
+		public FeatureKind getKind() {
+			return kind;
+		}
+
+/*
+following 3 methods are not implement yet and not applicable to current interface of IsInUtil.calcInsideness
+An idea was that it would call setIn/On/Out and logic flags here would know if this was enough to
+determine the answer and stop further processing. probably with flag per IN/ON/OUT for each enum...
+*/
+		public boolean canStopIn() {
+			return false;
+		}
+		public boolean canStopOn() {
+			return false;
+		}
+		public boolean canStopOut() {
+			return false;
+		}
+	}
+
+	private class CanStopProcessing extends RuntimeException {};
+
+	private MethodArg method;
+	private boolean hasIn = false;
+	private boolean hasOn = false;
+	private boolean hasOut = false;
 	private ElementQuadTree qt;
-	
+
 	public IsInFunction() {
 		super(null);
 		reqdNumParams = 3; // ??? maybe have something to indicate variable...
-		// maybe param:
 		// 1: polygon tagName
 		// 2: value for above tag
-		// 3: type of accuracy, various keywords
+		// 3: method keyword, eg any, all, on...
 	}
 
 	protected String calcImpl(Element el) {
-		boolean answer = false;
-		if (qt == null || qt.isEmpty()) { 
-			return String.valueOf(answer);
-		}
-		Area elementBbox;
-		if (kind == FeatureKind.POINT) {
-			elementBbox = Area.getBBox(Collections.singletonList(((Node) el).getLocation()));
-		} else {
-			elementBbox = Area.getBBox(((Way)el).getPoints());
-		}
-		// cast Element type to Way
-		Set<Way> polygons = qt.get(elementBbox).stream().map(e -> (Way) e)
-				.collect(Collectors.toCollection(LinkedHashSet::new));
-		int flags = IsInUtil.calcInsideness(kind, el, polygons);
-		// decode flags for any + all
-		String mode = params.get(2);
-		if (kind == FeatureKind.POINT && ((flags & IsInUtil.OUT) == 0)) 
-			answer = true;
-		else if ((flags & IsInUtil.IN) != 0 && ("any".equals(mode) || (flags & IsInUtil.OUT) == 0)) {
-			answer = true;
-		} 
-		
-		return String.valueOf(answer);
+		if (qt == null || qt.isEmpty())
+			return String.valueOf(false);
+		try {
+			switch (kind) {
+			case POINT:
+				doPointTest((Node) el);
+				break;
+			case POLYLINE:
+				doLineTest((Way) el);
+				break;
+			case POLYGON:
+				doPolygonTest((Way) el);
+				break;
+			}
+		} catch (CanStopProcessing e) {}
+		return String.valueOf(mapHasFlagsAnswer());
 	}
 
 	@Override
@@ -83,12 +129,90 @@ public class IsInFunction extends StyleFunction {
 	@Override
 	public void setParams(List<String> params, FeatureKind kind) {
 		super.setParams(params, kind);
-		if (!Arrays.asList("any", "all").contains(params.get(2))) {
-			throw new SyntaxException(String.format("Third parameter '%s' of function %s is not supported: %s. Must be 'any' or 'all'.",
-					params.get(2), getName(), params));
+		String methodStr = params.get(2);
+		for (MethodArg tstMethod : MethodArg.values()) {
+			if (tstMethod.getKind() == kind && methodStr.equalsIgnoreCase(tstMethod.toString())) {
+				this.method = tstMethod;
+				return;
+			}
 		}
+		throw new SyntaxException(String.format("Third parameter '%s' of function %s is not supported", methodStr, getName()));
 	}
 
+	private void setIn() {
+		hasIn = true;
+		if (method.canStopIn())
+			throw new CanStopProcessing();
+	}
+
+	private void setOn() {
+		hasOn = true;
+		if (method.canStopOn())
+			throw new CanStopProcessing();
+	}
+	private void setOut() {
+		hasOut = true;
+		if (method.canStopOut())
+			throw new CanStopProcessing();
+	}
+
+	private boolean mapHasFlagsAnswer() {
+		switch (method) {
+		case POINT_IN:
+			return hasIn;
+		case POINT_IN_OR_ON:
+			return hasIn || hasOn;
+		case POINT_ON:
+			return hasOn;
+		case LINE_SOME_IN_NONE_OUT:
+			return hasIn && !hasOut;
+		case LINE_ALL_IN_OR_ON:
+			return !hasOut;
+		case LINE_ALL_ON:
+			return !(hasIn || hasOut);
+		case LINE_ANY_IN:
+			return hasIn;
+		case LINE_ANY_IN_OR_ON:
+			return hasIn || hasOn;
+		case POLYGON_ALL:
+			return !hasOut;
+		case POLYGON_ANY:
+			return hasIn;
+		}
+		return false;
+	}
+
+	private void doPointTest(Node el) {
+		doCommonTest(el);
+	}
+
+	private void doLineTest(Way el) {
+		doCommonTest(el);
+	}
+
+	private void doPolygonTest(Way el) {
+		doCommonTest(el);
+	}
+
+	private void doCommonTest(Element el) {
+		Area elementBbox;
+		if (kind == FeatureKind.POINT) {
+			elementBbox = Area.getBBox(Collections.singletonList(((Node) el).getLocation()));
+		} else {
+			elementBbox = Area.getBBox(((Way)el).getPoints());
+		}
+		// cast Element type to Way
+		Set<Way> polygons = qt.get(elementBbox).stream().map(e -> (Way) e)
+				.collect(Collectors.toCollection(LinkedHashSet::new));
+		int flags = IsInUtil.calcInsideness(kind, el, polygons);
+		if ((flags & IsInUtil.IN) != 0)
+			setIn();
+		if ((flags & IsInUtil.ON) != 0)
+			setOn();
+		if ((flags & IsInUtil.OUT) != 0)
+			setOut();
+	}
+		
 	@Override
 	public String getName() {
 		return "is_in";
@@ -116,7 +240,7 @@ public class IsInFunction extends StyleFunction {
 	}
 
 	@Override
-	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
+	public void augmentWith(ElementSaver elementSaver) {
 		if (qt != null)
 			return;
 		qt = buildTree(elementSaver, params.get(0), params.get(1));
