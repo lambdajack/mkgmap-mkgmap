@@ -282,6 +282,23 @@ Retrieves the type of the OSM element: 'node', 'way', 'relation'.
 Retrieves the id of the OSM element. This can be useful for style debugging purposes. Note that due to internal changes like merging, cutting etc. 
 some element ids are changed and some have a faked id > 4611686018427387904.  
 
+|is_in(tag,value,method)   | x | x  |  |
++true+ if the element is in polygon(s) having the specified +tag+=+value+ according to the +method+, +false+ otherwise.
+The methods available depend on the Style section:
+"points":
+ +in+ - the Node is within a polygon.
+ +in_or_on+ - it is within or on the edge.
+ +on+ - it is on the edge.
+"lines":
+ +all+ - part of the Way is within the polygon(s), none is outside; it might touch an edge. 
+ +all_in_or_on+ - none is outside. This is useful for the negative - is_in(...,all_in_or_on)=false - for processing a line that is outside the polgon(s).
+ +on+ - it runs along the edge.
+ +any+ - part is within.
+ +any_in_or_on+ - part is within or in the edge.
+"polygons":
+ +all+ - all of the closed Way is within the polygon(s).
+ +any" - some is within.
+
 |====
 
 The following rule matches for all service ways longer than 50m.
