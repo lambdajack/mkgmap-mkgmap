@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import uk.me.parabola.imgfmt.app.Area;
+import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.ElementSaver;
 import uk.me.parabola.mkgmap.reader.osm.FeatureKind;
@@ -39,27 +40,33 @@ import uk.me.parabola.util.IsInUtil;
 public class IsInFunction extends StyleFunction {
 
 	private enum MethodArg {
-		// TODO: also maybe aliases, which flags can stop processing, etc
 
-		POINT_IN("in", FeatureKind.POINT),
-		POINT_IN_OR_ON("in_or_on", FeatureKind.POINT),
-		POINT_ON("on", FeatureKind.POINT),
+		//                                       can stop when: IN     ON     OUT
+		POINT_IN("in",                    FeatureKind.POINT,    true,  false, false),
+		POINT_IN_OR_ON("in_or_on",        FeatureKind.POINT,    true,  true,  false),
+		POINT_ON("on",                    FeatureKind.POINT,    false, true,  false),
 
-		LINE_SOME_IN_NONE_OUT("all", FeatureKind.POLYLINE),
-		LINE_ALL_IN_OR_ON("all_in_or_on", FeatureKind.POLYLINE),
-		LINE_ALL_ON("on", FeatureKind.POLYLINE),
-		LINE_ANY_IN("any", FeatureKind.POLYLINE),
-		LINE_ANY_IN_OR_ON("any_in_or_on", FeatureKind.POLYLINE),
+		LINE_SOME_IN_NONE_OUT("all",      FeatureKind.POLYLINE, false, false, true),
+		LINE_ALL_IN_OR_ON("all_in_or_on", FeatureKind.POLYLINE, false, false, true),
+		LINE_ALL_ON("on",                 FeatureKind.POLYLINE, true,  false, true),
+		LINE_ANY_IN("any",                FeatureKind.POLYLINE, true,  false, false),
+		LINE_ANY_IN_OR_ON("any_in_or_on", FeatureKind.POLYLINE, true,  true,  false),
 
-		POLYGON_ALL("all", FeatureKind.POLYGON),
-		POLYGON_ANY("any", FeatureKind.POLYGON);
+		POLYGON_ALL("all",                FeatureKind.POLYGON,  false, false, true),
+		POLYGON_ANY("any",                FeatureKind.POLYGON,  true,  false, false);
 
 		private final String methodName;
 		private final FeatureKind kind;
+		private final boolean stopIn;
+		private final boolean stopOn;
+		private final boolean stopOut;
 
-		MethodArg(String methodName, FeatureKind kind) {
+		MethodArg(String methodName, FeatureKind kind, boolean stopIn, boolean stopOn, boolean stopOut) {
 			this.methodName = methodName;
 			this.kind = kind;
+			this.stopIn = stopIn;
+			this.stopOn = stopOn;
+			this.stopOut = stopOut;
 		}
 
 		public String toString() {
@@ -70,19 +77,14 @@ public class IsInFunction extends StyleFunction {
 			return kind;
 		}
 
-/*
-following 3 methods are not implement yet and not applicable to current interface of IsInUtil.calcInsideness
-An idea was that it would call setIn/On/Out and logic flags here would know if this was enough to
-determine the answer and stop further processing. probably with flag per IN/ON/OUT for each enum...
-*/
 		public boolean canStopIn() {
-			return false;
+			return stopIn;
 		}
 		public boolean canStopOn() {
-			return false;
+			return stopOn;
 		}
 		public boolean canStopOut() {
-			return false;
+			return stopOut;
 		}
 	}
 
@@ -96,10 +98,10 @@ determine the answer and stop further processing. probably with flag per IN/ON/O
 
 	public IsInFunction() {
 		super(null);
-		reqdNumParams = 3; // ??? maybe have something to indicate variable...
+		reqdNumParams = 3;
 		// 1: polygon tagName
 		// 2: value for above tag
-		// 3: method keyword, eg any, all, on...
+		// 3: method keyword, see above
 	}
 
 	protected String calcImpl(Element el) {
@@ -130,13 +132,21 @@ determine the answer and stop further processing. probably with flag per IN/ON/O
 	public void setParams(List<String> params, FeatureKind kind) {
 		super.setParams(params, kind);
 		String methodStr = params.get(2);
+		boolean knownMethod = false;
+		List<String> methodsForKind = new ArrayList<>();
 		for (MethodArg tstMethod : MethodArg.values()) {
-			if (tstMethod.getKind() == kind && methodStr.equalsIgnoreCase(tstMethod.toString())) {
-				this.method = tstMethod;
-				return;
-			}
+			if (methodStr.equalsIgnoreCase(tstMethod.toString())) {
+				if (tstMethod.getKind() == kind) {
+					this.method = tstMethod;
+					return;
+				} else
+					knownMethod = true;
+			} else if (tstMethod.getKind() == kind)
+				methodsForKind.add(tstMethod.toString());
 		}
-		throw new SyntaxException(String.format("Third parameter '%s' of function %s is not supported", methodStr, getName()));
+		throw new SyntaxException(String.format("Third parameter '%s' of function %s is not " +
+					(knownMethod ? "supported for this style section" : "understood") +
+					", valid are: %s" , methodStr, getName(), methodsForKind));
 	}
 
 	private void setIn() {
@@ -183,7 +193,36 @@ determine the answer and stop further processing. probably with flag per IN/ON/O
 	}
 
 	private void doPointTest(Node el) {
-		doCommonTest(el);
+		//doCommonTest(el);
+		Coord c = el.getLocation();
+		Area elementBbox = Area.getBBox(Collections.singletonList(c));
+		Set<Way> polygons = qt.get(elementBbox).stream().map(e -> (Way) e)
+				.collect(Collectors.toCollection(LinkedHashSet::new));
+		/*
+		We can use the method to control the onBoundary condition of insidePolygon.
+
+		Because we are processing polygons one-by-one, OUT is only meaningful once we have
+		checked all the polygons and haven't satisfied IN/ON, so no point is calling setOut()
+		and it wouldn't stop the processing or effect the answer anyway
+		*/
+		for (Way polygon : polygons) {
+			List<Coord> shape = polygon.getPoints();
+			switch (method) {
+			case POINT_IN:
+				if (IsInUtil.insidePolygon(c, false, shape))
+					setIn();
+				break;
+			case POINT_IN_OR_ON:
+				if (IsInUtil.insidePolygon(c, true, shape))
+					setIn(); // don't care about setOn()
+				break;
+			case POINT_ON:
+				if (IsInUtil.insidePolygon(c, true, shape) &&
+				    !IsInUtil.insidePolygon(c, false, shape))
+					setOn(); // don't care about setIn()
+				break;
+			}
+		}
 	}
 
 	private void doLineTest(Way el) {
