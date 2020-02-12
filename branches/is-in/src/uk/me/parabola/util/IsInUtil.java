@@ -60,93 +60,27 @@ public class IsInUtil {
 		// hide public constructor
 	}
 
-	/**
-	 * Calculate status of element regarding a list of polygons.  
-	 * @param kind type of rule (POINT, POLYLINE, POLYGON) 
-	 * @param el the element 
-	 * @param polygons the polygons which should be tested 
-	 * @return integer containing flags IN, ON, and OUT 
-	 */
-	public static int calcInsideness(FeatureKind kind, Element el, Set<Way> polygons) {
-		int result = 0;  
-		if (polygons == null || polygons.isEmpty()) { 
-			return OUT;
+	public static void mergePolygons(Set<Way> polygons, List<List<Coord>> outers, List<List<Coord>> holes) {
+	// combine all polygons which intersect the bbox of the element if possible
+		Path2D.Double path = new Path2D.Double();
+		for (Way polygon : polygons) {
+			path.append(Java2DConverter.createPath2D(polygon.getPoints()), false);
 		}
-		
-		Area elementBbox;
-		if (el instanceof Node) {
-			Coord c = ((Node) el).getLocation();
-			for (Way polygon : polygons) {
-				switch (isPointInShape(c, polygon.getPoints())) {
-				case IN:
-					return IN;
-				case ON:
-					result |= ON;
-				default:
-				}
-			}
-			return result == 0 ? OUT : ON;
-		} else if (el instanceof Way) {
-			Way w = (Way) el;
-			if (w.isComplete()) {
-				elementBbox = Area.getBBox(w.getPoints());
-				if (polygons.size() > 1) {
-					// combine all polygons which intersect the bbox of the element if possible
-					Path2D.Double path = new Path2D.Double();
-					for (Way polygon : polygons) {
-						path.append(Java2DConverter.createPath2D(polygon.getPoints()), false);
-					}
-					java.awt.geom.Area polygonsArea = new java.awt.geom.Area(path);
-					List<List<Coord>> mergedShapes = Java2DConverter.areaToShapes(polygonsArea);
+		java.awt.geom.Area polygonsArea = new java.awt.geom.Area(path);
+		List<List<Coord>> mergedShapes = Java2DConverter.areaToShapes(polygonsArea);
 
-					// combination of polygons may contain holes. They are counter clockwise.
-					List<List<Coord>> holes = new ArrayList<>();
-					List<List<Coord>> outers = new ArrayList<>();
-					for (List<Coord> shape : mergedShapes) {
-						(Way.clockwise(shape) ? outers : holes).add(shape);
-					}
-					
-					// check if any outer intersects with the way
-					for (List<Coord> shape : outers) {
-						int tmpRes = isLineInShape(kind, w.getPoints(), shape, elementBbox);
-						if (tmpRes != OUT) {
-							result |= tmpRes;
-							if ((tmpRes & IN) != 0) {
-								result = tmpRes;
-								break;
-							}
-						}
-					}
-					if ((result & IN) != 0 && !holes.isEmpty()) {
-						// an outer ring matched
-						// check if any hole intersects with the way
-						for (List<Coord> hole : holes) {
-							int tmpRes = isLineInShape(kind, w.getPoints(), hole, elementBbox);
-							if (tmpRes == IN_ON_OUT)
-								return tmpRes;
-							if ((tmpRes & IN) != 0) 
-								result = OUT;
-							result |= tmpRes & ON;
-							
-						}
-					}
-					
-				} else if (polygons.size() == 1) {
-					result = isLineInShape(kind, w.getPoints(), (polygons.iterator().next()).getPoints(), elementBbox);
-				}
-			}
+		// combination of polygons may contain holes. They are counter clockwise.
+		for (List<Coord> shape : mergedShapes) {
+			(Way.clockwise(shape) ? outers : holes).add(shape);
 		}
-		if (result == 0)
-			result = OUT;
-		return result;
 	}
-
+					
 	private enum IntersectionStatus {
 		TOUCHING, CROSSING, SPLITTING, JOINING,SIMILAR, DOUBLE_SPIKE
 	}
 	
 	
-	private static int isLineInShape(FeatureKind kind, List<Coord> lineToTest, List<Coord> shape, Area elementBbox) {
+	public static int isLineInShape(FeatureKind kind, List<Coord> lineToTest, List<Coord> shape, Area elementBbox) {
 		final int n = lineToTest.size();
 		int status = isPointInShape(lineToTest.get(0), shape);
 		BitSet onBoundary = new BitSet();
@@ -423,12 +357,12 @@ public class IsInUtil {
 		return false;
 	}
 
-	private static int isPointInShape(Coord p, List<Coord> shape) {
+	public static int isPointInShape(Coord p, List<Coord> shape) {
 		boolean inOrOn = insidePolygon(p, true, shape);
 		if (inOrOn) {
 			// point is in or on
 			boolean in = insidePolygon(p, false, shape);
-			return inOrOn != in ? ON : IN;
+			return in ? IN : ON;
 		}
 		return OUT;
 	}

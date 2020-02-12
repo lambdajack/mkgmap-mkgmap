@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.ElementSaver;
 import uk.me.parabola.mkgmap.reader.osm.FeatureKind;
@@ -37,7 +38,8 @@ import uk.me.parabola.util.IsInUtil;
  * @author Ticker Berkin
  *
  */
-public class IsInFunction extends StyleFunction {
+public class IsInFunction extends CachedFunction { // StyleFunction
+	private static final Logger log = Logger.getLogger(IsInFunction.class);
 
 	private enum MethodArg {
 
@@ -91,10 +93,10 @@ public class IsInFunction extends StyleFunction {
 	private class CanStopProcessing extends RuntimeException {};
 
 	private MethodArg method;
-	private boolean hasIn = false;
-	private boolean hasOn = false;
-	private boolean hasOut = false;
-	private ElementQuadTree qt;
+	private boolean hasIn;
+	private boolean hasOn;
+	private boolean hasOut;
+	private ElementQuadTree qt = null;
 
 	public IsInFunction() {
 		super(null);
@@ -102,10 +104,22 @@ public class IsInFunction extends StyleFunction {
 		// 1: polygon tagName
 		// 2: value for above tag
 		// 3: method keyword, see above
+		log.info("isInFunction", System.identityHashCode(this));
 	}
 
-	protected String calcImpl(Element el) {
-		if (qt == null || qt.isEmpty())
+	private void resetHasFlags() {
+		// the instance is per unique call in rules, then applied repeatedly to each point/line/polygon
+		hasIn = false;
+		hasOn = false;
+		hasOut = false;
+	}
+
+	public String calcImpl(Element el) {
+		log.info("calcImpl", System.identityHashCode(this), kind, params, el);
+		assert qt != null : "invoked the non-augmented instance";
+	    	resetHasFlags();
+
+		if (qt.isEmpty())
 			return String.valueOf(false);
 		try {
 			switch (kind) {
@@ -120,17 +134,21 @@ public class IsInFunction extends StyleFunction {
 				break;
 			}
 		} catch (CanStopProcessing e) {}
+		log.info("done", hasIn, hasOn, hasOut);
 		return String.valueOf(mapHasFlagsAnswer());
 	}
 
+/* don't have this for CachedFunction
 	@Override
 	public String value(Element el) {
 		return calcImpl(el);
 	}
-	
+*/
+
 	@Override
 	public void setParams(List<String> params, FeatureKind kind) {
 		super.setParams(params, kind);
+		log.info("setParams", System.identityHashCode(this), kind, params);
 		String methodStr = params.get(2);
 		boolean knownMethod = false;
 		List<String> methodsForKind = new ArrayList<>();
@@ -150,20 +168,32 @@ public class IsInFunction extends StyleFunction {
 	}
 
 	private void setIn() {
+		log.info("setIn", hasIn, hasOn, hasOut);
 		hasIn = true;
-		if (method.canStopIn())
+		if (method.canStopIn() || (hasOn && hasOut))
 			throw new CanStopProcessing();
 	}
 
 	private void setOn() {
+		log.info("setOn", hasIn, hasOn, hasOut);
 		hasOn = true;
-		if (method.canStopOn())
+		if (method.canStopOn() || (hasIn && hasOut))
 			throw new CanStopProcessing();
 	}
 	private void setOut() {
+		log.info("setOut", hasIn, hasOn, hasOut);
 		hasOut = true;
-		if (method.canStopOut())
+		if (method.canStopOut() || (hasIn && hasOn))
 			throw new CanStopProcessing();
+	}
+
+	private void setHasFromFlags(int flags) {
+		if ((flags & IsInUtil.IN) != 0)
+			setIn();
+		if ((flags & IsInUtil.ON) != 0)
+			setOn();
+		if ((flags & IsInUtil.OUT) != 0)
+			setOut();
 	}
 
 	private boolean mapHasFlagsAnswer() {
@@ -192,36 +222,64 @@ public class IsInFunction extends StyleFunction {
 		return false;
 	}
 
-	private void doPointTest(Node el) {
-		//doCommonTest(el);
-		Coord c = el.getLocation();
-		Area elementBbox = Area.getBBox(Collections.singletonList(c));
-		Set<Way> polygons = qt.get(elementBbox).stream().map(e -> (Way) e)
-				.collect(Collectors.toCollection(LinkedHashSet::new));
-		/*
-		We can use the method to control the onBoundary condition of insidePolygon.
+	private static boolean notInHole(Coord c, List<List<Coord>> holes) {
+		if (holes == null)
+			return true;
+		for (List<Coord> hole : holes)
+			if (IsInUtil.insidePolygon(c, true, hole))
+				return false;
+		return true;
+	}
 
+	private void checkPointInShape(Coord c, List<Coord> shape, List<List<Coord>> holes) {
+		/*
 		Because we are processing polygons one-by-one, OUT is only meaningful once we have
 		checked all the polygons and haven't satisfied IN/ON, so no point is calling setOut()
 		and it wouldn't stop the processing or effect the answer anyway
 		*/
-		for (Way polygon : polygons) {
-			List<Coord> shape = polygon.getPoints();
-			switch (method) {
-			case POINT_IN:
-				if (IsInUtil.insidePolygon(c, false, shape))
+		switch (method) { // Use the method to control the onBoundary condition of insidePolygon.
+		case POINT_IN:
+			if (IsInUtil.insidePolygon(c, false, shape))
+				if (notInHole(c, holes))
 					setIn();
-				break;
-			case POINT_IN_OR_ON:
-				if (IsInUtil.insidePolygon(c, true, shape))
-					setIn(); // don't care about setOn()
-				break;
-			case POINT_ON:
-				if (IsInUtil.insidePolygon(c, true, shape) &&
-				    !IsInUtil.insidePolygon(c, false, shape))
-					setOn(); // don't care about setIn()
-				break;
-			}
+				else // in hole in this shape, no point in looking at more shapes
+					throw new CanStopProcessing();
+			break;
+		case POINT_IN_OR_ON:
+			if (IsInUtil.insidePolygon(c, true, shape))
+				// no need to check holes for this as didn't need to merge polygons
+				setIn(); // don't care about setOn()
+			break;
+		case POINT_ON:
+			if (IsInUtil.insidePolygon(c, true, shape) &&
+			    !IsInUtil.insidePolygon(c, false, shape))
+				// hole checking is a separate pass
+				setOn(); // don't care about setIn()
+			break;
+		}
+	}
+
+	private void doPointTest(Node el) {
+		Coord c = el.getLocation();
+		Area elementBbox = Area.getBBox(Collections.singletonList(c));
+		Set<Way> polygons = qt.get(elementBbox).stream().map(e -> (Way) e)
+				.collect(Collectors.toCollection(LinkedHashSet::new));
+		if ((method == MethodArg.POINT_IN || method == MethodArg.POINT_ON) && polygons.size() > 1) {
+			// need to merge shapes so that POI on shared boundary becomes IN rather than ON
+			List<List<Coord>> outers = new ArrayList<>();
+			List<List<Coord>> holes = new ArrayList<>();
+			IsInUtil.mergePolygons(polygons, outers, holes);
+			log.info("pointMerge", polygons.size(), outers.size(), holes.size());
+			for (List<Coord> shape : outers)
+				checkPointInShape(c, shape, holes);
+			if (method == MethodArg.POINT_ON && !holes.isEmpty())
+				// need to check if on edge of hole
+				for (List<Coord> hole : holes)
+					checkPointInShape(c, hole, null);
+		} else { // just one polygon or IN_OR_ON, which can do one-by-one
+			log.info("point1by1", polygons.size());
+			for (Way polygon : polygons)
+				checkPointInShape(c, polygon.getPoints(), null);
 		}
 	}
 
@@ -233,25 +291,51 @@ public class IsInFunction extends StyleFunction {
 		doCommonTest(el);
 	}
 
-	private void doCommonTest(Element el) {
-		Area elementBbox;
-		if (kind == FeatureKind.POINT) {
-			elementBbox = Area.getBBox(Collections.singletonList(((Node) el).getLocation()));
-		} else {
-			elementBbox = Area.getBBox(((Way)el).getPoints());
+	private void checkHoles(List<Coord> polyLine, List<List<Coord>> holes, Area elementBbox) {
+		for (List<Coord> hole : holes) {
+			int flags = IsInUtil.isLineInShape(kind, polyLine, hole, elementBbox);
+			if ((flags & IsInUtil.IN) != 0) {
+				setOut();
+				if ((flags & IsInUtil.ON) != 0)
+					setOn();
+				if ((flags & IsInUtil.OUT) != 0)
+					setIn();
+				return;
+			}
 		}
-		// cast Element type to Way
+	}
+
+	private void doCommonTest(Element el) {
+		List<Coord> polyLine = ((Way)el).getPoints();
+		Area elementBbox = Area.getBBox(polyLine);
 		Set<Way> polygons = qt.get(elementBbox).stream().map(e -> (Way) e)
 				.collect(Collectors.toCollection(LinkedHashSet::new));
-		int flags = IsInUtil.calcInsideness(kind, el, polygons);
-		if ((flags & IsInUtil.IN) != 0)
-			setIn();
-		if ((flags & IsInUtil.ON) != 0)
-			setOn();
-		if ((flags & IsInUtil.OUT) != 0)
-			setOut();
+		if ((method == MethodArg.LINE_SOME_IN_NONE_OUT ||
+		     method == MethodArg.LINE_ALL_IN_OR_ON ||
+		     method == MethodArg.LINE_ALL_ON ||
+		     method == MethodArg.POLYGON_ALL) && polygons.size() > 1) {
+			// ALL-like methods need to merge shapes
+			List<List<Coord>> outers = new ArrayList<>();
+			List<List<Coord>> holes = new ArrayList<>();
+			IsInUtil.mergePolygons(polygons, outers, holes);
+			log.info("polyMerge", polygons.size(), outers.size(), holes.size());
+			for (List<Coord> shape : outers) {
+				int flags = IsInUtil.isLineInShape(kind, polyLine, shape, elementBbox);
+				if ((flags & (IsInUtil.IN | IsInUtil.ON)) != 0) {
+				    	// this shape is the one to consider
+					setHasFromFlags(flags); // might set OUT and stop
+					if ((flags & IsInUtil.IN) != 0)
+						checkHoles(polyLine, holes, elementBbox);
+					break;
+				}
+			}
+		} else { // an ANY-like method
+			log.info("poly1by1", polygons.size());
+			for (Way polygon : polygons)
+				setHasFromFlags(IsInUtil.isLineInShape(kind, polyLine, polygon.getPoints(), elementBbox));
+		}
 	}
-		
+
 	@Override
 	public String getName() {
 		return "is_in";
@@ -279,17 +363,24 @@ public class IsInFunction extends StyleFunction {
 	}
 
 	@Override
+	protected String getCacheTag() {
+		return "mkgmap:cache_is_in_" + kind + "_" + String.join("_", params);
+	}
+
+	@Override
 	public void augmentWith(ElementSaver elementSaver) {
+		log.info("augmentWith", System.identityHashCode(this), kind, params);
+		// the cached function mechanism creates an instance for each occurance in the rule file
+		// but then just uses one of them for augmentWith() and calcImpl().
 		if (qt != null)
 			return;
 		qt = buildTree(elementSaver, params.get(0), params.get(1));
 	}
 
-	
 	public static ElementQuadTree buildTree(ElementSaver elementSaver, String tagKey, String tagVal) {
 		List<Element> matchingPolygons = new ArrayList<>();
 		for (Way w : elementSaver.getWays().values()) {
-			if (w.isComplete() && w.hasIdenticalEndPoints()
+			if (w.hasIdenticalEndPoints()
 					&& !"polyline".equals(w.getTag(MultiPolygonRelation.STYLE_FILTER_TAG))) {
 				String val = w.getTag(tagKey);
 				if (val != null && val.equals(tagVal)) {
@@ -301,6 +392,10 @@ public class IsInFunction extends StyleFunction {
 			return new ElementQuadTree(elementSaver.getBoundingBox(), matchingPolygons);
 		}
 		return null;
+	}
+
+	public void unitTestAugment(ElementQuadTree qt) {
+		this.qt = qt;
 	}
 
 	@Override
