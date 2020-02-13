@@ -117,10 +117,9 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 	public String calcImpl(Element el) {
 		log.info("calcImpl", System.identityHashCode(this), kind, params, el);
 		assert qt != null : "invoked the non-augmented instance";
-	    	resetHasFlags();
-
 		if (qt.isEmpty())
 			return String.valueOf(false);
+		resetHasFlags();
 		try {
 			switch (kind) {
 			case POINT:
@@ -134,7 +133,7 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 				break;
 			}
 		} catch (CanStopProcessing e) {}
-		log.info("done", hasIn, hasOn, hasOut);
+		log.info("done", System.identityHashCode(this), hasIn, hasOn, hasOut);
 		return String.valueOf(mapHasFlagsAnswer());
 	}
 
@@ -304,7 +303,17 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 			}
 		}
 	}
+    /*
+make above function return boolean depending on it finding something.
+maybe should also respond to ON
 
+in below, delay setting the IN flag until have done the above, because the line could all be ON the inner.
+and use return from above to set IN, assume that when it finds something, it will set IN of OUT etc
+
+for POLY, still need a final check that, even if ON/IN, none of the holes is in this one, so
+we need another check (can we use above not-in-hole...) that takes a point from the hole and
+checks if it is the polyLine
+     */
 	private void doCommonTest(Element el) {
 		List<Coord> polyLine = ((Way)el).getPoints();
 		Area elementBbox = Area.getBBox(polyLine);
@@ -388,10 +397,7 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 				}
 			}
 		}
-		if (!matchingPolygons.isEmpty()) {
-			return new ElementQuadTree(elementSaver.getBoundingBox(), matchingPolygons);
-		}
-		return null;
+		return new ElementQuadTree(elementSaver.getBoundingBox(), matchingPolygons);
 	}
 
 	public void unitTestAugment(ElementQuadTree qt) {
