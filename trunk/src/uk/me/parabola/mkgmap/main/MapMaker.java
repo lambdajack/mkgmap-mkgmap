@@ -50,6 +50,10 @@ public class MapMaker implements MapProcessor {
 	}
 
 	public String makeMap(CommandArgs args, String filename) {
+		if (new File(filename).isDirectory()) {
+			System.err.println("Need a single file, not a directory: " + filename);
+			return filename;
+		}
 		try {
 			LoadableMapDataSource src = loadFromFile(args, filename);
 			sort = args.getSort();
