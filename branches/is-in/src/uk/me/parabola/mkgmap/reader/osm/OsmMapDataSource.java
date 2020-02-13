@@ -263,7 +263,7 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 	protected OsmReadingHooks pluginChain(ElementSaver saver, EnhancedProperties props) {
 		List<OsmReadingHooks> plugins = new ArrayList<>();
 		for (OsmReadingHooks p : getPossibleHooks()) {
-			if (p instanceof ResidentialHook && !style.getUsedTags().contains("mkgmap:residential"))
+			if (p instanceof ResidentialHook && style != null && !style.getUsedTags().contains("mkgmap:residential"))
 				continue;
 			if (p.init(saver, props)){
 				plugins.add(p);
