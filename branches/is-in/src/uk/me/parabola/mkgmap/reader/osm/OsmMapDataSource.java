@@ -148,6 +148,8 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 	public void load(String name, boolean addBackground) throws FileNotFoundException {
 		try (InputStream is = Utils.openFile(name)) {
 			parse(is, name);
+		} catch (FileNotFoundException e) {
+			throw e;
 		} catch (IOException e) {
 			// exception thrown from implicit call to close() on resource variable 'is'
 		}
