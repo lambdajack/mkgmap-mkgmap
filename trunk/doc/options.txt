@@ -1,3 +1,5 @@
+=== Command line ===
+
 The command line is of the format:
 
 :	java.exe [java-options] -jar mkgmap.jar [mkgmap-options]
@@ -29,6 +31,7 @@ mkgmap code.
 disable specific logging messages. This is useful if you want to see
 certain types of message that are not logged by default or choose where
 the messages should be written.
+
 === Mkgmap options ===
 
 The order of the options is significant in that options only apply
@@ -49,7 +52,7 @@ general help information is displayed, the same as in help=help.
 
 === File options ===
 
-filename
+;filename
 ;--input-file=filename
 : 	Read input data from the given file.  This option (or just a
 filename) may be specified more than once. Make sure you set all 

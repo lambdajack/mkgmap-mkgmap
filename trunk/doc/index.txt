@@ -44,7 +44,7 @@ the OSM taged features are converted into the Garmin features.
 This documents the language that is accepted by the TYP compiler that
 is included within mkgmap.
 
-[/doc/options '''Logging''']
+[/doc/logging '''Logging''']
 Instructions on how to control messages that are logged and to where
 they are written.
 
