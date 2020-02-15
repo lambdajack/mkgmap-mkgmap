@@ -1,3 +1,5 @@
+=== Command line ===
+
 The command line is of the format:
 
     java.exe [java-options] -jar mkgmap.jar [mkgmap-options]
@@ -26,7 +28,9 @@ options you may need to use are:
     Specifies a logging configuration file that allows you to enable and
     disable specific logging messages. This is useful if you want to see
     certain types of message that are not logged by default or choose where the
-    messages should be written. === Mkgmap options ===
+    messages should be written.
+
+=== Mkgmap options ===
 
 The order of the options is significant in that options only apply to
 subsequent input files. If you are using splitter, you probably will need to

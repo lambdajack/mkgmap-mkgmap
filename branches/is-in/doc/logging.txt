@@ -43,5 +43,5 @@ The above example enables certain informational messages and sends them to a
 log file, with warning and error messages being also sent to stdout.
 
 Further information can be found at
-https://docs.oracle.com/javase/8/docs/technotes/guides/logging/overview.html
+[https://docs.oracle.com/javase/8/docs/technotes/guides/logging/overview.html https://docs.oracle.com/javase/8/docs/technotes/guides/logging/overview.html]
 

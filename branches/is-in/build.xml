@@ -38,6 +38,7 @@
 
 	<property name="src" value="src"/>
 	<property name="test" value="test"/>
+	<property name="tools" value="tools"/>
 
 	<property name="doc" value="doc"/>
 	<property name="javadoc" value="${doc}/api"/>
@@ -373,6 +374,7 @@
 				<attribute name="Implementation-Version" value="${project.version}" />
 			</manifest>
 			<include name="**/*.class"/>
+			<exclude name="**/buildoptions/**"/>
 			<include name="*.csv"/>
 			<include name="known-hgt.bin"/>
 			<include name="*.xml"/>
@@ -424,6 +426,24 @@
 			<classpath refid="main"/>
 		</javadoc>
 	</target>
+
+	<!-- Compile the tools -->
+	<target name="compile-tools" depends="prepare" description="tool compilation">
+
+		<javac srcdir="${tools}" destdir="${build.classes}" encoding="utf-8" debug="true" includeantruntime="false">
+			<include name="**/*.java" />
+			<classpath refid="main"/>
+		</javac>
+	</target>
+
+	<!-- Generate help file options from doc file options.txt -->
+	<target name="gen-options-file" depends="compile-tools">
+		<exec executable="java" dir="${build.classes}" failonerror="true" failifexecutionfails="true" input="doc/options.txt">
+			<arg value="buildoptions.OptionsBuilder" />
+			<arg value="../../resources/help/en/options" />
+		</exec>
+	</target>
+	
 
 	<target name="macker" depends="build, resolve-macker">
 		<taskdef name="macker"

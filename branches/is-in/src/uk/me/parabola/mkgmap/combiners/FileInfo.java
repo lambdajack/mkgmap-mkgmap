@@ -144,9 +144,12 @@ public class FileInfo {
 	 * @throws FileNotFoundException If the file doesn't actually exist.
 	 */
 	public static FileInfo getFileInfo(String inputName) throws FileNotFoundException {
-
 		int end = inputName.length();
-		String ext = inputName.substring(end - 3).toUpperCase(Locale.ENGLISH);
+		File f = new File(inputName);
+		if (f.isDirectory() || end < 3)
+			return new FileInfo(inputName, UNKNOWN_KIND);
+		
+		String ext = end < 3 ? "" : inputName.substring(end - 3).toUpperCase(Locale.ENGLISH);
 		FileInfo info;
 
 		if (Objects.equals(ext, "IMG")) {
