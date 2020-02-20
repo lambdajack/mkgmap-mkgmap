@@ -43,32 +43,48 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 
 	private enum MethodArg {
 
-		//                                       can stop when: IN     ON     OUT
-		POINT_IN("in",                    FeatureKind.POINT,    true,  false, false),
-		POINT_IN_OR_ON("in_or_on",        FeatureKind.POINT,    true,  true,  false),
-		POINT_ON("on",                    FeatureKind.POINT,    false, true,  false),
+		//                                       can stop when: IN     ON     OUT    MERGE
+		POINT_IN("in",                    FeatureKind.POINT,    true,  false, false, true)
+			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return hasIn;} },
+		POINT_IN_OR_ON("in_or_on",        FeatureKind.POINT,    true,  true,  false, false)
+			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return hasIn || hasOn;} },
+		POINT_ON("on",                    FeatureKind.POINT,    false, true,  false, true)
+			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return hasOn;} },
 
-		LINE_SOME_IN_NONE_OUT("all",      FeatureKind.POLYLINE, false, false, true),
-		LINE_ALL_IN_OR_ON("all_in_or_on", FeatureKind.POLYLINE, false, false, true),
-		LINE_ALL_ON("on",                 FeatureKind.POLYLINE, true,  false, true),
-		LINE_ANY_IN("any",                FeatureKind.POLYLINE, true,  false, false),
-		LINE_ANY_IN_OR_ON("any_in_or_on", FeatureKind.POLYLINE, true,  true,  false),
+		LINE_SOME_IN_NONE_OUT("all",      FeatureKind.POLYLINE, false, false, true,  true)
+			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return hasIn && !hasOut;} },
+		LINE_ALL_IN_OR_ON("all_in_or_on", FeatureKind.POLYLINE, false, false, true,  true)
+			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return !hasOut;} },
+		LINE_ALL_ON("on",                 FeatureKind.POLYLINE, true,  false, true,  true)
+			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return !(hasIn || hasOut);} },
+		LINE_ANY_IN("any",                FeatureKind.POLYLINE, true,  false, false, false)
+			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return hasIn;} },
+//		LINE_ANY_IN_OR_ON("any_in_or_on", FeatureKind.POLYLINE, true,  false, false, true)
+//			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return hasIn || !hasOut;} },
+		LINE_NONE_IN_SOME_OUT("none",     FeatureKind.POLYLINE, true,  false, false, true)
+			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return !hasIn && hasOut;} },
+		
+		POLYGON_ALL("all",                FeatureKind.POLYGON,  false, false, true,  true)
+			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return !hasOut;} },
+		POLYGON_ANY("any",                FeatureKind.POLYGON,  true,  false, false, false)
+			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return hasIn;} };
 
-		POLYGON_ALL("all",                FeatureKind.POLYGON,  false, false, true),
-		POLYGON_ANY("any",                FeatureKind.POLYGON,  true,  false, false);
+		public abstract boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut);
 
 		private final String methodName;
 		private final FeatureKind kind;
 		private final boolean stopIn;
 		private final boolean stopOn;
 		private final boolean stopOut;
+		private final boolean needMerge;
 
-		MethodArg(String methodName, FeatureKind kind, boolean stopIn, boolean stopOn, boolean stopOut) {
+		MethodArg(String methodName, FeatureKind kind, boolean stopIn, boolean stopOn, boolean stopOut, boolean needMerge) {
 			this.methodName = methodName;
 			this.kind = kind;
 			this.stopIn = stopIn;
 			this.stopOn = stopOn;
 			this.stopOut = stopOut;
+			this.needMerge = needMerge;
 		}
 
 		public String toString() {
@@ -87,6 +103,9 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 		}
 		public boolean canStopOut() {
 			return stopOut;
+		}
+		public boolean needMerge() {
+			return needMerge;
 		}
 	}
 
@@ -134,7 +153,9 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 			}
 		} catch (CanStopProcessing e) {}
 		log.info("done", System.identityHashCode(this), hasIn, hasOn, hasOut);
-		return String.valueOf(mapHasFlagsAnswer());
+		if (!hasIn && !hasOn)
+			hasOut = true;
+		return String.valueOf(method.mapFlags(hasIn, hasOn, hasOut));
 	}
 
 /* don't have this for CachedFunction
@@ -169,7 +190,7 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 	private void setIn() {
 		log.info("setIn", hasIn, hasOn, hasOut);
 		hasIn = true;
-		if (method.canStopIn() || (hasOn && hasOut))
+		if (method.canStopIn() || hasOut)
 			throw new CanStopProcessing();
 	}
 
@@ -182,43 +203,18 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 	private void setOut() {
 		log.info("setOut", hasIn, hasOn, hasOut);
 		hasOut = true;
-		if (method.canStopOut() || (hasIn && hasOn))
+		if (method.canStopOut() || hasIn)
 			throw new CanStopProcessing();
 	}
 
 	private void setHasFromFlags(int flags) {
-		if ((flags & IsInUtil.IN) != 0)
-			setIn();
+		log.info("setFlags", flags);
 		if ((flags & IsInUtil.ON) != 0)
 			setOn();
+		if ((flags & IsInUtil.IN) != 0)
+			setIn();
 		if ((flags & IsInUtil.OUT) != 0)
 			setOut();
-	}
-
-	private boolean mapHasFlagsAnswer() {
-		switch (method) {
-		case POINT_IN:
-			return hasIn;
-		case POINT_IN_OR_ON:
-			return hasIn || hasOn;
-		case POINT_ON:
-			return hasOn;
-		case LINE_SOME_IN_NONE_OUT:
-			return hasIn && !hasOut;
-		case LINE_ALL_IN_OR_ON:
-			return !hasOut;
-		case LINE_ALL_ON:
-			return !(hasIn || hasOut);
-		case LINE_ANY_IN:
-			return hasIn;
-		case LINE_ANY_IN_OR_ON:
-			return hasIn || hasOn;
-		case POLYGON_ALL:
-			return !hasOut;
-		case POLYGON_ANY:
-			return hasIn;
-		}
-		return false;
 	}
 
 	private static boolean notInHole(Coord c, List<List<Coord>> holes) {
@@ -263,7 +259,7 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 		Area elementBbox = Area.getBBox(Collections.singletonList(c));
 		Set<Way> polygons = qt.get(elementBbox).stream().map(e -> (Way) e)
 				.collect(Collectors.toCollection(LinkedHashSet::new));
-		if ((method == MethodArg.POINT_IN || method == MethodArg.POINT_ON) && polygons.size() > 1) {
+		if (method.needMerge() && polygons.size() > 1) {
 			// need to merge shapes so that POI on shared boundary becomes IN rather than ON
 			List<List<Coord>> outers = new ArrayList<>();
 			List<List<Coord>> holes = new ArrayList<>();
@@ -290,58 +286,89 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 		doCommonTest(el);
 	}
 
-	private void checkHoles(List<Coord> polyLine, List<List<Coord>> holes, Area elementBbox) {
+	private boolean checkHoles(List<Coord> polyLine, List<List<Coord>> holes, Area elementBbox) {
+		boolean foundSomething = false;
 		for (List<Coord> hole : holes) {
-			int flags = IsInUtil.isLineInShape(kind, polyLine, hole, elementBbox);
+			int flags = IsInUtil.isLineInShape(polyLine, hole, elementBbox);
+			log.info("checkhole", flags);
 			if ((flags & IsInUtil.IN) != 0) {
 				setOut();
 				if ((flags & IsInUtil.ON) != 0)
 					setOn();
 				if ((flags & IsInUtil.OUT) != 0)
 					setIn();
+				return true;
+			} else if ((flags & IsInUtil.ON) != 0) {
+				setOn();
+				if ((flags & IsInUtil.OUT) != 0)
+					setIn();
+				foundSomething = true;
+			}
+		}
+		return foundSomething;
+	}
+
+	private void checkHoleInThis(List<Coord> polyLine, List<List<Coord>> holes, Area elementBbox) {
+		for (List<Coord> hole : holes) {
+			int flags = IsInUtil.isLineInShape(hole, polyLine, elementBbox);
+			log.info("holeInThis", flags);
+			if ((flags & IsInUtil.IN) != 0 ||
+			    (flags == IsInUtil.ON)) { // exactly on hole
+				setOut();
 				return;
 			}
 		}
 	}
-    /*
-make above function return boolean depending on it finding something.
-maybe should also respond to ON
 
-in below, delay setting the IN flag until have done the above, because the line could all be ON the inner.
-and use return from above to set IN, assume that when it finds something, it will set IN of OUT etc
-
-for POLY, still need a final check that, even if ON/IN, none of the holes is in this one, so
-we need another check (can we use above not-in-hole...) that takes a point from the hole and
-checks if it is the polyLine
-     */
 	private void doCommonTest(Element el) {
 		List<Coord> polyLine = ((Way)el).getPoints();
 		Area elementBbox = Area.getBBox(polyLine);
 		Set<Way> polygons = qt.get(elementBbox).stream().map(e -> (Way) e)
 				.collect(Collectors.toCollection(LinkedHashSet::new));
-		if ((method == MethodArg.LINE_SOME_IN_NONE_OUT ||
-		     method == MethodArg.LINE_ALL_IN_OR_ON ||
-		     method == MethodArg.LINE_ALL_ON ||
-		     method == MethodArg.POLYGON_ALL) && polygons.size() > 1) {
-			// ALL-like methods need to merge shapes
+		if (log.isInfoEnabled()) {
+			log.info("line", polyLine);
+			log.info(polygons.size(), "polygons");
+			for (Way polygon : polygons)
+				log.info("polygon", polygon.getPoints());
+		}
+		if (method.needMerge() && polygons.size() > 1) { // ALL-like methods need to merge shapes
 			List<List<Coord>> outers = new ArrayList<>();
 			List<List<Coord>> holes = new ArrayList<>();
 			IsInUtil.mergePolygons(polygons, outers, holes);
-			log.info("polyMerge", polygons.size(), outers.size(), holes.size());
+			if (log.isInfoEnabled()) {
+				log.info(outers.size(), "outers", holes.size(), "holes");
+				for (List<Coord> shape : outers)
+					log.info("outer", shape);
+				for (List<Coord> hole : holes)
+					log.info("hole", hole);
+			}
 			for (List<Coord> shape : outers) {
-				int flags = IsInUtil.isLineInShape(kind, polyLine, shape, elementBbox);
-				if ((flags & (IsInUtil.IN | IsInUtil.ON)) != 0) {
-				    	// this shape is the one to consider
-					setHasFromFlags(flags); // might set OUT and stop
-					if ((flags & IsInUtil.IN) != 0)
-						checkHoles(polyLine, holes, elementBbox);
+				int flags = IsInUtil.isLineInShape(polyLine, shape, elementBbox);
+				log.info("checkShape", flags);
+				if ((flags & IsInUtil.IN) != 0) { // this shape is the one to consider
+					if ((flags & IsInUtil.ON) != 0)
+						setOn();
+					if ((flags & IsInUtil.OUT) != 0)
+						setOut();
+					if (!checkHoles(polyLine, holes, elementBbox))
+						setIn();
+					if (!hasOut && kind == FeatureKind.POLYGON)
+						checkHoleInThis(polyLine, holes, elementBbox);
 					break;
+				} else if ((flags & IsInUtil.ON) != 0) { // might still be IN later one
+					setOn();
+					if ((flags & IsInUtil.OUT) != 0)
+						setOut();
+					else { // exactly on
+						if (kind == FeatureKind.POLYGON)
+							checkHoleInThis(polyLine, holes, elementBbox);
+						break; // hence can't be in another
+					}
 				}
 			}
-		} else { // an ANY-like method
-			log.info("poly1by1", polygons.size());
+		} else { // an ANY-like method or 1 polygon
 			for (Way polygon : polygons)
-				setHasFromFlags(IsInUtil.isLineInShape(kind, polyLine, polygon.getPoints(), elementBbox));
+				setHasFromFlags(IsInUtil.isLineInShape(polyLine, polygon.getPoints(), elementBbox));
 		}
 	}
 

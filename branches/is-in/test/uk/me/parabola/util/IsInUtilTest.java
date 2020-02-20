@@ -41,109 +41,95 @@ import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.OsmMapDataSource;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 
-import uk.me.parabola.mkgmap.osmstyle.function.IsInFunction;
+/*
+Source: test/resources/in/osm/is-in-samples.osm
+errors: test-reports/uk/me/parabola/util/62_IsInUtilTest-err.html
+
+b14 failed, expected: 4 got 5
+*/
 
 public class IsInUtilTest {
 
-	private static int calcInsideness(FeatureKind kind, Element el, Set<Way> polygons) {
-		int result = 0;  
-		if (polygons == null || polygons.isEmpty()) { 
-			return IsInUtil.OUT;
-		}
-		
-		Area elementBbox;
-		if (el instanceof Node) {
-			Coord c = ((Node) el).getLocation();
-			for (Way polygon : polygons) {
-				switch (IsInUtil.isPointInShape(c, polygon.getPoints())) {
-				case IsInUtil.IN:
-					return IsInUtil.IN;
-				case IsInUtil.ON:
-					result |= IsInUtil.ON;
-				default:
-				}
-			}
-			return result == 0 ? IsInUtil.OUT : IsInUtil.ON;
-		} else if (el instanceof Way) {
-			Way w = (Way) el;
-			if (w.isComplete()) {
-				elementBbox = Area.getBBox(w.getPoints());
-				if (polygons.size() > 1) {
-					// combine all polygons which intersect the bbox of the element if possible
-					Path2D.Double path = new Path2D.Double();
-					for (Way polygon : polygons) {
-						path.append(Java2DConverter.createPath2D(polygon.getPoints()), false);
-					}
-					java.awt.geom.Area polygonsArea = new java.awt.geom.Area(path);
-					List<List<Coord>> mergedShapes = Java2DConverter.areaToShapes(polygonsArea);
+	Area testSourceBbox = null;
 
-					// combination of polygons may contain holes. They are counter clockwise.
-					List<List<Coord>> holes = new ArrayList<>();
-					List<List<Coord>> outers = new ArrayList<>();
-					for (List<Coord> shape : mergedShapes) {
-						(Way.clockwise(shape) ? outers : holes).add(shape);
-					}
-					
-					// check if any outer intersects with the way
-					for (List<Coord> shape : outers) {
-						int tmpRes = IsInUtil.isLineInShape(kind, w.getPoints(), shape, elementBbox);
-						if (tmpRes != IsInUtil.OUT) {
-							result |= tmpRes;
-							if ((tmpRes & IsInUtil.IN) != 0) {
-								result = tmpRes;
-								break;
-							}
-						}
-					}
-					if ((result & IsInUtil.IN) != 0 && !holes.isEmpty()) {
-						// an outer ring matched
-						// check if any hole intersects with the way
-						for (List<Coord> hole : holes) {
-							int tmpRes = IsInUtil.isLineInShape(kind, w.getPoints(), hole, elementBbox);
-							if (tmpRes == IsInUtil.IN_ON_OUT)
-								return tmpRes;
-							if ((tmpRes & IsInUtil.IN) != 0) 
-								result = IsInUtil.OUT;
-							result |= tmpRes & IsInUtil.ON;
-							
-						}
-					}
-					
-				} else if (polygons.size() == 1) {
-					result = IsInUtil.isLineInShape(kind, w.getPoints(), (polygons.iterator().next()).getPoints(), elementBbox);
-				}
-			}
-		}
-		if (result == 0)
-			result = IsInUtil.OUT;
-		return result;
-	}
-
-	private static int dev_calcInsideness(FeatureKind kind, Element el, Set<Way> polygons) {
-		int result = 0;  
-		if (polygons == null || polygons.isEmpty()) { 
-			return IsInUtil.OUT;
-		}
-		Area tileBbox = null; // ??? Area.getBBox(el); maybe
-		IsInFunction anInst = new IsInFunction();
-		// [javac] /norbert/svn/branches/is-in/test/uk/me/parabola/util/IsInUtilTest.java:125: error: incompatible types: Set<Way> cannot be converted to Collection<Element>
-		//fix anInst.unitTestAugment(new ElementQuadTree(tileBbox, polygons));
-		anInst.setParams(Arrays.asList("landuse", "residential", "all"), kind);
+	private static boolean invokeMethod(IsInFunction anInst, String method, FeatureKind kind, Element el) {
+		anInst.setParams(Arrays.asList("landuse", "residential", method), kind); // tag key/value don't matter
 		String rslt = anInst.calcImpl(el);
-		/* TODO: %%%
-choose 3 methods depending on Kind whose combination will give us IN/ON/OUT 
-test the rslt string for "True" and set the bits in result as appropriate
-		*/
+		return "true".equals(rslt);
+	}
+
+	private int calcInsideness(FeatureKind kind, Element el, Set<Way> polygons) {
+		int result = 0;
+		if (polygons == null || polygons.isEmpty()) {
+			return IsInUtil.OUT;
+		}
+		IsInFunction anInst = new IsInFunction();
+		List<Element> matchingPolygons = new ArrayList<>();
+		for (Way polygon : polygons)
+			matchingPolygons.add(polygon);
+		anInst.unitTestAugment(new ElementQuadTree(testSourceBbox, matchingPolygons));
+		switch (kind) {
+		case POINT:
+			if (invokeMethod(anInst, "in_or_on", kind, el))
+				if (invokeMethod(anInst, "in", kind, el))
+					result = IsInUtil.IN;
+				else
+					result = IsInUtil.ON;
+			else
+				result = IsInUtil.OUT;
+			break;
+		case POLYLINE:
+			/* all=someInNoneOut, any=anyIn, none=someOutNoneIn
+a) IN        all allInOrOn    any
+b) IN ON     all allInOrOn    any
+c) IN ON OUT                  any
+d)    ON         allInOrOn on
+e)    ON OUT                      none
+f)       OUT                      none
+			*/
+			if (invokeMethod(anInst, "all", kind, el)) /*a,b*/
+				result = IsInUtil.IN | IsInUtil.ON; // methods won't say if also ON
+			else /*c,d,e,f*/ if (invokeMethod(anInst, "on", kind, el)) /*d*/
+				result = IsInUtil.ON;
+			else /*c,e,f*/ if (invokeMethod(anInst, "any", kind, el)) /*c*/
+				result = IsInUtil.IN | IsInUtil.ON | IsInUtil.OUT;
+			else /*e,f*/
+				result = IsInUtil.OUT | IsInUtil.ON; // methods won't say if also ON
+			break;
+		case POLYGON: // ON is meaningless for polygons
+			if (invokeMethod(anInst, "all", kind, el))
+				result = IsInUtil.IN;
+			else if (invokeMethod(anInst, "any", kind, el))
+				result = IsInUtil.IN | IsInUtil.OUT;
+			else
+				result = IsInUtil.OUT;
+			break;
+		}
 		return result;
 	}
- 
-	public static List<String> testWithVariants(FeatureKind kind, Element el, String name, Set<Way> polygons) {
+
+	public List<String> testWithVariants(FeatureKind kind, Element el, String name, Set<Way> polygons) {
 		List<String> errors = new ArrayList<>();
 		int res = calcInsideness(kind, el, polygons);
 		
 		String expectedVal = el.getTag("expected");
 		if (expectedVal != null && !"?".equals(expectedVal)) {
 			int expected = Integer.parseInt(expectedVal);
+
+/*
+Using the "method" interface to emulate the old version of IsInUtil.calcInsideness and try and deduce
+the IN/ON/OUT flags to compare with the 'expected' tag isn't quite possible:
+ For POLYGONs the ON flag is meaningless - it can be wholly or partially within
+ For LINEs, the methods don't distinguish between a line that is totally ON and one that is IN but touches the edge,
+  Similarly a line that is OUT and one that touches the edge.
+So here we adjust the expected value to match what can be tested.
+*/
+			if (kind == FeatureKind.POLYGON)
+				expected &= ~IsInUtil.ON;
+			else if (kind == FeatureKind.POLYLINE)
+				if (expected == IsInUtil.IN || expected == IsInUtil.OUT)
+					expected |= IsInUtil.ON;
+
 			if (expected != res) {
 				errors.add(name + " failed, expected: " + expected + " got "+ res);
 				return errors;
@@ -205,6 +191,7 @@ test the rslt string for "True" and set the bits in result as appropriate
 		TestSource src = new TestSource();
 		src.config(new EnhancedProperties());
 		src.load(Args.TEST_RESOURCE_OSM + "is-in-samples.osm", false);
+		testSourceBbox = src.getElementSaver().getBoundingBox();
 		
 		ElementQuadTree qt = IsInFunction.buildTree(src.getElementSaver(), "landuse", "residential");
 		ArrayList<String> allErrors = new ArrayList<>();

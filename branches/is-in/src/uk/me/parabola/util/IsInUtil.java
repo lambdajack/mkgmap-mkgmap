@@ -25,7 +25,6 @@ import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.mkgmap.reader.osm.Element;
-import uk.me.parabola.mkgmap.reader.osm.FeatureKind;
 import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 
@@ -80,7 +79,7 @@ public class IsInUtil {
 	}
 	
 	
-	public static int isLineInShape(FeatureKind kind, List<Coord> lineToTest, List<Coord> shape, Area elementBbox) {
+	public static int isLineInShape(List<Coord> lineToTest, List<Coord> shape, Area elementBbox) {
 		final int n = lineToTest.size();
 		int status = isPointInShape(lineToTest.get(0), shape);
 		BitSet onBoundary = new BitSet();
@@ -185,7 +184,7 @@ public class IsInUtil {
 				status |= insidePolygon(pTest, false, shape) ? IN : OUT;
 				return status;
 			}
-			status |= checkAllOn(kind, lineToTest, shape);
+			status |= checkAllOn(lineToTest, shape);
 		}
 		return status;
 	}
@@ -193,12 +192,11 @@ public class IsInUtil {
 
 	/** 
 	 * Handle special case that all points of {@code lineToTest} are on the edge of shape
-	 * @param kind 
 	 * @param lineToTest
 	 * @param shape
 	 * @return
 	 */
-	private static int checkAllOn(FeatureKind kind, List<Coord> lineToTest, List<Coord> shape) {
+	private static int checkAllOn(List<Coord> lineToTest, List<Coord> shape) {
 		int n = lineToTest.size();
 		// all points are on boundary
 		for (int i = 0; i < n-1; i++) {
@@ -210,51 +208,6 @@ public class IsInUtil {
 				int resMidPoint = isPointInShape(pTest, shape);
 				if (resMidPoint != ON)
 					return resMidPoint;
-			}
-		}
-		
-		// if we get here we can assume that the line runs along the shape
-		if (kind == FeatureKind.POLYGON) {
-			// lineToTest is a polygon and all segments are on boundary
-			// find a node inside lineToTest and check if this point is in shape
-			
-			// find topmost node(s)  
-			int maxLat = Integer.MIN_VALUE;
-			List<SimpleEntry<Coord, Integer>> topNodes = new ArrayList<>();
-			for (int i = 0; i < lineToTest.size() - 1; i++) {
-				Coord c = lineToTest.get(i);
-				int latHp = c.getHighPrecLat();
-				if (latHp > maxLat) {
-					maxLat = latHp;
-					topNodes.clear();
-				} 
-				if (latHp >= maxLat) {
-					topNodes.add(new SimpleEntry<>(c,i));
-				}
-			}
-			
-			for (SimpleEntry<Coord, Integer> topNode : topNodes) {
-				int pos = topNode.getValue();
-				Coord top = topNode.getKey();
-				Coord prev = lineToTest.get(pos == 0 ? n - 2 : pos - 1);
-				Coord next = lineToTest.get(pos == n - 1 ? 1 : pos + 1);
-				double b1 = top.bearingTo(prev);
-				double b2 = top.bearingTo(next);
-				// b1 and b2 must be heading south or exactly east or west
-				// find heading of angle bisector
-				double bisectorBearing = (b1 + b2) / 2;
-				if (bisectorBearing > -90 && bisectorBearing < 90) {
-					// don't go north of top
-					bisectorBearing -= 180;
-					if (bisectorBearing < -180)
-						bisectorBearing += 360;
-				}
-				Coord pTest = topNode.getKey().destOnRhumLine(0.1, bisectorBearing);
-				// double check: the calculated point may not be inside the
-				// element
-				if (isPointInShape(pTest, lineToTest) == IN && isPointInShape(pTest, shape) == IN) {
-					return IN; // all ON and areas intersect
-				}
 			}
 		}
 		return ON;
