@@ -606,7 +606,7 @@ public class WrongAngleFixer {
 		List<Coord> removedInWay = new ArrayList<>();
 		List<Coord> obsoletePoints = new ArrayList<>();
 		List<Coord> modifiedPoints = new ArrayList<>();
-		
+		markEndPoints(convertedWays, true); // don't allow to remove end points of ways
 		for (ConvertedWay cw : convertedWays) {
 			if (!cw.isValid())
 				continue;
