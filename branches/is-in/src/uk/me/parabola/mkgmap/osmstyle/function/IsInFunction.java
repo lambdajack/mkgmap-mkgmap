@@ -66,7 +66,9 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 		
 		POLYGON_ALL("all",                FeatureKind.POLYGON,  false, false, true,  true)
 			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return !hasOut;} },
-		POLYGON_ANY("any",                FeatureKind.POLYGON,  true,  false, false, false)
+//		POLYGON_ANY("any",                FeatureKind.POLYGON,  true,  false, false, false)
+// problem with test b14 on the cut polygons and isLineInShape that goes away when merged. TODO: investigate sometime
+		POLYGON_ANY("any",                FeatureKind.POLYGON,  true,  false, false, true)
 			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return hasIn;} };
 
 		public abstract boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut);
