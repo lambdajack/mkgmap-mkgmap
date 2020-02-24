@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.Arrays;
 import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.HashMap;
 
 import org.junit.Test;
 
@@ -44,13 +46,51 @@ import uk.me.parabola.mkgmap.reader.osm.Way;
 /*
 Source: test/resources/in/osm/is-in-samples.osm
 errors: test-reports/uk/me/parabola/util/62_IsInUtilTest-err.html
-
-b14 failed, expected: 4 got 5
 */
 
 public class IsInUtilTest {
 
 	Area testSourceBbox = null;
+
+	private static final String allPointMethods = "in,in_or_on,on";
+	private static final String allLineMethods = "all,all_in_or_on,on,any,none";
+	private static final String allPolygonMethods = "all,any";
+
+	private static final Map<Integer, String> pointMethods = new HashMap<>();
+	private static final Map<Integer, String> lineMethods = new HashMap<>();
+	private static final Map<Integer, String> polygonMethods = new HashMap<>();
+
+	public IsInUtilTest() {
+		// set up the methods that should return true for the 'expected' value
+		pointMethods.put(1, "in,in_or_on");
+		pointMethods.put(2, "in_or_on,on");
+		pointMethods.put(4, "");
+
+/* all=someInNoneOut, any=anyIn, none=someOutNoneIn
+     1  2  4
+a 1) IN        all allInOrOn    any
+b 3) IN ON     all allInOrOn    any
+c 7) IN ON OUT                  any
+d 2)    ON         allInOrOn on
+e 6)    ON OUT                      none
+f 4)       OUT                      none
+*/
+		lineMethods.put(1, "all,all_in_or_on,any");
+		lineMethods.put(2, "all_in_or_on,on");
+		lineMethods.put(3, "all,all_in_or_on,any");
+		lineMethods.put(4, "none");
+		//lineMethods.put(5, "");
+		lineMethods.put(6, "none");
+		lineMethods.put(7, "any");
+
+		polygonMethods.put(1, "all,any");
+		polygonMethods.put(2, "all,any");
+		polygonMethods.put(3, "all,any");
+		polygonMethods.put(4, "");
+		//polygonMethods.put(5, "");
+		polygonMethods.put(6, "");
+		polygonMethods.put(7, "any");
+	}
 
 	private static boolean invokeMethod(IsInFunction anInst, String method, FeatureKind kind, Element el) {
 		anInst.setParams(Arrays.asList("landuse", "residential", method), kind); // tag key/value don't matter
@@ -58,118 +98,93 @@ public class IsInUtilTest {
 		return "true".equals(rslt);
 	}
 
-	private int calcInsideness(FeatureKind kind, Element el, Set<Way> polygons) {
-		int result = 0;
-		if (polygons == null || polygons.isEmpty()) {
-			return IsInUtil.OUT;
-		}
+	public List<String> testWithVariants(FeatureKind kind, Element el, String name, Set<Way> polygons) {
+		List<String> errors = new ArrayList<>();
+
 		IsInFunction anInst = new IsInFunction();
 		List<Element> matchingPolygons = new ArrayList<>();
 		for (Way polygon : polygons)
 			matchingPolygons.add(polygon);
 		anInst.unitTestAugment(new ElementQuadTree(testSourceBbox, matchingPolygons));
-		switch (kind) {
-		case POINT:
-			if (invokeMethod(anInst, "in_or_on", kind, el))
-				if (invokeMethod(anInst, "in", kind, el))
-					result = IsInUtil.IN;
-				else
-					result = IsInUtil.ON;
-			else
-				result = IsInUtil.OUT;
-			break;
-		case POLYLINE:
-			/* all=someInNoneOut, any=anyIn, none=someOutNoneIn
-a) IN        all allInOrOn    any
-b) IN ON     all allInOrOn    any
-c) IN ON OUT                  any
-d)    ON         allInOrOn on
-e)    ON OUT                      none
-f)       OUT                      none
-			*/
-			if (invokeMethod(anInst, "all", kind, el)) /*a,b*/
-				result = IsInUtil.IN | IsInUtil.ON; // methods won't say if also ON
-			else /*c,d,e,f*/ if (invokeMethod(anInst, "on", kind, el)) /*d*/
-				result = IsInUtil.ON;
-			else /*c,e,f*/ if (invokeMethod(anInst, "any", kind, el)) /*c*/
-				result = IsInUtil.IN | IsInUtil.ON | IsInUtil.OUT;
-			else /*e,f*/
-				result = IsInUtil.OUT | IsInUtil.ON; // methods won't say if also ON
-			break;
-		case POLYGON: // ON is meaningless for polygons
-			if (invokeMethod(anInst, "all", kind, el))
-				result = IsInUtil.IN;
-			else if (invokeMethod(anInst, "any", kind, el))
-				result = IsInUtil.IN | IsInUtil.OUT;
-			else
-				result = IsInUtil.OUT;
-			break;
-		}
-		return result;
-	}
-
-	public List<String> testWithVariants(FeatureKind kind, Element el, String name, Set<Way> polygons) {
-		List<String> errors = new ArrayList<>();
-		int res = calcInsideness(kind, el, polygons);
 		
 		String expectedVal = el.getTag("expected");
 		if (expectedVal != null && !"?".equals(expectedVal)) {
 			int expected = Integer.parseInt(expectedVal);
-
-/*
-Using the "method" interface to emulate the old version of IsInUtil.calcInsideness and try and deduce
-the IN/ON/OUT flags to compare with the 'expected' tag isn't quite possible:
- For POLYGONs the ON flag is meaningless - it can be wholly or partially within
- For LINEs, the methods don't distinguish between a line that is totally ON and one that is IN but touches the edge,
-  Similarly a line that is OUT and one that touches the edge.
-So here we adjust the expected value to match what can be tested.
-*/
-			if (kind == FeatureKind.POLYGON)
-				expected &= ~IsInUtil.ON;
-			else if (kind == FeatureKind.POLYLINE)
-				if (expected == IsInUtil.IN || expected == IsInUtil.OUT)
-					expected |= IsInUtil.ON;
-
-			if (expected != res) {
-				errors.add(name + " failed, expected: " + expected + " got "+ res);
+			String allMethods = "";
+			Map<Integer, String> methods = null;
+			switch (kind) {
+			case POINT:
+				allMethods = allPointMethods;
+				methods = pointMethods;
+				break;
+			case POLYLINE:
+				allMethods = allLineMethods;
+				methods = lineMethods;
+				break;
+			case POLYGON:
+				allMethods = allPolygonMethods;
+				methods = polygonMethods;
+				break;
+			}
+			if (!methods.containsKey(expected)) {
+				errors.add(name + " failed, no methods for expected: " + expectedVal);
 				return errors;
 			}
-			if (el instanceof Way) {
-				Way w2 = (Way) el.copy();
-				Collections.reverse(w2.getPoints());
-				int res2 = calcInsideness(kind, w2, polygons);
-				if (expected != res2) {
-					errors.add(name + " failed reversed, expected: " + expected + " got " + res2);
-				}
-				if (w2.hasIdenticalEndPoints()) {
-					List<Coord> points = w2.getPoints();
-					for (int i = 1; i < w2.getPoints().size(); i++) {
-						points.remove(points.size() - 1);
-						Collections.rotate(points, 1);
-						points.add(points.get(0));
-						res2 = calcInsideness(kind, w2, polygons);
-						if (expected != res2) {
-							errors.add(name + " failed rotated " + i + " , expected: " + expected + " got " + res2);
-						}
+			String[] trueMethods = methods.get(expected).split(",");
+			if (trueMethods[0].isEmpty())
+				trueMethods = new String[0];
+			List<String> falseMethods = new ArrayList<>();
+			for (String tstMethod : allMethods.split(",")) {
+				boolean inList = false;
+				for (String trueMethod : trueMethods)
+					if (tstMethod.equals(trueMethod)) {
+						inList = true;
+						break;
 					}
-				}
+				if (!inList)
+					falseMethods.add(tstMethod);
+			}
+
+			for (String tstMethod : trueMethods)
+				if (!invokeMethod(anInst, tstMethod, kind, el))
+					errors.add(name + " failed, expected: " + expectedVal + ". " + tstMethod + " should be true");
+			for (String tstMethod : falseMethods)
+				if (invokeMethod(anInst, tstMethod, kind, el))
+					errors.add(name + " failed, expected: " + expectedVal + ". " + tstMethod + " should be false");
+
+			if (!errors.isEmpty() || !(el instanceof Way))
+				return errors;
+			Way w2 = (Way) el.copy();
+			Collections.reverse(w2.getPoints());
+			for (String tstMethod : trueMethods)
+				if (!invokeMethod(anInst, tstMethod, kind, w2))
+					errors.add(name + " failed reversed, expected: " + expectedVal + ". " + tstMethod + " should be true");
+			for (String tstMethod : falseMethods)
+				if (invokeMethod(anInst, tstMethod, kind, w2))
+					errors.add(name + " failed reversed, expected: " + expectedVal + ". " + tstMethod + " should be false");
+
+			if (!errors.isEmpty() || !w2.hasIdenticalEndPoints())
+				return errors;
+			List<Coord> points = w2.getPoints();
+			for (int i = 1; i < w2.getPoints().size(); i++) {
+				points.remove(points.size() - 1);
+				Collections.rotate(points, 1);
+				points.add(points.get(0));
+				for (String tstMethod : trueMethods)
+					if (!invokeMethod(anInst, tstMethod, kind, w2))
+						errors.add(name + " failed rotated, expected: " + expectedVal + ". " + tstMethod + " should be true");
+				for (String tstMethod : falseMethods)
+					if (invokeMethod(anInst, tstMethod, kind, w2))
+						errors.add(name + " failed rotated, expected: " + expectedVal + ". " + tstMethod + " should be false");
 			}
 		}
 		return errors;
 	}
-	
-	/**
-	 * A very basic check that the size of all the sections has not changed.
-	 * This can be used to make sure that a change that is not expected to
-	 * change the output does not do so.
-	 *
-	 * The sizes will have to be always changed when the output does change
-	 * though.
-	 */
+
 	@Test
 	public void testBasic() throws FileNotFoundException {
 
-		// just loads the file 
+		// just loads the file
 		class TestSource extends OsmMapDataSource {
 			@Override
 			public Set<String> getUsedTags() {

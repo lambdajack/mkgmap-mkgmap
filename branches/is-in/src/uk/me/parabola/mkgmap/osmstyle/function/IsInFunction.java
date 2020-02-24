@@ -57,7 +57,7 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return !hasOut;} },
 		LINE_ALL_ON("on",                 FeatureKind.POLYLINE, true,  false, true,  true)
 			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return !(hasIn || hasOut);} },
-		LINE_ANY_IN("any",                FeatureKind.POLYLINE, true,  false, false, false)
+		LINE_ANY_IN("any",                FeatureKind.POLYLINE, true,  false, false, true)
 			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return hasIn;} },
 //		LINE_ANY_IN_OR_ON("any_in_or_on", FeatureKind.POLYLINE, true,  false, false, true)
 //			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return hasIn || !hasOut;} },
@@ -69,7 +69,26 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 //		POLYGON_ANY("any",                FeatureKind.POLYGON,  true,  false, false, false)
 // problem with test b14 on the cut polygons and isLineInShape that goes away when merged. TODO: investigate sometime
 		POLYGON_ANY("any",                FeatureKind.POLYGON,  true,  false, false, true)
-			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return hasIn;} };
+			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return hasIn || !hasOut;} };
+
+/* thoughts for ON methods for polyons and the hasOn flag
+
+possible methods:
+ on_outer / on
+ on_inner / hole
+ on_either
+ all_or_inner - to match, say building, even when cut out of area
+
+on_outer is ok, with just ON.
+on_inner would be logical to represent as ON|OUT
+but, at the moment, an outside line/poly touching an outer will also set this combination
+
+Could:
+ don't hasOn() when isLineInShape returns IN|ON|OUT (in setHasFromFlags)
+ other places where currently call hasOn(), test kind for poly and don't when in comb. with IN or OUT
+
+actually, would be safe not to call hasOn() even for POLYLINE, because none of the methods test it
+*/
 
 		public abstract boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut);
 
