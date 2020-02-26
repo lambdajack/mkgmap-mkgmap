@@ -14,7 +14,6 @@ package uk.me.parabola.util;
 
 
 import java.awt.geom.Path2D;
-import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
@@ -24,8 +23,6 @@ import java.util.TreeMap;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
-import uk.me.parabola.mkgmap.reader.osm.Element;
-import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 
 /**
