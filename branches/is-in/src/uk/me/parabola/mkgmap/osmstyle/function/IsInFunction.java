@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
@@ -130,7 +131,7 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 		}
 	}
 
-	private class CanStopProcessing extends RuntimeException {};
+	private class CanStopProcessing extends RuntimeException {}
 
 	private MethodArg method;
 	private boolean hasIn;
@@ -144,7 +145,7 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 		// 1: polygon tagName
 		// 2: value for above tag
 		// 3: method keyword, see above
-		log.info("isInFunction", System.identityHashCode(this));
+		log.debug("isInFunction", System.identityHashCode(this));
 	}
 
 	private void resetHasFlags() {
@@ -155,7 +156,7 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 	}
 
 	public String calcImpl(Element el) {
-		log.info("calcImpl", System.identityHashCode(this), kind, params, el);
+		log.debug("calcImpl", System.identityHashCode(this), kind, params, el);
 		assert qt != null : "invoked the non-augmented instance";
 		if (qt.isEmpty())
 			return String.valueOf(false);
@@ -171,9 +172,11 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 			case POLYGON:
 				doPolygonTest((Way) el);
 				break;
+			default:
+				throw new ExitException("Bad FeatureKind: " + kind);
 			}
 		} catch (CanStopProcessing e) {}
-		log.info("done", System.identityHashCode(this), hasIn, hasOn, hasOut);
+		log.debug("done", System.identityHashCode(this), hasIn, hasOn, hasOut);
 		if (!hasIn && !hasOn)
 			hasOut = true;
 		return String.valueOf(method.mapFlags(hasIn, hasOn, hasOut));
@@ -189,7 +192,7 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 	@Override
 	public void setParams(List<String> params, FeatureKind kind) {
 		super.setParams(params, kind);
-		log.info("setParams", System.identityHashCode(this), kind, params);
+		log.debug("setParams", System.identityHashCode(this), kind, params);
 		String methodStr = params.get(2);
 		boolean knownMethod = false;
 		List<String> methodsForKind = new ArrayList<>();
@@ -198,10 +201,12 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 				if (tstMethod.getKind() == kind) {
 					this.method = tstMethod;
 					return;
-				} else
+				} else {
 					knownMethod = true;
-			} else if (tstMethod.getKind() == kind)
+				}
+			} else if (tstMethod.getKind() == kind) {
 				methodsForKind.add(tstMethod.toString());
+			}
 		}
 		throw new SyntaxException(String.format("Third parameter '%s' of function %s is not " +
 					(knownMethod ? "supported for this style section" : "understood") +
@@ -209,27 +214,27 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 	}
 
 	private void setIn() {
-		log.info("setIn", hasIn, hasOn, hasOut);
+		log.debug("setIn", hasIn, hasOn, hasOut);
 		hasIn = true;
 		if (method.canStopIn() || hasOut)
 			throw new CanStopProcessing();
 	}
 
 	private void setOn() {
-		log.info("setOn", hasIn, hasOn, hasOut);
+		log.debug("setOn", hasIn, hasOn, hasOut);
 		hasOn = true;
 		if (method.canStopOn() || (hasIn && hasOut))
 			throw new CanStopProcessing();
 	}
 	private void setOut() {
-		log.info("setOut", hasIn, hasOn, hasOut);
+		log.debug("setOut", hasIn, hasOn, hasOut);
 		hasOut = true;
 		if (method.canStopOut() || hasIn)
 			throw new CanStopProcessing();
 	}
 
 	private void setHasFromFlags(int flags) {
-		log.info("setFlags", flags);
+		log.debug("setFlags", flags);
 		if ((flags & IsInUtil.ON) != 0)
 			setOn();
 		if ((flags & IsInUtil.IN) != 0)
@@ -272,6 +277,8 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 				// hole checking is a separate pass
 				setOn(); // don't care about setIn()
 			break;
+		default:
+			throw new ExitException("Bbad point method: " + method);
 		}
 	}
 
@@ -285,7 +292,7 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 			List<List<Coord>> outers = new ArrayList<>();
 			List<List<Coord>> holes = new ArrayList<>();
 			IsInUtil.mergePolygons(polygons, outers, holes);
-			log.info("pointMerge", polygons.size(), outers.size(), holes.size());
+			log.debug("pointMerge", polygons.size(), outers.size(), holes.size());
 			for (List<Coord> shape : outers)
 				checkPointInShape(c, shape, holes);
 			if (method == MethodArg.POINT_ON && !holes.isEmpty())
@@ -293,7 +300,7 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 				for (List<Coord> hole : holes)
 					checkPointInShape(c, hole, null);
 		} else { // just one polygon or IN_OR_ON, which can do one-by-one
-			log.info("point1by1", polygons.size());
+			log.debug("point1by1", polygons.size());
 			for (Way polygon : polygons)
 				checkPointInShape(c, polygon.getPoints(), null);
 		}
@@ -311,7 +318,7 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 		boolean foundSomething = false;
 		for (List<Coord> hole : holes) {
 			int flags = IsInUtil.isLineInShape(polyLine, hole, elementBbox);
-			log.info("checkhole", flags);
+			log.debug("checkhole", flags);
 			if ((flags & IsInUtil.IN) != 0) {
 				setOut();
 				if ((flags & IsInUtil.ON) != 0)
@@ -332,7 +339,7 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 	private void checkHoleInThis(List<Coord> polyLine, List<List<Coord>> holes, Area elementBbox) {
 		for (List<Coord> hole : holes) {
 			int flags = IsInUtil.isLineInShape(hole, polyLine, elementBbox);
-			log.info("holeInThis", flags);
+			log.debug("holeInThis", flags);
 			if ((flags & IsInUtil.IN) != 0 ||
 			    (flags == IsInUtil.ON)) { // exactly on hole
 				setOut();
@@ -346,26 +353,26 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 		Area elementBbox = Area.getBBox(polyLine);
 		Set<Way> polygons = qt.get(elementBbox).stream().map(e -> (Way) e)
 				.collect(Collectors.toCollection(LinkedHashSet::new));
-		if (log.isInfoEnabled()) {
-			log.info("line", polyLine);
-			log.info(polygons.size(), "polygons");
+		if (log.isDebugEnabled()) {
+			log.debug("line", polyLine);
+			log.debug(polygons.size(), "polygons");
 			for (Way polygon : polygons)
-				log.info("polygon", polygon.getPoints());
+				log.debug("polygon", polygon.getPoints());
 		}
 		if (method.needMerge() && polygons.size() > 1) { // ALL-like methods need to merge shapes
 			List<List<Coord>> outers = new ArrayList<>();
 			List<List<Coord>> holes = new ArrayList<>();
 			IsInUtil.mergePolygons(polygons, outers, holes);
-			if (log.isInfoEnabled()) {
-				log.info(outers.size(), "outers", holes.size(), "holes");
+			if (log.isDebugEnabled()) {
+				log.debug(outers.size(), "outers", holes.size(), "holes");
 				for (List<Coord> shape : outers)
-					log.info("outer", shape);
+					log.debug("outer", shape);
 				for (List<Coord> hole : holes)
-					log.info("hole", hole);
+					log.debug("hole", hole);
 			}
 			for (List<Coord> shape : outers) {
 				int flags = IsInUtil.isLineInShape(polyLine, shape, elementBbox);
-				log.info("checkShape", flags);
+				log.debug("checkShape", flags);
 				if ((flags & IsInUtil.IN) != 0) { // this shape is the one to consider
 					if ((flags & IsInUtil.ON) != 0)
 						setOn();
@@ -426,7 +433,7 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 
 	@Override
 	public void augmentWith(ElementSaver elementSaver) {
-		log.info("augmentWith", System.identityHashCode(this), kind, params);
+		log.debug("augmentWith", System.identityHashCode(this), kind, params);
 		// the cached function mechanism creates an instance for each occurance in the rule file
 		// but then just uses one of them for augmentWith() and calcImpl().
 		if (qt != null)

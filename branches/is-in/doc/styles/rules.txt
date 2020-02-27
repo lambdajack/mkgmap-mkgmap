@@ -244,9 +244,9 @@ $highway=primary
 Functions calculate a specific property of an OSM element.
 
 .Style functions
-[width="100%",cols="2,1,1,1,5",options="header"]
+[width="100%",cols="5,1,1,1,11",options="header"]
 |=====
-|Function |Node |Way |Relation |Description
+|Function |Node |Way |Rel. |Description
 |length()      |  | x  | x  |
 Calculates the length in m. For relations its the sum of all member length (including sub relations).
 
@@ -282,8 +282,8 @@ Retrieves the type of the OSM element: 'node', 'way', 'relation'.
 Retrieves the id of the OSM element. This can be useful for style debugging purposes. Note that due to internal changes like merging, cutting etc. 
 some element ids are changed and some have a faked id > 4611686018427387904.  
 
-|is_in(tag,value,method)   | x | x  |  |
-+true+ if the element is in polygon(s) having the specified *tag=value* according to the *method*, +false+ otherwise.
+|is_in(*tag*,*value*,*method*)   | x | x  |  |
++true+ if the element is in polygon(s) having the specified *tag*=*value* according to the *method*, +false+ otherwise.
 The methods available depend on the Style section:
 
 polygons:
