@@ -67,9 +67,7 @@ public class IsInFunction extends CachedFunction { // StyleFunction
 		
 		POLYGON_ALL("all",                FeatureKind.POLYGON,  false, false, true,  true)
 			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return !hasOut;} },
-//		POLYGON_ANY("any",                FeatureKind.POLYGON,  true,  false, false, false)
-// problem with test b14 on the cut polygons and isLineInShape that goes away when merged. TODO: investigate sometime
-		POLYGON_ANY("any",                FeatureKind.POLYGON,  true,  false, false, true)
+		POLYGON_ANY("any",                FeatureKind.POLYGON,  true,  false, false, false)
 			{ @Override public boolean mapFlags(boolean hasIn, boolean hasOn, boolean hasOut) {return hasIn || !hasOut;} };
 
 /* thoughts for ON methods for polyons and the hasOn flag
@@ -109,6 +107,7 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 			this.needMerge = needMerge;
 		}
 
+		@Override
 		public String toString() {
 			return methodName;
 		}
@@ -246,9 +245,12 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 	private static boolean notInHole(Coord c, List<List<Coord>> holes) {
 		if (holes == null)
 			return true;
-		for (List<Coord> hole : holes)
-			if (IsInUtil.insidePolygon(c, true, hole))
+		for (List<Coord> hole : holes) {
+			int flags = IsInUtil.isPointInShape(c, hole);
+			log.debug("notInHole", flags);
+			if (flags != IsInUtil.OUT)
 				return false;
+		}
 		return true;
 	}
 
@@ -258,27 +260,31 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 		checked all the polygons and haven't satisfied IN/ON, so no point is calling setOut()
 		and it wouldn't stop the processing or effect the answer anyway
 		*/
-		switch (method) { // Use the method to control the onBoundary condition of insidePolygon.
+		int flags = IsInUtil.isPointInShape(c, shape);
+		log.debug("checkPoint", flags);
+		switch (method) {
 		case POINT_IN:
-			if (IsInUtil.insidePolygon(c, false, shape))
-				if (notInHole(c, holes))
+			if (flags == IsInUtil.IN) {
+				if (notInHole(c, holes)) {
 					setIn();
-				else // in hole in this shape, no point in looking at more shapes
+				} else {
+					// in hole in this shape, no point in looking at more shapes
 					throw new CanStopProcessing();
+				}
+			}
 			break;
 		case POINT_IN_OR_ON:
-			if (IsInUtil.insidePolygon(c, true, shape))
+			if (flags != IsInUtil.OUT)
 				// no need to check holes for this as didn't need to merge polygons
 				setIn(); // don't care about setOn()
 			break;
 		case POINT_ON:
-			if (IsInUtil.insidePolygon(c, true, shape) &&
-			    !IsInUtil.insidePolygon(c, false, shape))
+			if (flags == IsInUtil.ON)
 				// hole checking is a separate pass
 				setOn(); // don't care about setIn()
 			break;
 		default:
-			throw new ExitException("Bbad point method: " + method);
+			throw new ExitException("Bad point method: " + method);
 		}
 	}
 

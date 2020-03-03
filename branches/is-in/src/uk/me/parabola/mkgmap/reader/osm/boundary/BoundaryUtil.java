@@ -833,12 +833,15 @@ public class BoundaryUtil {
      * @param area a singular area 
      * @return true if the point is inside polygon.
      */
-    public static boolean pointInsideSingularArea(Coord point, boolean onBoundary, Area area) {
-    	List<Coord> polygonNodes = Java2DConverter.singularAreaToPoints(area);
-    	if (polygonNodes == null)
-    		return false;
-
-    	return IsInUtil.insidePolygon(point, onBoundary, polygonNodes);
-    }
+	public static boolean pointInsideSingularArea(Coord point, boolean onBoundary, Area area) {
+		List<Coord> polygonNodes = Java2DConverter.singularAreaToPoints(area);
+		if (polygonNodes == null)
+			return false;
+		int status = IsInUtil.isPointInShape(point, polygonNodes);
+		if (status == IsInUtil.ON)
+			return onBoundary;
+		else
+			return status == IsInUtil.IN;
+	}
     
 }

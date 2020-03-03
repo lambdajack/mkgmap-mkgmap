@@ -23,6 +23,7 @@ import java.util.TreeMap;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 
 /**
@@ -31,7 +32,7 @@ import uk.me.parabola.mkgmap.reader.osm.Way;
  * 1: the point is outside the polygon <br>
  * 2: the point is on the boundary of the polygon (or very close to it) <br>
  * 3: the point in inside the polygon
- * 
+ *
  * We distinguish 6 cases for lines: <br>
  * 1: all of the line is outside the polygon <br>
  * 2: some of the line is outside and the rest touches or runs along the polygon
@@ -41,11 +42,12 @@ import uk.me.parabola.mkgmap.reader.osm.Way;
  * 5: all of the line is inside the polygon <br>
  * 6: some is inside and some outside the polygon. Obviously some point is on
  * the polygon edge but we don't care if runs along the edge.
- * 
+ *
  * @author Gerd Petermann
  *
  */
 public class IsInUtil {
+	private static final Logger log = Logger.getLogger(IsInUtil.class);
 	public static final int IN = 0x01;
 	public static final int ON = 0x02;
 	public static final int OUT = 0x04;
@@ -57,7 +59,7 @@ public class IsInUtil {
 	}
 
 	public static void mergePolygons(Set<Way> polygons, List<List<Coord>> outers, List<List<Coord>> holes) {
-	// combine all polygons which intersect the bbox of the element if possible
+		// combine all polygons which intersect the bbox of the element if possible
 		Path2D.Double path = new Path2D.Double();
 		for (Way polygon : polygons) {
 			path.append(Java2DConverter.createPath2D(polygon.getPoints()), false);
@@ -75,18 +77,19 @@ public class IsInUtil {
 		TOUCHING, CROSSING, SPLITTING, JOINING,SIMILAR, DOUBLE_SPIKE
 	}
 	
-	
+	private static final int EPS_HP = 4; // ~0.15 meters at equator
+	private static final int EPS_HP_SQRD = EPS_HP * EPS_HP;
+	private static final double EPS = 0.15; // meters. needed for distToLineSegment()
+
 	public static int isLineInShape(List<Coord> lineToTest, List<Coord> shape, Area elementBbox) {
 		final int n = lineToTest.size();
 		int status = isPointInShape(lineToTest.get(0), shape);
 		BitSet onBoundary = new BitSet();
-		boolean statusFromFirst = true;
 		
 		for (int i = 0; i < shape.size() - 1; i++) {
 			Coord p11 = shape.get(i);
 			Coord p12 = shape.get(i + 1);
-			if (p11.highPrecEquals(p12)) {
-				// maybe we should even skip very short segments (< 0.01 m)?
+			if (p11.distanceInHighPrecSquared(p12) < EPS_HP_SQRD) { // skip very short segments
 				continue;
 			}
 			// check if shape segment is clearly below, above, right or left of bbox
@@ -98,23 +101,19 @@ public class IsInUtil {
 			for (int k = 0; k < n - 1; k++) {
 				Coord p21 = lineToTest.get(k);
 				Coord p22 = lineToTest.get(k + 1);
-				if (p21.highPrecEquals(p22)) {
-					// maybe we should even skip very short segments (< 0.01 m)?
+				if (p21.distanceInHighPrecSquared(p22) < EPS_HP_SQRD) { // skip very short segments
 					continue;
 				}
 				Coord inter = Utils.getSegmentSegmentIntersection(p11, p12, p21, p22);
 				if (inter != null) {
-					// segments have at least one common point 
+					// segments have at least one common point
 					boolean isCrossing = false;
-					if (inter.distance(p21) < 0.01) {
+					if (inter.distanceInHighPrecSquared(p21) < EPS_HP_SQRD) {
 						onBoundary.set(k);
 						if (k == 0) {
-							// first segment of line and first point on boundary
-							if (status != ON && statusFromFirst) {
-								status = ON;
-							}
+							status |= ON;
 						} else {
-							if (p21.highPrecEquals(p11)) {
+							if (p21.distanceInHighPrecSquared(p11) < EPS_HP_SQRD) {
 								Coord p20 = lineToTest.get(k - 1);
 								Coord p10 = shape.get(i - 1 >= 0 ? i - 1 : shape.size() - 2);
 								IntersectionStatus x = analyseCrossingInPoint(p11, p20, p22, p10, p12);
@@ -131,17 +130,13 @@ public class IsInUtil {
 									}
 								}
 								if (pTest != null) {
-									// it is unlikely but not impossible that pTest is on boundary :(
 									int testStat = isPointInShape(pTest, shape);
-									if (status == ON) {
-										status = testStat;
-										statusFromFirst = false;
-									} else if (status != testStat) {
-										return IN_ON_OUT; 
-									}
+									status |= testStat;
+									if ((status|ON) == IN_ON_OUT)
+									    return IN_ON_OUT;
 								}
-							} else if (p21.highPrecEquals(p12)) {
-								// handled in next iteration (k+1) or (i+1) 
+							} else if (p21.distanceInHighPrecSquared(p12) < EPS_HP_SQRD) {
+								// handled in next iteration (k+1) or (i+1)b
 							} else {
 								// way segment starts on a shape segment
 								// somewhere between p11 and p12
@@ -153,13 +148,17 @@ public class IsInUtil {
 								if (isLeftPrev< 0 && isLeftNext > 0 || isLeftPrev > 0 && isLeftNext < 0) {
 									// both way segments are not on the shape
 									// segment and they are on different sides
-									isCrossing = true;  
+									isCrossing = true;
 								}
 							}
 						}
-					} else if (inter.distance(p22) < 0.01) {
+					} else if (inter.distanceInHighPrecSquared(p22) < EPS_HP_SQRD) {
 						onBoundary.set(k + 1);
 						// handle intersection on next iteration
+					} else if (inter.distanceInHighPrecSquared(p11) < EPS_HP_SQRD || inter.distanceInHighPrecSquared(p12) < EPS_HP_SQRD) {
+						// intersection is very close to end of shape segment
+						if (inter.distToLineSegment(p21, p22) > EPS)
+							isCrossing = true;
 					} else {
 						isCrossing = true;
 					}
@@ -178,7 +177,7 @@ public class IsInUtil {
 			if (onBoundary.cardinality() != n) {
 				// return result for first point which is not on boundary
 				Coord pTest = lineToTest.get(onBoundary.nextClearBit(0));
-				status |= insidePolygon(pTest, false, shape) ? IN : OUT;
+				status |= isPointInShape(pTest, shape);
 				return status;
 			}
 			status |= checkAllOn(lineToTest, shape);
@@ -187,7 +186,7 @@ public class IsInUtil {
 	}
 
 
-	/** 
+	/**
 	 * Handle special case that all points of {@code lineToTest} are on the edge of shape
 	 * @param lineToTest
 	 * @param shape
@@ -199,7 +198,6 @@ public class IsInUtil {
 		for (int i = 0; i < n-1; i++) {
 			Coord p1 = lineToTest.get(i);
 			Coord p2 = lineToTest.get(i + 1);
-			// TODO: may not work with b14 (element is inner ring in mp)
 			if (!isOnOrCloseToEdgeOfShape(shape, p1, p2)) {
 				Coord pTest = p1.makeBetweenPoint(p2, 0.01);
 				int resMidPoint = isPointInShape(pTest, shape);
@@ -212,16 +210,15 @@ public class IsInUtil {
 
 	/**
 	 * two line-strings a-s-c and x-s-y the same mid point. Check if they are crossing. This is the case
-	 * if a-s-c is between x-s-y or if x-s-y is between a-s-c. 
+	 * if a-s-c is between x-s-y or if x-s-y is between a-s-c.
 	 * @param s the share point
 	 * @param a 1st point 1st line-string
-	 * @param b 2nd point 1st line-string 
+	 * @param b 2nd point 1st line-string
 	 * @param x 1st point 2nd line-string
 	 * @param y 2nd point 2nd line-string
 	 * @return kind of crossing or touching
 	 */
 	private static IntersectionStatus analyseCrossingInPoint(Coord s, Coord a, Coord b, Coord x, Coord y) {
-		//TODO: Can we do this sorting without the costly bearing calculations? 
 		TreeMap<Long, Character> map = new TreeMap<>();
 		long ba = Math.round(s.bearingTo(a) * 1000);
 		long bb = Math.round(s.bearingTo(b) * 1000);
@@ -242,14 +239,14 @@ public class IsInUtil {
 				// pair xy is either on 0 and 2 or 1 and 3, so only one of a and b is between them
 				// shape segments x-s-y is nether between nor outside of way segments a-s-b
 				return IntersectionStatus.CROSSING;
-			} 
+			}
 			return IntersectionStatus.TOUCHING;
 		}
 
 		if (map.size() == 3) {
 			if (xpos < 0) {
 				// x-s-y is a spike that touches a-s-b
-				return IntersectionStatus.TOUCHING; 
+				return IntersectionStatus.TOUCHING;
 			}
 			if (bpos < 0) {
 				// either s-x or s-y is overlaps s-b
@@ -265,17 +262,17 @@ public class IsInUtil {
 				// two spikes meeting
 				return IntersectionStatus.TOUCHING;
 			}
-			// a-s-b and x-s-y are overlapping (maybe have different directions) 
+			// a-s-b and x-s-y are overlapping (maybe have different directions)
 			return IntersectionStatus.SIMILAR;
 		}
-		// both a-s-b and x-s-y come from and go to the same direction 
-		return IntersectionStatus.DOUBLE_SPIKE; 
+		// both a-s-b and x-s-y come from and go to the same direction
+		return IntersectionStatus.DOUBLE_SPIKE;
 	}
 
 	/**
 	 * Check if the sequence p1-p2 or p2-p1 appears in the shape or if there is only one point c between and the sequence p1-c-p2
-	 * is nearly straight.       
-	 * @param shape list of points describing the shape 
+	 * is nearly straight.
+	 * @param shape list of points describing the shape
 	 * @param p1 first point
 	 * @param p2 second point
 	 * @return true if the sequence p1-p2 or p2-p1 appears in the shape or if there is only one point c between and the sequence p1-c-p2
@@ -284,21 +281,21 @@ public class IsInUtil {
 	private static boolean isOnOrCloseToEdgeOfShape(List<Coord> shape, Coord p1, Coord p2) {
 		for (int i  = 0; i < shape.size(); i++) {
 			Coord p = shape.get(i);
-			if (!p.highPrecEquals(p1)) 
+			if (p.distanceInHighPrecSquared(p1) >= EPS_HP_SQRD)
 				continue;
 			
 			int posPrev = i > 0 ? i - 1 : shape.size() - 2;
 			int posNext = i < shape.size() - 1 ? i + 1 : 1;
-			if (shape.get(posPrev).highPrecEquals(p2) || shape.get(posNext).highPrecEquals(p2))
+			if (shape.get(posPrev).distanceInHighPrecSquared(p2) < EPS_HP_SQRD || shape.get(posNext).distanceInHighPrecSquared(p2) < EPS_HP_SQRD)
 				return true;
 
 			int posPrev2 = posPrev > 0 ? posPrev - 1 : shape.size() - 2;
 			int posNext2 = posNext < shape.size() - 1 ? posNext + 1 : 1;
-			if (shape.get(posPrev2).highPrecEquals(p2) && Math.abs(Utils.getAngle(p1, shape.get(posPrev), p2)) < 0.1) {
+			if (shape.get(posPrev2).distanceInHighPrecSquared(p2) < EPS_HP_SQRD && Math.abs(Utils.getAngle(p1, shape.get(posPrev), p2)) < 0.1) {
 				// shape segments between p1 and p2 are almost straight
 				return true;
 			}
-			if (shape.get(posNext2).highPrecEquals(p2) && Math.abs(Utils.getAngle(p1, shape.get(posNext), p2)) < 0.1) {
+			if (shape.get(posNext2).distanceInHighPrecSquared(p2) < EPS_HP_SQRD && Math.abs(Utils.getAngle(p1, shape.get(posNext), p2)) < 0.1) {
 				// shape segments between p1 and p2 are almost straight
 				return true;
 			}
@@ -307,67 +304,90 @@ public class IsInUtil {
 		return false;
 	}
 
-	public static int isPointInShape(Coord p, List<Coord> shape) {
-		boolean inOrOn = insidePolygon(p, true, shape);
-		if (inOrOn) {
-			// point is in or on
-			boolean in = insidePolygon(p, false, shape);
-			return in ? IN : ON;
+	/**
+	 * Check if node is in polygon using crossing number counter, with some some tolerance
+	 * @param node the point to test
+	 * @param shape list of points describing the polygon
+	 * @return IN/ON/OUT
+	 */
+	public static int isPointInShape(Coord node, List<Coord> shape) {
+			final int nodeLat = node.getHighPrecLat();
+		final int nodeLon = node.getHighPrecLon();
+		if (log.isDebugEnabled()) {
+			log.debug("node ", node, nodeLon, nodeLat, shape.size(), shape);
 		}
-		return OUT;
-	}
-	
-    /**
-     * Check if node is in polygon using winding counter. 
-     * Based on code from Dan Sunday, but allows to define how to handle nodes on boundary.   
-     * @param p the point to test
-     * @param onBoundary the value that should be returned if the point is on the boundary
-     * @param shape list of points describing the polygon
-     * @return true if p is inside the polygon, false if outside, the value of onBoundary if its on the boundary
-     * <p>
-     * Copyright 2000 softSurfer, 2012 Dan Sunday
-     * This code may be freely used and modified for any purpose
-     * providing that this copyright notice is included with it.
-     * SoftSurfer makes no warranty for this code, and cannot be held
-     * liable for any real or imagined damage resulting from its use.
-     * Users of this code must verify correctness for their application.     
-     * See http://geomalgorithms.com/a03-_inclusion.html
-     */
-    public static final boolean insidePolygon (final Coord p, boolean onBoundary, List<Coord> shape) {
-        final int y = p.getHighPrecLat();
-        final int len = shape.size();
-        // the winding number counter
-        int wn = 0;
-        Coord c = shape.get(0), n; // current & next points from vertex array
-       
-		for (int i = 0; ++i < len; c = n) {
-			n = shape.get(i);
-			if (p.highPrecEquals(n)) {
-				return onBoundary;
-			}
-			if (c.getHighPrecLat() <= y) { // starting y <= p.y
-				// an upward crossing and p left of edge:
-				if (n.getHighPrecLat() > y) {
-					long l = p.isLeft(c, n);
-					if (l > 0) {
-						++wn;
-					} else if (l == 0) {
-						return onBoundary; 
+		int trailLat = 0, trailLon = 0;
+		int lhsCount = 0, rhsCount = 0; // count both, to be sure
+		int minLat, maxLat, minLon, maxLon;
+		double lonDif, latDif, distSqrd;
+		boolean subsequent = false;
+		for (Coord leadCoord : shape) {
+			final int leadLat = leadCoord.getHighPrecLat();
+			final int leadLon = leadCoord.getHighPrecLon();
+			if (subsequent) { // use first point as trailing (poly is closed)
+				if (leadCoord.distanceInHighPrecSquared(node) < EPS_HP_SQRD)
+					return ON;
+				if (leadLat < trailLat) {
+					minLat = leadLat;
+					maxLat = trailLat;
+				} else {
+					minLat = trailLat;
+					maxLat = leadLat;
+				}
+				if (leadLon < trailLon) {
+					minLon = leadLon;
+					maxLon = trailLon;
+				} else {
+					minLon = trailLon;
+					maxLon = leadLon;
+				}
+				if (minLat - EPS_HP > nodeLat) {
+					// line segment is all slightly above, ignore
+				} else if (maxLat + EPS_HP < nodeLat) {
+					// line segment is all slightly below, ignore
+				} else if (minLon - EPS_HP > nodeLon && minLat < nodeLat && maxLat > nodeLat) {
+					++rhsCount; // definite line segment all slightly to the right
+				} else if (maxLon + EPS_HP < nodeLon && minLat < nodeLat && maxLat > nodeLat) {
+					++lhsCount; // definite line segment all slightly to the left
+				} else { // need to consider this segment more carefully.
+					if (leadLat == trailLat)
+						lonDif = 0; // dif meaningless; will be ignored in crossing calc, 0 handled for distToLine calc
+					else
+						lonDif = nodeLon - trailLon - (double)(nodeLat - trailLat) / (leadLat - trailLat) * (leadLon - trailLon);
+					if (leadLon == trailLon)
+						latDif = 0; // ditto
+					else
+						latDif = nodeLat - trailLat - (double)(nodeLon - trailLon) / (leadLon - trailLon) * (leadLat - trailLat);
+					// calculate distance to segment using right-angle attitude theorem
+					final double lonDifSqrd = lonDif*lonDif;
+					final double latDifSqrd = latDif*latDif;
+					log.debug("inBox", leadLon-nodeLon, leadLat-nodeLat, trailLon-nodeLon, trailLat-nodeLat, lonDif, latDif, lhsCount, rhsCount);
+					// there a small area between the square EPS_HP*2 and the circle within, where, if polygon vertix and
+					// segments are the other side, it might still be calculated as ON.
+					if (lonDif == 0)
+						distSqrd = latDifSqrd;
+					else if (latDif == 0)
+						distSqrd = lonDifSqrd;
+					else
+						distSqrd = lonDifSqrd * latDifSqrd / (lonDifSqrd + latDifSqrd);
+					if (distSqrd < EPS_HP_SQRD)
+						return ON;
+					if ((trailLat <= nodeLat && leadLat >  nodeLat) || //  an upward crossing
+					    (trailLat >  nodeLat && leadLat <= nodeLat)) { // a downward crossing
+						if (lonDif < 0)
+							++rhsCount; // a valid crossing right of nodeLon
+						else
+							++lhsCount;
 					}
 				}
+			} // if not first Coord
+			subsequent = true;
+			trailLat = leadLat;
+			trailLon = leadLon;
+		} // for leadCoord
+		log.debug("lhs | rhs", lhsCount, rhsCount);
+		assert (lhsCount & 1) == (rhsCount & 1) : "LHS: " + lhsCount + " RHS: " + rhsCount;
+		return (rhsCount & 1) == 1 ? IN : OUT;
+	}
 
-			} else if (n.getHighPrecLat() <= y) {
-				// a downward crossing and p right of edge.
-				long l = p.isLeft(c, n);
-				if (l < 0) {
-					--wn;
-				} else if (l == 0) {
-					return onBoundary; 
-				}
-			}
-		}
-       
-        return wn != 0; // if 0 point is outside
-    }
-	
 }

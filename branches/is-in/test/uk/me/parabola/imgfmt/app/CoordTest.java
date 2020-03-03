@@ -87,10 +87,10 @@ public class CoordTest {
 	}
 	
 	@Test 
-	public void destOnRhumLineAt180(){
-		Coord russia3 = russia1.destOnRhumLine(1, 0.0);
+	public void destOnRhumbLineAt180(){
+		Coord russia3 = russia1.destOnRhumbLine(1, 0.0);
 		assertEquals(russia3.getLongitude(), russia1.getLongitude());
-		Coord russia4 = russia1.destOnRhumLine(10000, 0.0);
+		Coord russia4 = russia1.destOnRhumbLine(10000, 0.0);
 		assertEquals(russia4.getLongitude(), russia1.getLongitude());
 	}
 	
