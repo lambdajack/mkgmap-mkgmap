@@ -39,7 +39,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import uk.me.parabola.imgfmt.ExitException;
-import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.Options;
 import uk.me.parabola.mkgmap.general.LevelInfo;
@@ -105,6 +104,7 @@ public class StyleImpl implements Style {
 	private OverlayReader overlays;
 	private final boolean performChecks;
 	
+	private Collection<String> deadEndTags = new ArrayList<>();
 	
 	/**
 	 * Create a style from the given location and name.
@@ -130,6 +130,14 @@ public class StyleImpl implements Style {
 	 * include the version file being missing.
 	 */
 	public StyleImpl(String loc, String name, EnhancedProperties props, boolean performChecks) throws FileNotFoundException {
+		String s = props.getProperty("dead-ends");
+		if (s != null) {
+			String[] deadEndTagsAndValues = s.split(",");
+			for (String deadEndTag : deadEndTagsAndValues) {
+				deadEndTags.add(deadEndTag.split("=", 2)[0]);
+			}
+		}
+
 		location = loc;
 		fileLoader = StyleFileLoader.createStyleLoader(loc, name);
 		this.performChecks = performChecks;
@@ -212,7 +220,8 @@ public class StyleImpl implements Style {
 		set.addAll(lines.getUsedTags());
 		set.addAll(polygons.getUsedTags());
 		set.addAll(nodes.getUsedTags());
-
+		set.addAll(deadEndTags);
+		
 		// this is to allow style authors to say that tags are really used even
 		// if they are not found in the style file.  This is mostly to work
 		// around situations that we haven't thought of - the style is expected

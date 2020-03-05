@@ -66,6 +66,7 @@ public class ElementSaver {
 
 	// Options
 	private final boolean ignoreTurnRestrictions;
+	private final String[] deadEndArgs;
 
 	/** name of the tag that contains a ;-separated list of tag names that should be removed after all elements have been processed */
 	public static final short MKGMAP_REMOVE_TAG_KEY = TagDict.getInstance().xlate("mkgmap:removetags");
@@ -82,6 +83,7 @@ public class ElementSaver {
 		}
 
 		ignoreTurnRestrictions = args.getProperty("ignore-turn-restrictions", false) || !args.containsKey("route");
+		deadEndArgs = args.getProperty("dead-ends", "fixme,FIXME").split(",");
 	}
 
 	/**
@@ -224,12 +226,19 @@ public class ElementSaver {
 		for (Relation r : relationMap.values())
 			converter.convertRelation(r);
 
-		short fixmeTagKey = TagDict.getInstance().xlate("fixme"); 
-		short fixmeTagKey2 = TagDict.getInstance().xlate("FIXME"); 
-		for (Node n : nodeMap.values()){
+		for (Node n : nodeMap.values()) {
 			converter.convertNode(n);
-			if (n.getTag(fixmeTagKey) != null || n.getTag(fixmeTagKey2) != null){
-				n.getLocation().setFixme(true);
+			for (String deadEndArg : deadEndArgs) {
+				String[] arg = deadEndArg.split("=", 2);
+				String key = arg[0];
+				String value = arg.length < 2 || "*".equals(arg[1]) ? "" : arg[1];
+				String tagValue = n.getTag(key);
+				if (tagValue != null && (tagValue.equals(value) || (value.isEmpty()))) {
+					Coord location = n.getLocation();
+					if (location != null)
+						location.setSkipDeadEndCheck(true);
+					break;
+				}
 			}
 		}
 

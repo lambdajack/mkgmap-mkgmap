@@ -41,7 +41,7 @@ public class Coord implements Comparable<Coord> {
 	private static final short PRESERVED_MASK = 0x0002; // bit in flags is true if point should not be filtered out
 	private static final short REPLACED_MASK = 0x0004;  // bit in flags is true if point was replaced 
 	private static final short ADDED_BY_CLIPPER_MASK = 0x0008; // bit in flags is true if point was added by clipper 
-	private static final short FIXME_NODE_MASK = 0x0010; // bit in flags is true if a node with this coords has a fixme tag
+	private static final short SKIP_DEAD_END_CHECK_NODE_MASK = 0x0010; // bit in flags is true if a node with this coords has a tag listed in --dead-ends
 	private static final short REMOVE_MASK = 0x0020; // bit in flags is true if this point should be removed
 	private static final short VIA_NODE_MASK = 0x0040; // bit in flags is true if a node with this coords is the via node of a RestrictionRelation
 	
@@ -225,30 +225,30 @@ public class Coord implements Comparable<Coord> {
 	}
 
 	/**
-	 * Mark the Coord to be treated like a Node in short arc removal 
-	 * @param treatAsNode true or false
+	 * Mark the Coord as added by clipper  
+	 * @param b true or false
 	 */
 	public void setAddedByClipper(boolean b) {
 		if (b) 
 			this.flags |= ADDED_BY_CLIPPER_MASK;
 		else 
-			this.flags &= ~ADDED_BY_CLIPPER_MASK; 
+			this.flags &= ~ADDED_BY_CLIPPER_MASK;
 	} 
 	
 	/**
-	 * Does this coordinate belong to a node with a fixme tag?
+	 * Does this coordinate belong to a node with a tag specified in --dead-ends?
 	 * Note that the value is set after evaluating the points style. 
-	 * @return true if the fixme flag is set, else false
+	 * @return true if the flag is set, else false
 	 */
-	public boolean isFixme() {
-		return (flags & FIXME_NODE_MASK) != 0;
+	public boolean isSkipDeadEndCheck() {
+		return (flags & SKIP_DEAD_END_CHECK_NODE_MASK) != 0;
 	}
 	
-	public void setFixme(boolean b) {
+	public void setSkipDeadEndCheck(boolean b) {
 		if (b) 
-			this.flags |= FIXME_NODE_MASK;
+			this.flags |= SKIP_DEAD_END_CHECK_NODE_MASK;
 		else 
-			this.flags &= ~FIXME_NODE_MASK; 
+			this.flags &= ~SKIP_DEAD_END_CHECK_NODE_MASK;
 	}
 	
 	public boolean isToRemove() {
@@ -259,7 +259,7 @@ public class Coord implements Comparable<Coord> {
 		if (b) 
 			this.flags |= REMOVE_MASK;
 		else 
-			this.flags &= ~REMOVE_MASK; 
+			this.flags &= ~REMOVE_MASK;
 	}
 	
 	/**

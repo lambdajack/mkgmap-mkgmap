@@ -675,9 +675,17 @@ time as using the cycleway creating options.
 ;--report-dead-ends=LEVEL
 : 	Set the dead end road warning level. The value of LEVEL (which
 defaults to 1 if this option is not specified) determines
-those roads to report: 0 = none, 1 = multiple one-way roads
-that join together but go nowhere, 2 = individual one-way roads
-that go nowhere.
+those roads to report:
+:* 0 = none
+:* 1 = report on connected one-way roads that go nowhere
+:* 2 = also report on individual one-way roads that go nowhere.
+
+;--dead-ends[=key[=value]][,key[=value]...]
+:	Specify a list of keys and optional values that should be considered
+to be valid dead ends when found on the node at the end of a way. Ways with
+nodes matching any of the items in the list will not be reported as dead ends.
+If no value or * is specified for value then presence of the key alone will
+cause the dead end check to be skipped. The default is --dead-ends=fixme,FIXME.
 
 ;--add-pois-to-lines
 : 	Generate POIs for lines. For each line (must not be closed) POIs are
@@ -696,13 +704,11 @@ POI is tagged with the same tags of
 the area/multipolygon. Additionally the tag mkgmap:area2poi=true is
 set so that it is possible to use that information in the points style
 file. Artificial polygons created by multipolyon processing are not used.
-The POIs are created at the following positions (first rule that applies):
-:;polygons: 
-::First rule that applies of
+The POIs are created at the following positions:
+:;polygons: the first rule that applies of:
 ::* the first node tagged with a tag defined by the --pois-to-areas-placement option
 ::* the centre point  
-:;multipolygons:
-::First rule that applies of
+:;multipolygons: the first rule that applies of:
 ::* the node with role=label
 ::* the centre point of the biggest area
 ;--pois-to-areas-placement=tag=value[;tag=value...]

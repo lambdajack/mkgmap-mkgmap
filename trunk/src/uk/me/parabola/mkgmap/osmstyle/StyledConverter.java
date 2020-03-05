@@ -311,7 +311,7 @@ public class StyledConverter implements OsmConverter {
 
 				if (way.tagIsLikeYes(onewayTagKey)) {
 					way.addTag(onewayTagKey, "yes");
-					if (foundType.isRoad() && checkFixmeCoords(way) )
+					if (foundType.isRoad() && hasSkipDeadEndCheckNode(way))
 						way.addTag("mkgmap:dead-end-check", "false");
 				} else { 
 					way.deleteTag(onewayTagKey);
@@ -388,12 +388,12 @@ public class StyledConverter implements OsmConverter {
 		}
 
 		/**
-		 * Check if the first or last of the coords of the way has the fixme flag set
+		 * Check if the first or last of the coords of the way has a flag set for skipping dead end check
 		 * @param way the way to check 
-		 * @return true if fixme flag was found
+		 * @return true if flag was found
 		 */
-		private boolean checkFixmeCoords(Way way) {
-			return way.getFirstPoint().isFixme() || way.getLastPoint().isFixme();
+		private boolean hasSkipDeadEndCheckNode(Way way) {
+			return way.getFirstPoint().isSkipDeadEndCheck() || way.getLastPoint().isSkipDeadEndCheck();
 		}
 
 
@@ -736,7 +736,7 @@ public class StyledConverter implements OsmConverter {
 		for (RestrictionRelation rr : rrList) {
 			if (!rr.isValidWithoutWay(way.getId())) {
 				if (log.isLoggable(logLevel)) {
-					log.log(logLevel, "restriction", rr.toBrowseURL(), " is ignored because referenced way",
+					log.log(logLevel, "restriction", rr.toBrowseURL(), "is ignored because referenced way",
 							way.toBrowseURL(), reason);
 				}
 				rr.setInvalid();
@@ -967,7 +967,7 @@ public class StyledConverter implements OsmConverter {
 		log.info("Found", numRoads, "roads",
 				numDriveOnLeftRoads, "in drive-on-left country,",
 				numDriveOnRightRoads, "in drive-on-right country, and",
-				numDriveOnSideUnknown, " with unknwon country");
+				numDriveOnSideUnknown, " with unknown country");
 		if (numDriveOnLeftRoads> 0 &&  numDriveOnRightRoads > 0)
 			log.error("Attention: Tile contains both drive-on-left (" + numDriveOnLeftRoads + 
 					") and drive-on-right roads (" + numDriveOnRightRoads + ")");
