@@ -1,6 +1,6 @@
 = Conversion Style manual
 The mkgmap team
-:pubdate: January 2013
+:pubdate: set to date of pdf generation
 :toc:
 :numbered:
 :doctype: book
@@ -8,6 +8,18 @@ The mkgmap team
 :email: mkgmap-dev@lists.mkgmap.org.uk
 :description: Describes the style language that converts from OSM tags to Garmin types.
 :max-width: 58em
+
+////
+To generate style-manual.pdf you will need asciidoc, fop, python-pygments, mkgmap-pygments.
+eg. for a Fedora system, as superuser:
+# dnf install asciidoc.noarch
+# dnf install fop.noarch
+# dnf install python-pygments.noarch
+# pip install mkgmap-pygments
+
+Then, as normal user, cd to this directory (doc/styles) and
+$ make pdf
+////
 
 :frame: topbot
 :grid: rows

@@ -402,8 +402,6 @@ public class HousenumberIvl {
 					Coord c = c1.makeBetweenPoint(c2, fraction);
 					interpolated.add(c);
 					if (interpolated.size() >= steps){
-//						GpxCreator.createGpx("e:/ld/road", knownHouses[0].getRoad().getPoints());
-//						GpxCreator.createGpx("e:/ld/test", interpolated, Arrays.asList(points.get(0),points.get(points.size()-1)));
 						return interpolated;
 					}
 					rest = 0;

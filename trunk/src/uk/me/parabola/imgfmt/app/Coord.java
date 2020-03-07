@@ -56,6 +56,7 @@ public class Coord implements Comparable<Coord> {
 	public static final int DELTA_SHIFT = HIGH_PREC_BITS - 24; 
 	private static final int MAX_DELTA = 1 << (DELTA_SHIFT - 2); // max delta abs value that is considered okay
 	private static final long FACTOR_HP = 1L << HIGH_PREC_BITS;
+	private static final int HIGH_PREC_UNUSED_BITS = Integer.SIZE - HIGH_PREC_BITS;
 	
 	public static final double R = 6378137.0; // Radius of earth at equator as defined by WGS84
 	public static final double U = R * 2 * Math.PI; // circumference of earth at equator (WGS84)
@@ -516,6 +517,16 @@ public class Coord implements Comparable<Coord> {
 	}
 
 	/**
+	 * Distance to other point in high precision squared units
+	 */
+	public long distanceInHighPrecSquared(Coord other) {
+		int dLatHp = other.getHighPrecLat() - getHighPrecLat();
+		int dLonHp = other.getHighPrecLon() - getHighPrecLon();
+		dLonHp = (dLonHp << HIGH_PREC_UNUSED_BITS) >> HIGH_PREC_UNUSED_BITS; // fix wrap-around earth
+		return (long)dLatHp * dLatHp + (long)dLonHp * dLonHp;
+	}
+
+	/**
 	 * Calculate point on the line this->other. If d is the distance between this and other,
 	 * the point is {@code fraction * d} metres from this.
 	 * For small distances between this and other we use a flat earth approximation,
@@ -525,15 +536,15 @@ public class Coord implements Comparable<Coord> {
 	public Coord makeBetweenPoint(Coord other, double fraction) {
 		int dlatHp = other.getHighPrecLat() - getHighPrecLat();
 		int dlonHp = other.getHighPrecLon() - getHighPrecLon();
-		if (dlonHp == 0 || Math.abs(dlatHp) < 1000000 && Math.abs(dlonHp) < 1000000 ){
+		if (dlonHp == 0 || Math.abs(dlatHp) < 1000000 && Math.abs(dlonHp) < 1000000) {
 			// distances are rather small, we can use flat earth approximation
-			int latHighPrec = (int) (getHighPrecLat() + dlatHp * fraction);
-			int lonHighPrec = (int) (getHighPrecLon() + dlonHp * fraction);
+			int latHighPrec = (int)Math.round(getHighPrecLat() + dlatHp * fraction);
+			int lonHighPrec = (int)Math.round(getHighPrecLon() + dlonHp * fraction);
 			return makeHighPrecCoord(latHighPrec, lonHighPrec);
 		}
 		double brng = this.bearingToOnRhumbLine(other, true);
 		double dist = this.distance(other) * fraction;
-		return this.destOnRhumLine(dist, brng);
+		return this.destOnRhumbLine(dist, brng);
 	}
 
 	
@@ -763,7 +774,7 @@ public class Coord implements Comparable<Coord> {
 	 * @param brng bearing in degrees
 	 * @return a new Coord instance
 	 */
-	public Coord destOnRhumLine(double dist, double brng){
+	public Coord destOnRhumbLine(double dist, double brng){
 		double distRad = dist / R; // angular distance in radians
 		double lat1 = hpToRadians(this.getHighPrecLat());
 		double lon1 = hpToRadians(this.getHighPrecLon());
@@ -813,7 +824,7 @@ public class Coord implements Comparable<Coord> {
 			// simple calculation using Herons formula will fail
 			// calculate x, the point on line a-b which is as far away from a as this point
 			double b_ab = a.bearingToOnRhumbLine(b, true);
-			Coord x = a.destOnRhumLine(ap, b_ab);
+			Coord x = a.destOnRhumbLine(ap, b_ab);
 			// this dist between these two points is not exactly 
 			// the perpendicul distance, but close enough
 			dist = x.distance(this);
@@ -880,5 +891,17 @@ public class Coord implements Comparable<Coord> {
 		double newLon = lon + Math.atan2(Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat), Math.cos(angularDistance) - Math.sin(lat) * Math.sin(newLat));
 		return new Coord(Math.toDegrees(newLat), Math.toDegrees(newLon));
 	}
-	
+
+	/**
+	 * Calculate if this point lies on the left or right of the line through the given points.
+	 * @param p0 first point
+	 * @param p2 second point
+	 * @return positive value if on left, negative value if on the right, 0 if on the line
+	 */
+	public long isLeft(final Coord p1, final Coord p2) {
+		long p1Lat = p1.getHighPrecLat();
+		long p1Lon = p1.getHighPrecLon();
+		return ((long) p2.getHighPrecLon() - p1Lon) * ((long) this.getHighPrecLat() - p1Lat)
+				- ((long) p2.getHighPrecLat() - p1Lat) * ((long) this.getHighPrecLon() - p1Lon);
+	}
 }

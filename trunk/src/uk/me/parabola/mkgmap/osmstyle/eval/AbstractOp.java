@@ -217,4 +217,11 @@ public abstract class AbstractOp implements Op {
 		}
 			
 	}
+
+	@Override
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
+		if (first != null)
+			first.augmentWith(elementSaver);
+	}
+
 }

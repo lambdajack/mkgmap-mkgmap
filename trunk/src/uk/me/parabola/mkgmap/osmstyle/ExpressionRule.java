@@ -116,4 +116,10 @@ public class ExpressionRule implements Rule {
 	public boolean containsExpression(String exp) {
 		return expression.toString().contains(exp);
 	}
+
+	@Override
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
+		expression.augmentWith(elementSaver);
+	}
+
 }

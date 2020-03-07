@@ -222,6 +222,8 @@ public class ElementSaver {
 			makeBoundaryNodes();
 
 		converter.setBoundingBox(getBoundingBox());
+		converter.augmentWith(this);
+		
 
 		for (Relation r : relationMap.values())
 			converter.convertRelation(r);

@@ -38,6 +38,7 @@ import uk.me.parabola.mkgmap.osmstyle.eval.Op;
 import uk.me.parabola.mkgmap.osmstyle.eval.OrOp;
 import uk.me.parabola.mkgmap.osmstyle.eval.RegexOp;
 import uk.me.parabola.mkgmap.osmstyle.eval.ValueOp;
+import uk.me.parabola.mkgmap.osmstyle.function.StyleFunction;
 import uk.me.parabola.mkgmap.scan.SyntaxException;
 import uk.me.parabola.mkgmap.scan.TokenScanner;
 
@@ -68,9 +69,11 @@ public class ExpressionArranger {
     Logger log = Logger.getLogger(getClass());
 
 	public Op arrange(Op expr) {
-		log.debug("IN: " + fmtExpr(expr));
+		if (log.isDebugEnabled())
+			log.debug("IN:", fmtExpr(expr));
 		Op op = arrangeTop(expr);
-		log.debug("OUT: " + fmtExpr(expr));
+		if (log.isDebugEnabled())
+			log.debug("OUT:", fmtExpr(expr));
 		return op;
 	}
 
@@ -376,8 +379,9 @@ public class ExpressionArranger {
 	private int selectivity(Op op) {
 		// Operations that involve a non-indexable function must always go to the back.
 		if (op.getFirst().isType(FUNCTION)) {
-			if (!((ValueOp) op.getFirst()).isIndexable())
-				return 1000;
+			StyleFunction func = (StyleFunction) op.getFirst();
+			if (!func.isIndexable())
+				return 1000 + func.getComplexity();
 		}
 
 		switch (op.getType()) {

@@ -35,7 +35,7 @@ public interface Op {
 	 * @param el The OSM element to be tested.
 	 * @return True if the expression is true for the given element.
 	 */
-	public boolean eval(Element el);
+	boolean eval(Element el);
 	
 	/**
 	 * Evaluate the expression using a cache.
@@ -43,30 +43,30 @@ public interface Op {
 	 * @param el The OSM element to be tested.
 	 * @return True if the expression is true for the given element.
 	 */
-	public boolean eval(int cacheId, Element el);
+	boolean eval(int cacheId, Element el);
 
 
 	/**
 	 * Does this operation have a higher priority that the other one?
 	 * @param other The other operation.
 	 */
-	public boolean hasHigherPriority(Op other);
+	boolean hasHigherPriority(Op other);
 
 	/**
 	 * Get the first operand.
 	 */
-	public Op getFirst();
+	Op getFirst();
 
 	/**
 	 * Set the first operand.
 	 */
-	public <T extends Op> T setFirst(Op first);
+	<T extends Op> T setFirst(Op first);
 
 	/**
 	 * Set the second operand.
 	 * Only supported on binary nodes, but declared here to avoid casts all over the place.
 	 */
-	public default void  setSecond(Op second) {
+	default void  setSecond(Op second) {
 		throw new UnsupportedOperationException("setSecond only supported on binary nodes");
 	}
 
@@ -75,17 +75,17 @@ public interface Op {
 	 * then null is returned.
 	 * @return The right hand side, or null if there is not one.
 	 */
-	public Op getSecond();
+	Op getSecond();
 
 	/**
 	 * Set both first and second in one call.
 	 *
 	 * Only supported on BinaryOp types.
 	 */
-	public <T extends Op> T set(Op first, Op second);
+	<T extends Op> T set(Op first, Op second);
 
 	/** Get the operation type */
-	public NodeType getType();
+	NodeType getType();
 
 	/**
 	 * For operations that are value types this is the string value.
@@ -95,29 +95,29 @@ public interface Op {
 	 *
 	 * @return The value, or UnsupportedOperationException if it does not have a value.
 	 */
-	public String value(Element el);
+	String value(Element el);
 
 	/**
 	 * For a value-type node, this is a key value associated with value. For a base Value node
 	 * this is the same as value(), but if value() is overridden then it may not be.
 	 */
-	public String getKeyValue();
+	String getKeyValue();
 
 	/**
 	 * Test the node type and return true if it matches the given argument.
 	 */
-	public boolean isType(NodeType value);
+	boolean isType(NodeType value);
 
 	/**
 	 * For an operation this is a number that determines the precedence of this operation.
 	 * Used when building the node tree. Higher numbers bind more tightly.
 	 */
-	public int priority();
+	int priority();
 
 	/**
 	 * @return a set with the tag keys which are evaluated, maybe empty 
 	 */
-	public Set<String> getEvaluatedTagKeys();
+	Set<String> getEvaluatedTagKeys();
 
 
 	/**
@@ -127,7 +127,7 @@ public interface Op {
 	 * they are never modified by the arranger code.  If you are using this for something else
 	 * you may need a different method.
 	 */
-	public default Op copy() {
+	default Op copy() {
 		NodeType t = getType();
 		if (t == AND || t == OR) {
 			return AbstractOp.createOp(getType())
@@ -135,4 +135,7 @@ public interface Op {
 		} else
 			return this;
 	}
+
+	default void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {}
+
 }

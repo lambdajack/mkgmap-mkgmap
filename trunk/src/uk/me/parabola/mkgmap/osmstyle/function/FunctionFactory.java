@@ -48,6 +48,8 @@ public class FunctionFactory {
 			return new TypeFunction();
 		if ("osmid".equals(name))
 			return new OsmIdFunction();
+		if ("is_in".equals(name))
+			return new IsInFunction();
 		
 		return null;
 	}

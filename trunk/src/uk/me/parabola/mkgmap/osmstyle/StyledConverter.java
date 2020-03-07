@@ -160,7 +160,7 @@ public class StyledConverter implements OsmConverter {
 	private final boolean keepBlanks;
 	
 	private LineAdder lineAdder;
-	
+
 	public StyledConverter(Style style, MapCollector collector, EnhancedProperties props) {
 		this.collector = collector;
 
@@ -695,6 +695,20 @@ public class StyledConverter implements OsmConverter {
 		return cycleWay;
 	}
 	
+	/**
+	 * Invoked after the raw OSM data has been read and hooks run, but before any of the convertXxx() calls
+	 *
+	 * @param elementSaver Gives access to the pre-converted OSM data
+	 */
+	@Override
+	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
+		// wayRules doesn't need to be done (or must be done first) because is concat. of line & polygon rules
+		//wayRules.augmentWith(elementSaver);
+		nodeRules.augmentWith(elementSaver);
+		lineRules.augmentWith(elementSaver);
+		polygonRules.augmentWith(elementSaver);
+	}
+
 	/**
 	 * Built in rules to run after converting the element.
 	 */

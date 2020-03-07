@@ -206,6 +206,20 @@ public class ExpressionArrangerTest {
 	}
 
 	@Test
+	public void testTwoFunctionsDifferentComplexity() {
+		Op op = createOp("a=1 & is_in(landuse,residential,all)=true & length()< 10 [0x02]");
+		op = arranger.arrange(op);
+
+		String formatted = fmtExpr(op);
+		System.out.println(formatted);
+		int posLen = formatted.indexOf("length");
+		int posIsIn = formatted.indexOf("is_in");
+		assertTrue(posLen >= 0);
+		assertTrue(posIsIn >= 0);
+		assertTrue(posLen < posIsIn);
+	}
+
+	@Test
 	public void testEqualTagValue() {
 		Op op = createOp("c!=d & a=$b");
 		op = arranger.arrange(op);
