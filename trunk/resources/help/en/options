@@ -21,6 +21,7 @@ options you may need to use are:
     specify -Xmx4g - note there is no space or equals sign in the option.
 
 -enableassertions
+-ea
     Causes an error to be thrown if an assertion written in the mkgmap code is
     evaluated as not true. This is useful in detecting bugs in the mkgmap code.
 
@@ -184,7 +185,6 @@ filename
     beginning and end of the important part. In combination with option
     --split-name-index only the words in the important part are indexed.
 
-    
     There are two main effects of this option:
         - On the PC, when zooming out, the name 'Rue de la Concorde' is only
         rendered as 'Concorde'.
@@ -194,7 +194,6 @@ filename
         Concorde' or 'Rue du Moulin'. It may list 'Rueben Brookins Road' if
         that is in the map. Only MapSource shows a corresponding hint.
 
-        
         Another effect is that the index is smaller.
     See comments in the sample roadNameConfig.txt for further details.
 
@@ -228,7 +227,6 @@ filename
     like 'Planet' when you search for 'Net', it doesn't use the index because
     the index created by mkgmap cannot help for that search.
 
-    
     So, this option may help when you care about the size of the index or the
     memory that is needed to calculate it. The option expects a comma separated
     list of types or type ranges. A range is given with from-type-to-type, e.g.
@@ -252,7 +250,7 @@ filename
     mkgmap:region etc. using these values.
 
      The following special tags are added:
-  mkgmap:admin_level2 : Name of the admin_level=2 boundary 
+  mkgmap:admin_level2 : Name of the admin_level=2 boundary
   mkgmap:admin_level3 : Name of the admin_level=3 boundary
   ..
   mkgmap:admin_level11
@@ -275,8 +273,6 @@ filename
     automatic assignment of address fields is somehow a best guess.
     is_in
         The is_in tag is analysed for country and region information.
-
-        
     nearest
         The city/hamlet points that are closest to the element are used to
         assign the missing address fields. Beware that cities located in the
@@ -560,7 +556,6 @@ filename
     routing. Use this option if you want address search, but do not need a map
     that supports routing or house number search.
 
-    
 --route
     Tells mkgmap to write NET and NOD data, which are needed in maps that
     support routing. If you specify this option, you do not need to specify
@@ -681,6 +676,7 @@ filename
     * end - The last point of the line
     * inner - Each point of the line except the first and the last
     * mid - The middle point
+
 --add-pois-to-areas
     Generate a POI for each polygon and multipolygon. The POIs are created
     after the relation style but before the other styles are applied. Each POI
@@ -695,6 +691,7 @@ filename
     multipolygons: the first rule that applies of:
         * the node with role=label
         * the centre point of the biggest area
+
 --pois-to-areas-placement=tag=value[;tag=value...]
     A POI is placed at the first node of the polygon tagged with the first
     tag/value pair. If none of the nodes are tagged with the first tag-value
@@ -943,6 +940,5 @@ filename
 
     Optional BITMASK (default value 3) allows you to specify which adjustments
     are to be made (where necessary):
-
         1 = increase angle between side road and outgoing main road
         2 = increase angle between side road and incoming main road
