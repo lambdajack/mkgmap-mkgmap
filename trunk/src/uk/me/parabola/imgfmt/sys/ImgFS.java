@@ -137,7 +137,7 @@ public class ImgFS implements FileSystem {
 			FileChannel chan = FileChannel.open(Paths.get(name), StandardOpenOption.READ);
 			return openFs(name, chan);
 		} catch (IOException e) {
-			throw new FileNotFoundException("Failed to create or open file");
+			throw new FileNotFoundException("Failed to create or open file " + name);
 		}
 	}
 
