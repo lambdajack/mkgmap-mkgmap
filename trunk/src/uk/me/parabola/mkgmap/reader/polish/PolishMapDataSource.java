@@ -104,6 +104,8 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	private int endLevel;
 	private char elevUnits;
 	private int currentLevel;
+	private boolean dataHighLevel;
+	private boolean background;
 	private int poiDispFlag;
 	private String defaultCountry;
 	private String defaultRegion;
@@ -306,6 +308,8 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			if (!lineStringMap.isEmpty()) {
 				if (extraAttributes != null && shape.hasExtendedType())
 					shape.setExtTypeAttributes(makeExtTypeAttributes());
+				if (background && !dataHighLevel)
+					endLevel = levels.length -1;
 				for (Map.Entry<Integer , List<List<Coord>>> entry : lineStringMap.entrySet()) {
 					setResolution(shape, entry.getKey());
 					addShapesFromPattern(entry.getValue());
@@ -329,6 +333,8 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 		endLevel = 0;
 		lineStringMap.clear();
 		currentLevel = 0;
+		dataHighLevel = false;
+		background = false;
 	}
 
 	private void addShapesFromPattern(List<List<Coord>> pointsLists) {
@@ -595,6 +601,9 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 		} else if (name.startsWith("Data")) {
 			extractResolution(name);
 			addLineString(value, true);
+		} else if (name.equals("Background")) {
+			if ("Y".equals(value))
+				background = true;
 		}
 		else {
 			if(extraAttributes == null)
@@ -765,6 +774,8 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	 */
 	private int extractResolution(String name) {
 		currentLevel = Integer.parseInt(name.substring(name.charAt(0) == 'O'? 6: 4));
+		if (currentLevel > 0)
+			dataHighLevel = true;
 		return extractResolution(currentLevel);
 	}
 
