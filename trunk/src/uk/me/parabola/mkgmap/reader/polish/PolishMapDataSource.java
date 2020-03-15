@@ -1041,6 +1041,8 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	}
 	
 	private void checkType(FeatureKind kind, int type) {
+		if (kind == FeatureKind.POLYGON && type == 0x4a) // allow 0x4a polygon for preview map in polish format
+			return; 
 		if (!GType.checkType(kind, type)) {
 			throw new MapFailedException("invalid type " + GType.formatType(type) + " for " + kind + ", line " + lineNo);
 		}
