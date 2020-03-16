@@ -196,7 +196,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	 * @return A string description of the copyright.
 	 */
 	public String[] copyrightMessages() {
-		return new String[] {copyright};
+		return new String[] { copyright };
 	}
 
 	/**
@@ -212,20 +212,20 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 
 		extraAttributes = null;
 
-		if (name.equalsIgnoreCase("IMG ID")) {
+		if ("IMG ID".equalsIgnoreCase(name)) {
 			section = S_IMG_ID;
 			poiDispFlag = 0;
-		} else if (name.equalsIgnoreCase("POI") || name.equals("RGN10") || name.equals("RGN20")) {
+		} else if ("POI".equalsIgnoreCase(name) || "RGN10".equals(name) || "RGN20".equals(name)) {
 			point = new MapPoint();
 			section = S_POINT;
-		} else if (name.equalsIgnoreCase("POLYLINE") || name.equals("RGN40")) {
+		} else if ("POLYLINE".equalsIgnoreCase(name) || "RGN40".equals(name)) {
 			polyline = new MapLine();
 			roadHelper.clear();
 			section = S_POLYLINE;
-		} else if (name.equalsIgnoreCase("POLYGON") || name.equals("RGN80")) {
+		} else if ("POLYGON".equalsIgnoreCase(name) || "RGN80".equals(name)) {
 			shape = new MapShape();
 			section = S_POLYGON;
-		} else if (name.equalsIgnoreCase("Restrict")) {
+		} else if ("Restrict".equalsIgnoreCase(name)) {
             restriction = new PolishTurnRestriction();
             section = S_RESTRICTION;
         }
@@ -421,13 +421,13 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	 * @param value Its value.
 	 */
 	private void point(String name, String value) {
-		if (name.equals("Type")) {
+		if ("Type".equals(name)) {
 			int type = Integer.decode(value);
 			if (type <= 0xff)
 				type <<= 8;
 			point.setType(type);
 			checkType(FeatureKind.POINT, point.getType());
-		} else if (name.equals("SubType")) {
+		} else if ("SubType".equals(name)) {
 			int subtype = Integer.decode(value);
 			int type = point.getType();
 			point.setType(type | subtype);
@@ -454,7 +454,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	 * @see #point
 	 */
 	private void line(String name, String value) {
-		if (name.equals("Type")) {
+		if ("Type".equals(name)) {
 			polyline.setType(Integer.decode(value));
 			checkType(FeatureKind.POLYLINE, polyline.getType());
 		} else if (name.startsWith("Data")) {
@@ -466,15 +466,15 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			    (polyline.getType() == 0x22)) {
 				fixElevation();
 			}
-		} else if (name.equals("RoadID")) {
+		} else if ("RoadID".equals(name)) {
 			if (!routing && roadIdGenerated > 0)
 				throw new MapFailedException("found RoadID without Routing=Y in [IMG ID] section in line " + lineNo);
 			roadHelper.setRoadId(Integer.parseInt(value));
 		} else if (name.startsWith("Nod")) {
 			roadHelper.addNode(value);
-		} else if (name.equals("RouteParam") || name.equals("RouteParams")) {
+		} else if ("RouteParam".equals(name) || "RouteParams".equals(name)) {
 			roadHelper.setParam(value);
-		} else if (name.equals("DirIndicator")) {
+		} else if ("DirIndicator".equals(name)) {
 			polyline.setDirection(Integer.parseInt(value) > 0);
 		} else if (name.startsWith("Numbers")) {
 			roadHelper.addNumbers(parseNumbers(value));
@@ -522,8 +522,9 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 				country = strings[nextPos + 2];
 				nums.setCityInfo(Numbers.LEFT, createCityInfo(city, region, country));
 				nextPos = 12;
-			} else 
+			} else {
 				nextPos = 10;
+			}
 			city = strings[nextPos];
 			if (!"-1".equals(city)){
 				region = strings[nextPos + 1];
@@ -590,7 +591,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	 * @see #line
 	 */
 	private void shape(String name, String value) {
-		if (name.equals("Type")) {
+		if ("Type".equals(name)) {
 			int type = Integer.decode(value);
 			if (type == 0x4a00)
 				type = 0x4a;
@@ -601,7 +602,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 		} else if (name.startsWith("Data")) {
 			extractResolution(name);
 			addLineString(value, true);
-		} else if (name.equals("Background")) {
+		} else if ("Background".equals(name)) {
 			if ("Y".equals(value))
 				background = true;
 		}
@@ -622,31 +623,31 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	}
 	
 	private boolean isCommonValue(MapElement elem, String name, String value) {
-		if (name.equals("Label")) {
+		if ("Label".equals(name)) {
 			elem.setName(unescape(recode(value)));
-		} else if (name.equals("Label2") || name.equals("Label3")) {
+		} else if ("Label2".equals(name) || "Label3".equals(name)) {
 			elem.add2Name(unescape(recode(value)));
-		} else if (name.equals("Levels") || name.equals("EndLevel") || name.equals("LevelsNumber")) {
+		} else if ("Levels".equals(name) || "EndLevel".equals(name) || "LevelsNumber".equals(name)) {
 			try {
 				endLevel = Integer.valueOf(value);
 			} catch (NumberFormatException e) {
 				endLevel = 0;
 			}
-		} else if (name.equals("ZipCode")) {
+		} else if ("ZipCode".equals(name)) {
 		  elem.setZip(recode(value));
-		} else if (name.equals("CityName")) {
+		} else if ("CityName".equals(name)) {
 		  elem.setCity(recode(value));		  
-		} else if (name.equals("StreetDesc")) {
+		} else if ("StreetDesc".equals(name)) {
 		  elem.setStreet(recode(value));
-		} else if (name.equals("HouseNumber")) {
+		} else if ("HouseNumber".equals(name)) {
 		  elem.setHouseNumber(recode(value));
-		} else if (name.equals("is_in")) {
+		} else if ("is_in".equals(name)) {
 		  elem.setIsIn(recode(value));		  
-		} else if (name.equals("Phone")) {
+		} else if ("Phone".equals(name)) {
 		  elem.setPhone(recode(value));			
-		} else if (name.equals("CountryName")) {
+		} else if ("CountryName".equals(name)) {
 		  elem.setCountry(unescape(recode(value)));
-		} else if (name.equals("RegionName")) {
+		} else if ("RegionName".equals(name)) {
 		  elem.setRegion(recode(value));				
 		} else {
 			return false;
@@ -806,9 +807,9 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	 * @param value Command value.
 	 */
 	private void imgId(String name, String value) {
-		if (name.equals("Copyright")) {
+		if ("Copyright".equals(name)) {
 			copyright = value;
-		} else if (name.equals("Levels")) {
+		} else if ("Levels".equals(name)) {
 			int nlev = Integer.parseInt(value);
 			levels = new LevelInfo[nlev];
 		} else if (name.startsWith("Level")) {
@@ -825,7 +826,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			char fc = value.charAt(0);
 			if (fc == 'm' || fc == 'M')
 				elevUnits = 'm';
-		} else if (name.equalsIgnoreCase("CodePage")) {
+		} else if ("CodePage".equalsIgnoreCase(name)) {
 			dec = Charset.forName("cp" + value).newDecoder();
 			dec.onUnmappableCharacter(CodingErrorAction.REPLACE);
 		} else if (name.endsWith("LeftSideTraffic")){
@@ -865,7 +866,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	 * @param value A string representing a lat,long pair.
 	 * @return The coordinate value.
 	 */
-	private Coord makeCoord(String value) {
+	private static Coord makeCoord(String value) {
 		String[] fields = value.split("[(,)]");
 
 		int i = 0;
@@ -884,51 +885,51 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 
 		for(Map.Entry<String, String> entry : extraAttributes.entrySet()) {
 			String v = entry.getValue();
-			if (entry.getKey().equals("Depth")) {
+			if ("Depth".equals(entry.getKey())) {
 				String u = extraAttributes.get("DepthUnit");
 				if("f".equals(u))
 					v += "ft";
 				eta.put("depth", v);
-			} else if(entry.getKey().equals("Height")) {
+			} else if("Height".equals(entry.getKey())) {
 				String u = extraAttributes.get("HeightUnit");
 				if("f".equals(u))
 					v += "ft";
 				eta.put("height", v);
-			} else if(entry.getKey().equals("HeightAboveFoundation")) {
+			} else if("HeightAboveFoundation".equals(entry.getKey())) {
 				String u = extraAttributes.get("HeightAboveFoundationUnit");
 				if("f".equals(u))
 					v += "ft";
 				eta.put("height-above-foundation", v);
-			} else if(entry.getKey().equals("HeightAboveDatum")) {
+			} else if("HeightAboveDatum".equals(entry.getKey())) {
 				String u = extraAttributes.get("HeightAboveDatumUnit");
 				if("f".equals(u))
 					v += "ft";
 				eta.put("height-above-datum", v);
-			} else if(entry.getKey().equals("Color")) {
+			} else if("Color".equals(entry.getKey())) {
 				colour = Integer.decode(v);
-			} else if(entry.getKey().equals("Style")) {
+			} else if("Style".equals(entry.getKey())) {
 				style = Integer.decode(v);
-			} else if(entry.getKey().equals("Position")) {
+			} else if("Position".equals(entry.getKey())) {
 				eta.put("position", v);
-			} else if(entry.getKey().equals("FoundationColor")) {
+			} else if("FoundationColor".equals(entry.getKey())) {
 				eta.put("color", v);
-			} else if(entry.getKey().equals("Light")) {
+			} else if("Light".equals(entry.getKey())) {
 				eta.put("light", v);
-			} else if(entry.getKey().equals("LightType")) {
+			} else if("LightType".equals(entry.getKey())) {
 				eta.put("type", v);
-			} else if(entry.getKey().equals("Period")) {
+			} else if("Period".equals(entry.getKey())) {
 				eta.put("period", v);
-			} else if(entry.getKey().equals("Note")) {
+			} else if("Note".equals(entry.getKey())) {
 				eta.put("note", v);
-			} else if(entry.getKey().equals("LocalDesignator")) {
+			} else if("LocalDesignator".equals(entry.getKey())) {
 				eta.put("local-desig", v);
-			} else if(entry.getKey().equals("InternationalDesignator")) {
+			} else if("InternationalDesignator".equals(entry.getKey())) {
 				eta.put("int-desig", v);
-			} else if(entry.getKey().equals("FacilityPoint")) {
+			} else if("FacilityPoint".equals(entry.getKey())) {
 				eta.put("facilities", v);
-			} else if(entry.getKey().equals("Racon")) {
+			} else if("Racon".equals(entry.getKey())) {
 				eta.put("racon", v);
-			} else if(entry.getKey().equals("LeadingAngle")) {
+			} else if("LeadingAngle".equals(entry.getKey())) {
 				eta.put("leading-angle", v);
 			}
 		}
@@ -946,15 +947,15 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
         try {
             // Proceed only if the restriction is not already marked as invalid.
             if (restriction.isValid()) {
-                if (name.equalsIgnoreCase("Nod")) {
+                if ("Nod".equalsIgnoreCase(name)) {
                     /* ignore */
-                } else if (name.equalsIgnoreCase("TraffPoints")) {
+                } else if ("TraffPoints".equalsIgnoreCase(name)) {
                 	restriction.setTrafficPoints(value);
-                } else if (name.equalsIgnoreCase("TraffRoads")) {
+                } else if ("TraffRoads".equalsIgnoreCase(name)) {
                 	restriction.setTrafficRoads(value);
-                } else if (name.equalsIgnoreCase("RestrParam")) {
+                } else if ("RestrParam".equalsIgnoreCase(name)) {
                     restriction.setExceptMask(getRestrictionExceptionMask(value));
-                } else if (name.equalsIgnoreCase("Time")) {
+                } else if ("Time".equalsIgnoreCase(name)) {
                 	log.info("Time in restriction definition is ignored " + restriction);
                 }
             }
