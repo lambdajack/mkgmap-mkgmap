@@ -75,6 +75,9 @@ public class SeaGenerator implements OsmReadingHooks {
 	private ElementSaver saver;
 
 	private List<Way> shoreline = new ArrayList<>();
+	private	List<Way> islands = new ArrayList<>();
+	private	List<Way> antiIslands = new ArrayList<>();
+	private Area tileBounds;
 	private boolean generateSeaBackground = true;
 
 	private String[] coastlineFilenames;
@@ -426,6 +429,19 @@ public class SeaGenerator implements OsmReadingHooks {
 		if (precompSea != null)
 			splitCoastLineToLineAndShape(way, natural);
 		else if (coastlineFilenames == null) {
+			/* RWB ???
+			 *
+			 * I'd have thought it better to leave the original way, which has been saved,
+			 * untouched. The copy doesn't need any tags at this point. Later it might
+			 * be made into a polygon and tagged as land or sea.
+			 *
+			 * Could do a couple of quick check here to save effort later:
+			 * 1/ if no part in tile then stop, don't change anything or save.
+			 * 2/ if closed(), add to island list instead of shoreline. Any single closed
+			 *    way will be a small island, not a sea! Later, after shoreline
+			 *    has been merged/clipped etc, check these again for clipping and add clippings
+			 *    to shoreline and unclipped back into islands
+			 */
 			// create copy of way that has only the natural=coastline tag
 			Way shore = new Way(way.getOriginalId(), way.getPoints());
 			shore.setFakeId();
@@ -583,7 +599,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		} else {
 			// using polygons
 			// first add the complete bounding box as sea
-			saver.addWay(createSeaWay(saver.getBoundingBox(), false));
+			saver.addWay(createSeaWay(false));
 		}
 		
 		// check if the land tags need to be changed
@@ -793,6 +809,7 @@ public class SeaGenerator implements OsmReadingHooks {
 	 */
 	@Override
 	public void end() {
+		tileBounds = saver.getBoundingBox();
 		// precompiled sea has highest priority
 		// if it is set do not perform any other algorithm
 		if (precompSea != null && precompIndex.get() != null) {
@@ -800,7 +817,6 @@ public class SeaGenerator implements OsmReadingHooks {
 			return;
 		}
 
-		final Area tileBounds = saver.getBoundingBox();
 		if (coastlineFilenames == null) {
 			log.info("Shorelines before join", shoreline.size());
 			shoreline = joinWays(shoreline);
@@ -816,7 +832,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		}
 		
 		// clip all shoreline segments
-		clipShorlineSegments(shoreline, tileBounds);
+		clipShorlineSegments();
 
 		if(shoreline.isEmpty()) {
 			// No sea required
@@ -826,68 +842,64 @@ public class SeaGenerator implements OsmReadingHooks {
 			// some sea
 			// No matter if the multipolygon option is used it is
 			// only necessary to create a land polygon
-			saver.addWay(createLandWay(tileBounds));
+			saver.addWay(createLandWay());
 			// nothing more to do
 			return;
 		}
 
-		long multiId = FakeIdGenerator.makeFakeId();
 		Relation seaRelation = null;
-		if (generateSeaUsingMP) {
-			log.debug("Generate seabounds relation", multiId);
-			seaRelation = new GeneralRelation(multiId);
-			seaRelation.addTag("type", "multipolygon");
-			seaRelation.addTag("natural", "sea");
-		}
 		
-
-		List<Way> islands = new ArrayList<>();
-
 		// handle islands (closed shoreline components) first (they're easy)
-		handleIslands(shoreline, tileBounds, islands);
+		handleIslands();
 
-		// the remaining shoreline segments should intersect the boundary
-		// find the intersection points and store them in a SortedMap
-		NavigableMap<Double, Way> hitMap = findIntesectionPoints(shoreline, tileBounds, seaRelation);
-
-		// now construct inner ways from these segments
-		createLandPolygons(tileBounds, islands, hitMap);
-
-		List<Way> antiIslands = removeAntiIslands(seaRelation, islands);
 		if (islands.isEmpty()) {
 			// the tile doesn't contain any islands so we can assume
-			// that it's showing a land mass that contains some
-			// enclosed sea areas - in which case, we don't want a sea
+			// that it's showing a land mass that contains some, possibly
+			// enclosed, sea areas - in which case, we don't want a sea
 			// coloured background
 			generateSeaBackground = false;
 		}
 
+		// the remaining shoreline segments should intersect the boundary
+		// find the intersection points and store them in a SortedMap
+		NavigableMap<Double, Way> hitMap = findIntesectionPoints();
+		verifyHits(hitMap);
+
 		if (generateSeaBackground) {
 			// the background is sea so all anti-islands should be
 			// contained by land otherwise they won't be visible
-			verifyIslands(islands, antiIslands, seaRelation);
+			if (generateSeaUsingMP) {
+				long multiId = FakeIdGenerator.makeFakeId();
+				log.debug("Generate seabounds relation", multiId);
+				seaRelation = new GeneralRelation(multiId);
+				seaRelation.addTag("type", "multipolygon");
+				seaRelation.addTag("natural", "sea");
+			}
 
-			Way sea = createSeaWay(tileBounds, true);
+			createLandPolygons(hitMap);
+			processIslands(seaRelation);
+			processAntiIslands(true);
+
+			Way sea = createSeaWay(true);
 
 			log.info("sea: ", sea);
 			saver.addWay(sea);
-			if(seaRelation != null) {
+			if(seaRelation != null)
 				seaRelation.addElement("outer", sea);
-			}
 		} else {
 			// background is land
-
+			createSeaPolygons(hitMap);
+			processAntiIslands(false);
+			
 			// generate a land polygon so that the tile's
 			// background colour will match the land colour on the
 			// tiles that do contain some sea
-			Way land = createLandWay(tileBounds);
+			Way land = createLandWay();
 			saver.addWay(land);
-			if(seaRelation != null) {
-				seaRelation.addElement("inner", land);
-			}
+			log.info("land:", land);
 		}
 
-		if (generateSeaUsingMP) {
+		if (seaRelation != null) {
 			SeaPolygonRelation coastRel = saver.createSeaPolyRelation(seaRelation);
 			coastRel.setFloodBlocker(floodblocker);
 			if (floodblocker) {
@@ -902,34 +914,48 @@ public class SeaGenerator implements OsmReadingHooks {
 		}
 		
 		shoreline = null;
+		islands = null;
+		antiIslands = null;
 	}
 
-	private void verifyIslands(List<Way> islands, List<Way> antiIslands, Relation seaRelation) {
-		for (Way ai : antiIslands) {
-			boolean containedByLand = false;
-			for (Way i : islands) {
-				if (i.containsPointsOf(ai)) {
-					containedByLand = true;
-					break;
-				}
-			}
-
-			if (!containedByLand) {
-				// found an anti-island that is not contained by
-				// land so convert it back into an island
-				ai.deleteTag("natural");
-				ai.addTag(landTag[0], landTag[1]);
-				if (seaRelation != null) {
-					// create a "inner" way for the island
-					seaRelation.addElement("inner", ai);
-				}
-				log.warn("Converting anti-island starting at", ai.getFirstPoint().toOSMURL(),
-						"into an island as it is surrounded by water");
+	/**
+	 * These are bit of land that have been generated as polygons
+	 * @param seaRelation if set, add as inner
+	 */
+	private void processIslands(Relation seaRelation) {
+		for (Way w : islands) {
+			if (seaRelation != null) {
+				// create a "inner" way for each island
+				seaRelation.addElement("inner", w);
 			}
 		}
 	}
 
-	private Way createLandWay(Area tileBounds) {
+	/**
+	 * These are bits of sea have been generated as polygons.
+	 * if the tile is also sea based, then check that surrounded by an island
+	 * @param seaRelation if set, add as inner
+	 * @param seaBased true if the tile is also sea with land [multi-]polygons
+	 */
+	private void processAntiIslands(boolean seaBased) {
+		for (Way ai : antiIslands) {
+			if (seaBased) {
+				boolean containedByLand = false;
+				for (Way i : islands) {
+					if (i.containsPointsOf(ai)) {
+						containedByLand = true;
+						break;
+					}
+				}
+				if (!containedByLand) {
+					// found an anti-island that is not contained by land
+					log.warn("inner sea", ai , "is surrounded by water");
+				}
+			}
+		}
+	}
+
+	private Way createLandWay() {
 		long landId = FakeIdGenerator.makeFakeId();
 		Way land = new Way(landId, tileBounds.toCoords());
 		land.addTag(landTag[0], landTag[1]);
@@ -938,11 +964,10 @@ public class SeaGenerator implements OsmReadingHooks {
 
 	/**
 	 * Create a sea polygon from the given tile bounds
-	 * @param tileBounds
 	 * @param enlarge if true, make sure that the polygon is slightly larger than the tile bounds
 	 * @return the created way
 	 */
-	private static Way createSeaWay(Area tileBounds, boolean enlarge) {
+	private Way createSeaWay(boolean enlarge) {
 		log.info("generating sea, seaBounds=", tileBounds);
 		Area bbox = tileBounds;
 		long seaId = FakeIdGenerator.makeFakeId();
@@ -955,6 +980,7 @@ public class SeaGenerator implements OsmReadingHooks {
 			bbox = new Area(bbox.getMinLat() - 1, bbox.getMinLong() - 1, bbox.getMaxLat() + 1, bbox.getMaxLong() + 1);
 		}
 		Way sea = new Way(seaId, bbox.toCoords());
+		sea.reverse(); // make clockwise for consistency
 		sea.addTag("natural", "sea");
 		sea.setFullArea(SEA_SIZE);
 		return sea;
@@ -965,12 +991,12 @@ public class SeaGenerator implements OsmReadingHooks {
 	 * @param shoreline All the the ways making up the coast.
 	 * @param bounds The map bounds.
 	 */
-	private static void clipShorlineSegments(List<Way> shoreline, Area bounds) {
+	private void clipShorlineSegments() {
 		List<Way> toBeRemoved = new ArrayList<>();
 		List<Way> toBeAdded = new ArrayList<>();
 		for (Way segment : shoreline) {
 			List<Coord> points = segment.getPoints();
-			List<List<Coord>> clipped = LineClipper.clip(bounds, points);
+			List<List<Coord>> clipped = LineClipper.clip(tileBounds, points);
 			if (clipped != null) {
 				log.info("clipping", segment);
 				toBeRemoved.add(segment);
@@ -988,38 +1014,33 @@ public class SeaGenerator implements OsmReadingHooks {
 	}
 
 	/**
-	 * Pick out the islands and save them for later. They are removed from the
-	 * shore line list and added to the island list.
-	 *
-	 * @param shoreline The collected shore line ways.
-	 * @param tileBounds The map boundary.
-	 * @param islands The islands are saved to this list.
+	 * Pick out the closed ways and save them for later. They are removed from the
+	 * shore line list and added to the [anti]island list.
 	 */
-	private void handleIslands(List<Way> shoreline, Area tileBounds, List<Way> islands) {
+	private void handleIslands() {
 		Iterator<Way> it = shoreline.iterator();
 		while (it.hasNext()) {
 			Way w = it.next();
 			if (w.hasIdenticalEndPoints()) {
-				log.info("adding island", w);
-				islands.add(w);
+				addClosedShore(w);
 				it.remove();
 			}
 		}
 
-		closeGaps(shoreline, tileBounds);
+		closeGaps();
 		// there may be more islands now
 		it = shoreline.iterator();
 		while (it.hasNext()) {
 			Way w = it.next();
 			if (w.hasIdenticalEndPoints()) {
-				log.debug("island after concatenating");
-				islands.add(w);
+				log.debug("closed after concatenating", w);
+				addClosedShore(w);
 				it.remove();
 			}
 		}
 	}
 
-	private void closeGaps(List<Way> shoreline, Area bounds) {
+	private void closeGaps() {
 		if (maxCoastlineGap <= 0)
 			return;
 	
@@ -1034,8 +1055,8 @@ public class SeaGenerator implements OsmReadingHooks {
 				if (w1.hasIdenticalEndPoints())
 					continue;
 				Coord w1e = w1.getLastPoint();
-				if (!bounds.onBoundary(w1e)) {
-					Way closed = tryCloseGap(shoreline, w1, bounds);
+				if (!tileBounds.onBoundary(w1e)) {
+					Way closed = tryCloseGap(w1);
 					if (closed != null) {
 						saver.addWay(closed);
 						changed = true;
@@ -1045,7 +1066,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		} while (changed);
 	}
 	
-	private Way tryCloseGap(List<Way> shoreline, Way w1, Area bounds) {
+	private Way tryCloseGap(Way w1) {
 		Coord w1e = w1.getLastPoint();
 		Way nearest = null;
 		double smallestGap = Double.MAX_VALUE;
@@ -1053,7 +1074,7 @@ public class SeaGenerator implements OsmReadingHooks {
 			if (w1 == w2 || w2.hasIdenticalEndPoints())
 				continue;
 			Coord w2s = w2.getFirstPoint();
-			if (!bounds.onBoundary(w2s)) {
+			if (!tileBounds.onBoundary(w2s)) {
 				double gap = w1e.distance(w2s);
 				if (gap < smallestGap) {
 					nearest = w2;
@@ -1088,107 +1109,128 @@ public class SeaGenerator implements OsmReadingHooks {
 		return null;
 	}
 
+	private void addClosedShore(Way w) {
+		if (Way.clockwise(w.getPoints()))
+			addAsSea(w);
+		else
+		    	addAsLand(w);
+	}
+
+	private void addAsSea(Way w) {
+		w.addTag("natural", "sea");
+		log.info("adding anti-island", w);
+		antiIslands.add(w);
+		w.setFullArea(SEA_SIZE);
+		saver.addWay(w);
+	}
+
+	private void addAsLand(Way w) {
+		w.addTag(landTag[0], landTag[1]);
+		log.info("adding island", w);
+		islands.add(w);
+		saver.addWay(w);
+	}
+
 	/**
 	 * Add lines to ways that touch or cross the sea bounds so that the way is closed along the edges of the bounds. 
 	 * Adds complete edges or parts of them. This is done counter-clockwise.   
-	 * @param tileBounds the bounds
-	 * @param islands list of land masses to which the closed ways are added 
 	 * @param hitMap A map of the 'hits' where the shore line intersects the boundary.  
 	 */
-	private void createLandPolygons(Area tileBounds, List<Way> islands, NavigableMap<Double, Way> hitMap) {
+	private void createLandPolygons(NavigableMap<Double, Way> hitMap) {
 		NavigableSet<Double> hits = hitMap.navigableKeySet();
 		while (!hits.isEmpty()) {
 			Way w = new Way(FakeIdGenerator.makeFakeId());
-			saver.addWay(w);
-
-			Double hit =  hits.first();
-			Double hFirst = hit;
+			Double hFirst = hits.first();
+			Double hStart = hFirst, hEnd;
+			boolean finished = false;
 			do {
-				Way segment = hitMap.get(hit);
-				log.info("current hit:", hit);
-				Double hNext;
-				if (segment != null) {
-					// add the segment and get the "ending hit"
-					log.info("adding:", segment);
-					segment.getPoints().forEach(w::addPointIfNotEqualToLastPoint);
-					
-					hNext = getEdgeHit(tileBounds, segment.getLastPoint());
-				} else {
-					w.addPointIfNotEqualToLastPoint(getPoint(tileBounds, hit));
-					hNext = hits.higher(hit);
-					if (hNext == null)
-						hNext = hFirst;
-					addCorners(w, tileBounds, hit, hNext);
-
+				Way segment = hitMap.get(hStart);
+				log.info("current hit:", hStart, "adding:", segment);
+				segment.getPoints().forEach(w::addPointIfNotEqualToLastPoint);
+				hits.remove(hStart);
+				hEnd = getEdgeHit(tileBounds, segment.getLastPoint());
+				if (hEnd < hStart) // gone all the way around
+					finished = true;
+				else { // if another, join it on
+					hStart = hits.higher(hEnd);
+					if (hStart == null) {
+						hFirst += 4;
+						finished = true;
+					}
 				}
-				hits.remove(hit);
-				hit = hNext;
-			} while (!hits.isEmpty() && Double.compare(hFirst, hit) != 0);
-
-			if (!w.hasIdenticalEndPoints()) {
-				if (w.getFirstPoint().highPrecEquals(w.getLastPoint())) {
-					w.getPoints().remove(w.getPoints().size() - 1);
-				}
-				w.addPoint(w.getFirstPoint()); // close shape
-			}
-			log.info("adding non-island landmass, hits.size()=" + hits.size());
-			islands.add(w);
+				if (finished)
+					hStart = hFirst;
+				addCorners(w, hEnd, hStart);
+			} while (!finished);
+			w.addPoint(w.getFirstPoint()); // close shape
+			log.info("adding landPoly, hits.size()", hits.size());
+			addAsLand(w);
 		}
-	}
-
-	private static void addCorners(Way w, Area tileBounds, double hit, double hNext) {
-		if (hit != hNext) {
-			int startEdge = (int) hit;
-			int endEdge = (int) hNext;
-			if (endEdge < startEdge)
-				endEdge += 4;
-			log.info("joining: ", hit, hNext);
-			for (int i = startEdge; i < endEdge; i++) {
-				int edge = i < 4 ? i : i - 4;
-				Coord p = getPoint(tileBounds, edge + 1.0);
-				w.addPointIfNotEqualToLastPoint(p);
-			}
-		}
-		w.addPointIfNotEqualToLastPoint(getPoint(tileBounds, hNext));
 	}
 
 	/**
-	 * An 'anti-island' is something that has been detected as an island, but the water
-	 * is on the inside.  I think you would call this a lake.
-	 * @param seaRelation The relation holding the sea.  Only set if we are using multi-polygons for
-	 * the sea.
-	 * @param islands The island list that was found earlier.
-	 * @return The so-called anti-islands.
+	 * Add lines to ways that touch or cross the sea bounds so that the way is closed along the edges of the bounds.
+	 * Adds complete edges or parts of them. This is done clockwise.
+	 * This is much the same as createLandPolygons, but in reverse.
+	 * @param hitMap A map of the 'hits' where the shore line intersects the boundary.
 	 */
-	private List<Way> removeAntiIslands(Relation seaRelation, List<Way> islands) {
-		List<Way> antiIslands = new ArrayList<>();
-		Iterator<Way> iter = islands.iterator();
-		while (iter.hasNext()) {
-			Way w = iter.next();
-			if (!FakeIdGenerator.isFakeId(w.getId())) {
-				w = copyWithNameTags(w);
-			}
-
-			// determine where the water is
-			if (Way.clockwise(w.getPoints())) {
-				// water on the inside of the poly, it's an
-				// "anti-island" so tag with natural=water (to
-				// make it visible above the land)
-				w.addTag("natural", "water");
-				antiIslands.add(w);
-				iter.remove();
-				saver.addWay(w);
-			} else {
-				// water on the outside of the poly, it's an island
-				w.addTag(landTag[0], landTag[1]);
-				saver.addWay(w);
-				if (seaRelation != null) {
-					// create a "inner" way for each island
-					seaRelation.addElement("inner", w);
+	private void createSeaPolygons(NavigableMap<Double, Way> hitMap) {
+		NavigableSet<Double> hits = hitMap.navigableKeySet();
+		while (!hits.isEmpty()) {
+			Way w = new Way(FakeIdGenerator.makeFakeId());
+			Double hFirst = hits.last();
+			Double hStart = hFirst, hEnd;
+			boolean finished = false;
+			do {
+				Way segment = hitMap.get(hStart);
+				log.info("current hit:", hStart, "adding:", segment);
+				segment.getPoints().forEach(w::addPointIfNotEqualToLastPoint);
+				hits.remove(hStart);
+				hEnd = getEdgeHit(tileBounds, segment.getLastPoint());
+				if (hEnd > hStart) // gone all the way around
+					finished = true;
+				else { // if another, join it on
+					hStart = hits.lower(hEnd);
+					if (hStart == null) {
+						hEnd += 4;
+						finished = true;
+					}
 				}
-			}
+				if (finished)
+					hStart = hFirst;
+				addCorners(w, hEnd, hStart);
+			} while (!finished);
+			w.addPoint(w.getFirstPoint()); // close shape
+			log.info("adding seaPoly, hits.size()", hits.size());
+			addAsSea(w);
 		}
-		return antiIslands;
+	}
+
+	/**
+	 * Append corner points to the way if necessary, to give lines along the edges of the bounds
+	 * It is possible that the line needs to go all the way around the tile!
+         * The relationship between hFrom and hTo determines the direction
+	 * @param w the way
+	 * @param hFrom going from this edgeHit (0 >= hit < 8)
+	 * @param hTo to this edgeHit (ditto)
+	 */
+	private void addCorners(Way w, double hFrom, double hTo) {
+		int startEdge = (int)hFrom;
+		int endEdge = (int)hTo;
+		int direction, toCorner;
+		if (hFrom < hTo) { // increasing, anti-clockwise, land
+			direction = +1;
+			toCorner = 1;
+		} else { // decreasing, clockwise, sea
+			direction = -1;
+			toCorner = 0; // (int)hFrom does the -1
+		}
+		log.debug("addCorners", hFrom, hTo, direction, startEdge, endEdge, toCorner);
+		while (startEdge != endEdge) {
+			Coord p = getPoint(tileBounds, startEdge + toCorner);
+			w.addPointIfNotEqualToLastPoint(p);
+			startEdge += direction;
+		}
 	}
 
 	/**
@@ -1210,16 +1252,9 @@ public class SeaGenerator implements OsmReadingHooks {
 	/**
 	 * Find the points where the remaining shore line segments intersect with the
 	 * map boundary.
-	 *
-	 * @param shoreline The remaining shore line segments.
-	 * @param tileBounds The map boundary.
-	 * @param seaRelation If we are using a multi-polygon, this is it. Otherwise it will be null.
 	 * @return A map of the 'hits' where the shore line intersects the boundary.
 	 */
-	private NavigableMap<Double, Way> findIntesectionPoints(List<Way> shoreline, Area tileBounds, Relation seaRelation) {
-		if (generateSeaUsingMP && seaRelation == null)
-			throw new MapFailedException("seaRelation is null");
-
+	private NavigableMap<Double, Way> findIntesectionPoints() {
 		NavigableMap<Double, Way> hitMap = new TreeMap<>();
 		for (Way w : shoreline) {
 			Coord pStart = w.getFirstPoint();
@@ -1231,53 +1266,53 @@ public class SeaGenerator implements OsmReadingHooks {
 				// nice case: both ends touch the boundary 
 				log.debug("hits: ", hStart, hEnd);
 				hitMap.put(hStart, w);
-				hitMap.put(hEnd, null);
+				hitMap.put(hEnd, null); // put this for verifyHits which then deletes it
 			} else {
-				/*
+ 				/*
 				 * This problem occurs usually when the shoreline is cut by osmosis (e.g. country-extracts from geofabrik)
-				 * There are two possibilities to solve this problem:
-				 * 1. Close the way and treat it as an island. This is sometimes the best solution (Germany: Usedom at the
-				 *    border to Poland)
-				 * 2. Create a "sea sector" only for this shoreline segment. This may also be the best solution
-				 *    (see German border to the Netherlands where the shoreline continues in the Netherlands)
-				 * The first choice may lead to "flooded" areas, the second may lead to "triangles".
-				 *
-				 * Usually, the first choice is appropriate if the segment is "nearly" closed.
+				 * and so a tile, covering land outside the selected area, has bits of unclosed shoreline that
+				 * don't start and finish outside the tile.
+				 * There are various possibilities to show a reasonable map, but there is no full solution.
+				 * Mkmap offers various options:
+				 * 1. Use --precomp-sea=... This has all the coastline and the following is N/A.
+				 * 2. Close short gaps in the coastline; eg --generate-sea=...,close-gaps=500
+				 *    Harbour mouths are often fixed by this.
+				 * 3. Create a "sea sector" for this shoreline segment. This is a right-angle triangle where the
+				 *    the hypotenuse is the shoreline. "sea sector" is a slight mis-nomer because, if the
+				 *    tile is sea-based, a "land sector" is created. Often this will show the coast in
+				 *    a meaningful way, but it can create a self-intersecting polygons and, if other bits of
+				 *    shoreline that reach the edge of the tile cause this area to be the same type, it won't show
+				 * 4. Extend the ends of the shoreline to the nearest edge of the tile with ...,extend-sea-sectors
+				 *    This, in conjunction with close-gaps, normally works well but it isn't foolproof.
 				 */
 				List<Coord> points = w.getPoints();
-				boolean nearlyClosed = pStart.distance(pEnd) < 0.1 * w.calcLengthInMetres();
-
-				if (nearlyClosed) {
-					// close the way
-					points.add(pStart); // XXX original way is modified, is that correct?
-					
-					if (!FakeIdGenerator.isFakeId(w.getId())) {
-						w = copyWithNameTags(w);
+				if (allowSeaSectors) {
+					Way seaOrLand = new Way(FakeIdGenerator.makeFakeId());
+					seaOrLand.getPoints().addAll(points);
+					int startLat = pStart.getHighPrecLat();
+					int startLon = pStart.getHighPrecLon();
+					int endLat = pEnd.getHighPrecLat();
+					int endLon = pEnd.getHighPrecLon();
+					boolean startLatIsCorner = (startLat > endLat) == (startLon > endLon);
+					int cornerLat, cornerLon;
+					if (generateSeaBackground) { // the tile is sea, with islands
+						startLatIsCorner = !startLatIsCorner;
+						addAsLand(seaOrLand);
+					} else { // the tile is land, maybe with sea polygons on edge
+						addAsSea(seaOrLand);
 					}
-					w.addTag(landTag[0], landTag[1]);
-					saver.addWay(w);
-					if (generateSeaUsingMP) {
-						seaRelation.addElement("inner", w);
-					}
-				} else if(allowSeaSectors) {
-					Way sea;
-					if (generateSeaUsingMP) {
-						sea = new Way(seaRelation.getOriginalId());
-						sea.setFakeId();
+					if (startLatIsCorner) {
+						cornerLat = startLat;
+						cornerLon = endLon;
 					} else {
-						sea = new Way(FakeIdGenerator.makeFakeId());
+						cornerLat = endLat;
+						cornerLon = startLon;
 					}
-					sea.getPoints().addAll(points);
-					sea.addPoint(new Coord(pEnd.getLatitude(), pStart.getLongitude()));
-					sea.addPoint(pStart);
-					sea.addTag("natural", "sea");
-					log.info("sea: ", sea);
-					saver.addWay(sea);
-					if(generateSeaUsingMP)
-						seaRelation.addElement("outer", sea);
-					generateSeaBackground = false;
+					seaOrLand.addPoint(Coord.makeHighPrecCoord(cornerLat, cornerLon));
+					seaOrLand.addPoint(pStart);
+					log.info("seaSector: ", generateSeaBackground, startLatIsCorner, Way.clockwise(seaOrLand.getPoints()), seaOrLand);
 				} else if (extendSeaSectors) {
-					// create additional points at next border to prevent triangles from point 2
+					// join to nearest tile border
 					if (null == hStart) {
 						hStart = getNextEdgeHit(tileBounds, pStart);
 						w.getPoints().add(0, getPoint(tileBounds, hStart));
@@ -1288,19 +1323,43 @@ public class SeaGenerator implements OsmReadingHooks {
 					}
 					log.debug("hits (second try): ", hStart, hEnd);
 					hitMap.put(hStart, w);
-					hitMap.put(hEnd, null);
+					hitMap.put(hEnd, null); // put this for verifyHits which then deletes it
 				} else {
 					// show the coastline even though we can't produce
 					// a polygon for the land
 					w.addTag("natural", "coastline");
-					if (!w.hasIdenticalEndPoints()) {
-						log.error("adding sea shape that is not really closed");
-					}
+					log.error("adding sea shape that is not really closed");
 					saver.addWay(w);
 				}
 			}
 		}
 		return hitMap;
+	}
+
+	/*
+	 * Check the hitHap has alternating start & end of ways - adjacent coastlines on the tile
+	 * boundary must be in opposite directions. There may be other errors, for instance crossing (twice)
+	 * due to extendSeaSectors when there is another bit of coastline in the gap, that this doesn't detect.
+	 * After checking, the end hit is removed
+	 */
+	private void verifyHits(NavigableMap<Double, Way> hitMap) {
+		log.debug("Islands", islands.size(), "Seas", antiIslands.size(), "hits", hitMap.size());
+		NavigableSet<Double> hits = hitMap.navigableKeySet();
+		Iterator<Double> iter = hits.iterator();
+		int lastStatus = 0, thisStatus;
+		while (iter.hasNext()) {
+			Double aHit = iter.next();
+			Way segment = hitMap.get(aHit);
+			log.debug("hitmap", aHit, segment);
+			if (segment == null) {
+				thisStatus = -1;
+				iter.remove();
+			} else
+				thisStatus = +1;
+			if (thisStatus == lastStatus)
+				log.error("Adjacent coastlines hit tile edge in same direction", aHit, segment);
+			lastStatus = thisStatus;
+		}
 	}
 
 	// create the point where the shoreline hits the sea bounds
@@ -1334,7 +1393,7 @@ public class SeaGenerator implements OsmReadingHooks {
 			plonHp = aMinLongHP;
 			break;
 		default:
-			throw new MapFailedException("illegal state");
+			throw new MapFailedException("GetPoint edge: " + edgePos);
 		}
 		return Coord.makeHighPrecCoord(platHp, plonHp);
 	}
