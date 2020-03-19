@@ -470,8 +470,8 @@ public class BoundaryQuadTree {
 			if (isLeaf) {
 				if (nodes == null || nodes.isEmpty())
 					return null;
-				int lon = co.getLongitude();
-				int lat = co.getLatitude();
+				double lon = (double) co.getHighPrecLon() / (1 << Coord.DELTA_SHIFT);
+				double lat = (double) co.getHighPrecLat() / (1 << Coord.DELTA_SHIFT);
 				for (NodeElem nodeElem : nodes) {
 					if (nodeElem.tagMask > 0 && nodeElem.getArea().contains(lon, lat)) {
 						return nodeElem.locTags;
