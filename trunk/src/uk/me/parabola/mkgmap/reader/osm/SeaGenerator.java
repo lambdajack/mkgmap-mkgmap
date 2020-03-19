@@ -28,7 +28,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Set;
@@ -1234,22 +1233,6 @@ public class SeaGenerator implements OsmReadingHooks {
 	}
 
 	/**
-	 * Create copy of way, but ignore tags that don't contain "name" in the key  
-	 * @param w
-	 * @return
-	 */
-	private static Way copyWithNameTags(Way w) {
-		Way w1 = new Way(w.getOriginalId(), w.getPoints());
-		w1.setFakeId();
-		for (Entry<String, String> tagEntry : w.getTagEntryIterator()) {
-			if ("name".equals(tagEntry.getKey()) || tagEntry.getKey().contains("name")) {
-				w1.addTag(tagEntry.getKey(), tagEntry.getValue());
-			}
-		}
-		return w1;
-	}
-
-	/**
 	 * Find the points where the remaining shore line segments intersect with the
 	 * map boundary.
 	 * @return A map of the 'hits' where the shore line intersects the boundary.
@@ -1354,8 +1337,9 @@ public class SeaGenerator implements OsmReadingHooks {
 			if (segment == null) {
 				thisStatus = -1;
 				iter.remove();
-			} else
+			} else {
 				thisStatus = +1;
+			}
 			if (thisStatus == lastStatus)
 				log.error("Adjacent coastlines hit tile edge in same direction", aHit, segment);
 			lastStatus = thisStatus;

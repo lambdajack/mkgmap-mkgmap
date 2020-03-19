@@ -47,7 +47,6 @@ import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Tags;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.util.EnhancedProperties;
-import uk.me.parabola.util.IsInUtil;
 import uk.me.parabola.util.Java2DConverter;
 import uk.me.parabola.util.MultiHashMap;
 import uk.me.parabola.util.ShapeSplitter;
@@ -800,48 +799,6 @@ public class BoundaryUtil {
 			pit.next();
 		}
 		return splits;
-	}
-	
-    /**
-     * Tests if point is inside an area. 
-     * @param point the point to test
-     * @param onBoundary the value that should be returned if the point is on the boundary
-     * @param fullArea a singular area 
-     * @return true if the point is inside polygon.
-     */
-    public static boolean pointInsideArea(Coord point, boolean onBoundary, Area fullArea) {
-    	double x = (double) point.getHighPrecLon() / (1 << Coord.DELTA_SHIFT);
-    	double y = (double) point.getHighPrecLat() / (1 << Coord.DELTA_SHIFT);
-    	Rectangle2D r = fullArea.getBounds2D();
-        double x0 = r.getX();
-        double y0 = r.getY();
-		boolean insideOrOnBounaryOfRect = (x >= x0 && y >= y0 && x <= x0 + r.getWidth() && y <= y0 + r.getHeight());
-		if (!insideOrOnBounaryOfRect) 
-			return false;
-    	List<Area> singularAreas = Java2DConverter.areaToSingularAreas(fullArea);
-    	for (Area area : singularAreas) {
-    		if (pointInsideSingularArea(point, onBoundary, area))
-    			return true;
-    	}
-    	return false;
-    }
-
-    /**
-     * Tests if point is inside or on boundary of an area.
-     * @param point the point to test
-     * @param onBoundary the value that should be returned if the point is on the boundary
-     * @param area a singular area 
-     * @return true if the point is inside polygon.
-     */
-	public static boolean pointInsideSingularArea(Coord point, boolean onBoundary, Area area) {
-		List<Coord> polygonNodes = Java2DConverter.singularAreaToPoints(area);
-		if (polygonNodes == null)
-			return false;
-		int status = IsInUtil.isPointInShape(point, polygonNodes);
-		if (status == IsInUtil.ON)
-			return onBoundary;
-		else
-			return status == IsInUtil.IN;
 	}
     
 }
