@@ -430,26 +430,31 @@ public class ExpressionArranger {
 		Op second = op.getSecond();
 
 		String keystring = null;
+		String valuestring = null;
 		if (op.isType(EQUALS) && first.isType(FUNCTION) && second.isType(VALUE)) {
-			keystring = first.getKeyValue() + "=" + second.getKeyValue();
+			keystring = first.getKeyValue();
+			valuestring = second.getKeyValue();
 		} else if (op.isType(EXISTS)) {
-			keystring = first.getKeyValue() + "=*";
+			keystring = first.getKeyValue();
+			valuestring = "*";
 		} else if (op.isType(AND)) {
-			if (first.isType(EQUALS)) {
-				keystring = first.getFirst().getKeyValue() + "=" + first.getSecond().getKeyValue();
+			if (first.isType(EQUALS) && first.getFirst().isType(FUNCTION) && first.getSecond().isType(VALUE)) {
+				keystring = first.getFirst().getKeyValue();
+				valuestring = first.getSecond().getKeyValue();
 			} else if (first.isType(EXISTS)) {
-				if (!isIndexable(first))
-					throw new SyntaxException(scanner, "Expression cannot be indexed");
-				keystring = first.getFirst().getKeyValue() + "=*";
+				if (isIndexable(first)) {
+					keystring = first.getFirst().getKeyValue();
+					valuestring = "*";
+				}
 			} else if (first.isType(NOT_EXISTS)) {
-				throw new SyntaxException(scanner, "Cannot start rule with tag!=*");
+				// invalid rule
 			}
 		}
 
-		if (keystring == null)
-			throw new SyntaxException(scanner, "Invalid rule expression: " + op);
+		if (keystring == null || valuestring == null)
+			throw new SyntaxException(scanner, "Invalid rule, expression cannot be indexed: " + op);
 
-		return keystring;
+		return keystring + "=" + valuestring;
 	}
 
 	/**
