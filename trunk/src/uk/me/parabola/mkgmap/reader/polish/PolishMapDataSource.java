@@ -190,12 +190,18 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	}
 
 	/**
-	 * Get the copyright message.  We use whatever was specified inside the
-	 * MPF itself.
+	 * Get the copyright message.  
 	 *
 	 * @return A string description of the copyright.
 	 */
 	public String[] copyrightMessages() {
+		String copyrightFileName = getConfig().getProperty("copyright-file", null);
+		if (copyrightFileName != null) {
+			return readCopyrightFile(copyrightFileName);
+		}
+		if (copyright == null) {
+			copyright = getConfig().getProperty("copyright-message", null);
+		}
 		return new String[] { copyright };
 	}
 

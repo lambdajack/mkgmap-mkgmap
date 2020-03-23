@@ -16,11 +16,21 @@
  */
 package uk.me.parabola.mkgmap.reader;
 
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.UnaryOperator;
 
+import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.net.RoadNetwork;
 import uk.me.parabola.imgfmt.app.trergn.Overview;
+import uk.me.parabola.mkgmap.Version;
 import uk.me.parabola.mkgmap.general.MapDataSource;
 import uk.me.parabola.mkgmap.general.MapDetails;
 import uk.me.parabola.mkgmap.general.MapLine;
@@ -39,6 +49,7 @@ public abstract class MapperBasedMapDataSource implements MapDataSource, Configu
 	protected final MapDetails mapper = new MapDetails();
 	private EnhancedProperties configProps;
 	private boolean driveOnLeft;
+	private static final LocalDateTime now = LocalDateTime.now();
 
 	/**
 	 * Get the area that this map covers. Delegates to the map collector.
@@ -132,4 +143,32 @@ public abstract class MapperBasedMapDataSource implements MapDataSource, Configu
 		driveOnLeft = b;
 	}
 
+	/**
+	 * Read the file given with the --copyright-file option
+	 * @param copyrightFileName the path to the file
+	 * @return copyright info stored in the file, with certain variable replacements
+	 */
+	public static String[] readCopyrightFile(String copyrightFileName ) {
+		List<String> copyrightArray = new ArrayList<>();
+		try {
+			File file = new File(copyrightFileName);
+			copyrightArray = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
+		}
+		catch (Exception e) {
+			throw new ExitException("Error reading copyright file " + copyrightFileName, e);
+		}
+		if (!copyrightArray.isEmpty() && copyrightArray.get(0).startsWith("\ufeff"))
+			copyrightArray.set(0, copyrightArray.get(0).substring(1));
+		UnaryOperator<String> replaceVariables = s -> s.replace("$MKGMAP_VERSION$", Version.VERSION)
+				.replace("$JAVA_VERSION$", System.getProperty("java.version"))
+				.replace("$YEAR$", Integer.toString(now.getYear()))
+				.replace("$LONGDATE$", now.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)))
+				.replace("$SHORTDATE$", now.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)))
+				.replace("$TIME$", now.toLocalTime().toString().substring(0, 5));
+		copyrightArray.replaceAll(replaceVariables);
+		String[] copyright = new String[copyrightArray.size()];
+		copyrightArray.toArray(copyright);
+		return copyright;
+	}
+	
 }

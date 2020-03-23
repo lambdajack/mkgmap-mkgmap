@@ -17,29 +17,21 @@
 package uk.me.parabola.mkgmap.reader.osm;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.InputStreamReader;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.UnaryOperator;
 
-import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.log.Logger;
-import uk.me.parabola.mkgmap.Version;
 import uk.me.parabola.mkgmap.general.LevelInfo;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
 import uk.me.parabola.mkgmap.osmstyle.NameFinder;
@@ -80,7 +72,6 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 	private final Set<String> usedTags = new HashSet<>();
 	protected ElementSaver elementSaver;
 	protected OsmReadingHooks osmReadingHooks;
-	private static final LocalDateTime now = LocalDateTime.now();
 	
 	protected static final List<OsmHandler> handlers;
 	static {
@@ -193,26 +184,7 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 	public String[] copyrightMessages() {
 		String copyrightFileName = getConfig().getProperty("copyright-file", null);
 		if (copyrightFileName != null) {
-			List<String> copyrightArray = new ArrayList<>();
-			try {
-				File file = new File(copyrightFileName);
-				copyrightArray = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
-			}
-			catch (Exception e) {
-				throw new ExitException("Error reading copyright file " + copyrightFileName, e);
-			}
-			if (!copyrightArray.isEmpty() && copyrightArray.get(0).startsWith("\ufeff"))
-				copyrightArray.set(0, copyrightArray.get(0).substring(1));
-			UnaryOperator<String> replaceVariables = s -> s.replace("$MKGMAP_VERSION$", Version.VERSION)
-					.replace("$JAVA_VERSION$", System.getProperty("java.version"))
-					.replace("$YEAR$", Integer.toString(now.getYear()))
-					.replace("$LONGDATE$", now.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)))
-					.replace("$SHORTDATE$", now.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)))
-					.replace("$TIME$", now.toLocalTime().toString().substring(0, 5));
-			copyrightArray.replaceAll(replaceVariables);
-			String[] copyright = new String[copyrightArray.size()];
-			copyrightArray.toArray(copyright);
-			return copyright;
+			return readCopyrightFile(copyrightFileName);
 		}
 		String note = getConfig().getProperty("copyright-message", 
 				"OpenStreetMap.org contributors. See: http://wiki.openstreetmap.org/index.php/Attribution");
