@@ -116,6 +116,23 @@ public class TypTextReader {
 			return new IconSection(data);
 		} else if ("_id".equals(sectionName)) {
 			return new IdSection(data);
+		} else if ("_comments".equals(sectionName)) {
+			// Need to really ignore everything (IgnoreSection tries to parse first bit of each line as name=...)
+			Token tstTok;
+			do {
+				scanner.skipLine(); // after _comments] or testing next line
+				tstTok = scanner.nextToken();
+				if (tstTok.getType() == TokType.SYMBOL && "[".equals(tstTok.getValue())) {
+					tstTok = scanner.nextRawToken();
+					if (tstTok.getType() == TokType.TEXT && "end".equalsIgnoreCase(tstTok.getValue())) {
+						tstTok = scanner.nextRawToken();
+						if (tstTok.getType() == TokType.SYMBOL && "]".equals(tstTok.getValue())) {
+							break;
+						}
+					}
+				}
+			} while (tstTok.getType() != TokType.EOF);
+			return null;
 		} else {
 			log.warn("Unrecognised section " + sectionName);
 			return new IgnoreSection(data);

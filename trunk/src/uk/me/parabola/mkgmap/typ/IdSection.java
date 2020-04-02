@@ -13,6 +13,7 @@
 package uk.me.parabola.mkgmap.typ;
 
 import uk.me.parabola.imgfmt.app.typ.TypData;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.scan.SyntaxException;
 import uk.me.parabola.mkgmap.scan.TokenScanner;
 import uk.me.parabola.mkgmap.srt.SrtTextReader;
@@ -23,6 +24,8 @@ import uk.me.parabola.mkgmap.srt.SrtTextReader;
  * @author Steve Ratcliffe
  */
 class IdSection implements ProcessSection {
+	private static final Logger log = Logger.getLogger(IdSection.class);
+
 	private final TypData data;
 
 	public IdSection(TypData data) {
@@ -34,15 +37,25 @@ class IdSection implements ProcessSection {
 		try {
 			ival = Integer.decode(value);
 		} catch (NumberFormatException e) {
-			throw new SyntaxException(scanner, "Bad integer " + value);
+			/* throw new SyntaxException(scanner, "Bad integer " + value);
+			 *
+			 * TYPViewer can leave these as:
+			 * FID=
+			 * ProductCode=
+			 * so just give a warning. Values will be supplied from mkgmap options.
+			 */
+			log.warn("bad/missing integer in TYP [_id] statement: ", name, "=", value);
+			ival = -1;
 		}
 
 		if (name.equalsIgnoreCase("FID")) {
-			data.setFamilyId(ival);
+			if (ival != -1)
+				data.setFamilyId(ival);
 		} else if (name.equalsIgnoreCase("ProductCode")) {
-			data.setProductId(ival);
+			if (ival != -1)
+				data.setProductId(ival);
 		} else if (name.equalsIgnoreCase("CodePage")) {
-			if (data.getSort() == null) // ignore if --code-page
+			if (ival != -1 && data.getSort() == null) // ignore if --code-page
 				data.setSort(SrtTextReader.sortForCodepage(ival));
 		} else {
 			throw new SyntaxException(scanner, "Unrecognised keyword in id section: " + name);
