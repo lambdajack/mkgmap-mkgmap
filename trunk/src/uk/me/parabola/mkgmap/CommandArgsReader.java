@@ -176,7 +176,7 @@ public class CommandArgsReader {
 		log.debug("adding option", option, value);
 
 		// Note if an explicit mapname is set
-		if (option.equals("mapname")) {
+		if ("mapname".equals(option)) {
 			if (extractMapName(value) == null || "00000000".equals(extractMapName(value))) {
 				throw new ExitException("invalid value for option: mapname="+value+" - mapname should be a 8 digit integer, default is 63240001");
 			} else { 
@@ -184,6 +184,20 @@ public class CommandArgsReader {
 			}
 		}
 
+		if ("family-id".equals(option)) {
+			int fid = -1;
+			try {
+				fid = Integer.parseInt(value);
+			} catch (NumberFormatException e) {
+				fid = -1;
+			}
+			if (fid <= 0 || fid > 0xffff) {
+				throw new ExitException("invalid value for option: family-id=" + value
+						+ " - family-id should be an integer between 1 and 65535, default is "
+						+ CommandArgs.DEFAULT_FAMILYID);
+			}
+		}
+		
 		switch (option) {
 		case "input-file":
 			if (value != null){
