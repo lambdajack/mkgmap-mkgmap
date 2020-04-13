@@ -100,6 +100,8 @@ public abstract class OsmHandler {
 	 * should be discarded.
 	 */
 	protected String keepTag(String key, String val) {
+		if (val.isEmpty())
+			return null;
 		if(deletedTags != null) {
 			Set<String> vals = deletedTags.get(key);
 			if(vals != null && (vals.isEmpty() || vals.contains(val))) {
