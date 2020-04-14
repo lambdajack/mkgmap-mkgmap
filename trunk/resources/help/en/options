@@ -65,8 +65,11 @@ filename
     the gmapsupp is created.
 
 --gmapi
-    Create a directory in the "gmapi" format required by Mac applications. Can
-    also be used for Windows programs.
+    Create a directory in the "gmapi" format required by Mac applications. It
+    can also be used for Windows programs; copy the complete directory tree
+    into {user}\AppData\Roaming\Garmin\Maps or \ProgramData\Garmin\Maps and the
+    map will be available in BaseCamp. The directory name is --family-name with
+    extension .gmap.
 
 -c filename
 --read-config=filename
@@ -395,9 +398,9 @@ filename
 
 --family-name=name
     If you build several maps, this option describes the family name of all of
-    your maps. Garmin will display this in the map selection screen.
-
-     Example: --family-name="OpenStreetmap mkgmap XL 2019"
+    your maps. Garmin will display this in the map selection screen. The
+    default is "OSM map".
+    Example: --family-name="OpenStreetmap mkgmap XL 2019"
 
 --product-id=integer
     This is an integer that identifies a product within a family. It is often
@@ -722,50 +725,42 @@ filename
     must have OSM or PBF file format.
 
 --generate-sea[=ValueList]
-    Generate sea polygons. ValueList is an optional comma separated list of
-    values:
-
+    Generate sea polygons. ValueList is a comma separated list of values:
     multipolygon
         generate the sea using a multipolygon (the default behaviour so this
         really doesn't need to be specified).
-
     polygons | no-mp
         don't generate the sea using a multipolygon - instead, generate a
-        background sea polygon plus individual land polygons with tag
-        natural=land. This requires a suitable land polygon type to be defined
-        in the style file (suggested type is 0x010100) and the polygon must be
-        defined in the TYP file as having a higher drawing level than the sea
-        polygon type.
-
+        background sea polygon plus individual land polygons with land-tag (see
+        following).
     no-sea-sectors
         disable the generation of "sea sectors" when the coastline fails to
-        reach the tile's boundary.
+        reach the tile's boundary. Under some conditions land sectors are
+        generated instead and these use land-tag.
     extend-sea-sectors
-        same as no-sea-sectors. Additional adds a point so coastline reaches
-        the nearest tile boundary.
-
+        Adds a point so coastline reaches the nearest tile boundary. This
+        implies no-sea-sectors.
     land-tag=TAG=VAL
-        tag to use for land polygons (default natural=land).
+        tag to use for land polygons (default natural=land). If not using
+        "multipolygon" or land sectors are being generated, then a suitable
+        land polygon type needs to be defined in the style file (suggested type
+        is 0x010100 or 0x54) and the polygon must be defined in the TYP file as
+        having a higher drawing level than the sea polygon type.
     close-gaps=NUM
         close gaps in coastline that are less than this distance (metres)
-
     floodblocker
         enable the flood blocker that prevents a flooding of land by checking
         if the sea polygons contain streets (works only with multipolygon
         processing)
-
     fbgap=NUM
         flood blocker gap in metre (default 40) points that are closer to the
         sea polygon do not block
-
     fbthres=NUM
         at least so many highway points must be contained in a sea polygon so
         that it may be removed by the flood blocker (default 20)
-
     fbratio=NUM
         only sea polygons with a higher ratio (highway points * 100000 /
         polygon size) are removed (default 0.5)
-
     fbdebug
         switches on the debugging of the flood blocker generates GPX files for
         each polygon checked by the flood blocker
