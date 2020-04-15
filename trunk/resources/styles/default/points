@@ -10,40 +10,62 @@
 
 addr:housenumber=* {set mkgmap:execute_finalize_rules=true}
 
+# impose routing/speed restrictions due to access/barrier. See option --link-pois-to-ways
+
+vehicle=* {
+    add bicycle='${vehicle}';
+    add motor_vehicle='${vehicle}';
+    }
+motor_vehicle=* {
+    add motorcar='${motor_vehicle}';
+    add goods='${motor_vehicle}';
+    add hgv='${motor_vehicle}';
+    add psv='${motor_vehicle}';
+    add emergency='${motor_vehicle}';
+    }
+psv=* {
+    add taxi='${psv}';
+    add bus='${psv}';
+    }
+
 barrier=* & bicycle=*   {set mkgmap:bicycle  =  '${bicycle|subst:private=>no}'}
 barrier=* & foot=*      {set mkgmap:foot     =     '${foot|subst:private=>no}'}
 barrier=* & hgv=*       {set mkgmap:truck    =      '${hgv|subst:private=>no}'}
 barrier=* & motorcar=*  {set mkgmap:car      = '${motorcar|subst:private=>no}'}
-barrier=* & psv=*       {set mkgmap:bus      =      '${psv|subst:private=>no}'}
+barrier=* & bus=*       {set mkgmap:bus      =      '${bus|subst:private=>no}'}
 barrier=* & taxi=*      {set mkgmap:taxi     =     '${taxi|subst:private=>no}'}
 barrier=* & emergency=* {set mkgmap:emergency='${emergency|subst:private=>no}'}
-barrier=* & delivery=*  {set mkgmap:delivery = '${delivery|subst:private=>no}'}
-barrier=* & access=*    {addaccess               '${access|subst:private=>no}'}
+barrier=* & goods=*     {set mkgmap:delivery =    '${goods|subst:private=>no}'}
 
-barrier=bollard | barrier=cycle_barrier {
-    add mkgmap:bicycle=yes;
-    add mkgmap:foot=yes;
-    addaccess no;
-    set mkgmap:road-speed=1;
+barrier=bollard | barrier=block {
+    add mkgmap:car=no;
+    add mkgmap:delivery=no;
+    add mkgmap:truck=no;
+    add mkgmap:bus=no;
+    add mkgmap:taxi=no;
+    add mkgmap:emergency=no;
+    }
+barrier=cycle_barrier | barrier=kissing_gate | barrier=stile {
+    add mkgmap:bicycle=no;
+    add mkgmap:car=no;
+    add mkgmap:delivery=no;
+    add mkgmap:truck=no;
+    add mkgmap:bus=no;
+    add mkgmap:taxi=no;
+    add mkgmap:emergency=no;
+    set mkgmap:road-speed=0;
     }
 barrier=bus_trap {
-    add mkgmap:bus=yes;
-    add mkgmap:foot=yes;
-    add mkgmap:bicycle=yes;
-    addaccess no;
-    set mkgmap:road-speed=1;
+    add mkgmap:car=no;
+    add mkgmap:delivery=no;
+    add mkgmap:truck=no;
+    add mkgmap:taxi=no;
     }
-barrier=gate {
-    add mkgmap:bicycle=yes;
-    add mkgmap:foot=yes;
-    addaccess no;
+barrier=gate | barrier=lift_gate | barrier=swing_gate {
     set mkgmap:road-speed=0;
     }
-barrier=kissing_gate | barrier=stile | barrier=block {
-    add mkgmap:foot=yes;
-    addaccess no;
-    set mkgmap:road-speed=0;
-    }
+barrier=* {add mkgmap:road-speed=1}
+barrier=* & access=* {addaccess '${access|subst:private=>no}'}
 
 internet_access=yes {name 'Internet ${name}' | 'Internet'} [0x2f12 resolution 24 continue]
 internet_access=* & internet_access!=no & internet_access!=yes
