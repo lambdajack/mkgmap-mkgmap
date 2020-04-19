@@ -437,7 +437,7 @@ part of the mapname in the list of the individual maps.
 Note that the first copyright message is not displayed on a device, but is
 shown in BaseCamp. The copyright file must include at least two lines and
 be UTF-8 encoded. The following symbols will be substituted by mkgmap:
-$MKGMAP_VERSION$, $JAVA_VERSION$, $YEAR$, $LONG_DATE$, $SHORT_DATE$ and $TIME$.
+$MKGMAP_VERSION$, $JAVA_VERSION$, $YEAR$, $LONGDATE$, $SHORTDATE$ and $TIME$.
 Time and date substitutions use the local date and time formats.
 
 ;--license-file=filename
