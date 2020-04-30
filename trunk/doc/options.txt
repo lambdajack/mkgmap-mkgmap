@@ -910,6 +910,65 @@ that smaller features are rendered over larger ones
 The tag mkgmap:drawLevel can be used to override the
 natural area of a polygon, so forcing changes to the rendering order.
 
+;--nearby-poi-rules=type[-type][/all|named|unnamed]:distance[:delete-poi|delete-name|merge-at-mid-point][,...]
+:	Defines a set of rules to follow when a POI is near to another of the
+same type. Each rule consists of three parts separated by colons. The
+first two parts must be provided; the last part can be defaulted.
+
+:	The first part of the rule is a Garmin POI type code or range of type codes,
+with an optional suffix; it determines when the rule is triggered. A type code may be
+specified in decimal or hexadecimal (e.g. 0x2c0b). A rule is triggered
+when processing a POI if the type code of the POI matches the rule type
+or falls within the range of type codes,
+providing there is also a match in the POI name and the first part
+suffix. If the suffix is '/all' (the default) then the match is only made
+on the type. If the suffix is '/named' then the rule is only triggered if
+the POI has a name. If the suffix is '/unnamed' then the rule is only
+triggered if the POI has no name. A wildcard of an asterisk character may
+be used to match any type code. The wildcard may also be combined with a
+suffix to allow separate processing of named and unnamed POIs.
+
+:	The second part of the rule is the distance in metres which an already
+processed POI must be within for it to be considered to be nearby and
+hence trigger the action part of the rule.
+
+:	The third part of the rule is the action part and provides three options:
+
+::	delete-poi - the POIS are considered to be duplicates and the
+duplicate is deleted. This is the default.
+::	delete-name - the POIS are not duplicates, but only a single
+name needs to be displayed.
+::	merge-at-mid-point - the POIS are considered to be duplicates
+but the location of the existing point is moved to a point
+midway between the two points.
+
+:	Wildcard rules are only applied if no other rule is applicable.
+
+:	For example:
+:	--nearby-poi-rules=*/named:10,*/unnamed:25,0x2f17-0x2f1f:30
+
+:	This has the following effect:
+:	If no other rule applies, a POI with the same name and type and
+	within 10m of one already processed will be deleted.
+:	If no other rule applies, a POI having no name and of the same type
+	and within 25m of one already processed will be deleted.
+:	A POI of any type between 0x2f17 and 0x2f1f that is within 30m of
+	another POI with the same type will be deleted.
+
+:	If you have a lot of rules, the --nearby-poi-rules-config option is likely to
+be easier to use.
+
+:	Note: a POI that matches another in type, name and exact location is always
+considered a duplicate and deleted.
+
+;--nearby-poi-rules-config=filename
+:Allows you to specify the nearby POI rules as described in the --nearby-poi-rules option
+in a configuration file.
+The format of the rules is the same as in --nearby-poi-rules, except that each rule is
+specified on a separate line, rather than separated by commas. This format makes it easier
+to view and maintain the rules when you have a lot of them. If you just have one or two rules,
+it is simpler to use the --nearby-poi-rules option.
+
 === Deprecated and Obsolete Options ===
 
 ;--drive-on-left
