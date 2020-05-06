@@ -118,17 +118,14 @@ public class StyledConverter implements OsmConverter {
 	private IdentityHashMap<Coord, CoordNode> nodeIdMap = new IdentityHashMap<>();
 
 	public static final String WAY_POI_NODE_IDS = "mkgmap:way-poi-node-ids";
-	private final HashMap<Integer, Map<String, MapPoint>> pointMap;
 	
 	/** boundary ways with admin_level=2 */
 	private final Set<Way> borders = new LinkedHashSet<>();
 	private boolean addBoundaryNodesAtAdminBoundaries;
 	private int admLevelNod3;
 	
-	
 	private List<ConvertedWay> roads = new ArrayList<>();
 	private List<ConvertedWay> lines = new ArrayList<>();
-	private List<MapPoint> renderedCoordPOI = new ArrayList<>();
 
 	private int nextRoadId = 1;
 	
@@ -167,7 +164,6 @@ public class StyledConverter implements OsmConverter {
 
 		nameFinder = new NameFinder(props);
 		this.style = style;
-		pointMap = new HashMap<>();
 		wayRules = style.getWayRules();
 		nodeRules = style.getNodeRules();
 		lineRules = style.getLineRules();
@@ -575,14 +571,7 @@ public class StyledConverter implements OsmConverter {
 			}
 			elementSetup(mp, gt, node);
 			mp.setLocation(node.getLocation());
-
-			if (nearbyPoiHandler.isDuplicatePOI(node, mp))
-				return;
-
-			if (node.getLocation() instanceof CoordPOI) {
-				renderedCoordPOI.add(mp);
-			}
-			collector.addPoint(mp);
+			nearbyPoiHandler.add(mp, node);
 		}
 
 		/**
@@ -594,6 +583,7 @@ public class StyledConverter implements OsmConverter {
 		}
 	}
 
+	
 	/**
 	 * Takes a node (that has its own identity) and converts it from the OSM
 	 * type to the Garmin map type.
@@ -860,7 +850,6 @@ public class StyledConverter implements OsmConverter {
 	}
 	
 	public void end() {
-		pointMap.clear();
 		style.reportStats();
 		driveOnLeft = calcDrivingSide();
 		
@@ -875,7 +864,11 @@ public class StyledConverter implements OsmConverter {
 
 		HashSet<Long> deletedRoads = new HashSet<>();
 		WrongAngleFixer wrongAngleFixer = new WrongAngleFixer(bbox);
-		wrongAngleFixer.optimizeWays(roads, lines, modifiedRoads, deletedRoads, restrictions, renderedCoordPOI);
+		
+		List<MapPoint> allPOI = nearbyPoiHandler.getPOI();
+		wrongAngleFixer.optimizeWays(roads, lines, modifiedRoads, deletedRoads, restrictions, allPOI);
+		nearbyPoiHandler.deDuplicate().forEach(collector::addPoint);
+		nearbyPoiHandler = null;
 		
 		// make sure that copies of modified roads have equal points 
 		for (ConvertedWay line : lines){

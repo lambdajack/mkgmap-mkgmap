@@ -125,11 +125,13 @@ public class WrongAngleFixer {
 			}
 		}
 
-		// update positions of the POIs which were already created. 
+		// update positions of the POIs which were already created.
 		for (MapPoint mp : renderedPOI) {
-			Coord replacement = getReplacement(mp.getLocation(), null, replacements);
-			if (mp.getLocation() != replacement) {
-				mp.setLocation(replacement);
+			if (mp.getLocation() instanceof CoordPOI) {
+				Coord replacement = getReplacement(mp.getLocation(), null, replacements);
+				if (mp.getLocation() != replacement) {
+					mp.setLocation(replacement);
+				}
 			}
 		}
 	}	
