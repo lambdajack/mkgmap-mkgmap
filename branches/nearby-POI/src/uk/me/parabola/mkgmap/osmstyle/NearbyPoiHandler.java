@@ -21,15 +21,16 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
@@ -42,7 +43,7 @@ import uk.me.parabola.util.KdTree;
 
 public class NearbyPoiHandler {
 	private static final Logger log = Logger.getLogger(NearbyPoiHandler.class);
-	final Map<MapPoint, Node> data = new LinkedHashMap<>();
+	private final Map<MapPoint, Node> data = new LinkedHashMap<>();
 
 	private enum NearbyPoiActOn {
 		ACT_ON_ALL, ACT_ON_NAMED, ACT_ON_UNNAMED
@@ -58,15 +59,39 @@ public class NearbyPoiHandler {
 		int maxDistance = 0;
 		NearbyPoiActOn actOn = NearbyPoiActOn.ACT_ON_ALL;
 		NearbyPoiAction action = NearbyPoiAction.DELETE_POI;
+		
+		@Override
+		public String toString() {
+			StringBuilder sb = new StringBuilder();
+			sb.append(GType.formatType(minPoiType));
+			if (minPoiType != maxPoiType) {
+				sb.append('-').append(GType.formatType(maxPoiType));
+			}
+			if (actOn == NearbyPoiActOn.ACT_ON_NAMED)
+				sb.append("/named");
+			if (actOn == NearbyPoiActOn.ACT_ON_UNNAMED)
+				sb.append("/unnamed");
+			sb.append(':').append(maxDistance);
+			switch (action) {
+			case DELETE_NAME:
+				sb.append(":delete-name");
+				break;
+			case DELETE_POI:
+				break;
+			case MERGE_AT_MID_POINT:
+				sb.append(":merge-at-mid-point");
+				break;
+			}
+			return sb.toString();
+		}
 	}
 
-	private ArrayList<NearbyPoiRule> nearbyPoiRules = new ArrayList<>();
-	private NearbyPoiRule defaultNamedNearbyPoiRule = new NearbyPoiRule();
-	private NearbyPoiRule defaultUnnamedNearbyPoiRule = new NearbyPoiRule();
+	private final ArrayList<NearbyPoiRule> nearbyPoiRules = new ArrayList<>();
+	private NearbyPoiRule defaultNamedNearbyPoiRule;
+	private NearbyPoiRule defaultUnnamedNearbyPoiRule;
 
 	public NearbyPoiHandler(EnhancedProperties props) {
-		defaultNamedNearbyPoiRule.actOn = NearbyPoiActOn.ACT_ON_NAMED;
-		defaultUnnamedNearbyPoiRule.actOn = NearbyPoiActOn.ACT_ON_UNNAMED;
+		resetRules();
 		String[] rules = props.getProperty("nearby-poi-rules", "").split(",");
 		String rulesFileName = props.getProperty("nearby-poi-rules-config", "");
 		if (!rulesFileName.isEmpty()) {
@@ -76,7 +101,7 @@ public class NearbyPoiHandler {
 				for (int i = 0; i < fileRules.size(); i++) {
 					String rule = fileRules.get(i);
 					int hashPos = rule.indexOf('#');
-					if (hashPos >=0)
+					if (hashPos >= 0)
 						fileRules.set(i, rule.substring(0, hashPos));
 				}
 				fileRules.addAll(Arrays.asList(rules));
@@ -90,13 +115,48 @@ public class NearbyPoiHandler {
 			if (!rule.isEmpty()) {
 				parseRule(rule, i);
 			}
-		}		
+		}
+		if (!checkRules()) {
+			resetRules();
+		}
+	}
+	
+	private void resetRules() {
+		nearbyPoiRules.clear();
+		defaultNamedNearbyPoiRule = new NearbyPoiRule();
+		defaultUnnamedNearbyPoiRule = new NearbyPoiRule();
+		defaultNamedNearbyPoiRule.actOn = NearbyPoiActOn.ACT_ON_NAMED;
+		defaultUnnamedNearbyPoiRule.actOn = NearbyPoiActOn.ACT_ON_UNNAMED;
+	}
+	
+	private boolean checkRules() {
+		// check for conflicting overlaps in intervals
+		Map<Integer,NearbyPoiRule> test = new HashMap<>();
+		for (NearbyPoiRule r : nearbyPoiRules) {
+			int i = r.minPoiType;
+			while (i <= r.maxPoiType) {
+				if ((i & 0xff) > 0x1f)
+					i = ((i >> 8) + 1) << 8; 
+				NearbyPoiRule old = test.put(i, r);
+				if (old != null
+						&& (r.maxDistance != old.maxDistance || r.action != old.action || r.actOn != old.actOn)) {
+					log.error("Different rules match for", GType.formatType(i));
+					log.error(old);
+					log.error(r);
+					log.error("NearbyPoiHandler is disabled, only identical POI will be removed");
+					return false;
+				}
+				i++;
+			} 		
+			
+		}
+		return true;
 	}
 	
 	private void parseRule(String rule, int i) {
 		NearbyPoiRule nearbyPoiRule = new NearbyPoiRule();
 		boolean valid = true;
-		String [] ruleParts = rule.split(":", 4);
+		String[] ruleParts = rule.split(":", 4);
 		String part1 = ruleParts[0];
 		int slashPos = part1.indexOf('/');
 		if (slashPos > 0) {
@@ -194,37 +254,61 @@ public class NearbyPoiHandler {
 		}
 	}
 
-	public void add(MapPoint mp, Node node) {
+	/**
+	 * Add POI and corresponding node for later processing.
+	 * @param mp the POI
+	 * @param node the node
+	 */
+	public void add(final MapPoint mp, final Node node) {
 		data.put(mp, node);
 	}
 
-	public List<MapPoint> getPOI() {
-		return new ArrayList<>(data.keySet());
+	/**
+	 * 
+	 * @return unmodifiable Set of all POI
+	 */
+	public Set<MapPoint> getAllPOI() {
+		return Collections.unmodifiableSet(data.keySet());
 	}
 
-	public Stream<MapPoint> deDuplicate() {
+	/**
+	 * @return Collection of deduplicated POI
+	 */
+	public Collection<MapPoint> deDuplicate() {
 		Set<MapPoint> allPOI = data.keySet();
+		if (allPOI.size() < 2)
+			return allPOI; // nothing to do
+		Comparator<MapPoint> typeAndName = Comparator.comparingInt(MapPoint::getType)
+				.thenComparing(mp -> mp.getName() == null ? "" : mp.getName());
+		List<MapPoint> sorted = allPOI.stream().sorted(typeAndName).collect(Collectors.toList());
 		Set<MapPoint> toKeep = new HashSet<>();
-		Map<Integer, Map<String, List<MapPoint>>> byTypeAndName = allPOI.stream()
-                .collect(Collectors.groupingBy(MapPoint::getType,
-                		Collectors.groupingBy(mp -> mp.getName() == null ? "" : mp.getName(),
-                				Collectors.toList())));
-		for (Entry<Integer, Map<String, List<MapPoint>>> e : byTypeAndName.entrySet()) {
-			for (Entry<String, List<MapPoint>> e2 : e.getValue().entrySet()) {
-				toKeep.addAll(reduce(e2.getValue()));
+
+		int first = 0;
+		int last = 0;
+		int n = sorted.size();
+		while (first < n) {
+			while (last < n && (0 == typeAndName.compare(sorted.get(first), sorted.get(last)))) {
+				last++;
 			}
+			toKeep.addAll(reduce(sorted.subList(first, last)));
+			first = last;
 		}
 		if (toKeep.size() < allPOI.size())
-			return allPOI.stream().filter(toKeep::contains);
-		else 
-			return allPOI.stream();
+			return allPOI.stream().filter(toKeep::contains).collect(Collectors.toList());
+		else
+			return allPOI;
 	}
-
+	
+	/**
+	 * @param points list of points with equal type and name
+	 * @return possibly reduced list
+	 */
 	private Collection<MapPoint> reduce(List<MapPoint> points) {
 		if (points.size() == 1)
 			return points;
 		int type = points.get(0).getType();
 		String name = points.get(0).getName();
+		boolean isNamed = name != null && !name.isEmpty();
 		for (NearbyPoiRule rule : nearbyPoiRules) {
 			if (rule.minPoiType > type)
 				break; // rules are in ascending order of poiType, so we can
@@ -232,13 +316,13 @@ public class NearbyPoiHandler {
 
 			if ((rule.minPoiType <= type) && (rule.maxPoiType >= type)
 					&& ((rule.actOn == NearbyPoiActOn.ACT_ON_ALL)
-							|| ((rule.actOn == NearbyPoiActOn.ACT_ON_NAMED) && (name != null) && !name.isEmpty())
-							|| ((rule.actOn == NearbyPoiActOn.ACT_ON_UNNAMED) && ((name == null) || name.isEmpty())))) {
+							|| ((rule.actOn == NearbyPoiActOn.ACT_ON_NAMED) && isNamed)
+							|| ((rule.actOn == NearbyPoiActOn.ACT_ON_UNNAMED) && !isNamed))) {
 				return applyRule(points, rule);
 			}
 		}
 
-		NearbyPoiRule defaultRule = (name == null) ? defaultUnnamedNearbyPoiRule : defaultNamedNearbyPoiRule;
+		NearbyPoiRule defaultRule = isNamed ? defaultNamedNearbyPoiRule : defaultUnnamedNearbyPoiRule;
 		return applyRule(points, defaultRule);
 	}
 
@@ -254,6 +338,8 @@ public class NearbyPoiHandler {
 				break;
 			
 			final Coord middle = calcMiddle(biggestCloud);
+			final Set<MapPoint> done = new HashSet<>(biggestCloud);
+			removeSimpleDuplicates(biggestCloud, done);
 			
 			// select point that is closest to the middle
 			MapPoint bestPoint = biggestCloud.stream()
@@ -263,12 +349,26 @@ public class NearbyPoiHandler {
 			performAction(rule.action, bestPoint, middle, biggestCloud, toKeep);
 			
 			// remove the processed points, they may also appear in other clouds
-			final Set<MapPoint> done = new HashSet<>(biggestCloud);
 			groupsMap.entrySet().removeIf(e -> e.getValue().removeAll(done));
 			groupsMap.entrySet().removeIf(e -> e.getValue().isEmpty());
 		}
 		
 		return rule.action != NearbyPoiAction.DELETE_NAME ? toKeep : points;
+	}
+
+	private void removeSimpleDuplicates(Set<MapPoint> biggestCloud, Set<MapPoint> done) {
+		Set<Coord> locations = new HashSet<>();
+		Iterator<MapPoint> iter = biggestCloud.iterator();
+		while (iter.hasNext()) {
+			MapPoint mp = iter.next();
+			if (!locations.add(mp.getLocation())) {
+				if (log.isInfoEnabled()) {
+					log.info("Removed duplicate", getLogInfo(mp));
+				}
+				done.add(mp);
+				iter.remove();
+			}
+		}
 	}
 
 	private static Map<MapPoint, Set<MapPoint>> buildGroups(List<MapPoint> points, int maxDistance, List<MapPoint> toKeep) {
@@ -293,7 +393,8 @@ public class NearbyPoiHandler {
 			final MapPoint midPoint = bestPoint;
 			biggestCloud.stream().filter(mp -> mp != midPoint).forEach(mp -> {
 				if (log.isInfoEnabled()) {
-					log.info("Removed name from nearby", getLogInfo(mp));
+					double dist = mp.getLocation().distance(bestPoint.getLocation());
+					log.info(String.format("Removed name from nearby(<%d m)", (long) Math.ceil(dist)), getLogInfo(mp));
 				}
 				mp.setName(null);
 			});
@@ -303,28 +404,24 @@ public class NearbyPoiHandler {
 		toKeep.add(bestPoint);
 		boolean doMove = action == NearbyPoiAction.MERGE_AT_MID_POINT;
 		if (log.isInfoEnabled()) {
-			logRemove(biggestCloud, bestPoint, middle, doMove);
+			logRemoval(biggestCloud, bestPoint, middle, doMove);
 		}
 		if (doMove) {
 			bestPoint.setLocation(middle);
 		}
 	}
 
-	private void logRemove(Set<MapPoint> biggestCloud, MapPoint bestPoint, Coord middle, boolean doMove) {
+	private void logRemoval(Set<MapPoint> biggestCloud, MapPoint bestPoint, Coord middle, boolean doMove) {
 		for (MapPoint mp : biggestCloud) {
 			if (mp != bestPoint) {
-				if (mp.getLocation().equals(bestPoint.getLocation())) {
-					log.info("Removed", getLogInfo(mp));
-				} else {
-					log.info("Removed nearby", getLogInfo(mp),
-							doMove ? "and moved location of nearby POI from " + bestPoint.getLocation()
-									+ " to " + middle : "");
-				}
+				double dist = mp.getLocation().distance(bestPoint.getLocation());
+				log.info(String.format("Removed nearby (<%d m)", (long) Math.ceil(dist)), getLogInfo(mp), doMove
+						? "and moved location of nearby POI from " + bestPoint.getLocation() + " to " + middle : "");
 			}
 		}
 	}
 
-	private static Coord calcMiddle(Set<MapPoint> points) {
+	private static Coord calcMiddle(final Set<MapPoint> points) {
 		// calculate centre of cloud
 		double lat = 0;
 		double lon = 0;
@@ -337,18 +434,22 @@ public class NearbyPoiHandler {
 		return Coord.makeHighPrecCoord((int) Math.round(lat), (int) Math.round(lon));
 	}
 
-	private String getLogInfo(MapPoint mp) {
-		StringBuilder sb = new StringBuilder("duplicate ");
+	private String getLogInfo(final MapPoint mp) {
+		StringBuilder sb = new StringBuilder();
 		String name = mp.getName();
-		if (name == null || name.isEmpty())
-			sb.append("unnamed ");
 		sb.append("POI with type " + GType.formatType(mp.getType()));
+		sb.append(" \"");
 		if (name != null && !name.isEmpty())
-			sb.append(" " + mp.getName());
+			sb.append(mp.getName());
+		sb.append('"');
 		Node n = data.get(mp);
 		if (n != null) {
-			sb.append(" for element " + (FakeIdGenerator.isFakeId(n.getId()) ? "generated from " + n.getOriginalId()
-					: n.toBrowseURL() + " at " + n.getLocation().toOSMURL()));
+			sb.append(" for element ");
+			if (FakeIdGenerator.isFakeId(n.getId())) {
+				sb.append("generated from ").append(n.getOriginalId());
+			} else {
+				sb.append(n.toBrowseURL()).append(" at ").append(n.getLocation().toOSMURL());
+			}
 		}
 		return sb.toString();
 	}

@@ -583,7 +583,6 @@ public class StyledConverter implements OsmConverter {
 		}
 	}
 
-	
 	/**
 	 * Takes a node (that has its own identity) and converts it from the OSM
 	 * type to the Garmin map type.
@@ -865,7 +864,7 @@ public class StyledConverter implements OsmConverter {
 		HashSet<Long> deletedRoads = new HashSet<>();
 		WrongAngleFixer wrongAngleFixer = new WrongAngleFixer(bbox);
 		
-		List<MapPoint> allPOI = nearbyPoiHandler.getPOI();
+		Set<MapPoint> allPOI = nearbyPoiHandler.getAllPOI();
 		wrongAngleFixer.optimizeWays(roads, lines, modifiedRoads, deletedRoads, restrictions, allPOI);
 		nearbyPoiHandler.deDuplicate().forEach(collector::addPoint);
 		nearbyPoiHandler = null;
