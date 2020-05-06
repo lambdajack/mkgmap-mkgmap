@@ -160,8 +160,7 @@ public class StyledConverter implements OsmConverter {
 	private final boolean keepBlanks;
 	
 	private LineAdder lineAdder;
-	private NearbyPoiHandler nearbyPoiHandler;
-	
+
 	public StyledConverter(Style style, MapCollector collector, EnhancedProperties props) {
 		this.collector = collector;
 
@@ -216,7 +215,6 @@ public class StyledConverter implements OsmConverter {
 		if (overlayAdder != null)
 			lineAdder = overlayAdder;
 		linkPOIsToWays = props.getProperty("link-pois-to-ways", false);
-		nearbyPoiHandler = new NearbyPoiHandler(props);
 		
 		// undocumented option - usually used for debugging only
 		mergeRoads = !props.getProperty("no-mergeroads", false);
@@ -576,13 +574,46 @@ public class StyledConverter implements OsmConverter {
 			elementSetup(mp, gt, node);
 			mp.setLocation(node.getLocation());
 
-			if (nearbyPoiHandler.isDuplicatePOI(node, mp))
+			boolean dupPOI = checkDuplicatePOI(mp);
+			if (dupPOI) {
+				if (log.isInfoEnabled()) {
+					if (FakeIdGenerator.isFakeId(node.getId()))
+						log.info("ignoring duplicate POI with type", GType.formatType(type), mp.getName(),
+								"for generated element with id", node.getId(), "at", mp.getLocation().toDegreeString());
+					else
+						log.info("ignoring duplicate POI with type", GType.formatType(type), mp.getName(),
+								"for element", node.toBrowseURL());
+				}
 				return;
+			}
 
 			if (node.getLocation() instanceof CoordPOI) {
 				renderedCoordPOI.add(mp);
 			}
 			collector.addPoint(mp);
+		}
+
+		/**
+		 * Check if we already have added a point with the same type + name and equal
+		 * location.
+		 * 
+		 * @param mp
+		 * @return
+		 */
+		private boolean checkDuplicatePOI(MapPoint mp) {
+			Map<String, MapPoint> typeMap = pointMap.get(mp.getType());
+			if (typeMap == null) {
+				typeMap = new HashMap<>();
+				pointMap.put(mp.getType(), typeMap);
+			}
+			MapPoint old = typeMap.get(mp.getName());
+			if (old == null) {
+				typeMap.put(mp.getName(), mp);
+			} else {
+				if (old.getLocation().equals(mp.getLocation()))
+					return true;
+			}
+			return false;
 		}
 
 		/**
@@ -1552,9 +1583,9 @@ public class StyledConverter implements OsmConverter {
 						}
 						}
 						if(splitI == p1I) {
-							log.info("Splitting looped way", way.getDebugName(), "would make a zero length arc, so it will have to be pruned at", wayPoints.get(p2I).toOSMURL());
+							log.warn("Splitting looped way", way.getDebugName(), "would make a zero length arc, so it will have to be pruned at", wayPoints.get(p2I).toOSMURL());
 							do {
-								log.info("  Pruning point[" + p2I + "]");
+								log.warn("  Pruning point[" + p2I + "]");
 								wayPoints.remove(p2I);
 								// next point to inspect has same index
 								--p2I;
@@ -1939,7 +1970,7 @@ public class StyledConverter implements OsmConverter {
 	 * As a result, all road junctions have a count > 1. 
 	 */
 	private void setHighwayCounts(){
-		log.debug("Maintaining highway counters");
+		log.info("Maintaining highway counters");
 		long lastId = 0;
 		List<Way> dupIdHighways = new ArrayList<>();
 		for (ConvertedWay cw :roads){
@@ -1983,7 +2014,7 @@ public class StyledConverter implements OsmConverter {
 	 * As a result, all road junctions have a count > 1. 
 	 */
 	private void resetHighwayCounts(){
-		log.debug("Resetting highway counters");
+		log.info("Resetting highway counters");
 		long lastId = 0;
 		for (ConvertedWay cw :roads){
 			if (!cw.isValid())
@@ -2233,7 +2264,7 @@ public class StyledConverter implements OsmConverter {
 	private void filterCoordPOI() {
 		if (!linkPOIsToWays)
 			return;
-		log.debug("translating CoordPOI");
+		log.info("translating CoordPOI");
 		for (ConvertedWay cw: roads) {
 			if (!cw.isValid())
 				continue;
