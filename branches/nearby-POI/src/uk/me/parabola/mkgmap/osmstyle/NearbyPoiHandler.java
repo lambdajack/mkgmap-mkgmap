@@ -339,7 +339,7 @@ public class NearbyPoiHandler {
 			
 			final Coord middle = calcMiddle(biggestCloud);
 			final Set<MapPoint> done = new HashSet<>(biggestCloud);
-			removeSimpleDuplicates(biggestCloud, done);
+			removeSimpleDuplicates(biggestCloud);
 			
 			// select point that is closest to the middle
 			MapPoint bestPoint = biggestCloud.stream()
@@ -349,14 +349,14 @@ public class NearbyPoiHandler {
 			performAction(rule.action, bestPoint, middle, biggestCloud, toKeep);
 			
 			// remove the processed points, they may also appear in other clouds
-			groupsMap.entrySet().removeIf(e -> e.getValue().removeAll(done));
+			groupsMap.entrySet().forEach(e -> e.getValue().removeAll(done));
 			groupsMap.entrySet().removeIf(e -> e.getValue().isEmpty());
 		}
 		
 		return rule.action != NearbyPoiAction.DELETE_NAME ? toKeep : points;
 	}
 
-	private void removeSimpleDuplicates(Set<MapPoint> biggestCloud, Set<MapPoint> done) {
+	private void removeSimpleDuplicates(Set<MapPoint> biggestCloud) {
 		Set<Coord> locations = new HashSet<>();
 		Iterator<MapPoint> iter = biggestCloud.iterator();
 		while (iter.hasNext()) {
@@ -365,7 +365,6 @@ public class NearbyPoiHandler {
 				if (log.isInfoEnabled()) {
 					log.info("Removed duplicate", getLogInfo(mp));
 				}
-				done.add(mp);
 				iter.remove();
 			}
 		}
