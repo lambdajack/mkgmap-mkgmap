@@ -886,7 +886,7 @@ filename
     The tag mkgmap:drawLevel can be used to override the natural area of a
     polygon, so forcing changes to the rendering order.
 
---nearby-poi-rules=type[-type][/all|named|unnamed]:distance[:delete-poi|delete-name|merge-at-mid-point][,...]
+--nearby-poi-rules=type[-type][/all|named|unnamed]:distance[:delete-poi|delete-name][,...]
     Defines a set of rules to follow when a POI is near to another of the same
     type. Each rule consists of three parts separated by colons. The first two
     parts must be provided; the last part can be defaulted.
@@ -914,9 +914,6 @@ filename
         is deleted. This is the default.
         delete-name - the POIS are not duplicates, but only a single name needs
         to be displayed.
-        merge-at-mid-point - the POIS are considered to be duplicates but the
-        location of the existing point is moved to a point midway between the
-        two points.
 
     Wildcard rules are only applied if no other rule is applicable.
 

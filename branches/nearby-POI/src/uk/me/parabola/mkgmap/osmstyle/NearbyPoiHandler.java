@@ -50,7 +50,7 @@ public class NearbyPoiHandler {
 	}
 
 	private enum NearbyPoiAction {
-		DELETE_POI, DELETE_NAME, MERGE_AT_MID_POINT
+		DELETE_POI, DELETE_NAME
 	}
 
 	private class NearbyPoiRule {
@@ -72,15 +72,8 @@ public class NearbyPoiHandler {
 			if (actOn == NearbyPoiActOn.ACT_ON_UNNAMED)
 				sb.append("/unnamed");
 			sb.append(':').append(maxDistance);
-			switch (action) {
-			case DELETE_NAME:
+			if (action == NearbyPoiAction.DELETE_NAME) {
 				sb.append(":delete-name");
-				break;
-			case DELETE_POI:
-				break;
-			case MERGE_AT_MID_POINT:
-				sb.append(":merge-at-mid-point");
-				break;
 			}
 			return sb.toString();
 		}
@@ -214,10 +207,6 @@ public class NearbyPoiHandler {
 					nearbyPoiRule.action = NearbyPoiAction.DELETE_NAME;
 					break;
 	
-				case "merge-at-mid-point":
-					nearbyPoiRule.action = NearbyPoiAction.MERGE_AT_MID_POINT;
-					break;
-	
 				default:
 					valid = false;
 					log.error("Invalid Action value", ruleParts[2], "in nearby poi rule", i + 1, rule,
@@ -346,7 +335,7 @@ public class NearbyPoiHandler {
 					.min(Comparator.comparingDouble(mp -> middle.distance(mp.getLocation())))
 					.orElse(biggestCloud.iterator().next()); // should not happen, stream is not empty
 			
-			performAction(rule.action, bestPoint, middle, biggestCloud, toKeep);
+			performAction(rule.action, bestPoint, biggestCloud, toKeep);
 			
 			// remove the processed points, they may also appear in other clouds
 			groupsMap.entrySet().forEach(e -> e.getValue().removeAll(done));
@@ -386,8 +375,8 @@ public class NearbyPoiHandler {
 		return groupsMap;
 	}
 
-	private void performAction(NearbyPoiAction action, MapPoint bestPoint, Coord middle,
-			Set<MapPoint> biggestCloud, List<MapPoint> toKeep) {
+	private void performAction(NearbyPoiAction action, MapPoint bestPoint, Set<MapPoint> biggestCloud,
+			List<MapPoint> toKeep) {
 		if (action == NearbyPoiAction.DELETE_NAME) {
 			final MapPoint midPoint = bestPoint;
 			biggestCloud.stream().filter(mp -> mp != midPoint).forEach(mp -> {
@@ -401,21 +390,16 @@ public class NearbyPoiHandler {
 		}
 		// this is the point that will be displayed
 		toKeep.add(bestPoint);
-		boolean doMove = action == NearbyPoiAction.MERGE_AT_MID_POINT;
 		if (log.isInfoEnabled()) {
-			logRemoval(biggestCloud, bestPoint, middle, doMove);
-		}
-		if (doMove) {
-			bestPoint.setLocation(middle);
+			logRemoval(biggestCloud, bestPoint);
 		}
 	}
 
-	private void logRemoval(Set<MapPoint> biggestCloud, MapPoint bestPoint, Coord middle, boolean doMove) {
+	private void logRemoval(Set<MapPoint> biggestCloud, MapPoint bestPoint) {
 		for (MapPoint mp : biggestCloud) {
 			if (mp != bestPoint) {
 				double dist = mp.getLocation().distance(bestPoint.getLocation());
-				log.info(String.format("Removed nearby (<%d m)", (long) Math.ceil(dist)), getLogInfo(mp), doMove
-						? "and moved location of nearby POI from " + bestPoint.getLocation() + " to " + middle : "");
+				log.info(String.format("Removed nearby (<%d m)", (long) Math.ceil(dist)), getLogInfo(mp));
 			}
 		}
 	}
