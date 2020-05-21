@@ -67,10 +67,6 @@ public class OsmXmlHandler extends OsmHandler {
 	private Way currentWay;
 	private Relation currentRelation;
 	private long currentElementId;
-	private final Map<String, Long> fakeIdMap = new HashMap<String, Long>();
-
-	public OsmXmlHandler() {
-	}
 
 	@Override
 	public boolean isFileSupported(String name) {
@@ -103,33 +99,12 @@ public class OsmXmlHandler extends OsmHandler {
 		}
 	}
 	/**
-	 * Convert an id as a string to a number. If the id is not a number, then create
-	 * a unique number instead.
-	 * @param id The id as a string. Does not have to be a numeric quantity.
-	 * @return A long id, either parsed from the input, or a unique id generated internally.
-	 */
-	private long idVal(String id) {
-		try {
-			// attempt to parse id as a number
-			return Long.parseLong(id);
-		} catch (NumberFormatException e) {
-			// if that fails, fake a (hopefully) unique value
-			Long fakeIdVal = fakeIdMap.get(id);
-			if(fakeIdVal == null) {
-				fakeIdVal = FakeIdGenerator.makeFakeId();
-				fakeIdMap.put(id, fakeIdVal);
-			}
-			//System.out.printf("%s = 0x%016x\n", id, fakeIdVal);
-			return fakeIdVal;
-		}
-	}
-
-	/**
 	 * The XML handler callbacks.
 	 *
 	 * Need an inner class here so that the top class can inherit from OsmHandler.
 	 */
 	public class SaxHandler extends DefaultHandler {
+		private final Map<String, Long> fakeIdMap = new HashMap<>();
 
 		/**
 		 * Receive notification of the start of an element.
@@ -149,30 +124,31 @@ public class OsmXmlHandler extends OsmHandler {
 		 *                                  wrapping another exception.
 		 * @see ContentHandler#startElement
 		 */
+		@Override
 		public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
 			if (mode == 0) {
-				if (qName.equals("node")) {
+				if ("node".equals(qName)) {
 					mode = MODE_NODE;
-					startNode(attributes.getValue("id"),
+					startXmlNode(attributes.getValue("id"),
 							attributes.getValue("lat"),
 							attributes.getValue("lon"));
 
-				} else if (qName.equals("way")) {
+				} else if ("way".equals(qName)) {
 					mode = MODE_WAY;
-					startWay(attributes.getValue("id"));
+					startXmlWay(attributes.getValue("id"));
 
-				} else if (qName.equals("relation")) {
+				} else if ("relation".equals(qName)) {
 					mode = MODE_RELATION;
 					currentRelation = new GeneralRelation(idVal(attributes.getValue("id")));
 
-				} else if (qName.equals("bound")) {
+				} else if ("bound".equals(qName)) {
 					mode = MODE_BOUND;
 					if(!isIgnoreBounds()) {
 						String box = attributes.getValue("box");
 						setupBBoxFromBound(box);
 					}
 
-				} else if (qName.equals("bounds")) {
+				} else if ("bounds".equals(qName)) {
 					mode = MODE_BOUNDS;
 					if(!isIgnoreBounds())
 						setupBBoxFromBounds(attributes);
@@ -204,7 +180,7 @@ public class OsmXmlHandler extends OsmHandler {
 		 */
 		public void endElement(String uri, String localName, String qName) throws SAXException {
 			if (mode == MODE_NODE) {
-				if (qName.equals("node")) {
+				if ("node".equals(qName)) {
 					mode = 0;
 					if (currentNode != null) {
 						saver.addNode(currentNode);
@@ -215,7 +191,7 @@ public class OsmXmlHandler extends OsmHandler {
 				}
 
 			} else if (mode == MODE_WAY) {
-				if (qName.equals("way")) {
+				if ("way".equals(qName)) {
 					mode = 0;
 
 					endWay(currentWay);
@@ -223,15 +199,15 @@ public class OsmXmlHandler extends OsmHandler {
 				}
 
 			} else if (mode == MODE_BOUND) {
-				if (qName.equals("bound"))
+				if ("bound".equals(qName))
 					mode = 0;
 
 			} else if (mode == MODE_BOUNDS) {
-				if (qName.equals("bounds"))
+				if ("bounds".equals(qName))
 					mode = 0;
 
 			} else if (mode == MODE_RELATION) {
-				if (qName.equals("relation")) {
+				if ("relation".equals(qName)) {
 					mode = 0;
 					saver.addRelation(currentRelation);
 				}
@@ -243,172 +219,190 @@ public class OsmXmlHandler extends OsmHandler {
 		 * working out the problem.
 		 * @throws SAXException
 		 */
+		@Override
 		public void fatalError(SAXParseException e) throws SAXException {
 			System.err.println("Error at line " + e.getLineNumber() + ", col "
 					+ e.getColumnNumber());
 			super.fatalError(e);
 		}
-	}
 
-	/**
-	 * A new tag has been started while we are inside a node element.
-	 * @param qName The new tag name.
-	 * @param attributes Its attributes.
-	 */
-	private void startInNode(String qName, Attributes attributes) {
-		if (qName.equals("tag")) {
-			String key = attributes.getValue("k");
-			String val = attributes.getValue("v");
+		/**
+		 * A new tag has been started while we are inside a node element.
+		 * @param qName The new tag name.
+		 * @param attributes Its attributes.
+		 */
+		private void startInNode(String qName, Attributes attributes) {
+			if ("tag".equals(qName)) {
+				String key = attributes.getValue("k");
+				String val = attributes.getValue("v");
 
-			// We only want to create a full node for nodes that are POI's
-			// and not just one point of a way.  Only create if it has tags that
-			// could be used in a POI.
-			key = keepTag(key, val);
-			if (key != null) {
-				if (currentNode == null) {
-					Coord co = saver.getCoord(currentElementId);
-					currentNode = new Node(currentElementId, co);
-				}
-
-				currentNode.addTagFromRawOSM(key, val);
-			}
-		}
-	}
-
-	/**
-	 * A new tag has been started while we are inside a way element.
-	 * @param qName The new tag name.
-	 * @param attributes Its attributes.
-	 */
-	private void startInWay(String qName, Attributes attributes) {
-		if (qName.equals("nd")) {
-			long id = idVal(attributes.getValue("ref"));
-			addCoordToWay(currentWay, id);
-		} else if (qName.equals("tag")) {
-			String key = attributes.getValue("k");
-			String val = attributes.getValue("v");
-			key = keepTag(key, val);
-			if (key != null)
-				currentWay.addTagFromRawOSM(key, val);
-		}
-	}
-
-	/**
-	 * A new tag has been started while we are inside the relation tag.
-	 * @param qName The new tag name.
-	 * @param attributes Its attributes.
-	 */
-	private void startInRelation(String qName, Attributes attributes) {
-		if (qName.equals("member")) {
-			long id = idVal(attributes.getValue("ref"));
-			Element el;
-			String type = attributes.getValue("type");
-			if ("way".equals(type)){
-				el = saver.getWay(id);
-			} else if ("node".equals(type)) {
-				el = saver.getNode(id);
-				if(el == null) {
-					// we didn't make a node for this point earlier,
-					// do it now (if it exists)
-					Coord co = saver.getCoord(id);
-					if(co != null) {
-						el = new Node(id, co);
-						saver.addNode((Node)el);
-					}
-				}
-			} else if ("relation".equals(type)) {
-				el = saver.getRelation(id);
-				if (el == null) {
-					saver.deferRelation(id, currentRelation, attributes.getValue("role"));
-				}
-			} else
-				el = null;
-			if (el != null) // ignore non existing ways caused by splitting files
-				currentRelation.addElement(attributes.getValue("role"), el);
-		} else if (qName.equals("tag")) {
-			String key = attributes.getValue("k");
-			String val = attributes.getValue("v");
-			// the type tag is required for relations - all other tags are filtered
-			if ("type".equals(key))
-				// intern the key
-				key = "type";
-			else
+				// We only want to create a full node for nodes that are POI's
+				// and not just one point of a way.  Only create if it has tags that
+				// could be used in a POI.
 				key = keepTag(key, val);
-			if (key == null) {
-				currentRelation.setTagsIncomplete(true);
-			} else {
-				currentRelation.addTagFromRawOSM(key, val);
+				if (key != null) {
+					if (currentNode == null) {
+						Coord co = saver.getCoord(currentElementId);
+						currentNode = new Node(currentElementId, co);
+					}
+
+					currentNode.addTagFromRawOSM(key, val);
+				}
 			}
 		}
-	}
 
-	/**
-	 * Set a bounding box from the bounds element.
-	 * There are two ways of specifying a bounding box in the XML format, this
-	 * one uses attributes of the element to give the bounds.
-	 * @param xmlattr The bounds element attributes.
-	 */
-	private void setupBBoxFromBounds(Attributes xmlattr) {
-		try {
-			setBBox(Double.parseDouble(xmlattr.getValue("minlat")),
-					Double.parseDouble(xmlattr.getValue("minlon")),
-					Double.parseDouble(xmlattr.getValue("maxlat")),
-					Double.parseDouble(xmlattr.getValue("maxlon")));
-		} catch (NumberFormatException e) {
-			// just ignore it
-			log.warn("NumberformatException: Cannot read bbox");
+		/**
+		 * A new tag has been started while we are inside a way element.
+		 * @param qName The new tag name.
+		 * @param attributes Its attributes.
+		 */
+		private void startInWay(String qName, Attributes attributes) {
+			if ("nd".equals(qName)) {
+				long id = idVal(attributes.getValue("ref"));
+				addCoordToWay(currentWay, id);
+			} else if ("tag".equals(qName)) {
+				String key = attributes.getValue("k");
+				String val = attributes.getValue("v");
+				key = keepTag(key, val);
+				if (key != null)
+					currentWay.addTagFromRawOSM(key, val);
+			}
 		}
-	}
 
-	/**
-	 * Set a bounding box from the bound element.  There are two ways of
-	 * specifying a bounding box, this one has a single 'box' attribute that
-	 * is a comma separated list of the bounds values.
-	 * @param box The value of the box attribute.
-	 */
-	private void setupBBoxFromBound(String box) {
-		String[] f = box.split(",");
-		try {
-			setBBox(Double.parseDouble(f[0]), Double.parseDouble(f[1]),
-					Double.parseDouble(f[2]), Double.parseDouble(f[3]));
-		} catch (NumberFormatException e) {
-			// just ignore it
-			log.warn("NumberformatException: Cannot read bbox");
+		/**
+		 * A new tag has been started while we are inside the relation tag.
+		 * @param qName The new tag name.
+		 * @param attributes Its attributes.
+		 */
+		private void startInRelation(String qName, Attributes attributes) {
+			if ("member".equals(qName)) {
+				long id = idVal(attributes.getValue("ref"));
+				Element el;
+				String type = attributes.getValue("type");
+				if ("way".equals(type)){
+					el = saver.getWay(id);
+				} else if ("node".equals(type)) {
+					el = saver.getNode(id);
+					if(el == null) {
+						// we didn't make a node for this point earlier,
+						// do it now (if it exists)
+						Coord co = saver.getCoord(id);
+						if(co != null) {
+							el = new Node(id, co);
+							saver.addNode((Node)el);
+						}
+					}
+				} else if ("relation".equals(type)) {
+					el = saver.getRelation(id);
+					if (el == null) {
+						saver.deferRelation(id, currentRelation, attributes.getValue("role"));
+					}
+				} else {
+					el = null;
+				}
+				if (el != null) // ignore non existing ways caused by splitting files
+					currentRelation.addElement(attributes.getValue("role"), el);
+			} else if ("tag".equals(qName)) {
+				String key = attributes.getValue("k");
+				String val = attributes.getValue("v");
+				// the type tag is required for relations - all other tags are filtered
+				if ("type".equals(key))
+					// intern the key
+					key = "type";
+				else
+					key = keepTag(key, val);
+				if (key == null) {
+					currentRelation.setTagsIncomplete(true);
+				} else {
+					currentRelation.addTagFromRawOSM(key, val);
+				}
+			}
 		}
-	}
 
-	/**
-	 * Save node information.  Consists of a location specified by lat/long.
-	 *
-	 * @param sid The id as a string.
-	 * @param slat The lat as a string.
-	 * @param slon The longitude as a string.
-	 */
-	private void startNode(String sid, String slat, String slon) {
-		if (sid == null || slat == null || slon == null)
-			return;
+		/**
+		 * Set a bounding box from the bounds element.
+		 * There are two ways of specifying a bounding box in the XML format, this
+		 * one uses attributes of the element to give the bounds.
+		 * @param xmlattr The bounds element attributes.
+		 */
+		private void setupBBoxFromBounds(Attributes xmlattr) {
+			try {
+				setBBox(Double.parseDouble(xmlattr.getValue("minlat")),
+						Double.parseDouble(xmlattr.getValue("minlon")),
+						Double.parseDouble(xmlattr.getValue("maxlat")),
+						Double.parseDouble(xmlattr.getValue("maxlon")));
+			} catch (NumberFormatException e) {
+				// just ignore it
+				log.warn("NumberformatException: Cannot read bbox");
+			}
+		}
+
+		/**
+		 * Set a bounding box from the bound element.  There are two ways of
+		 * specifying a bounding box, this one has a single 'box' attribute that
+		 * is a comma separated list of the bounds values.
+		 * @param box The value of the box attribute.
+		 */
+		private void setupBBoxFromBound(String box) {
+			String[] f = box.split(",");
+			try {
+				setBBox(Double.parseDouble(f[0]), Double.parseDouble(f[1]),
+						Double.parseDouble(f[2]), Double.parseDouble(f[3]));
+			} catch (NumberFormatException e) {
+				// just ignore it
+				log.warn("NumberformatException: Cannot read bbox");
+			}
+		}
+
+		/**
+		 * Save node information.  Consists of a location specified by lat/long.
+		 *
+		 * @param sid The id as a string.
+		 * @param slat The lat as a string.
+		 * @param slon The longitude as a string.
+		 */
+		private void startXmlNode(String sid, String slat, String slon) {
+			if (sid == null || slat == null || slon == null)
+				return;
+			
+			try {
+				long id = idVal(sid);
 		
-		try {
-			long id = idVal(sid);
-
-			Coord co = new Coord(Double.parseDouble(slat), Double.parseDouble(slon));
-			saver.addPoint(id, co);
-			currentElementId = id;
-		} catch (NumberFormatException e) {
-			// ignore bad numeric data. The coord will be discarded
+				Coord co = new Coord(Double.parseDouble(slat), Double.parseDouble(slon));
+				saver.addPoint(id, co);
+				currentElementId = id;
+			} catch (NumberFormatException e) {
+				// ignore bad numeric data. The coord will be discarded
+			}
 		}
-	}
 
-	/**
-	 * A new way element has been seen.
-	 * @param sid The way id as a string.
-	 */
-	private void startWay(String sid) {
-		try {
-			long id = idVal(sid);
-			currentWay = startWay(id);
-		} catch (NumberFormatException e) {
-			// ignore bad numeric data. The way will be discarded
+		/**
+		 * A new way element has been seen.
+		 * @param sid The way id as a string.
+		 */
+		private void startXmlWay(String sid) {
+			try {
+				long id = idVal(sid);
+				currentWay = startWay(id);
+			} catch (NumberFormatException e) {
+				// ignore bad numeric data. The way will be discarded
+			}
+		}
+
+		/**
+		 * Convert an id as a string to a number. If the id is not a number, then create
+		 * a unique number instead.
+		 * @param id The id as a string. Does not have to be a numeric quantity.
+		 * @return A long id, either parsed from the input, or a unique id generated internally.
+		 */
+		private long idVal(String id) {
+			try {
+				// attempt to parse id as a number
+				return Long.parseLong(id);
+			} catch (NumberFormatException e) {
+				// if that fails, fake a (hopefully) unique value
+				return fakeIdMap.putIfAbsent(id, FakeIdGenerator.makeFakeId());
+			}
 		}
 	}
 }

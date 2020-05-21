@@ -21,15 +21,20 @@ import uk.me.parabola.util.EnhancedProperties;
  */
 public class CoastlineElementSaver extends ElementSaver {
 
+	private static final short TK_NATURAL = TagDict.getInstance().xlate("natural");
+	
 	public CoastlineElementSaver(EnhancedProperties args) {
 		super(args);
 	}
 
+	@Override
 	public void addNode(Node node) {
+		// do nothing
 	}
 
+	@Override
 	public void addWay(Way way) {
-		String tag = way.getTag("natural");
+		String tag = way.getTag(TK_NATURAL);
 		if (tag != null && tag.contains("coastline")) {
 			// remove all tags => the natural=coastline is implicitly known
 			way.removeAllTags();
@@ -37,9 +42,13 @@ public class CoastlineElementSaver extends ElementSaver {
 		}
 	}
 
+	@Override
 	public void addRelation(Relation rel) {
+		// do nothing
 	}
 
+	@Override
 	public void convert(OsmConverter converter) {
+		// do nothing
 	}
 }
