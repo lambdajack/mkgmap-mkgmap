@@ -90,7 +90,7 @@ public class GeneralRouteRestriction {
 	}
 
 	public void setViaWayIds(List<Long> viaWayIds) {
-		this.viaWayIds = new ArrayList<Long>(viaWayIds);
+		this.viaWayIds = new ArrayList<>(viaWayIds);
 	}
 	public List<CoordNode> getViaNodes() {
 		return viaNodes;

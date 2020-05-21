@@ -142,7 +142,8 @@ public class RuleIndex {
 	public BitSet getRulesForTag(short tagKey, String tagVal) {
 		TagHelper th;
 		if (tagKeyArray != null){
-			assert tagKey > 0;
+			if (tagKey <= 0)
+				throw new IllegalArgumentException("Invalid tagKey: " + tagKey);
 			if (tagKey < tagKeyArray.length){
 				th = tagKeyArray[tagKey];
 			} else {
@@ -195,11 +196,13 @@ public class RuleIndex {
 		Optional<Short> minKey = tagKeyMap.keySet().stream().min(Short::compare);
 		if (minKey.isPresent() && minKey.get() > 0) {
 			Optional<Short> maxKey = tagKeyMap.keySet().stream().max(Short::compare);
-			tagKeyArray = new TagHelper[maxKey.get() + 1];
-			for (Map.Entry<Short, TagHelper> entry : tagKeyMap.entrySet()) {
-				tagKeyArray[entry.getKey()] = entry.getValue();
+			if (maxKey.isPresent()) {
+				tagKeyArray = new TagHelper[maxKey.get() + 1];
+				for (Map.Entry<Short, TagHelper> entry : tagKeyMap.entrySet()) {
+					tagKeyArray[entry.getKey()] = entry.getValue();
+				}
+				tagKeyMap.clear();
 			}
-			tagKeyMap.clear();
 		}
 
 		inited = true;

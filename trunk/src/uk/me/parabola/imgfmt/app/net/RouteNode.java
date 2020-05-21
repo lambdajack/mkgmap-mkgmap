@@ -172,11 +172,7 @@ public class RouteNode implements Comparable<RouteNode> {
 	}
 
 	private int arcsSize() {
-		int s = 0;
-		for (RouteArc arc : arcs) {
-			s += arc.boundSize();
-		}
-		return s;
+		return arcs.stream().mapToInt(RouteArc::boundSize).sum();
 	}
 
 	private int restrSize() {
@@ -417,11 +413,11 @@ public class RouteNode implements Comparable<RouteNode> {
 						for (RouteNode roundaboutNode : processedNodes) {
 							if (roundaboutNode.coord.equals(nextCoord)) {
 								// arc rejoins roundabout, so calculate another point to use half the distance away at the initial bearing
-								double heading1 = ra.getSource().coord == coord ? ra.getInitialHeading() : 180 + ra.getFinalHeading();
+								double heading1 = ra.getSource().coord == coord ? ra.getInitialHeading() : 180.0 + ra.getFinalHeading();
 								double distance = coord.distance(nextCoord) / 2;
 								Coord nextCoord1 = coord.offset(heading1, distance);
 								// now calculate a point the same distance away from the end point 180 degrees from the final bearing
-								double heading2 = ra.getSource().coord == coord ? 180 + ra.getFinalHeading() : ra.getInitialHeading();
+								double heading2 = ra.getSource().coord == coord ? 180.0 + ra.getFinalHeading() : ra.getInitialHeading();
 								Coord nextCoord2 = nextCoord.offset(heading2, distance);
 								double distanceToCentreOfNextCoord = roundaboutCentre.distance(nextCoord);
 								// use the point which has a bigger difference in distance from the centre to increase accuracy
