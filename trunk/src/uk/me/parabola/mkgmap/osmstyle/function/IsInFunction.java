@@ -449,11 +449,12 @@ actually, would be safe not to call hasOn() even for POLYLINE, because none of t
 
 	public static ElementQuadTree buildTree(ElementSaver elementSaver, String tagKey, String tagVal) {
 		List<Element> matchingPolygons = new ArrayList<>();
+		boolean matchAllValues = "*".equals(tagVal);
 		for (Way w : elementSaver.getWays().values()) {
 			if (w.hasIdenticalEndPoints()
 					&& !"polyline".equals(w.getTag(MultiPolygonRelation.STYLE_FILTER_TAG))) {
 				String val = w.getTag(tagKey);
-				if (val != null && val.equals(tagVal)) {
+				if (val != null && (matchAllValues || val.equals(tagVal))) {
 					matchingPolygons.add(w);
 				}
 			}
