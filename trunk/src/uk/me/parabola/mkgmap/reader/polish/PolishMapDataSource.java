@@ -599,8 +599,10 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	private void shape(String name, String value) {
 		if ("Type".equals(name)) {
 			int type = Integer.decode(value);
-			if (type == 0x4a00)
-				type = 0x4a;
+			if (type >= 0x100 && type < 0x10000 && (type & 0xff) == 0) {
+				// allow 0xYY00 instead of 0xYY
+				type >>= 8;
+			}
 			shape.setType(type);
 			checkType(FeatureKind.POLYGON, type);
 			if(type == 0x4b)
