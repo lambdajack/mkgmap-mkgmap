@@ -1045,7 +1045,8 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	private int decodeType(FeatureKind kind, String type) {
 		try {
 			int t = Integer.decode(type);
-			if (kind == FeatureKind.POLYGON && t >= 0x100 && t < 0x10000 && (t & 0xff) == 0) {
+			if ((kind == FeatureKind.POLYGON || kind == FeatureKind.POLYLINE) && t >= 0x100 && t < 0x10000
+					&& (t & 0xff) == 0) {
 				// allow 0xYY00 instead of 0xYY
 				t >>= 8;
 			}
