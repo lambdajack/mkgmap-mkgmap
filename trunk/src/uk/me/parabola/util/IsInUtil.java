@@ -80,6 +80,7 @@ public class IsInUtil {
 	private static final int EPS_HP = 4; // ~0.15 meters at equator
 	private static final int EPS_HP_SQRD = EPS_HP * EPS_HP;
 	private static final double EPS = 0.15; // meters. needed for distToLineSegment()
+	private static final double EPS_OFF = EPS * 2;  
 
 	public static int isLineInShape(List<Coord> lineToTest, List<Coord> shape, Area elementBbox) {
 		final int n = lineToTest.size();
@@ -122,18 +123,18 @@ public class IsInUtil {
 									isCrossing = true;
 								} else if (x == IntersectionStatus.JOINING) {
 									if (!isOnOrCloseToEdgeOfShape(shape, p21, p20)) {
-										pTest = p21.makeBetweenPoint(p20, 0.01);
+										pTest = p21.destOnRhumbLine(EPS_OFF, p21.bearingTo(p20));
 									}
 								} else if (x == IntersectionStatus.SPLITTING) {
 									if (!isOnOrCloseToEdgeOfShape(shape, p21, p22)) {
-										pTest = p21.makeBetweenPoint(p22, 0.01);
+										pTest = p21.destOnRhumbLine(EPS_OFF, p21.bearingTo(p22));
 									}
 								}
 								if (pTest != null) {
 									int testStat = isPointInShape(pTest, shape);
 									status |= testStat;
-									if ((status|ON) == IN_ON_OUT)
-									    return IN_ON_OUT;
+									if ((status | ON) == IN_ON_OUT)
+										return IN_ON_OUT;
 								}
 							} else if (p21.distanceInHighPrecSquared(p12) < EPS_HP_SQRD) {
 								// handled in next iteration (k+1) or (i+1)b
@@ -199,7 +200,7 @@ public class IsInUtil {
 			Coord p1 = lineToTest.get(i);
 			Coord p2 = lineToTest.get(i + 1);
 			if (!isOnOrCloseToEdgeOfShape(shape, p1, p2)) {
-				Coord pTest = p1.makeBetweenPoint(p2, 0.01);
+				Coord pTest = p1.destOnRhumbLine(EPS_OFF, p1.bearingTo(p2));
 				int resMidPoint = isPointInShape(pTest, shape);
 				if (resMidPoint != ON)
 					return resMidPoint;
@@ -351,27 +352,30 @@ public class IsInUtil {
 					++lhsCount; // definite line segment all slightly to the left
 				} else { // need to consider this segment more carefully.
 					if (leadLat == trailLat)
-						lonDif = 0; // dif meaningless; will be ignored in crossing calc, 0 handled for distToLine calc
+						lonDif = Double.POSITIVE_INFINITY; // horizontal lines ignored in crossing calc, infinity handled in distToLine calc
 					else
 						lonDif = nodeLon - trailLon - (double)(nodeLat - trailLat) / (leadLat - trailLat) * (leadLon - trailLon);
-					if (leadLon == trailLon)
-						latDif = 0; // ditto
-					else
-						latDif = nodeLat - trailLat - (double)(nodeLon - trailLon) / (leadLon - trailLon) * (leadLat - trailLat);
-					// calculate distance to segment using right-angle attitude theorem
-					final double lonDifSqrd = lonDif*lonDif;
-					final double latDifSqrd = latDif*latDif;
-					log.debug("inBox", leadLon-nodeLon, leadLat-nodeLat, trailLon-nodeLon, trailLat-nodeLat, lonDif, latDif, lhsCount, rhsCount);
-					// there a small area between the square EPS_HP*2 and the circle within, where, if polygon vertix and
-					// segments are the other side, it might still be calculated as ON.
-					if (lonDif == 0)
-						distSqrd = latDifSqrd;
-					else if (latDif == 0)
-						distSqrd = lonDifSqrd;
-					else
-						distSqrd = lonDifSqrd * latDifSqrd / (lonDifSqrd + latDifSqrd);
-					if (distSqrd < EPS_HP_SQRD)
-						return ON;
+					if ((minLon - EPS_HP <= nodeLon) && (maxLon + EPS_HP >= nodeLon)) { // check if the point is ON the line
+						if (leadLon == trailLon)
+							latDif = Double.POSITIVE_INFINITY; // handled in distToLine calc
+						else
+							latDif = nodeLat - trailLat - (double)(nodeLon - trailLon) / (leadLon - trailLon) * (leadLat - trailLat);
+						// calculate distance to segment using right-angle attitude theorem
+						log.debug("inBox", leadLon-nodeLon, leadLat-nodeLat, trailLon-nodeLon, trailLat-nodeLat, lonDif, latDif, lhsCount, rhsCount);
+						// There can be a small area, within the square EPS_HP*2 around the node, but is not in the circle radius EPS_HP where a polygon
+						// vertix meets this square, that will be incorrectly calculated as ON
+						if (Double.isInfinite(lonDif))
+							distSqrd = latDif*latDif;
+						else if (Double.isInfinite(latDif))
+							distSqrd = lonDif*lonDif;
+						else if (Math.abs(lonDif) < EPS_HP || Math.abs(latDif) < EPS_HP)
+							return ON;
+						else
+							distSqrd = lonDif*lonDif * latDif*latDif / (lonDif*lonDif + latDif*latDif);
+						if (distSqrd < EPS_HP_SQRD)
+							return ON;
+					} else
+						log.debug("inSlice", leadLon-nodeLon, leadLat-nodeLat, trailLon-nodeLon, trailLat-nodeLat, lonDif, "N/A", lhsCount, rhsCount);
 					if ((trailLat <= nodeLat && leadLat >  nodeLat) || //  an upward crossing
 					    (trailLat >  nodeLat && leadLat <= nodeLat)) { // a downward crossing
 						if (lonDif < 0)
