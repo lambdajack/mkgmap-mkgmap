@@ -367,7 +367,7 @@ public class RoadNetwork {
 	 * @param visitedRoads set that will be filled with the roads seen in this island 
 	 * @return the rounded sum of lengths in meters 
 	 */
-	private long calcIslandSize(Collection<RouteNode> islandNodes, MultiHashMap<RouteNode, RoadDef> nodeToRoadMap,
+	private static long calcIslandSize(Collection<RouteNode> islandNodes, MultiHashMap<RouteNode, RoadDef> nodeToRoadMap,
 			Set<RoadDef> visitedRoads) {
 		double sumLen = 0;
 		for (RouteNode node : islandNodes) {

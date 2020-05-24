@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -115,11 +114,8 @@ public class RestrictionRelation extends Relation {
 		Map<String, String> vehicles = getTagsWithPrefix("restriction:", true);
 		if (!vehicles.isEmpty()) {
 			exceptMask = (byte) 0xff;
-			Iterator<Entry<String, String>> iter = vehicles.entrySet().iterator();
-			while (iter.hasNext()) {
-				Map.Entry<String, String> entry = iter.next();
-				String vehicle = entry.getKey();
-				if (!setExceptMask(vehicle, false))
+			for (Entry<String, String> entry : vehicles.entrySet()) {
+				if (!setExceptMask(entry.getKey(), false))
 					countUnknown++;
 				if (specificType == null)
 					specificType = entry.getValue();
@@ -433,44 +429,44 @@ public class RestrictionRelation extends Relation {
 	 * @param b true: restriction should not apply for vehicle, false: restriction should apply  
 	 * @return true if vehicle has a matching flag in the garmin format
 	 */
-	private boolean setExceptMask(String vehicle, boolean b){
-		byte flag = 0;
+	private boolean setExceptMask(String vehicle, boolean b) {
 		if (vehicle == null)
 			return false;
-		// inverted 
-		if(vehicle.equals("vehicle"))
-			flag = (byte) ~(DEFAULT_EXCEPT_MASK); 
-		else if(vehicle.equals("motor_vehicle"))
+		byte flag = 0;
+		// inverted
+		if ("vehicle".equals(vehicle))
+			flag = (byte) ~(DEFAULT_EXCEPT_MASK);
+		else if ("motor_vehicle".equals(vehicle))
 			flag = (byte) ~(AccessTagsAndBits.BIKE | DEFAULT_EXCEPT_MASK);
 		// normal
-		else if(vehicle.equals("psv"))
+		else if ("psv".equals(vehicle))
 			flag = (byte) (AccessTagsAndBits.TAXI | AccessTagsAndBits.BUS);
-		else if(vehicle.equals("bicycle"))
+		else if ("bicycle".equals(vehicle))
 			flag = AccessTagsAndBits.BIKE;
-		else if(vehicle.equals("motorcar"))
+		else if ("motorcar".equals(vehicle))
 			flag = AccessTagsAndBits.CAR;
-		else if(vehicle.equals("bus"))
+		else if ("bus".equals(vehicle))
 			flag = AccessTagsAndBits.BUS;
-		else if(vehicle.equals("taxi"))
+		else if ("taxi".equals(vehicle))
 			flag = AccessTagsAndBits.TAXI;
-		else if(vehicle.equals("goods"))
+		else if ("goods".equals(vehicle))
 			flag = AccessTagsAndBits.DELIVERY;
-		else if(vehicle.equals("hgv") || vehicle.equals("truck"))
+		else if ("hgv".equals(vehicle) || "truck".equals(vehicle))
 			flag = AccessTagsAndBits.TRUCK;
-		else if(vehicle.equals("emergency"))
+		else if ("emergency".equals(vehicle))
 			flag = AccessTagsAndBits.EMERGENCY;
-		else if(vehicle.equals("foot"))
+		else if ("foot".equals(vehicle))
 			flag = AccessTagsAndBits.FOOT;
-		if (flag == 0){
+		if (flag == 0) {
 			log.warn(msgPrefix, "ignoring unsupported vehicle class '" + vehicle + "' in turn restriction");
 			return false;
-		} 
-		
+		}
+
 		if (b)
 			exceptMask |= flag;
-		else 
+		else
 			exceptMask &= ~flag;
-		return true;			
+		return true;
 	}
 	
 	public boolean isFromWay(long wayId) {

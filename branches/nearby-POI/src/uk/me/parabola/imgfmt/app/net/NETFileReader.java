@@ -63,11 +63,7 @@ public class NETFileReader extends ImgFile {
 	 * @return The offset into LBL as found in NET 1.
 	 */
 	public int getLabelOffset(int netOffset) {
-		Integer off = offsetLabelMap.get(netOffset);
-		if (off == null)
-			return 0;
-		else
-			return off;
+		return offsetLabelMap.getOrDefault(netOffset, 0);
 	}
 
 	/**
@@ -147,7 +143,7 @@ public class NETFileReader extends ImgFile {
 	 * @param size
 	 * @param indexes
 	 */
-	private void fetchZipCityIndexes(ImgFileReader reader, int flag, int size, IntArrayList indexes) {
+	private static void fetchZipCityIndexes(ImgFileReader reader, int flag, int size, IntArrayList indexes) {
 		indexes.clear();
 		if (flag == 2) {
 			// fetch city/zip index
@@ -167,7 +163,7 @@ public class NETFileReader extends ImgFile {
 		}
 	}
 	
-	private void parseList(ImgFileReader reader, int n, int size,
+	private static void parseList(ImgFileReader reader, int n, int size,
 			IntArrayList indexes) {
 		long endPos = reader.position() + n;
 		int node = 0; // not yet used
@@ -204,7 +200,7 @@ public class NETFileReader extends ImgFile {
 		}
 	}
 
-	private int getCityOrZip(ImgFileReader reader, int size, long endPos) {
+	private static int getCityOrZip(ImgFileReader reader, int size, long endPos) {
 		if (reader.position() > endPos - size) {
 			assert false : "ERRROR overflow";
 			return 0;
@@ -217,7 +213,7 @@ public class NETFileReader extends ImgFile {
 	 * @param reader The reader.
 	 * @param numberFlag The flag that says how the block is formatted.
 	 */
-	private void fetchNumber(ImgFileReader reader, int numberFlag) {
+	private static void fetchNumber(ImgFileReader reader, int numberFlag) {
 		int n = 0;
 		if (numberFlag == 0) {
 			n = reader.get1u();

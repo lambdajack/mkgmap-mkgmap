@@ -175,44 +175,15 @@ public class LocationHook implements OsmReadingHooks {
 		if (elem instanceof Node){
 			Node node = (Node) elem;
 			tags = search(node.getLocation());
-		}
-		else if (elem instanceof Way){
-			Way way = (Way) elem;
-			// try the mid point of the way first
-			int middle = way.getPoints().size() / 2;
-			Coord midPoint;
-			if (way.getPoints().size() == 2) {
-				midPoint = way.getFirstPoint().makeBetweenPoint(way.getLastPoint(), 0.5);
-			} else {
-				midPoint = way.getPoints().get(middle);
-			}
-			tags = search(midPoint);
-			if (tags == null){
-				// try 1st point next
-				tags = search(way.getFirstPoint());
-			}
-			if (tags == null){
-				// try last point next
-				tags = search(way.getLastPoint());
-			}
-			if (tags == null){
-				// still not found, try rest
-				for (int i = 1; i < way.getPoints().size()-1; i++){
-					if (i != middle) {
-						tags = search(way.getPoints().get(i));
-						if (tags != null) 
-							break;
-					}
-				}
-			}
+		} else if (elem instanceof Way) {
+			tags = processWayPoints(((Way) elem).getPoints());
 			if (tags == null)
 				++cntwayNotFnd;
 		}
 
-		if (tags == null){
+		if (tags == null) {
 			++cntNotFnd;
-		}
-		else{
+		} else {
 			// tag the element with all tags referenced by the boundary
 			Iterator<Entry<Short,String>> tagIter = tags.entryShortIterator();
 			while (tagIter.hasNext()) {
@@ -224,6 +195,38 @@ public class LocationHook implements OsmReadingHooks {
 		}
 	}
 	
+	private Tags processWayPoints(final List<Coord> points) {
+		// try the mid point of the way first
+		final int n = points.size();
+		final int middle = n / 2;
+		final Coord midPoint;
+		if (n == 2) {
+			midPoint = points.get(0).makeBetweenPoint(points.get(1), 0.5);
+		} else {
+			midPoint = points.get(middle);
+		}
+		Tags tags = search(midPoint);
+		if (tags == null) {
+			// try 1st point next
+			tags = search(points.get(0));
+		}
+		if (tags == null) {
+			// try last point next
+			tags = search(points.get(n-1));
+		}
+		if (tags == null) {
+			// still not found, try rest
+			for (int i = 1; i < n - 1; i++) {
+				if (i != middle) {
+					tags = search(points.get(i));
+					if (tags != null)
+						break;
+				}
+			}
+		}
+		return tags;
+	}
+
 	/**
 	 * perform search in grid and maintain statistic counter
 	 * @param co a point that is to be searched
@@ -234,8 +237,7 @@ public class LocationHook implements OsmReadingHooks {
 			++cntQTSearch;
 			return boundaryGrid.get(co);
 		}
-		else 
-			return null;
+		return null;
 	}
 			
 	/**
@@ -245,7 +247,7 @@ public class LocationHook implements OsmReadingHooks {
 	 * @param elem the element 
 	 * @return A new String object
 	 */
-	private String locationTagsToString(Element elem){
+	private static String locationTagsToString(Element elem){
 		StringBuilder res = new StringBuilder();
 		for (int i = BoundaryQuadTree.mkgmapTagsArray.length-1; i >= 0; --i){
 			String tagVal = elem.getTag(BoundaryQuadTree.mkgmapTagsArray[i] );
@@ -257,5 +259,3 @@ public class LocationHook implements OsmReadingHooks {
 	}
 
 }
-
-

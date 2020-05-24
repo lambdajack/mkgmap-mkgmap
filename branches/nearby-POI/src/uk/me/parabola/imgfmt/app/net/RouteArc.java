@@ -286,8 +286,9 @@ public class RouteArc {
 				// determine if we have to write direction info
 				if (compactedDir != null)
 					writer.put(compactedDir); // composite byte = dont check
-			} else 
+			} else {
 				writer.put(directionFromDegrees(initialHeading));
+			}
 		} else {
 //			System.out.println("skipped writing of initial dir");
 		}
@@ -307,7 +308,7 @@ public class RouteArc {
 		if (!isInternal())
 			return;
 
-		writer.position(offset + 1);
+		writer.position(offset + 1L);
 		int val = flagB << 8;
 		int diff = dest.getOffsetNod1() - source.getOffsetNod1();
 		assert diff < 0x2000 && diff >= -0x2000
@@ -330,7 +331,7 @@ public class RouteArc {
 	 */
 	private int[] encodeLength() {
 		int[] lendat;
-		if(length < 0x300 || (length < 0x400 && haveCurve == false)) {
+		if(length < 0x300 || (length < 0x400 && !haveCurve)) {
 			// 10 bit length optional curve
 			// clear bits 
 			flagA &= ~0x38;

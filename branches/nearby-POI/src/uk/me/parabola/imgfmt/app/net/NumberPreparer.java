@@ -205,7 +205,7 @@ public class NumberPreparer {
 	 * class.
 	 * @param state Holds the width information.
 	 */
-	private void writeWidths(State state) {
+	private static void writeWidths(State state) {
 		state.getStartWriter().writeFormat();
 		state.getEndWriter().writeFormat();
 	}
@@ -228,10 +228,7 @@ public class NumberPreparer {
 	 * @return True if the preparer believes that the output is valid.
 	 */
 	public boolean isValid() {
-		try {
-			fetchBitStream();
-		} catch (Exception e) {
-		}
+		fetchBitStream();
 		return valid;
 	}
 
@@ -509,17 +506,17 @@ public class NumberPreparer {
 			if (style == NONE)
 				return;
 
-			boolean equalized = this.equalized || other.equalized;
+			boolean anyEqualized = this.equalized || other.equalized;
 
-			if (!equalized)
+			if (!anyEqualized)
 				startDiff = tryStart(base)? 0: targetStart - base;
 
 			endDiff = targetEnd - (base+startDiff) + direction;
 
 			// Special for start == end, we can often do without an end diff.
-			if (targetStart == targetEnd && base == targetStart && lastEndDiff == 0 && !equalized) {
-				if (left || (other.endDiff == 0))
-					endDiff = 0;
+			if (targetStart == targetEnd && base == targetStart && lastEndDiff == 0 && !anyEqualized
+					&& (left || other.endDiff == 0)) {
+				endDiff = 0;
 			}
 
 			// Now that end is calculated we fix it and see if we can obtain it by default instead.
@@ -576,6 +573,7 @@ public class NumberPreparer {
 			setInitialValue(initialValue);
 		}
 
+		@Override
 		public void writeNumberingStyle(BitWriter bw) {
 			left.style = left.targetStyle;
 			right.style = right.targetStyle;
@@ -680,6 +678,7 @@ public class NumberPreparer {
 			endWriter.write(diff);
 		}
 
+		@Override
 		public void writeNumberingStyle(BitWriter bw) {
 			if (left.targetStyle != left.style || right.targetStyle != right.style) {
 				bw.putn(0, 2);
@@ -699,6 +698,7 @@ public class NumberPreparer {
 		 *
 		 * @param bw The output stream writer.
 		 */
+		@Override
 		public void writeBitWidths(BitWriter bw) {
 			newWriter(bw, startWriter, left.startDiff, right.startDiff, true);
 			newWriter(bw, endWriter, left.endDiff, right.endDiff, false);
@@ -739,6 +739,7 @@ public class NumberPreparer {
 			}
 		}
 
+		@Override
 		public void writeSkip(BitWriter bw, int n) {
 			if (n < 0)
 				throw new Abandon("bad skip value:" + n);
@@ -768,6 +769,7 @@ public class NumberPreparer {
 		 * If we used an alternate writer for a node's numbers then we restore the default
 		 * writers afterwards.
 		 */
+		@Override
 		protected void restoreWriters() {
 			if (restoreBitWriters) {
 				startWriter = savedStartWriter;
@@ -841,12 +843,14 @@ class VarBitWriter {
 	 */
 	boolean checkFit(int n) {
 		if (negative) {
-			if (n > 0)
+			if (n > 0) {
 				return false;
-			else
+			} else {
 				n = -n;
-		} else if (signed && n < 0)
+			}
+		} else if (signed && n < 0) {
 			n = -1 - n;
+		}
 
 		int mask = (1 << minWidth + bitWidth) - 1;
 
@@ -872,6 +876,8 @@ class VarBitWriter {
  * output file.
  */
 class Abandon extends RuntimeException {
+	private static final long serialVersionUID = 1L;
+
 	Abandon(String message) {
 		super("HOUSE NUMBER RANGE: " + message);
 	}
@@ -909,18 +915,14 @@ class CityZipWriter {
 					switch (type) {
 					case "zip":
 						ZipCodeInfo zipInfo = num.getZipCodeInfo(left);
-						if (zipInfo != null){
-							if (zipInfo.getImgZip() != null){
-								indexes[side] = zipInfo.getImgZip().getIndex();
-							}
+						if (zipInfo != null && zipInfo.getImgZip() != null) {
+							indexes[side] = zipInfo.getImgZip().getIndex();
 						}
 						break;
 					case "city": 
 						CityInfo cityInfo = num.getCityInfo(left);
-						if (cityInfo != null){
-							if (cityInfo.getImgCity() != null){
-								indexes[side] = cityInfo.getImgCity().getIndex();
-							}
+						if (cityInfo != null && cityInfo.getImgCity() != null) {
+							indexes[side] = cityInfo.getImgCity().getIndex();
 						}
 						break;
 					default:

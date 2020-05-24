@@ -820,7 +820,7 @@ public class StyledConverter implements OsmConverter {
 	 * @param orig
 	 * @param points
 	 */
-	private void splitBoundary(List<Element> clippedBorders, Way orig, List<Coord> points) {
+	private static void splitBoundary(List<Element> clippedBorders, Way orig, List<Coord> points) {
 		int pos = 0;
 		final int max = 20; // seems to be a good compromise
 		while (pos < points.size()) {

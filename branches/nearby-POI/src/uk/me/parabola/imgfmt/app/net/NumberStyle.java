@@ -9,6 +9,7 @@ public enum NumberStyle {
 	NONE(0), // No numbers.
 
 	EVEN(1) {
+		@Override
 		public int round(int val, int direction) {
 			if ((val & 1) == 1) return val + direction;
 			return val;
@@ -50,7 +51,7 @@ public enum NumberStyle {
 		}
 	}
 
-
+	@Override
 	public String toString() {
 		return super.toString().substring(0, 1);
 	}

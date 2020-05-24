@@ -78,7 +78,7 @@ public class HighwayHooks implements OsmReadingHooks {
 	@Override
 	public void onAddNode(Node node) {
 		String val = node.getTag("highway");
-		if (val != null && (val.equals("motorway_junction") || val.equals("services"))) {
+		if (val != null && ("motorway_junction".equals(val) || "services".equals(val))) {
 			exits.add(node);
 			node.addTag("mkgmap:osmid", String.valueOf(node.getId()));
 		}

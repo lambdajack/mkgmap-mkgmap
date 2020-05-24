@@ -108,7 +108,7 @@ public class RouteRestriction {
 	 * @param mkgmapExceptMask
 	 * @return
 	 */
-	private byte translateExceptMask(byte mkgmapExceptMask) {
+	private static byte translateExceptMask(byte mkgmapExceptMask) {
 		byte mask = 0;
 		if ((mkgmapExceptMask & CAR) != 0)
 			mask |= EXCEPT_CAR;
@@ -126,7 +126,7 @@ public class RouteRestriction {
 	}
 
 
-	private int calcOffset(RouteNode node, int tableOffset) {
+	private static int calcOffset(RouteNode node, int tableOffset) {
 		int offset = tableOffset - node.getOffsetNod1();
 		assert offset >= 0 : "node behind start of tables";
 		assert offset < 0x8000 : "node offset too large";

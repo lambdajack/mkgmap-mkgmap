@@ -35,14 +35,15 @@ public class OSMId2ObjectMap<V> {
 	private int size;
 
 	public OSMId2ObjectMap() {
-		topMap = new Long2ObjectOpenHashMap<Int2ObjectOpenHashMap<V>>();
+		topMap = new Long2ObjectOpenHashMap<>();
 	}
 	
 	public V put(long key, V object){
 		long topId = key >> TOP_ID_SHIFT;
+		// don't use Map.computeIfAbsent unless it doesn't require boxing/unboxing
 		Int2ObjectOpenHashMap<V> midMap = topMap.get(topId);
 		if (midMap == null){
-			midMap = new Int2ObjectOpenHashMap<V>();
+			midMap = new Int2ObjectOpenHashMap<>();
 			topMap.put(topId, midMap);
 		}
 		int midId = (int)(key & LOW_ID_MASK);

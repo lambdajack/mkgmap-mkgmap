@@ -110,8 +110,7 @@ public class NODHeader extends CommonHeader {
 		
 		writer.put4(flags);
 
-		int align = DEF_ALIGN;
-		writer.put1u(align);
+		writer.put1u(DEF_ALIGN);
 		writer.put1u(0); // pointer multiplier
 		writer.put2u(5);
 

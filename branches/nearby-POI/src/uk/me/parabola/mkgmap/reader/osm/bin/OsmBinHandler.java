@@ -75,10 +75,7 @@ public class OsmBinHandler extends OsmHandler {
 				setBBox(minLat, minLon, maxLat, maxLon);
 			}
 			for (String s : header.getRequiredFeaturesList()) {
-				if (s.equals("OsmSchema-V0.6"))
-					continue; // We can parse this.
-
-				if (s.equals("DenseNodes"))
+				if ("OsmSchema-V0.6".equals(s) || "DenseNodes".equals(s))
 					continue; // We can parse this.
 				
 				throw new MapFailedException("File requires unknown feature: " + s);
@@ -238,6 +235,7 @@ public class OsmBinHandler extends OsmHandler {
 		 * Called when the file is fully read.
 		 */
 		public void complete() {
+			// nothing to do
 		}
 	}
 
