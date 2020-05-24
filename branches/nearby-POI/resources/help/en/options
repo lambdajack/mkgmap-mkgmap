@@ -888,8 +888,8 @@ filename
 
 --nearby-poi-rules=type[-type][/all|named|unnamed]:distance[:delete-poi|delete-name][,...]
     Defines a set of rules to follow when a POI is near to another of the same
-    type. Each rule consists of three parts separated by colons. The first two
-    parts must be provided; the last part can be defaulted.
+    type and label. Each rule consists of three parts separated by colons. The
+    first two parts must be provided; the last part can be defaulted.
 
     The first part of the rule is a Garmin POI type code or range of type
     codes, with an optional suffix; it determines when the rule is triggered. A
