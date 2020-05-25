@@ -3,6 +3,7 @@ package uk.me.parabola.util;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -116,9 +117,12 @@ public class GpxCreator {
 			}
 		}
 	}
+	
+	public static void createGpx(String name, List<Coord> polygonpoints, Coord... singlePoints) {
+		createGpx(name, polygonpoints, Arrays.asList(singlePoints));
+	}
 
-	public static void createGpx(String name, List<Coord> polygonpoints,
-			List<Coord> singlePoints) {
+	public static void createGpx(String name, List<Coord> polygonpoints, List<Coord> singlePoints) {
 		for (int i = 0; i < 2; i++){
 			String fname = name + (i==0 ? "_mu":"_hp");
 			try {
