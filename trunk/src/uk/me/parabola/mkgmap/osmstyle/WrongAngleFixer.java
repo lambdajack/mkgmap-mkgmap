@@ -94,10 +94,10 @@ public class WrongAngleFixer {
 	 * @param modifiedRoads Will be enlarged by all roads modified in this method 
 	 * @param deletedRoads Will be enlarged by all roads in roads that were set to null by this method 
 	 * @param restrictions Map with restriction relations
-	 * @param renderedPOI all MapPoint instances for {@code CoordPOI} instances 
+	 * @param renderedPOI all MapPoint instances  
 	 */
 	public void optimizeWays(List<ConvertedWay> roads, List<ConvertedWay> lines, Map<Long, ConvertedWay> modifiedRoads,
-			Set<Long> deletedRoads, List<RestrictionRelation> restrictions, List<MapPoint> renderedPOI) {
+			Set<Long> deletedRoads, List<RestrictionRelation> restrictions, Set<MapPoint> renderedPOI) {
 		printBadAngles("bad_angles_start", roads);
 		writeOSM("roads_orig", roads);
 		writeOSM("lines_orig", lines);
@@ -125,11 +125,13 @@ public class WrongAngleFixer {
 			}
 		}
 
-		// update positions of the POIs which were already created. 
+		// update positions of the POIs which were already created.
 		for (MapPoint mp : renderedPOI) {
-			Coord replacement = getReplacement(mp.getLocation(), null, replacements);
-			if (mp.getLocation() != replacement) {
-				mp.setLocation(replacement);
+			if (mp.getLocation() instanceof CoordPOI) {
+				Coord replacement = getReplacement(mp.getLocation(), null, replacements);
+				if (mp.getLocation() != replacement) {
+					mp.setLocation(replacement);
+				}
 			}
 		}
 	}	
