@@ -15,10 +15,11 @@ package uk.me.parabola.mkgmap.osmstyle.function;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map.Entry;
+import java.util.Set;
 
-import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
@@ -31,8 +32,6 @@ import uk.me.parabola.mkgmap.scan.SyntaxException;
  * @author WanMil
  */
 public class LengthFunction extends CachedFunction {
-	private static final Logger log = Logger.getLogger(LengthFunction.class);
-
 	private final DecimalFormat nf = new DecimalFormat("0.0#####################", DecimalFormatSymbols.getInstance(Locale.US));
 
 	public LengthFunction() {
@@ -40,24 +39,21 @@ public class LengthFunction extends CachedFunction {
 	}
 
 	protected String calcImpl(Element el) {
-		double length = calcLength(el);
-		return nf.format(length);
+		return nf.format(calcLength(el, new HashSet<>()));
 	}
 	
-	private static double calcLength(Element el) {
+	private static double calcLength(Element el, Set<Element> visited) {
+		if (el == null || visited.contains(el))
+			return 0; // don't add length again 
+		visited.add(el);
 		if (el instanceof Way) {
 			return ((Way) el).calcLengthInMetres();
 		} else if (el instanceof Relation) {
-			Relation rel = (Relation)el;
+			Relation rel = (Relation) el;
 			double length = 0;
-			for (Entry<String,Element> relElem : rel.getElements()) {
+			for (Entry<String, Element> relElem : rel.getElements()) {
 				if (relElem.getValue() instanceof Way || relElem.getValue() instanceof Relation) {
-					if (rel == relElem.getValue()) {
-						// avoid recursive call
-						log.error("Relation "+rel.getId()+" contains itself as element. This is not supported.");
-					} else {
-						length += calcLength(relElem.getValue());
-					}
+					length += calcLength(relElem.getValue(), visited);
 				}
 			}
 			return length;
