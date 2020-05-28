@@ -565,7 +565,6 @@ public class Main implements ArgumentProcessor {
 				} catch (OutOfMemoryError | ExitException e) {
 					throw e;
 				} catch (MapFailedException mfe) {
-//					System.err.println(mfe.getMessage()); // already printed via log
 					numMapFailedExceptions++;
 					setProgramRC(-1);
 				} catch (Throwable t) {
@@ -605,27 +604,33 @@ public class Main implements ArgumentProcessor {
 		for (Combiner c : combiners)
 			c.init(args);
 
+		filenames.removeIf(f -> f == null || f.isCancelled());
+
+		final Map<String, Integer> nameToHex = new HashMap<>();
+		for (FilenameTask f : filenames) {
+			if (f.getFilename().endsWith(".img")) {
+				int hex;
+				try {
+					hex = FileInfo.getFileInfo(f.getFilename() ).getHexname();
+				} catch (FileNotFoundException ignored) {
+					hex = 0;
+				}
+				nameToHex.put(f.getFilename(), hex);
+			}
+		}
 		filenames.sort((o1, o2) -> {
 			if (!o1.getFilename().endsWith(".img") || !o2.getFilename().endsWith(".img"))
 				return o1.getFilename().compareTo(o2.getFilename());
 
 			// Both end in .img
-			try {
-				return Integer.compare(FileInfo.getFileInfo(o1.getFilename()).getHexname(),
-						FileInfo.getFileInfo(o2.getFilename()).getHexname());
-			} catch (FileNotFoundException ignored) {
-			}
-			return 0;
+			return Integer.compare(nameToHex.getOrDefault(o1.getFilename(), 0), nameToHex.getOrDefault(o2.getFilename(), 0)); 
 		});
-
+		
 		// will contain img files for which an additional ovm file was found
 		HashSet<String> foundOvmFiles = new HashSet<>();
 		// try OverviewBuilder with special files  
 		if (tdbBuilderAdded){
 			for (FilenameTask file : filenames) {
-				if (file == null || file.isCancelled())
-					continue;
-
 				try {
 					String fileName = file.getFilename();
 					if (!fileName.endsWith(".img"))
@@ -640,6 +645,7 @@ public class Main implements ArgumentProcessor {
 					fileInfo.setArgs(file.getArgs());
 					// add the real input file 
 					foundOvmFiles.add(file.getFilename());
+					
 					for (Combiner c : combiners){
 						if (c instanceof OverviewBuilder)
 							c.onMapEnd(fileInfo);
@@ -651,9 +657,6 @@ public class Main implements ArgumentProcessor {
 		
 		// Tell them about each filename (OverviewBuilder excluded) 
 		for (FilenameTask file : filenames) {
-			if (file == null || file.isCancelled())
-				continue;
-
 			try {
 				log.info("  " + file);
 				FileInfo fileInfo = FileInfo.getFileInfo(file.getFilename());

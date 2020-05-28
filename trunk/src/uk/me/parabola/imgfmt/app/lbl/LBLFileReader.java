@@ -58,10 +58,17 @@ public class LBLFileReader extends ImgFile {
 	private final List<City> cities = new ArrayList<>();
 
 	public LBLFileReader(ImgChannel chan) {
+		this(chan, true);
+	}
+	
+	public LBLFileReader(ImgChannel chan, boolean fullData) {
 		setHeader(header);
 
 		setReader(new BufferedImgFileReader(chan));
 		header.readHeader(getReader());
+		if (!fullData)
+			return;
+
 		int offsetMultiplier = header.getOffsetMultiplier();
 		CodeFunctions funcs = CodeFunctions.createEncoderForLBL(
 				header.getEncodingType(), header.getCodePage());
