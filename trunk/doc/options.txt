@@ -15,11 +15,10 @@ bytes. Mkgmap allows the use of multiple CPU cores, and the amount of
 heap memory required increases proportionally with the number of CPU
 cores being used. The default value may not be sufficient to allow
 mkgmap to use all the available CPU cores, which will cause the run time
-to be longer than necessary. To allow mkgmap to run optimally, you may
+to be longer than necessary or can cause mkgmap to crash if it runs out
+of memory. To allow mkgmap to run optimally, you may
 need to use this option to allow more memory to be allocated to the Java
-heap. Typically, mkgmap requires about 500MB per core, so an 8-core
-processor might need to specify -Xmx4g - note there is no space or
-equals sign in the option.
+heap. Note there is no space or equals sign in the option.
 
 ;-enableassertions
 ;-ea
@@ -113,7 +112,7 @@ description for individual tiles from the mkgmap command line.
 Placing the mkgmap --description option after -c template.args ensures that the
 value is applied to gmapsupp.img.
 <p>
-Different GPS devices, MapSource, Basecamp and QLandkarte handle descriptions
+Different GPS devices, BaseCamp and QLandkarte handle descriptions
 inconsistently. Some display the description when selecting maps or tiles,
 others use the family name.
 
@@ -153,17 +152,8 @@ Garmin devices are not able to display lower case letters at an angle.
 === Address search options ===
 
 ;--index
-: 	Generate a global address search index. If the --gmapsupp option is
-also given, then the index is generated within the resulting
-gmapsupp.img file so that address search will work on a GPS
-device.
-<p>
-If both the --gmapsupp and any of --tdbfile, --gmapi, or --nsis options
-are given alongside the --index option, then both indexes will be created.
-Note that this will require roughly twice as much memory.
-<p>
-If the map is sent to the device by MapSource, it will enable
-find by name and address search on the GPS.
+: 	Generate an address index to allow searches by address.
+The default is to not create an address index.
 
 : The address fields are assigned by special mkgmap address
 tags using the style file:
@@ -422,7 +412,7 @@ It is often just 1, which is the default.
 : 	The version of the product. Default value is 100 which means version 1.00.
 
 ;--series-name=name
-: 	This name will be displayed in MapSource in the map selection
+: 	This name will be displayed in BaseCamp in the map selection
 drop-down. The default is "OSM map".
 
 ;--area-name=name
@@ -491,11 +481,11 @@ The following options are equivalent:
 
 === Hill Shading (DEM) options ===
 
-:   Hill Shading is rendered by PC programs (MapSource or BaseCamp) or GPS devices
+:   Hill Shading is rendered by BaseCamp and GPS devices
 when the map includes a Digital Elevation Model (DEM). Use the following options
 to add a DEM to the map and control its characteristics. DEM creation requires
 files containing height information for the area covered by the map, the so
-called hgt files, which typically cover 1 degree latitude * 1 degree longitude
+called hgt files, which typically cover 1 degree latitude by 1 degree longitude
 and are named by the coordinates of their bottom left corner (e.g. N53E009). They
 contain height information in a grid of points. Typical hgt files contain either
 1 arc second or 3 arc second data. 3 arc second files have 1201 x 1201 points, which means
@@ -508,16 +498,15 @@ formula sqrt(filesize/2) gives an integer value.
 files containing *.hgt files. Directories are searched for *.hgt files
 and also for *.hgt.zip and *.zip files.
 :   The list is searched in the given order, so if you want to use 1 arc second files
-make sure that they are found first. There are different sources for *.hgt
+make sure that they are found first. There are different sources for hgt
 files, some have so called voids which are areas without data. Those should be
 avoided.
 
 ;--dem-dists=number[,number...]
-:   If given, the option specifies the resolution(s) or zoom level for the DEM
-data. If not given, mkgmap tries to determine a reasonable value based on the
-resolution found in the *.hgt files. For desktop programs like MapSource or
-Basecamp you only need one zoom level, for GPS devices you need one for each
-resolution given with the --levels option. The actual values are given as
+:   If given, the option specifies the resolution(s) for the DEM data.
+If not given, mkgmap determines a single value based on the resolution of the hgt files.
+For BaseCamp you only need one value; for GPS devices you need one for each
+resolution given with the --levels option. The actual values are the
 distance between two DEM points and should be a multiple or submultiple of the
 distance between two points in the hgt file, that is 3314 for 1 arc second and 9942 for
 3 arc second. Higher distances mean lower resolution and thus fewer bytes in the map.
@@ -558,9 +547,7 @@ memory is available and the value is not greater than the number of cores
 in the CPU. If no value is specified, the limit is set to the number of CPU
 cores. The default is for the limit to be automatically set to a reasonable
 value based on the amount of memory allocated to the Java runtime and the
-amount used in processing the first tile. To optimise mkgmap to use all
-available CPU cores, you may need to use the Java -Xmx option to increase
-the amount of available heap storage.
+amount used in processing the first tile.
 
 ;--keep-going
 : 	Don't quit whole application if an exception occurs while
@@ -777,7 +764,7 @@ a sea polygon so that it may be removed by the flood
 blocker (default 20)
 :;fbratio=NUM
 :: only sea polygons with a higher ratio
-(highway points * 100000 / polygon size) are removed
+(highway points x 100000 / polygon size) are removed
 (default 0.5)
 :;fbdebug
 :: switches on the debugging of the flood blocker
@@ -790,7 +777,9 @@ but still supported.
 
 ;--nsis
 : 	Write a .nsi file that can be used with the Nullsoft Scriptable Install System
-(NSIS) to create a Windows Mapsource Installer.
+(NSIS) to create a Windows Installer for using the map in BaseCamp.
+It looks for an installer template and license file template in the resources and resources\installer folders.
+Note that it does not use the license file specified in --license-file.
 
 ;--make-opposite-cycleways
 : 	Some one-way streets allow bicycle traffic in the reverse
@@ -859,14 +848,14 @@ compared with these patterns and those that match are deleted.
 : 	Ignore all tags for which the value matches the regular expression pattern "(?i)fix[ _]?+me".	
 
 ;--tdbfile
-: 	Write files that are essential to running with MapSource, a .tdb file and
+: 	Write files that are essential to running with BaseCamp; a .tdb file and
 an overview map. The options --nsis and --gmapi imply --tdbfile.
 
 ;--show-profiles=1
-: 	Sets a flag in tdb file. The meaning depends on the availability of DEM
+: 	Sets a flag in the tdb file. The meaning depends on the availability of DEM
 data (see "Hill Shading (DEM) options").
-: 	Without DEM data the flag enables profile calculation in MapSource or
-Basecamp based on information from contour lines.
+: 	Without DEM data the flag enables profile calculation in BaseCamp based on
+information from contour lines.
 : 	If DEM data is available the profile is calculated with that
 information and the flag only changes the status line to show the height when
 you hover over an area with valid DEM data.

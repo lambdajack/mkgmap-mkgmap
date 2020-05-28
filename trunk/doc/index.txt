@@ -38,9 +38,9 @@ The mkgmap command line options. This is also available using the command:
 
 [/doc/pdf/style-manual.pdf '''Style Manual'''] [pdf] 
 This is the complete documentation of the style rules that determine how
-the OSM taged features are converted into the Garmin features.
+the OSM tagged features are converted into Garmin features.
 
-[/doc/typ-compiler '''TYP compiler manual''']
+[/doc/typ-compiler '''TYP Compiler Manual''']
 This documents the language that is accepted by the TYP compiler that
 is included within mkgmap.
 
@@ -48,5 +48,8 @@ is included within mkgmap.
 Instructions on how to control messages that are logged and to where
 they are written.
 
-For other documentation go to the Open Street Map wiki for documentation
-[http://wiki.openstreetmap.org/wiki/Mkgmap here]
+[/doc/tuning '''Tuning''']
+Instructions on how to minimise execution time and avoid running out of memory.
+
+Further information can be found in the
+[http://wiki.openstreetmap.org/wiki/Mkgmap '''Open Street Map wiki''']
