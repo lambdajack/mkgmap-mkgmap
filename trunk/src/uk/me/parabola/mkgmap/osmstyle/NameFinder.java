@@ -38,8 +38,12 @@ public class NameFinder {
 	}
 
 	public static List<String> getNameTags(Properties props) {
-		String nameTagProp = props.getProperty("name-tag-list", "name");
-		return Arrays.asList(COMMA_OR_SPACE_PATTERN.split(nameTagProp));
+		String s = props.getProperty("name-tag-list", "name");
+		s = s.trim();
+		if (s.startsWith("'") && s.endsWith("'") || s.startsWith("\"") && s.endsWith("\"")) {
+			s = s.substring(1, s.length()-1);
+		} 
+		return Arrays.asList(COMMA_OR_SPACE_PATTERN.split(s));
 	}
 
 	/**
