@@ -125,16 +125,16 @@ public class NsisBuilder implements Combiner {
 	}
 	
 	private void writeDefines(PrintWriter pw) {
-			pw.format(Locale.ROOT, "!define DEFAULT_DIR \"C:\\Garmin\\Maps\\%s\"\n", familyName);
-			pw.format(Locale.ROOT, "!define INSTALLER_DESCRIPTION \"%s\"\n", familyName);
-			pw.format(Locale.ROOT, "!define INSTALLER_NAME \"%s\"\n", familyName);
-			pw.format(Locale.ROOT, "!define MAPNAME \"%s\"\n", baseFilename);
-			pw.format(Locale.ROOT, "!define PRODUCT_ID \"%s\"\n", productId);
-			pw.format(Locale.ROOT, "!define REG_KEY \"%s\"\n", familyName);
-			if (hasIndex)
-				pw.format(Locale.ROOT, "!define INDEX\n");
-			if (hasTyp)
-				pw.format(Locale.ROOT, "!define TYPNAME \"%s\"\n", typName);
+		pw.format(Locale.ROOT, "!define DEFAULT_DIR \"C:\\Garmin\\Maps\\%s\"\n", familyName);
+		pw.format(Locale.ROOT, "!define INSTALLER_DESCRIPTION \"%s\"\n", familyName);
+		pw.format(Locale.ROOT, "!define INSTALLER_NAME \"%s\"\n", familyName);
+		pw.format(Locale.ROOT, "!define MAPNAME \"%s\"\n", baseFilename);
+		pw.format(Locale.ROOT, "!define PRODUCT_ID \"%s\"\n", productId);
+		pw.format(Locale.ROOT, "!define REG_KEY \"%s\"\n", familyName);
+		if (hasIndex)
+			pw.format(Locale.ROOT, "!define INDEX\n");
+		if (hasTyp)
+			pw.format(Locale.ROOT, "!define TYPNAME \"%s\"\n", typName);
 	}
 
 	private void writeRegBin(PrintWriter pw) {
@@ -143,34 +143,32 @@ public class NsisBuilder implements Combiner {
 }	
 			
 	private void writeAddedFiles(PrintWriter pw) {
-			pw.format(Locale.ROOT, "  File \"${MAPNAME}.img\"\n");
-			if (hasIndex) {
-				pw.format(Locale.ROOT, "  File \"${MAPNAME}_mdr.img\"\n");
-				pw.format(Locale.ROOT, "  File \"${MAPNAME}.mdx\"\n");
-			}
-			if (hasTyp)
-				pw.format(Locale.ROOT, "  File \"%s\"\n", typName);
+		pw.format(Locale.ROOT, "  File \"${MAPNAME}.img\"\n");
+		if (hasIndex) {
+			pw.format(Locale.ROOT, "  File \"${MAPNAME}_mdr.img\"\n");
+			pw.format(Locale.ROOT, "  File \"${MAPNAME}.mdx\"\n");
+		}
+		if (hasTyp)
+			pw.format(Locale.ROOT, "  File \"%s\"\n", typName);
 
-			pw.format(Locale.ROOT, "  File \"${MAPNAME}.tdb\"\n");
-			for (String file : mapList)
-				pw.format(Locale.ROOT, "  File \"%s.img\"\n", file);
+		pw.format(Locale.ROOT, "  File \"${MAPNAME}.tdb\"\n");
+		for (String file : mapList)
+			pw.format(Locale.ROOT, "  File \"%s.img\"\n", file);
 	}
 
-
-
 	private void writeRemovedFiles(PrintWriter pw) {
-			pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\${MAPNAME}.img\"\n");
-			if (hasIndex) {
-				pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\${MAPNAME}_mdr.img\"\n");
-				pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\${MAPNAME}.mdx\"\n");
-			}
-			if (hasTyp)
-				pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\%s\"\n", typName);
-			pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\${MAPNAME}.tdb\"\n");
-			for (String file : mapList) {
-				pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\%s.img\"\n", file);
-			}
-			pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\Uninstall.exe\"\n");
+		pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\${MAPNAME}.img\"\n");
+		if (hasIndex) {
+			pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\${MAPNAME}_mdr.img\"\n");
+			pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\${MAPNAME}.mdx\"\n");
+		}
+		if (hasTyp)
+			pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\%s\"\n", typName);
+		pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\${MAPNAME}.tdb\"\n");
+		for (String file : mapList) {
+			pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\%s.img\"\n", file);
+		}
+		pw.format(Locale.ROOT, "  Delete \"$INSTDIR\\Uninstall.exe\"\n");
 	}
 
 

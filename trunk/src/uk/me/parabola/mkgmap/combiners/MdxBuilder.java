@@ -56,6 +56,7 @@ public class MdxBuilder implements Combiner {
 		}
 	}
 
+	@Override
 	public String getFilename() {
 		return Utils.joinPath(outputDir, mdxFilename);
 	}

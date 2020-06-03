@@ -245,7 +245,7 @@ public class GmapsuppBuilder implements Combiner {
 		return mb;
 	}
 
-	private ProductBlock makeProductBlock(FileInfo info) {
+	private static ProductBlock makeProductBlock(FileInfo info) {
 		ProductBlock pb = new ProductBlock(info.getCodePage());
 		pb.setFamilyId(info.getFamilyId());
 		pb.setProductId(info.getProductId());
@@ -275,7 +275,7 @@ public class GmapsuppBuilder implements Combiner {
 		}
 	}
 
-	private void addImg(FileSystem outfs, FileInfo info) {
+	private static void addImg(FileSystem outfs, FileInfo info) {
 		FileCopier fc = new FileCopier(info.getFilename());
 		List<SubFileInfo> subFiles = info.subFiles();
 
@@ -291,7 +291,7 @@ public class GmapsuppBuilder implements Combiner {
 		}
 	}
 
-	private void addFile(FileSystem outfs, FileInfo info) {
+	private static void addFile(FileSystem outfs, FileInfo info) {
 		String filename = info.getFilename();
 		FileCopier fc = new FileCopier(filename);
 
@@ -334,7 +334,7 @@ public class GmapsuppBuilder implements Combiner {
 		mpsFile.addProduct(makeProductBlock(info));
 	}
 
-	private MpsFile createMpsFile(FileSystem outfs) throws FileNotWritableException {
+	private static MpsFile createMpsFile(FileSystem outfs) throws FileNotWritableException {
 		try {
 			ImgChannel channel = outfs.create("MAKEGMAP.MPS");
 			return new MpsFile(channel);
@@ -358,7 +358,7 @@ public class GmapsuppBuilder implements Combiner {
 	 * @return The filename part, will be restricted to 8+3 characters and all
 	 * in upper case.
 	 */
-	private String createImgFilename(String pathname) {
+	private static String createImgFilename(String pathname) {
 		File f = new File(pathname);
 		String name = f.getName().toUpperCase(Locale.ENGLISH);
 		int dot = name.lastIndexOf('.');
@@ -458,7 +458,7 @@ class FileCopier {
 		}
 	}
 
-	private void copyFile(ImgChannel fin, ImgChannel fout) throws IOException {
+	private static void copyFile(ImgChannel fin, ImgChannel fout) throws IOException {
 		ByteBuffer buf = ByteBuffer.allocate(1024);
 		while (fin.read(buf) > 0) {
 			buf.flip();

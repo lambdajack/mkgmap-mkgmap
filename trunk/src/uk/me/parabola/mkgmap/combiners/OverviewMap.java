@@ -33,7 +33,7 @@ public interface OverviewMap extends LoadableMapDataSource, MapCollector {
 	 *
 	 * @param cw The string to add.
 	 */
-	public void addCopyright(String cw);
+	void addCopyright(String cw);
 
-	public void setMapLevels(LevelInfo[] levels);
+	void setMapLevels(LevelInfo[] levels);
 }

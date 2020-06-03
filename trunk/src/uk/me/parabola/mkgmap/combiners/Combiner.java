@@ -33,22 +33,22 @@ public interface Combiner {
 	 *
 	 * @param args The command line arguments.
 	 */
-	public void init(CommandArgs args);
+	void init(CommandArgs args);
 
 	/**
 	 * This is called when an individual map is complete.
 	 *
 	 * @param info An interface to read the map.
 	 */
-	public void onMapEnd(FileInfo info);
+	void onMapEnd(FileInfo info);
 
 	/**
 	 * The complete map set has been processed.  Finish off anything that needs
 	 * doing.
 	 */
-	public void onFinish();
+	void onFinish();
 
-	public default String getFilename() {
+	default String getFilename() {
 		return null;
 	}
 }

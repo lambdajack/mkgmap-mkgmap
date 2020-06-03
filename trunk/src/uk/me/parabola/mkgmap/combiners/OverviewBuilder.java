@@ -60,8 +60,8 @@ public class OverviewBuilder implements Combiner {
 	private String outputDir;		
 	private Integer codepage;
 	private Integer encodingType;
-	private List<String[]> copyrightMsgs = new ArrayList<String[]>();
-	private List<String[]> licenseInfos = new ArrayList<String[]>();
+	private List<String[]> copyrightMsgs = new ArrayList<>();
+	private List<String[]> licenseInfos = new ArrayList<>();
 	private LevelInfo[] wantedLevels;
 	private Area bounds;
 	private boolean hasBackground;
@@ -79,7 +79,7 @@ public class OverviewBuilder implements Combiner {
 		outputDir = args.getOutputDir();
 		String demDist = args.getProperties().getProperty("overview-dem-dist");
 		String hgtPath = args.getProperties().getProperty("dem");
-		if (hgtPath != null && demDist != null && "0".equals(demDist.trim()) == false) {
+		if (hgtPath != null && demDist != null && !"0".equals(demDist.trim())) {
 			demProps = new EnhancedProperties(args.getProperties());
 			demProps.setProperty("dem-dists", demDist);
 		}				
@@ -153,8 +153,9 @@ public class OverviewBuilder implements Combiner {
 				}
 				wantedLevels = Arrays.copyOfRange(wantedLevels, 0, l);
 				overviewSource.setMapLevels(wantedLevels);
-			} else
-				setRes(maxRes);	
+			} else {
+				setRes(maxRes);
+			}
 		}
 	}
 
@@ -289,7 +290,7 @@ public class OverviewBuilder implements Combiner {
 			for (Point point: pointList) {
 				if (log.isDebugEnabled())
 					log.debug("got point", point);
-				if (bounds.contains(point.getLocation()) == false){
+				if (!bounds.contains(point.getLocation())){
 					if (log.isDebugEnabled())
 						log.debug(point, "dropped, is outside of tile boundary");
 					continue;
@@ -439,15 +440,13 @@ public class OverviewBuilder implements Combiner {
 		else return name;
 	}
 	
-	private List<String> creMsgList(List<String[]> msgs){
-		ArrayList< String> list = new ArrayList<String>();
+	private static List<String> creMsgList(List<String[]> msgs){
+		ArrayList< String> list = new ArrayList<>();
 		for (int i = 0; i < msgs.size(); i++){
 			String[] block = msgs.get(i);
-			for (String s : block){
-				list.add(s);
-			} 
-			if (i < msgs.size()-1){
-				// separate blocks 
+			list.addAll(Arrays.asList(block));
+			if (i < msgs.size() - 1) {
+				// separate blocks
 				list.add("");
 			}
 		}

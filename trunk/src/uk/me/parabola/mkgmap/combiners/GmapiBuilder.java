@@ -45,7 +45,7 @@ import static java.nio.file.StandardOpenOption.*;
  * each .img file.
  */
 public class GmapiBuilder implements Combiner {
-	private final static String NS = "http://www.garmin.com/xmlschemas/MapProduct/v1";
+	private static final String NS = "http://www.garmin.com/xmlschemas/MapProduct/v1";
 
 	private final Map<String, Combiner> combinerMap;
 
