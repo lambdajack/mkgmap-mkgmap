@@ -29,13 +29,13 @@ import uk.me.parabola.imgfmt.app.net.NODFile;
  * @author Steve Ratcliffe
  */
 public interface InternalFiles {
-	public RGNFile getRgnFile();
+	RGNFile getRgnFile();
 
-	public LBLFile getLblFile();
+	LBLFile getLblFile();
 	
-	public TREFile getTreFile();
+	TREFile getTreFile();
 
-	public NETFile getNetFile();
+	NETFile getNetFile();
 
-	public NODFile getNodFile();
+	NODFile getNodFile();
 }

@@ -46,17 +46,16 @@ public class TREFile extends ImgFile implements Configurable {
 	private static final Logger log = Logger.getLogger(TREFile.class);
 
 	// Zoom levels for map
-	//	private List<Zoom> mapLevels = new ArrayList<Zoom>();
 	private final Zoom[] mapLevels = new Zoom[16];
 
 	private final List<Label> copyrights = new ArrayList<>();
 
 	// Information about polylines.  eg roads etc.
-	private final List<PolylineOverview> polylineOverviews = new ArrayList<PolylineOverview>();
+	private final List<PolylineOverview> polylineOverviews = new ArrayList<>();
 
-	private final List<PolygonOverview> polygonOverviews = new ArrayList<PolygonOverview>();
+	private final List<PolygonOverview> polygonOverviews = new ArrayList<>();
 
-	private final List<PointOverview> pointOverviews = new ArrayList<PointOverview>();
+	private final List<PointOverview> pointOverviews = new ArrayList<>();
 
 	private int lastRgnPos;
 

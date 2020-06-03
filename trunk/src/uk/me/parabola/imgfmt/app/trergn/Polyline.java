@@ -62,7 +62,7 @@ public class Polyline extends MapObject {
 	private List<Label> refLabels;
 
 	// The actual points that make up the line.
-	private final List<Coord> points = new ArrayList<Coord>();
+	private final List<Coord> points = new ArrayList<>();
 
 	public Polyline(Subdivision div) {
 		setSubdiv(div);
@@ -82,8 +82,7 @@ public class Polyline extends MapObject {
 		try {
 			// Prepare the information that we need.
 			w = new LinePreparer(this);
-		}
-		catch (AssertionError ae) {
+		} catch (AssertionError ae) {
 			log.error("Problem writing line (" + getClass() + ") of type 0x" + Integer.toHexString(getType()) + " containing " + points.size() + " points and starting at " + points.get(0).toOSMURL());
 			log.error("  Subdivision shift is " + getSubdiv().getShift() +
 					  " and its centre is at " + getSubdiv().getCenter().toOSMURL());
@@ -95,7 +94,7 @@ public class Polyline extends MapObject {
 
 		int minPointsRequired = (this instanceof Polygon)? 3 : 2;
 		BitWriter bw = w.makeShortestBitStream(minPointsRequired);
-		if(bw == null) {
+		if (bw == null) {
 			log.error("Level " + getSubdiv().getZoom().getLevel() + " " + ((this instanceof Polygon)? "polygon" : "polyline") + " has less than " + minPointsRequired + " points, discarding");
 			return;
 		}
@@ -126,8 +125,7 @@ public class Polyline extends MapObject {
 					FLAG_NETINFO | (loff & FLAG_EXTRABIT));
 			// also add ref label(s) if present
 			if(refLabels != null)
-				for(Label rl : refLabels)
-					roaddef.addLabel(rl);
+				refLabels.forEach(roaddef::addLabel);
 		}
 
 		file.put3u(loff);
@@ -312,8 +310,8 @@ public class Polyline extends MapObject {
 	}
 
 	public void addRefLabel(Label refLabel) {
-		if(refLabels == null)
-			refLabels = new ArrayList<Label>();
+		if (refLabels == null)
+			refLabels = new ArrayList<>();
 		refLabels.add(refLabel);
 	}
 

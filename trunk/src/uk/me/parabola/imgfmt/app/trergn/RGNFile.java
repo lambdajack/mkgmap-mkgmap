@@ -186,6 +186,7 @@ public class RGNFile extends ImgFile {
 		}
 	}
 
+	@Override
 	public ImgFileWriter getWriter() {
 		return super.getWriter();
 	}

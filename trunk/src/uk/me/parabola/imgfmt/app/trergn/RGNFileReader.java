@@ -72,7 +72,7 @@ public class RGNFileReader extends ImgReader {
 	 * @return A list of all points for the subdiv.
 	 */
 	public List<Point> pointsForSubdiv(Subdivision sd, boolean withExtType) {
-		ArrayList<Point> list = new ArrayList<Point>();
+		ArrayList<Point> list = new ArrayList<>();
 		if (sd.hasIndPoints() || sd.hasPoints()){
 
 			RgnOffsets rgnOffsets = getOffsets(sd);
@@ -112,8 +112,9 @@ public class RGNFileReader extends ImgReader {
 				if (record != null) {
 					l = record.getNameLabel();
 					p.setPOIRecord(record);
-				} else
+				} else {
 					l = lblFile.fetchLabel(0);
+				}
 			} else {
 				l = lblFile.fetchLabel(labelOffset);
 			}
@@ -161,8 +162,9 @@ public class RGNFileReader extends ImgReader {
 					if (record != null) {
 						l = record.getNameLabel();
 						p.setPOIRecord(record);
-					} else
+					} else {
 						l = lblFile.fetchLabel(0);
+					}
 				} else {
 					l = lblFile.fetchLabel(labelOffset);
 				}
@@ -183,7 +185,7 @@ public class RGNFileReader extends ImgReader {
 	 * @return A list of lines.
 	 */
 	public List<Polyline> linesForSubdiv(Subdivision div) {
-		ArrayList<Polyline> list = new ArrayList<Polyline>();
+		ArrayList<Polyline> list = new ArrayList<>();
 		
 		if (div.hasPolylines()){
 			RgnOffsets rgnOffsets = getOffsets(div);
@@ -216,7 +218,7 @@ public class RGNFileReader extends ImgReader {
 	 * @param witExtTypeData 
 	 */
 	public List<Polygon> shapesForSubdiv(Subdivision div, boolean witExtTypeData) {
-		ArrayList<Polygon> list = new ArrayList<Polygon>();
+		ArrayList<Polygon> list = new ArrayList<>();
 		if (div.hasPolygons()){
 
 			RgnOffsets rgnOffsets = getOffsets(div);
@@ -233,16 +235,14 @@ public class RGNFileReader extends ImgReader {
 				line.setNumber(list.size());
 			}
 		}
-		if (witExtTypeData) {
-			if (div.getExtTypeAreasSize() > 0){
-				int start = rgnHeader.getExtTypeAreasOffset() + div.getExtTypeAreasOffset();
-				int end = start + div.getExtTypeAreasSize();
-				position(start);
-				while (position() < end) {
-					Polygon line = new Polygon(div);
-					readLineCommonExtType(getReader(), div, line);
-					list.add(line);
-				}
+		if (witExtTypeData && div.getExtTypeAreasSize() > 0) {
+			int start = rgnHeader.getExtTypeAreasOffset() + div.getExtTypeAreasOffset();
+			int end = start + div.getExtTypeAreasSize();
+			position(start);
+			while (position() < end) {
+				Polygon line = new Polygon(div);
+				readLineCommonExtType(getReader(), div, line);
+				list.add(line);
 			}
 		}
 		return list;
@@ -359,7 +359,7 @@ public class RGNFileReader extends ImgReader {
 	void extractExtraBytes(ImgFileReader reader, MapObject o){
 		long pos = reader.position();
 		StringBuilder sb = new StringBuilder();
-		ArrayList<Byte> bytes = new ArrayList<Byte>();
+		ArrayList<Byte> bytes = new ArrayList<>();
 		byte b1 = reader.get();
 		bytes.add(b1);
 		if ((b1 & 0xe0) != 0){
@@ -423,15 +423,17 @@ public class RGNFileReader extends ImgReader {
 		boolean xsame = br.get1();
 		if (xsame) {
 			xneg = br.get1();
-		} else
+		} else {
 			xbase++;
+		}
 
 		boolean ysame = br.get1();
 		boolean yneg = false;
 		if (ysame) {
 			yneg = br.get1();
-		} else
+		} else {
 			ybase++;
+		}
 
 		if(line.hasExtendedType()) {
 			br.get1();

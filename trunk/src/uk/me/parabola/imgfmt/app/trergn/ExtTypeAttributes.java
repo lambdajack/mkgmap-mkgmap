@@ -186,8 +186,8 @@ public class ExtTypeAttributes {
 
 	private Byte morseLetter;
 
-	private final int DISTANCE_FLAG_METRIC_INDEX = 0;
-	private final int DISTANCE_FLAG_TENTHS_INDEX = 1;
+	private static final int DISTANCE_FLAG_METRIC_INDEX = 0;
+	private static final int DISTANCE_FLAG_TENTHS_INDEX = 1;
 
 	private static final byte FLAGS0_RACON_BIT       = (1);
 	private static final byte FLAGS0_NOTE_BIT        = (1 << 1);
@@ -221,8 +221,7 @@ public class ExtTypeAttributes {
 	protected byte[] getExtTypeExtraBytes(MapObject mapObject) {
 		try {
 			return encodeExtraBytes(mapObject);
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			log.error(objectName + " (" + e + ")");
 			return null;
 		}
@@ -868,14 +867,14 @@ public class ExtTypeAttributes {
 		return null;
 	}
 
-	private boolean meansYes(String s) {
+	private static boolean meansYes(String s) {
 		if(s == null)
 			return false;
 		s = s.toLowerCase();
 		return ("yes".startsWith(s) || "true".startsWith(s) || "1".equals(s));
 	}
 
-	private Integer parseDistance(String ds, boolean[] flags) {
+	private static Integer parseDistance(String ds, boolean[] flags) {
 		ParsePosition pp = new ParsePosition(0);
 		Number dn = new DecimalFormat().parse(ds, pp);
 		if(dn != null) {
@@ -1038,7 +1037,7 @@ public class ExtTypeAttributes {
 		return 0;
 	}
 
-	private int[] parsePeriods(String ps) {
+	private static int[] parsePeriods(String ps) {
 		if(ps == null)
 			return ZERO_INT_ARRAY;
 		String [] psa = ps.split(",");
@@ -1055,7 +1054,7 @@ public class ExtTypeAttributes {
 		String[] defs = new String[0];
 		if(ls.startsWith("(")) {
 			// handle polish syntax "(c,r,a),(c,r,a)..."
-			List<String> out = new ArrayList<String>();
+			List<String> out = new ArrayList<>();
 			int start = 0;
 			// start should be on the '(' at the start of the loop
 			while(start < ls.length()) {

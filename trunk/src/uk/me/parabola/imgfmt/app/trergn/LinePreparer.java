@@ -75,9 +75,8 @@ public class LinePreparer {
 		BitWriter bsBest = bsSimple; 
 		int xBestBase = xBase;
 		int yBestBase = yBase;
-		if (xBase > 0 ||  yBase > 0){
-			if (log.isDebugEnabled())
-				log.debug("start opt:", xBase, yBase, xSameSign, xSignNegative, ySameSign, ySignNegative);
+		if (xBase > 0 ||  yBase > 0 && log.isDebugEnabled()) {
+			log.debug("start opt:", xBase, yBase, xSameSign, xSignNegative, ySameSign, ySignNegative);
 		}
 		if (xBase > 0){
 			int notBetter = 0;
@@ -85,7 +84,6 @@ public class LinePreparer {
 			xSameSign = false;
 			for (int xTestBase = xBase-1; xTestBase >= 0; xTestBase--){
 				BitWriter bstest = makeBitStream(minPointsRequired, xTestBase, yBase);
-//				System.out.println(xBase + " "  + xTestBase + " -> " + bsBest.getBitPosition() + " " + bstest.getBitPosition());
 				if (bstest.getBitPosition() >= bsBest.getBitPosition() ){
 					if (++notBetter >= 2)
 						break; // give up
@@ -103,7 +101,6 @@ public class LinePreparer {
 			ySameSign = false;
 			for (int yTestBase = yBase-1; yTestBase >= 0; yTestBase--){
 				BitWriter bstest = makeBitStream(minPointsRequired, xBestBase, yTestBase);
-//				System.out.println(yBase + " "  + yTestBase + " -> " + bsBest.getBitPosition() + " " + bstest.getBitPosition());
 				if (bstest.getBitPosition() >= bsBest.getBitPosition()){
 					if (++notBetter >= 2)
 						break; // give up
@@ -115,13 +112,11 @@ public class LinePreparer {
 			}
 			ySameSign = ySameSignBak;
 		}
-		if (xBase != xBestBase || yBestBase != yBase){
-			if (log.isInfoEnabled()){
-				if (bsSimple.getLength() > bsBest.getLength())
-					log.info("optimizer reduced bit stream byte length from",bsSimple.getLength(),"->",bsBest.getLength(),"(" + (bsSimple.getLength()-bsBest.getLength()), " byte(s)) for",polyline.getClass().getSimpleName(),"with",polyline.getPoints().size(),"points");
-				else 
-					log.info("optimizer only reduced bit stream bit length from",bsSimple.getBitPosition(),"->",bsBest.getBitPosition(),"bits for",polyline.getClass().getSimpleName(),"with",polyline.getPoints().size(),"points, using original bit stream");
-			}
+		if (xBase != xBestBase || yBestBase != yBase && log.isInfoEnabled()) {
+			if (bsSimple.getLength() > bsBest.getLength())
+				log.info("optimizer reduced bit stream byte length from",bsSimple.getLength(),"->",bsBest.getLength(),"(" + (bsSimple.getLength()-bsBest.getLength()), " byte(s)) for",polyline.getClass().getSimpleName(),"with",polyline.getPoints().size(),"points");
+			else 
+				log.info("optimizer only reduced bit stream bit length from",bsSimple.getBitPosition(),"->",bsBest.getBitPosition(),"bits for",polyline.getClass().getSimpleName(),"with",polyline.getPoints().size(),"points, using original bit stream");
 		}
 		if (bsSimple.getLength() == bsBest.getLength()){
 			// if the (byte) length was not improved, 
@@ -185,8 +180,8 @@ public class LinePreparer {
 		for (int i = 0; i < deltas.length; i+=2) {
 			int dx = deltas[i];
 			int dy = deltas[i + 1];
-			if (dx == 0 && dy == 0){
-				if (extraBit && nodes[i/2+1] == false && i+2 != deltas.length) // don't skip CoordNode
+			if (dx == 0 && dy == 0) {
+				if (extraBit && !nodes[i/2+1] && i+2 != deltas.length) // don't skip CoordNode
 					continue;
 			}
 			++numPointsEncoded;
@@ -245,9 +240,8 @@ public class LinePreparer {
 
 		// Space to hold the deltas
 		int numPointsToUse = points.size();
-		if (polyline instanceof Polygon){
-			if (points.get(0).equals(points.get(points.size()-1)))
-				--numPointsToUse; // no need to write the closing point 
+		if (polyline instanceof Polygon && points.get(0).equals(points.get(points.size()-1))) {
+			--numPointsToUse; // no need to write the closing point 
 		}
 		deltas = new int[2 * (numPointsToUse - 1)];
 

@@ -487,14 +487,13 @@ public class POIGeneratorHook implements OsmReadingHooks {
 				else 
 					point = adminCentre.getLocation();
 			}
-			if (point == null) {
-				continue;
+
+			if (point != null) {
+				Node poi = addPOI(r, point, AREA2POI_TAG, 0);
+				// remove the type tag which makes only sense for relations
+				poi.deleteTag("type");
+				mps2POI++;
 			}
-			
-			Node poi = addPOI(r, point, AREA2POI_TAG, 0);
-			// remove the type tag which makes only sense for relations
-			poi.deleteTag("type");
-			mps2POI++;
 		}
 		log.info(mps2POI,"POIs from multipolygons created");
 	}

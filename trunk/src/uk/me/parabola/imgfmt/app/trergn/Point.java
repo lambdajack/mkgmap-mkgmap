@@ -124,8 +124,7 @@ public class Point extends MapObject {
 
 	public Coord getLocation() {
 		int shift = getSubdiv().getShift();
-		Coord co = new Coord(getSubdiv().getLatitude() + (getDeltaLat() << shift), 
-				getSubdiv().getLongitude() + (getDeltaLong() << shift) );
-		return co;
+		return new Coord(getSubdiv().getLatitude() + (getDeltaLat() << shift),
+				getSubdiv().getLongitude() + (getDeltaLong() << shift));
 	}
 }

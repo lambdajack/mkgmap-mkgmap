@@ -16,6 +16,7 @@
 package uk.me.parabola.mkgmap.general;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.trergn.ExtTypeAttributes;
@@ -175,10 +176,10 @@ public abstract class MapElement {
 	}
 
 	public void setIsIn(String isIn) {
-	  if(isIn != null)
-		this.isIn = isIn.toUpperCase();
-	}	
-
+		if (isIn != null) {
+			this.isIn = isIn.toUpperCase();
+		}
+	}
 
 	/**
 	 * This is the type code that goes in the .img file so that the GPS device
@@ -202,14 +203,7 @@ public abstract class MapElement {
 		if (this.type != other.type)
 			return false;
 
-		String thisName = getName();
-		String otherName = other.getName();
-
-		if (thisName == null && otherName == null)	
-			return true;
-		if (thisName!=null && otherName!=null && thisName.equals(otherName))
-			return true;
-		return false;
+		return Objects.equals(getName(), other.getName());
 	}
 
 	public boolean hasExtendedType() {

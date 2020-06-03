@@ -171,8 +171,8 @@ public class TREFileReader extends ImgReader {
 		int levelsSize = header.getMapLevelsSize();
 		reader.position(levelsPos);
 
-		List<Subdivision[]> levelDivs = new ArrayList<Subdivision[]>();
-		List<Zoom> mapLevels = new ArrayList<Zoom>();
+		List<Subdivision[]> levelDivsList = new ArrayList<>();
+		List<Zoom> mapLevelsList = new ArrayList<>();
 		int end = levelsPos + levelsSize;
 		while (reader.position() < end) {
 			int level = reader.get1u();
@@ -180,15 +180,15 @@ public class TREFileReader extends ImgReader {
 			int ndivs = reader.get2u();
 
 			Subdivision[] divs = new Subdivision[ndivs];
-			levelDivs.add(divs);
+			levelDivsList.add(divs);
 			level &= 0x7f;
 
 			Zoom z = new Zoom(level, nbits);
-			mapLevels.add(z);
+			mapLevelsList.add(z);
 		}
 
-		this.levelDivs = levelDivs.toArray(new Subdivision[levelDivs.size()][]);
-		this.mapLevels = mapLevels.toArray(new Zoom[mapLevels.size()]);
+		this.levelDivs = levelDivsList.toArray(new Subdivision[levelDivsList.size()][]);
+		this.mapLevels = mapLevelsList.toArray(new Zoom[mapLevelsList.size()]);
 	}
 
 	public void config(EnhancedProperties props) {

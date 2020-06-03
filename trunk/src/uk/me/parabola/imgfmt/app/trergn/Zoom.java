@@ -40,7 +40,7 @@ public class Zoom {
 
 	private final int resolution;
 
-	private final List<Subdivision> subdivs = new ArrayList<Subdivision>();
+	private final List<Subdivision> subdivs = new ArrayList<>();
 
 	/**
 	 * Create a new zoom level.
