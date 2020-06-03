@@ -239,10 +239,8 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 		for (OsmReadingHooks p : getPossibleHooks()) {
 			if (p instanceof ResidentialHook && style != null && !style.getUsedTags().contains("mkgmap:residential"))
 				continue;
-			if (p.init(saver, props)){
+			if (p.init(saver, props, style)){
 				plugins.add(p);
-				if (p instanceof RelationStyleHook)
-					((RelationStyleHook) p).setStyle(style);
 			}
 		}
 
@@ -325,6 +323,9 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 		setStyle(StyleImpl.readStyle(props));
 
 		usedTags.addAll(style.getUsedTags());
+		// make sure that we don't remove tags which are only used with the mkgmap:from-node: prefix 
+		style.getUsedTags().stream().filter(s -> s.startsWith(POIGeneratorHook.FROM_NODE_PREFIX))
+				.map(s -> s.substring(POIGeneratorHook.FROM_NODE_PREFIX.length())).forEach(usedTags::add);
 		usedTags.addAll(NameFinder.getNameTags(props));
 		converter = new StyledConverter(style, mapper, props);
 	}

@@ -23,7 +23,7 @@ public class MultiPolygonFinishHook implements OsmReadingHooks {
 	private ElementSaver saver;
 
 	@Override
-	public boolean init(ElementSaver saver, EnhancedProperties props) {
+	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		this.saver = saver;
 		return true;
 	}

@@ -49,9 +49,9 @@ public class OsmReadingHooksChain implements OsmReadingHooks {
 	}
 	
 	@Override
-	public boolean init(ElementSaver saver, EnhancedProperties props) {
+	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		for (int i = 0; i < readingHooks.length; i++)
-			readingHooks[i].init(saver, props);
+			readingHooks[i].init(saver, props, style);
 		return true;
 	}
 

@@ -70,7 +70,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 	private static final short TAG_KEY_DEST_HINT_WORK = TagDict.getInstance().xlate("mkgmap:dest_hint_work");
 	
 	@Override
-	public boolean init(ElementSaver saver, EnhancedProperties props) {
+	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		this.saver = saver;
 		nameFinder = new NameFinder(props);
 		processDestinations = props.containsKey("process-destination");

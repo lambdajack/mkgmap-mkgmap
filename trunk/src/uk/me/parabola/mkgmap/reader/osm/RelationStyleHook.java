@@ -26,16 +26,15 @@ public class RelationStyleHook implements OsmReadingHooks {
 	private ElementSaver saver;
 	private NameFinder nameFinder;
 
-	public boolean init(ElementSaver saver, EnhancedProperties props) {
+	@Override
+	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		this.saver = saver;
+		this.style = style;
 		nameFinder  = new NameFinder(props);
 		return true;
 	}
 
-	public void setStyle(Style style){
-		this.style = style;
-	}
-	
+	@Override
 	public void end() {
 		Rule relationRules = style.getRelationRules();
 		for (Relation rel : saver.getRelations().values()) {

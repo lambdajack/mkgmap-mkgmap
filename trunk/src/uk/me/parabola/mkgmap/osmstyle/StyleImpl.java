@@ -163,25 +163,25 @@ public class StyleImpl implements Style {
 		ListIterator<StyleImpl> listIterator = baseStyles.listIterator(baseStyles.size());
 		while (listIterator.hasPrevious())
 			mergeRules(listIterator.previous());
-
-		// OR: other way
-		//for (StyleImpl s : baseStyles)
-		//	mergeRules(s);
 	}
 
+	@Override
 	public String getOption(String name) {
 		return generalOptions.get(name);
 	}
 
+	@Override
 	public StyleInfo getInfo() {
 		return info;
 	}
 
+	@Override
 	public Rule getNodeRules() {
 		nodes.prepare();
 		return nodes;
 	}
 
+	@Override
 	public Rule getWayRules() {
 		RuleSet r = new RuleSet();
 		r.addAll(lines);
@@ -190,21 +190,25 @@ public class StyleImpl implements Style {
 		return r;
 	}
 
+	@Override
 	public Rule getLineRules() {
 		lines.prepare();
 		return lines;
 	}
 
+	@Override
 	public Rule getPolygonRules() {
 		polygons.prepare();
 		return polygons;
 	}
 	
+	@Override
 	public Rule getRelationRules() {
 		relations.prepare();
 		return relations;
 	}
 
+	@Override
 	public LineAdder getOverlays(final LineAdder lineAdder) {
 		LineAdder adder = null;
 
@@ -213,7 +217,13 @@ public class StyleImpl implements Style {
 		}
 		return adder;
 	}
-
+	
+	@Override
+	public Set<String> getUsedTagsPOI() {
+		return new HashSet<>(nodes.getUsedTags());
+	}
+	
+	@Override
 	public Set<String> getUsedTags() {
 		Set<String> set = new HashSet<>();
 		set.addAll(relations.getUsedTags());

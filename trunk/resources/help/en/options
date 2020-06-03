@@ -662,8 +662,10 @@ filename
     cause the dead end check to be skipped. The default is
     --dead-ends=fixme,FIXME.
 
---add-pois-to-lines
-    Generate POIs for lines. For each line (must not be closed) POIs are
+--add-pois-to-lines[=all|start|end|mid|other]
+    Generate POIs for lines. The option expects a comma separated list that
+    specifies the positions for which are POI should be generated. The default
+    is to create all possible POI. For each line (must not be closed) POIs are
     created at several points of the line. Each POI is tagged with the same
     tags like the line and additional tags added by mkgmap:
     mkgmap:line2poi=true and tag mkgmap:line2poitype having the following

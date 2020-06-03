@@ -14,6 +14,7 @@
 package uk.me.parabola.mkgmap.reader.osm;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,7 +42,7 @@ public class ResidentialHook implements OsmReadingHooks {
 	private NameFinder nameFinder;
 
 	@Override
-	public boolean init(ElementSaver saver, EnhancedProperties props) {
+	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		if (!props.getProperty("residential-hook", true))
 			return false; 
 		this.nameFinder = new NameFinder(props);
@@ -127,10 +128,7 @@ public class ResidentialHook implements OsmReadingHooks {
 	
 	@Override
 	public Set<String> getUsedTags() {
-		Set<String> used = new HashSet<>();
-		used.add("landuse");
-		used.add("name");
-		return used;
+		return new HashSet<>(Arrays.asList("landuse", "name"));
 	}
 }
 

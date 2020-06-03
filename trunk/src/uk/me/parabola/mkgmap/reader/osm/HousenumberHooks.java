@@ -14,6 +14,7 @@
 package uk.me.parabola.mkgmap.reader.osm;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,7 +41,7 @@ public class HousenumberHooks implements OsmReadingHooks {
 	public static final short partOfInterpolationTagKey = TagDict.getInstance().xlate("mkgmap:part-of-interpolation");
 	public static final short mkgmapNodeIdsTagKey = TagDict.getInstance().xlate("mkgmap:node-ids");
 	@Override
-	public boolean init(ElementSaver saver, EnhancedProperties props) {
+	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		this.saver = saver;
 		if (!props.getProperty("addr-interpolation", true))
 			return false;
@@ -49,12 +50,7 @@ public class HousenumberHooks implements OsmReadingHooks {
 
 	@Override
 	public Set<String> getUsedTags() {
-		HashSet<String> usedTags = new HashSet<>();
-		usedTags.add("addr:street");
-		usedTags.add("addr:housenumber");
-		usedTags.add("addr:interpolation");
-		usedTags.add("addr:place");
-		return usedTags;
+		return new HashSet<>(Arrays.asList("addr:street", "addr:housenumber", "addr:interpolation", "addr:place"));
 	}
 	
 	@Override

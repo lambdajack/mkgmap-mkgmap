@@ -34,49 +34,54 @@ import uk.me.parabola.mkgmap.general.LineAdder;
  * @author Steve Ratcliffe
  */
 public interface Style {
-	public String getOption(String name);
+	String getOption(String name);
 
-	public StyleInfo getInfo();
+	StyleInfo getInfo();
 
 	/**
 	 * Get the rules that apply to ways.  This includes lines and polygons
 	 * as they are not separate primitives in osm. It is a merge of the line
 	 * rules and the polygon rules.
 	 */
-	public Rule getWayRules();
+	Rule getWayRules();
 
 	/**
 	 * Get the rules that apply to nodes.
 	 */
-	public Rule getNodeRules();
+	Rule getNodeRules();
 	
 	/**
 	 * Get the rules that apply to lines.
 	 */
-	public Rule getLineRules();
+	Rule getLineRules();
 
 	/**
 	 * Get the rules that apply to polygons.
 	 */
-	public Rule getPolygonRules();
+	Rule getPolygonRules();
 
 	/**
 	 * Get the relation rules.
 	 */
-	public Rule getRelationRules();
+	Rule getRelationRules();
 
 	/**
 	 * Get the overlay definitions.  Most styles will not use this.
 	 */
-	public LineAdder getOverlays(LineAdder lineAdder);
+	LineAdder getOverlays(LineAdder lineAdder);
 
 	/**
 	 * Get the tags that are used by this style.
 	 */
-	public Set<String> getUsedTags();
+	Set<String> getUsedTags();
+	
+	/**
+	 * Get the tags that are used in the points file of this style
+	 */
+	Set<String> getUsedTagsPOI();
 	
 	/**
 	 * Report statistics for rule expressions. 
 	 */
-	public void reportStats();
+	void reportStats();
 }

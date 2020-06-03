@@ -43,7 +43,7 @@ public class HighwayHooks implements OsmReadingHooks {
 	private Node currentNodeInWay;
 
 	@Override
-	public boolean init(ElementSaver saver, EnhancedProperties props) {
+	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		this.saver = saver;
 		if(props.getProperty("make-all-cycleways", false)) {
 			log.error("option make-all-cycleways is deprecated, please use make-opposite-cycleways");

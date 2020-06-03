@@ -49,11 +49,12 @@ public interface OsmReadingHooks {
 	 * element that is being passed in as it will be added automatically.
 	 *
 	 * @param props The command line options.
+	 * @param style The style used for this input file
 	 *
 	 * @return If you return false then this set of hooks will not be used. So if they
 	 * are not needed based on the options supplied you can disable it.
 	 */
-	public default boolean init(ElementSaver saver, EnhancedProperties props) {
+	default boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		return true;
 	}
 
@@ -63,7 +64,7 @@ public interface OsmReadingHooks {
 	 * 
 	 * @return the tag names used by this hook
 	 */
-	public default Set<String> getUsedTags() {
+	default Set<String> getUsedTags() {
 		return Collections.emptySet();
 	}
 	
@@ -81,7 +82,7 @@ public interface OsmReadingHooks {
 	 *
 	 * @param way The osm way.
 	 */
-	public default void onAddWay(Way way) {}
+	default void onAddWay(Way way) {}
 
 	/**
 	 * This is called whenever a node is added to a way.  A node is something with tags, not just a Coord.
@@ -92,12 +93,12 @@ public interface OsmReadingHooks {
 	 * @param coordId The coordinate id of the node that is being added.
 	 * @param co The coordinate.
 	 */
-	public default void onCoordAddedToWay(Way way, long coordId, Coord co) {}
+	default void onCoordAddedToWay(Way way, long coordId, Coord co) {}
 
 	/**
 	 * Called after the file has been read.  Can be used to add more elements to the saver
 	 * based on information stored up.
 	 */
-	public default void end() {}
+	default void end() {}
 	
 }

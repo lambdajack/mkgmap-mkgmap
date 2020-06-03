@@ -28,50 +28,50 @@ import uk.me.parabola.util.EnhancedProperties;
  */
 public class RoutingHook implements OsmReadingHooks {
 
-	private final Set<String> usedTags;
+	private final Set<String> usedTags = new HashSet<>();
 	
-	public RoutingHook() {
-		usedTags = new HashSet<>();
-		usedTags.add("except");
-		usedTags.add("restriction");
-		usedTags.add("restriction:foot");
-		usedTags.add("restriction:hgv");
-		usedTags.add("restriction:motorcar");
-		usedTags.add("restriction:vehicle");
-		usedTags.add("restriction:motor_vehicle");
-		usedTags.add("restriction:bicycle");
-		usedTags.add("restriction:bus");
-	}
-
-	public boolean init(ElementSaver saver, EnhancedProperties props) {
-		
-		if (props.getProperty("old-style", false)) {
-			// the access tags need to be loaded if the old style handling
-			// is active and access restrictions are handled by the java
-			// source code and not by the style
-			usedTags.add("access");
-			usedTags.add("bicycle");
-			usedTags.add("carpool");
-			usedTags.add("delivery");
-			usedTags.add("emergency");
-			usedTags.add("foot");
-			usedTags.add("goods");
-			usedTags.add("hgv");
-			usedTags.add("motorcar");
-			usedTags.add("motorcycle");
-			usedTags.add("psv");
-			usedTags.add("route");
-			usedTags.add("taxi");
-		}
-		int admLevelNod3 = props.getProperty("add-boundary-nodes-at-admin-boundaries", 2);
-		if (admLevelNod3 > 0) {
-			usedTags.add("boundary");
-			usedTags.add("admin_level");
-		}
-
-		
+	@Override
+	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		// only enabled if the route option is set
-		return props.containsKey("route");
+		if (props.containsKey("route")) {
+
+			usedTags.add("except");
+			usedTags.add("restriction");
+			usedTags.add("restriction:foot");
+			usedTags.add("restriction:hgv");
+			usedTags.add("restriction:motorcar");
+			usedTags.add("restriction:vehicle");
+			usedTags.add("restriction:motor_vehicle");
+			usedTags.add("restriction:bicycle");
+			usedTags.add("restriction:bus");
+
+			if (props.getProperty("old-style", false)) {
+				// the access tags need to be loaded if the old style handling
+				// is active and access restrictions are handled by the java
+				// source code and not by the style
+				usedTags.add("access");
+				usedTags.add("bicycle");
+				usedTags.add("carpool");
+				usedTags.add("delivery");
+				usedTags.add("emergency");
+				usedTags.add("foot");
+				usedTags.add("goods");
+				usedTags.add("hgv");
+				usedTags.add("motorcar");
+				usedTags.add("motorcycle");
+				usedTags.add("psv");
+				usedTags.add("route");
+				usedTags.add("taxi");
+			}
+			int admLevelNod3 = props.getProperty("add-boundary-nodes-at-admin-boundaries", 2);
+			if (admLevelNod3 > 0) {
+				usedTags.add("boundary");
+				usedTags.add("admin_level");
+			}
+			return true;
+		}
+
+		return false;
 	}
 
 	@Override

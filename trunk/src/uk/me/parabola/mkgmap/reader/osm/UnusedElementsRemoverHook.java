@@ -39,7 +39,7 @@ public class UnusedElementsRemoverHook implements OsmReadingHooks {
 	private List<Entry<String,String>> areasToPoiNodeTags;
 	
 	@Override
-	public boolean init(ElementSaver saver, EnhancedProperties props) {
+	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		this.saver = saver;
 		
 		// Get the tags from the POIGeneratorHook which are used to define the point

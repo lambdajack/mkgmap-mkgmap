@@ -54,7 +54,7 @@ public class LocationHook implements OsmReadingHooks {
 	private EnhancedProperties props;
 
 	@Override
-	public boolean init(ElementSaver saver, EnhancedProperties props) {
+	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		boundaryDirName = props.getProperty("bounds");
 		
 		if (boundaryDirName == null) {

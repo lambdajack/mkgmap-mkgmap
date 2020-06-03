@@ -118,7 +118,7 @@ public class SeaGenerator implements OsmReadingHooks {
 	 * the whole thing is omitted if not used.
 	 */
 	@Override
-	public boolean init(ElementSaver saver, EnhancedProperties props) {
+	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		this.saver = saver;
 		
 		precompSea = props.getProperty("precomp-sea", null);
