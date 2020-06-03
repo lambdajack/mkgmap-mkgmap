@@ -37,6 +37,7 @@ public class DouglasPeuckerFilter implements MapFilter {
 		this.filterDistance = filterDistance;
 	}
 
+	@Override
 	public void init(FilterConfig config) {
 		this.resolution = config.getResolution();
 		this.maxErrorDistance = filterDistance * (1<< config.getShift());
@@ -49,6 +50,7 @@ public class DouglasPeuckerFilter implements MapFilter {
 	 * @param element A map element that will be a line or a polygon.
 	 * @param next This is used to pass the possibly transformed element onward.
 	 */
+	@Override
 	public void doFilter(MapElement element, MapFilterChain next) {
 		// First off we don't touch things if at the highest level of detail
 		if (resolution == 24) {

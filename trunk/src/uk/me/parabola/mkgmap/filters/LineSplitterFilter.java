@@ -43,6 +43,8 @@ public class LineSplitterFilter implements MapFilter {
 
 	private int level;
 	private boolean isRoutable;
+	
+	@Override
 	public void init(FilterConfig config) {
 		this.level = config.getLevel();
 		this.isRoutable = config.hasNet();
@@ -57,6 +59,7 @@ public class LineSplitterFilter implements MapFilter {
 	 * @param element A map element.
 	 * @param next This is used to pass the possibly transformed element onward.
 	 */
+	@Override
 	public void doFilter(MapElement element, MapFilterChain next) {
 		// We do not deal with shapes.
 		assert !(element instanceof MapShape) && element instanceof MapLine;
@@ -105,8 +108,9 @@ public class LineSplitterFilter implements MapFilter {
 			if (remaining <= MAX_POINTS_IN_LINE) {
 				last = true;
 				wantedSize = remaining;
-			} else if (remaining < 2 * MAX_POINTS_IN_LINE)
+			} else if (remaining < 2 * MAX_POINTS_IN_LINE) {
 				wantedSize = remaining / 2 + 1;
+			}
 		}
 	}
 }

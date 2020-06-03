@@ -28,6 +28,7 @@ public class RoundCoordsFilter implements MapFilter {
 	private boolean keepNodes;
 	private int level;
 
+	@Override
 	public void init(FilterConfig config) {
 		shift = config.getShift();
 		keepNodes = config.getLevel() == 0 && config.hasNet();
@@ -38,6 +39,7 @@ public class RoundCoordsFilter implements MapFilter {
 	 * @param element A map element that will be a line or a polygon.
 	 * @param next This is used to pass the possibly transformed element onward.
 	 */
+	@Override
 	public void doFilter(MapElement element, MapFilterChain next) {
 		MapLine line = (MapLine) element;
 		if(shift == 0) {

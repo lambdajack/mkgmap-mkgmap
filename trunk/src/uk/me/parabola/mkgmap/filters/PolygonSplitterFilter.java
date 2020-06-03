@@ -31,9 +31,6 @@ public class PolygonSplitterFilter extends PolygonSplitterBase implements MapFil
 
 	public static final int MAX_POINT_IN_ELEMENT = 250;
 
-//	public PolygonSplitterFilter() {
-//	}
-
 	/**
 	 * This filter splits a polygon if any of the subsequent filters throws a
 	 * {@link MustSplitException}.
@@ -42,6 +39,7 @@ public class PolygonSplitterFilter extends PolygonSplitterBase implements MapFil
 	 * @param element A map element, only polygons will be processed.
 	 * @param next	This is used to pass the possibly transformed element onward.
 	 */
+	@Override
 	public void doFilter(MapElement element, MapFilterChain next) {
 		assert element instanceof MapShape;
 		MapShape shape = (MapShape) element;
@@ -49,7 +47,7 @@ public class PolygonSplitterFilter extends PolygonSplitterBase implements MapFil
 		try {
 			next.doFilter(shape);
 		} catch (MustSplitException e) {
-			List<MapShape> outputs = new ArrayList<MapShape>();
+			List<MapShape> outputs = new ArrayList<>();
 			split(shape, outputs); // split in half
 			for (MapShape s : outputs) {
 				doFilter(s, next); // recurse as components could still be too big

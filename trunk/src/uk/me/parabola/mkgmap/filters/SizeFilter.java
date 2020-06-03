@@ -33,6 +33,7 @@ public class SizeFilter implements MapFilter {
 		size = s;
 	}
 	
+	@Override
 	public void init(FilterConfig config) {
 		minSize = size * (1 << config.getShift());
 		// don't remove roads on level 0
@@ -46,6 +47,7 @@ public class SizeFilter implements MapFilter {
 	 * @param element A map element that will be a line or a polygon.
 	 * @param next This is used to pass the possibly transformed element onward.
 	 */
+	@Override
 	public void doFilter(MapElement element, MapFilterChain next) {
 		MapLine line = (MapLine) element;
 

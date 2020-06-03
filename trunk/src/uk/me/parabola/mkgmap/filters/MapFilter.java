@@ -34,7 +34,7 @@ public interface MapFilter {
 	 * @param config Configuration information, giving parameters of the map
 	 * level that is being produced through this filter.
 	 */
-	public void init(FilterConfig config);
+	default void init(FilterConfig config){}
 
 	/**
 	 * Filter an element.  The filter looks at the element and can simply
@@ -52,5 +52,5 @@ public interface MapFilter {
 	 * @param element A map element.
 	 * @param next This is used to pass the possibly transformed element onward.
 	 */
-	public void doFilter(MapElement element, MapFilterChain next);
+	void doFilter(MapElement element, MapFilterChain next);
 }

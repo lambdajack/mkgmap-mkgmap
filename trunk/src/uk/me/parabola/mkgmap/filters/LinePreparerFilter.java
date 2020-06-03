@@ -39,6 +39,7 @@ public class LinePreparerFilter implements MapFilter {
 		this.subdiv = subdiv;
 	}
 
+	@Override
 	public void init(FilterConfig config) {
 		shift = config.getShift();
 	}
@@ -47,6 +48,7 @@ public class LinePreparerFilter implements MapFilter {
 	 * @param element A map element that will be a line or a polygon.
 	 * @param next This is used to pass the element onward.
 	 */
+	@Override
 	public void doFilter(MapElement element, MapFilterChain next) {
 		MapLine line = (MapLine) element;
 
@@ -129,12 +131,6 @@ public class LinePreparerFilter implements MapFilter {
 					rotation = maxBitsPos[k];
 				} 
 			}
-			/*
-			int savedBits = (numPoints-1 * maxReduction);
-			if (savedBits > 100){
-				System.out.println("rotation of shape saves " + savedBits + " bits");
-			}
-			*/
 			if (rotation != 0){
 				List<Coord> points = line.getPoints();
 				if (minPointsRequired == 4)

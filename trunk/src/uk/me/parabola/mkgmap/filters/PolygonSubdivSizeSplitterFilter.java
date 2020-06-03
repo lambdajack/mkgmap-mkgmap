@@ -38,6 +38,7 @@ public class PolygonSubdivSizeSplitterFilter extends PolygonSplitterBase impleme
 	 * @param config configuration information, giving parameters of the map level
 	 * that is being produced through this filter.
 	 */
+	@Override
 	public void init(FilterConfig config) {
 		int shift = config.getShift();
 		if (shift > 15)
@@ -52,6 +53,7 @@ public class PolygonSubdivSizeSplitterFilter extends PolygonSplitterBase impleme
 	 * @param element A map element, only polygons will be processed.
 	 * @param next	This is used to pass the possibly transformed element onward.
 	 */
+	@Override
 	public void doFilter(MapElement element, MapFilterChain next) {
 		assert element instanceof MapShape;
 		MapShape shape = (MapShape) element;
@@ -62,7 +64,7 @@ public class PolygonSubdivSizeSplitterFilter extends PolygonSplitterBase impleme
 			return;
 		}
 
-		List<MapShape> outputs = new ArrayList<MapShape>();
+		List<MapShape> outputs = new ArrayList<>();
 
 		// Do an initial split
 		split(shape, outputs);

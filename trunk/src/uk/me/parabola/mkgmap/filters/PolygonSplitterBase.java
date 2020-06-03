@@ -32,6 +32,7 @@ public class PolygonSplitterBase extends BaseFilter {
 	protected int shift;
 	protected int resolution;
 	
+	@Override
 	public void init(FilterConfig config) {
 		shift = config.getShift();
 		resolution = config.getResolution();

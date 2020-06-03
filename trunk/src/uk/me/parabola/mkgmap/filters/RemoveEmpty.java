@@ -30,9 +30,6 @@ import uk.me.parabola.mkgmap.general.MapShape;
 public class RemoveEmpty implements MapFilter {
 	private static final Logger log = Logger.getLogger(RemoveEmpty.class);
 
-	public void init(FilterConfig config) {
-	}
-
 	/**
 	 * If this is a line (or a shape, which extends a line) then we check
 	 * to see if it is empty or only a single point.  If it is then it
@@ -41,6 +38,7 @@ public class RemoveEmpty implements MapFilter {
 	 * @param element A map element.
 	 * @param next	This is used to pass the possibly transformed element onward.
 	 */
+	@Override
 	public void doFilter(MapElement element, MapFilterChain next) {
 		if (element instanceof MapShape) {
 			MapShape mapShape = (MapShape) element;

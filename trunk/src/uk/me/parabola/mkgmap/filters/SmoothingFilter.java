@@ -24,7 +24,7 @@ import uk.me.parabola.mkgmap.general.MapElement;
 import uk.me.parabola.mkgmap.general.MapLine;
 
 /**
- * This is a filter that smooths out lines at low resolutions. If the element
+ * This is a filter that smoothes out lines at low resolutions. If the element
  * has no size at all at the given resolution, then it is not passed on down
  * the chain at all is excluded from the map at that resolution.
  *
@@ -36,6 +36,7 @@ public class SmoothingFilter implements MapFilter {
 
 	private int shift;
 
+	@Override
 	public void init(FilterConfig config) {
 		this.shift = config.getShift();
 	}
@@ -58,6 +59,7 @@ public class SmoothingFilter implements MapFilter {
 	 * @param element A map element that will be a line or a polygon.
 	 * @param next This is used to pass the possibly transformed element onward.
 	 */
+	@Override
 	public void doFilter(MapElement element, MapFilterChain next) {
 		MapLine line = (MapLine) element;
 
@@ -77,7 +79,7 @@ public class SmoothingFilter implements MapFilter {
 		}
 
 		// Create a new list to rewrite the points into.
-		List<Coord> coords = new ArrayList<Coord>(n);
+		List<Coord> coords = new ArrayList<>(n);
 
 		// Get the step size, we want to place a point every time the
 		// average exceeds this size.

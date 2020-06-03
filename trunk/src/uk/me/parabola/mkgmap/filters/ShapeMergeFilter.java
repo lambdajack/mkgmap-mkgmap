@@ -40,7 +40,7 @@ import uk.me.parabola.util.Java2DConverter;
 public class ShapeMergeFilter{
 	private static final Logger log = Logger.getLogger(ShapeMergeFilter.class);
 	private final int resolution;
-	private final static ShapeHelper DUP_SHAPE = new ShapeHelper(new ArrayList<Coord>(0)); 
+	private static final ShapeHelper DUP_SHAPE = new ShapeHelper(new ArrayList<Coord>(0)); 
 	private final boolean orderByDecreasingArea;
 
 	public ShapeMergeFilter(int resolution, boolean orderByDecreasingArea) {
@@ -160,7 +160,7 @@ public class ShapeMergeFilter{
 					sharedPoints.add(c);
 				}
 			}
-			if (sharedPoints.size() == 0 || sh0.getPoints().size() - sharedPoints.size()> PolygonSplitterFilter.MAX_POINT_IN_ELEMENT) {
+			if (sharedPoints.isEmpty() || sh0.getPoints().size() - sharedPoints.size()> PolygonSplitterFilter.MAX_POINT_IN_ELEMENT) {
 				// merge will not work 
 				noMerge.add(sh0);
 				continue;
@@ -287,7 +287,7 @@ public class ShapeMergeFilter{
 	 * @return merged shape or 1st shape if no common point found or {@code dupShape} 
 	 * if both shapes describe the same area. 
 	 */
-	private ShapeHelper tryMerge(ShapeHelper sh1, ShapeHelper sh2) {
+	private static ShapeHelper tryMerge(ShapeHelper sh1, ShapeHelper sh2) {
 		
 		// both clockwise or both ccw ?
 		boolean sameDir = sh1.areaTestVal > 0 && sh2.areaTestVal > 0 || sh1.areaTestVal < 0 && sh2.areaTestVal < 0;
@@ -398,7 +398,6 @@ public class ShapeMergeFilter{
 			}
 			pos++;
 		}
-		return;
 	} 	
 	
 	/**
@@ -484,7 +483,7 @@ public class ShapeMergeFilter{
 	}
  	
 	private static class ShapeHelper {
-		final private List<Coord> points;
+		private final List<Coord> points;
 		long id;
 		long areaTestVal;
 
@@ -504,7 +503,7 @@ public class ShapeMergeFilter{
 		}
 	}
 	
-	public final static long SINGLE_POINT_AREA = 1L << Coord.DELTA_SHIFT * 1L << Coord.DELTA_SHIFT;
+	public static final long SINGLE_POINT_AREA = 1L << Coord.DELTA_SHIFT * 1L << Coord.DELTA_SHIFT;
 	
 	/**
 	 * Calculate the high precision area size test value.  
@@ -515,7 +514,7 @@ public class ShapeMergeFilter{
 	public static long calcAreaSizeTestVal(List<Coord> points){
 		if (points.size() < 4)
 			return 0; // straight line cannot enclose an area
-		if (points.get(0).highPrecEquals(points.get(points.size()-1)) == false){
+		if (!points.get(0).highPrecEquals(points.get(points.size()-1))){
 			log.error("shape is not closed");
 			return 0;
 		}
@@ -528,10 +527,8 @@ public class ShapeMergeFilter{
 			signedAreaSize += (long) (c2.getHighPrecLon() + c1.getHighPrecLon())
 					* (c1.getHighPrecLat() - c2.getHighPrecLat());
 		}
-		if (Math.abs(signedAreaSize) < SINGLE_POINT_AREA){
-			if (log.isDebugEnabled()) {
-				log.debug("very small shape near", points.get(0).toOSMURL(), "signed area in high prec map units:", signedAreaSize );
-			}
+		if (Math.abs(signedAreaSize) < SINGLE_POINT_AREA && log.isDebugEnabled()) {
+			log.debug("very small shape near", points.get(0).toOSMURL(), "signed area in high prec map units:", signedAreaSize );
 		}
 		return signedAreaSize;
 	}
@@ -553,8 +550,7 @@ public class ShapeMergeFilter{
 			}
 			String n1 = o1.getName();
 			String n2 = o2.getName();
-			if (n1 == n2)
-				return 0;
+
 			if (n1 == null) {
 				return (n2 == null) ? 0 : 1;
 			}

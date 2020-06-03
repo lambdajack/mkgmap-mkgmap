@@ -40,6 +40,7 @@ public class LineSizeSplitterFilter implements MapFilter {
 
 	private int maxSize;
 
+	@Override
 	public void init(FilterConfig config) {
 		int shift = config.getShift();
 		if (shift > 15)
@@ -51,7 +52,7 @@ public class LineSizeSplitterFilter implements MapFilter {
 	// divided by the maximum allowed size - so if the height and
 	// width are not too large, the result will be <= 1.0
 	public static double testDims(int height, int width) {
-		return (double)Math.max(Math.abs(height), Math.abs(width)) / MAX_SIZE;
+		return (double) Math.max(Math.abs(height), Math.abs(width)) / MAX_SIZE;
 	}
 
 	/**
@@ -61,6 +62,7 @@ public class LineSizeSplitterFilter implements MapFilter {
 	 * @param element A map element.
 	 * @param next This is used to pass the possibly transformed element onward.
 	 */
+	@Override
 	public void doFilter(MapElement element, MapFilterChain next) {
 		// We do not deal with shapes.
 		assert !(element instanceof MapShape) && element instanceof MapLine;
@@ -86,7 +88,7 @@ public class LineSizeSplitterFilter implements MapFilter {
 
 		MapLine l = line.copy();
 
-		List<Coord> coords = new ArrayList<Coord>();
+		List<Coord> coords = new ArrayList<>();
 		boolean first = true;
 
 		/**
@@ -136,7 +138,7 @@ public class LineSizeSplitterFilter implements MapFilter {
 		// Add points while not too big and then start again with a fresh line.
 		for (Coord co: points){
 			dim.addToBounds(co);
-			if (dim.getMaxDim() > maxSize) {
+			if (prev != null && dim.getMaxDim() > maxSize) {
 				if (first)
 					log.debug("bigness saving first part");
 				else 
@@ -148,7 +150,7 @@ public class LineSizeSplitterFilter implements MapFilter {
 
 				first = false;
 				dim.reset();
-				coords = new ArrayList<Coord>();
+				coords = new ArrayList<>();
 				coords.add(prev);
 				dim.addToBounds(prev);
 				dim.addToBounds(co);
@@ -173,7 +175,7 @@ public class LineSizeSplitterFilter implements MapFilter {
 	 * @return a reference to a new list of points 
 	 */
 	private static List<Coord> splitLinesToMaxSize(List<Coord> coords, int maxSize){
-		List<Coord> testedCoords = new ArrayList<Coord>(coords);
+		List<Coord> testedCoords = new ArrayList<>(coords);
 		int posToTest = coords.size() -2;
 		while (posToTest >= 0){
 			Coord p1 = testedCoords.get(posToTest);

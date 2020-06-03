@@ -35,6 +35,6 @@ public interface MapFilterChain {
 	 *
 	 * @param element The map element.
 	 */
-	public void doFilter(MapElement element);
+	void doFilter(MapElement element);
 
 }

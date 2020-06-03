@@ -14,8 +14,8 @@ public class LineMergeFilter{
 	private static final Logger log = Logger.getLogger(LineMergeFilter.class);
 
 	private List<MapLine> linesMerged;
-	private final MultiHashMap<Coord, MapLine> startPoints = new MultiHashMap<Coord, MapLine>();
-	private final MultiHashMap<Coord, MapLine> endPoints = new MultiHashMap<Coord, MapLine>();
+	private final MultiHashMap<Coord, MapLine> startPoints = new MultiHashMap<>();
+	private final MultiHashMap<Coord, MapLine> endPoints = new MultiHashMap<>();
 
 	private void addLine(MapLine line) {
 		linesMerged.add(line);
@@ -56,7 +56,7 @@ public class LineMergeFilter{
 	//TODO: This routine has a side effect: it modifies some of the MapLine instances
 	// instead of creating copies. It seems that this has no bad effect, but it is not clean
 	public List<MapLine> merge(List<MapLine> lines, int res) {
-		linesMerged = new ArrayList<MapLine>(lines.size());	//better use LinkedList??
+		linesMerged = new ArrayList<>(lines.size());	//better use LinkedList??
 		for (MapLine line : lines) {
 			if (line.getMinResolution() > res || line.getMaxResolution() < res)
 				continue;
@@ -108,7 +108,7 @@ public class LineMergeFilter{
 
 			// No matching, create a copy of line
 			MapLine l = line.copy();
-			List<Coord> p = new ArrayList<Coord>(line.getPoints());	//use better LinkedList for performance?
+			List<Coord> p = new ArrayList<>(line.getPoints());	//use better LinkedList for performance?
 			l.setPoints(p);				
 			addLine(l);
 		}
