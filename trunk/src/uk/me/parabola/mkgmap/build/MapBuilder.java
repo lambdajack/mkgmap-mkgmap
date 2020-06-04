@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import uk.me.parabola.imgfmt.ExitException;
@@ -71,6 +72,7 @@ import uk.me.parabola.imgfmt.app.trergn.TREFile;
 import uk.me.parabola.imgfmt.app.trergn.TREHeader;
 import uk.me.parabola.imgfmt.app.trergn.Zoom;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.CommandArgs;
 import uk.me.parabola.mkgmap.Version;
 import uk.me.parabola.mkgmap.combiners.OverviewBuilder;
 import uk.me.parabola.mkgmap.filters.BaseFilter;
@@ -166,7 +168,7 @@ public class MapBuilder implements Configurable {
 	private String licenseFileName;
 
 	private boolean orderByDecreasingArea;
-	private String pathToHGT;
+	private String pathsToHGT;
 	private List<Integer> demDists;
 	private short demOutsidePolygonHeight;
 	private java.awt.geom.Area demPolygon;
@@ -215,7 +217,7 @@ public class MapBuilder implements Configurable {
 		if ("right".equals(driveOn))
 			driveOnLeft = false;
 		orderByDecreasingArea = props.getProperty("order-by-decreasing-area", false);
-		pathToHGT = props.getProperty("dem", null);
+		pathsToHGT = props.getProperty("dem", null);
 		demDists = parseDemDists(props.getProperty("dem-dists", "-1"));
 		demOutsidePolygonHeight = (short) props.getProperty("dem-outside-polygon", HGTReader.UNDEF);
 		String demPolygonFile = props.getProperty("dem-poly", null);
@@ -240,16 +242,10 @@ public class MapBuilder implements Configurable {
 	}
 
 	private static List<Integer> parseDemDists(String demDists) {
-		List<Integer> dists = new ArrayList<>();
-		if (demDists == null)
-			dists.add(-1);
-		else {
-			String[] vals = demDists.split(",");
-			for( String val : vals) {
-				int dist = Integer.parseInt(val.trim());
-				dists.add(dist);
-			}
-		}
+		List<Integer> dists = CommandArgs.stringToList(demDists, "dem-dists")
+				.stream().map(Integer::parseInt).collect(Collectors.toList());
+		if (dists.isEmpty())
+			return Arrays.asList(-1);
 		return dists;
 	}
 
@@ -349,7 +345,7 @@ public class MapBuilder implements Configurable {
 					demArea = new java.awt.geom.Area(demPoly);
 				}
 			}
-			Area treArea = demFile.calc(src.getBounds(), demArea, pathToHGT, demDists, demOutsidePolygonHeight, demInterpolationMethod);
+			Area treArea = demFile.calc(src.getBounds(), demArea, pathsToHGT, demDists, demOutsidePolygonHeight, demInterpolationMethod);
 			map.setBounds(treArea);
 			long t2 = System.currentTimeMillis();
 			log.info("DEM file calculation for", map.getFilename(), "took", (t2 - t1), "ms");

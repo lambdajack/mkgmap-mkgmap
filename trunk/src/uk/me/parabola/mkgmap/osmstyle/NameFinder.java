@@ -12,12 +12,11 @@
  */
 package uk.me.parabola.mkgmap.osmstyle;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
-import java.util.regex.Pattern;
 
 import it.unimi.dsi.fastutil.shorts.ShortArrayList;
+import uk.me.parabola.mkgmap.CommandArgs;
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.TagDict;
 import uk.me.parabola.mkgmap.reader.osm.Tags;
@@ -30,20 +29,10 @@ import uk.me.parabola.mkgmap.reader.osm.Tags;
 public class NameFinder {
 	private final ShortArrayList compiledNameTagList;
 	
-	private static final Pattern COMMA_OR_SPACE_PATTERN = Pattern.compile("[,\\s]+");
-	private static final short nameTagKey = TagDict.getInstance().xlate("name");  
+	private static final short TK_NAME = TagDict.getInstance().xlate("name");  
 	
 	public NameFinder(Properties props) {
 		this.compiledNameTagList = computeCompiledNameTags(props);
-	}
-
-	public static List<String> getNameTags(Properties props) {
-		String s = props.getProperty("name-tag-list", "name");
-		s = s.trim();
-		if (s.startsWith("'") && s.endsWith("'") || s.startsWith("\"") && s.endsWith("\"")) {
-			s = s.substring(1, s.length()-1);
-		} 
-		return Arrays.asList(COMMA_OR_SPACE_PATTERN.split(s));
 	}
 
 	/**
@@ -54,10 +43,10 @@ public class NameFinder {
 	private static ShortArrayList computeCompiledNameTags(Properties props) {
 		if (props == null)
 			return null;
-		String nameTagProp = props.getProperty("name-tag-list", "name");
-		if ("name".equals(nameTagProp))
+		List<String> nametags = CommandArgs.getNameTags(props);
+		if (nametags.size() == 1 && "name".equals(nametags.get(0)))
 			return null;
-		return TagDict.compileTags(COMMA_OR_SPACE_PATTERN.split(nameTagProp));
+		return TagDict.compileTags(nametags.toArray(new String[0]));
 	}
 	
 	
@@ -68,7 +57,7 @@ public class NameFinder {
 	 */
 	public String getName(Element el) {
 		if (compiledNameTagList == null)
-			return el.getTag(nameTagKey);
+			return el.getTag(TK_NAME);
 
 		for (short tagKey : compiledNameTagList) {
 			String val = el.getTag(tagKey);
@@ -86,7 +75,7 @@ public class NameFinder {
 	 */
 	public String getName(Tags tags) {
 		if (compiledNameTagList == null)
-			return tags.get(nameTagKey);
+			return tags.get(TK_NAME);
 
 		for (short tagKey : compiledNameTagList) {
 			String val = tags.get(tagKey);
@@ -108,9 +97,9 @@ public class NameFinder {
 		for (short tagKey : compiledNameTagList) {
 			String val = el.getTag(tagKey);
 			if (val != null) {
-				if (tagKey != nameTagKey) {
+				if (tagKey != TK_NAME) {
 					// add or replace name 
-					el.addTag(nameTagKey, val);
+					el.addTag(TK_NAME, val);
 				}
 				break;
 			}

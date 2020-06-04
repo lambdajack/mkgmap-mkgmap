@@ -36,10 +36,10 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.CommandArgs;
 import uk.me.parabola.mkgmap.Options;
 import uk.me.parabola.mkgmap.general.LevelInfo;
 import uk.me.parabola.mkgmap.general.LineAdder;
@@ -79,9 +79,6 @@ public class StyleImpl implements Style {
 	private static final String FILE_INFO = "info";
 	private static final String FILE_OPTIONS = "options";
 	private static final String FILE_OVERLAYS = "overlays";
-
-	// Patterns
-	private static final Pattern COMMA_OR_SPACE_PATTERN = Pattern.compile("[,\\s]+");
 
 	// A handle on the style directory or file.
 	private final StyleFileLoader fileLoader;
@@ -236,9 +233,7 @@ public class StyleImpl implements Style {
 		// if they are not found in the style file.  This is mostly to work
 		// around situations that we haven't thought of - the style is expected
 		// to get it right for itself.
-		String s = getOption("extra-used-tags");
-		if (s != null && !s.trim().isEmpty())
-			set.addAll(Arrays.asList(COMMA_OR_SPACE_PATTERN.split(s)));
+		set.addAll(CommandArgs.stringToList(getOption("extra-used-tags"), "extra-used-tags"));
 
 		// There are a lot of tags that are used within mkgmap that 
 		try (InputStream is = this.getClass().getResourceAsStream("/styles/builtin-tag-list");) {

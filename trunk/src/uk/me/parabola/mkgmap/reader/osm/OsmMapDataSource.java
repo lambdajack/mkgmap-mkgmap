@@ -32,9 +32,9 @@ import java.util.Set;
 
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.CommandArgs;
 import uk.me.parabola.mkgmap.general.LevelInfo;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
-import uk.me.parabola.mkgmap.osmstyle.NameFinder;
 import uk.me.parabola.mkgmap.osmstyle.StyleImpl;
 import uk.me.parabola.mkgmap.osmstyle.StyledConverter;
 import uk.me.parabola.mkgmap.reader.MapperBasedMapDataSource;
@@ -326,7 +326,7 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 		// make sure that we don't remove tags which are only used with the mkgmap:from-node: prefix 
 		style.getUsedTags().stream().filter(s -> s.startsWith(POIGeneratorHook.FROM_NODE_PREFIX))
 				.map(s -> s.substring(POIGeneratorHook.FROM_NODE_PREFIX.length())).forEach(usedTags::add);
-		usedTags.addAll(NameFinder.getNameTags(props));
+		usedTags.addAll(CommandArgs.getNameTags(props));
 		converter = new StyledConverter(style, mapper, props);
 	}
 

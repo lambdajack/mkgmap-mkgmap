@@ -14,16 +14,16 @@ package uk.me.parabola.mkgmap.build;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 
+import uk.me.parabola.mkgmap.CommandArgs;
 import uk.me.parabola.util.EnhancedProperties;
 
 public class LocatorUtil {
-
-	private static final Pattern COMMA_OR_SPACE_PATTERN = Pattern.compile("[,\\s]+");
+	private LocatorUtil () {
+		// private constructor to hide the implicit one
+	}
 	
 	/**
 	 * Parses the parameters of the location-autofill option. Establishes also downwards
@@ -32,39 +32,39 @@ public class LocatorUtil {
 	 * @return the options
 	 */
 	public static Set<String> parseAutofillOption(EnhancedProperties props) {
-		String optionStr = props.getProperty("location-autofill", null);
+		final String optName = "location-autofill";
+		final String IS_IN = "is_in";
+		final String NEAREST = "nearest";
+		String optionStr = props.getProperty(optName, null);
 		if (optionStr == null) {
 			return Collections.emptySet();
 		}
-	
-		Set<String> autofillOptions = new HashSet<String>(Arrays.asList(COMMA_OR_SPACE_PATTERN
-				.split(optionStr)));
+		Set<String> autofillOptions = CommandArgs.stringToSet(optionStr, optName);
 	
 		// convert the old autofill options to the new parameters
 		if (autofillOptions.contains("0")) {
-			autofillOptions.add("is_in");
+			autofillOptions.add(IS_IN);
 			autofillOptions.remove("0");
 		}
 		if (autofillOptions.contains("1")) {
-			autofillOptions.add("is_in");
-			// PENDING: fuzzy search
+			autofillOptions.add(IS_IN);
 			autofillOptions.remove("1");
 		}
 		if (autofillOptions.contains("2")) {
-			autofillOptions.add("is_in");
+			autofillOptions.add(IS_IN);
 			// PENDING: fuzzy search
-			autofillOptions.add("nearest");
+			autofillOptions.add(NEAREST);
 			autofillOptions.remove("2");
 		}		
 		if (autofillOptions.contains("3")) {
-			autofillOptions.add("is_in");
+			autofillOptions.add(IS_IN);
 			// PENDING: fuzzy search
-			autofillOptions.add("nearest");
+			autofillOptions.add(NEAREST);
 			autofillOptions.remove("3");
 		}	
-		final List<String> knownOptions = Arrays.asList("bounds","is_in","nearest");
+		final List<String> knownOptions = Arrays.asList("bounds", IS_IN, NEAREST);
 		for (String s : autofillOptions){
-			if (knownOptions.contains(s) == false){
+			if (!knownOptions.contains(s)) {
 				throw new IllegalArgumentException(s + " is not a known sub option for option location-autofill: " + optionStr);
 			}
 		}

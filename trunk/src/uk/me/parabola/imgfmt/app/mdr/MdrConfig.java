@@ -128,35 +128,8 @@ public class MdrConfig {
 		return Collections.unmodifiableSet(mdr7Excl);
 	}
 
-	public void setMdr7Excl(String exclList) {
-		mdr7Excl = stringToSet(exclList);
-	}
-
 	public Set<String> getMdr7Del() {
 		return Collections.unmodifiableSet(mdr7Del);
-	}
-
-	public void setMdr7Del(String delList) {
-		mdr7Del = stringToSet(delList);
-	}
-	
-	private static Set<String> stringToSet (String opt) {
-		Set<String> set;
-
-		if (opt == null)
-			set = Collections.emptySet();
-		else {
-			if (opt.startsWith("'") || opt.startsWith("\""))
-				opt = opt.substring(1);
-			if (opt.endsWith("'") || opt.endsWith("\""))
-				opt = opt.substring(0, opt.length() - 1);
-			List<String> list = Arrays.asList(opt.split(","));
-			set = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-			for (String s : list) {
-				set.add(s.trim());
-			}
-		}
-		return set;
 	}
 
 	/**
@@ -164,20 +137,20 @@ public class MdrConfig {
 	 * @param opt the option string given. Expected is a comma separated list,eg
 	 * "0x2800" or "0x2800, 0x6400-0x661f" 
 	 */
-	public void setPoiExcl (String opt) {
-		if (opt == null)
-			return;
-		poiExclTypes = new TreeSet<>();
-		
-		String[] opts = opt.split(",");
-		for (String range : opts) {
-			if (range.contains("-")) {
-				String[] ranges = range.split("-");
-				if (ranges.length != 2)
-					throw new IllegalArgumentException("invalid range in option " + range);
-				genTypesForRange(poiExclTypes, ranges[0], ranges[1]);
-			} else {
-				genTypesForRange(poiExclTypes, range,range);
+	public void setPoiExcl (List<String> opts) {
+		if (opts.isEmpty())
+			poiExclTypes = Collections.emptyNavigableSet();
+		else {
+			poiExclTypes = new TreeSet<>();
+			for (String range : opts) {
+				if (range.contains("-")) {
+					String[] ranges = range.split("-");
+					if (ranges.length != 2)
+						throw new IllegalArgumentException("invalid range in option " + range);
+					genTypesForRange(poiExclTypes, ranges[0], ranges[1]);
+				} else {
+					genTypesForRange(poiExclTypes, range,range);
+				}
 			}
 		}
 	}
@@ -222,8 +195,8 @@ public class MdrConfig {
 
 	public void setIndexOptions(CommandArgs args) {
 		setSplitName(args.get("split-name-index", false));
-		setMdr7Excl(args.get("mdr7-excl", null));
-		setMdr7Del(args.get("mdr7-del", null));
-		setPoiExcl(args.get("poi-excl-index", null));
+		mdr7Excl = args.argToSet("mdr7-excl", null);
+		mdr7Del = args.argToSet("mdr7-del", null);
+		setPoiExcl(args.argToList("poi-excl-index", null));
 	}
 }
