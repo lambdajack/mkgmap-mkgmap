@@ -293,7 +293,7 @@ public class Main implements ArgumentProcessor {
 					log.threadTag(null);
 					return output;
 				} else {
-					log.error("file " + filename + " doesn't exist");
+					log.error("input file '" + filename + "' doesn't exist");
 					return null;
 				}
 			}
