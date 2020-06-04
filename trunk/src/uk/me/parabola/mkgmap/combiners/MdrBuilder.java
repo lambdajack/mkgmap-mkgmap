@@ -15,6 +15,9 @@ package uk.me.parabola.mkgmap.combiners;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -335,11 +338,11 @@ public class MdrBuilder implements Combiner {
 
 		// Rename from the temporary file to the proper name. On windows the target file must
 		// not exist for rename to work, so we are forced to remove it first.
-		File outputName = new File(this.outputName);
-		outputName.delete();
-		boolean ok = tmpName.renameTo(outputName);
-		if (!ok)
+		try {
+			Files.move(tmpName.toPath(), Paths.get(outputName), StandardCopyOption.REPLACE_EXISTING);
+		} catch (IOException e) {
 			throw new MapFailedException("Could not create mdr.img file");
+		}
 	}
 
 	/**

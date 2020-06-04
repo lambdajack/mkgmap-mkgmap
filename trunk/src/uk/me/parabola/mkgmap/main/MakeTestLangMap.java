@@ -45,7 +45,7 @@ public class MakeTestLangMap extends AbstractTestMap {
 		drawStreetnames(map, div, lat, lng);
 	}
 
-	private void drawStreetnames(Map map, Subdivision div, double slat, double slon) {
+	private static void drawStreetnames(Map map, Subdivision div, double slat, double slon) {
 
 		char[] hexChars = "0123456789ABCDEF".toCharArray();
 

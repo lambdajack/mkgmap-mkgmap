@@ -51,7 +51,7 @@ import uk.me.parabola.log.Logger;
 public class CombinedStyleFileLoader extends StyleFileLoader {
 	private static final Logger log = Logger.getLogger(CombinedStyleFileLoader.class);
 
-	private final Map<String, String> files = new HashMap<String, String>();
+	private final Map<String, String> files = new HashMap<>();
 	private final String styleName;
 	private static final Pattern STYLE_SUFFIX = Pattern.compile("\\.style$");
 	private static final Pattern FILENAME_START_MARK = Pattern.compile("<<<");
@@ -72,7 +72,7 @@ public class CombinedStyleFileLoader extends StyleFileLoader {
 	private void loadFiles(Reader in) {
 		BufferedReader r = new BufferedReader(in);
 
-		StringBuffer currentFile = new StringBuffer();
+		StringBuilder currentFile = new StringBuilder();
 		try {
 			String line;
 			String currentName = null;
@@ -87,10 +87,9 @@ public class CombinedStyleFileLoader extends StyleFileLoader {
 					line = FILENAME_END_MARK.matcher(line).replaceFirst("");
 					log.debug("reading file", line);
 					currentName = line;
-					currentFile = new StringBuffer();
+					currentFile = new StringBuilder();
 				} else {
-					currentFile.append(line);
-					currentFile.append('\n');
+					currentFile.append(line).append('\n');
 				}
 			}
 			if (currentName == null) {
@@ -170,27 +169,22 @@ public class CombinedStyleFileLoader extends StyleFileLoader {
 	}
 
 	private static void convertToDirectory(String name, String dirname) throws IOException {
-		CombinedStyleFileLoader loader = new CombinedStyleFileLoader(name);
-		File dir = new File(dirname);
-		dir.mkdir();
-		for (String s : loader.files.keySet()) {
-			File ent = new File(dir, s);
-			ent.getParentFile().mkdirs();
-			FileWriter writer = new FileWriter(ent);
-			BufferedReader r = null;
-			try {
-				r = new BufferedReader(loader.open(s));
-				String line;
-				while ((line = r.readLine()) != null) {
-					writer.write(line);
-					writer.write('\n');
+		try (CombinedStyleFileLoader loader = new CombinedStyleFileLoader(name)) {
+			File dir = new File(dirname);
+			dir.mkdir();
+			for (String s : loader.files.keySet()) {
+				File ent = new File(dir, s);
+				ent.getParentFile().mkdirs();
+				try (FileWriter writer = new FileWriter(ent);
+						BufferedReader r = new BufferedReader(loader.open(s))) {
+					String line;
+					while ((line = r.readLine()) != null) {
+						writer.write(line);
+						writer.write('\n');
+					}
 				}
-			} finally {
-				if (r != null) r.close();
-				writer.close();
 			}
 		}
-		loader.close();
 	}
 
 	private static void convertToFile(File file, PrintStream out) throws IOException {
@@ -209,11 +203,11 @@ public class CombinedStyleFileLoader extends StyleFileLoader {
 				out.print(entry.getName());
 				out.println(">>>");
 
-				BufferedReader r = new BufferedReader(new FileReader(entry));
-				String line;
-				while ((line = r.readLine()) != null)
-					out.println(line);
-				r.close();
+				try (BufferedReader r = new BufferedReader(new FileReader(entry))) {
+					String line;
+					while ((line = r.readLine()) != null)
+						out.println(line);
+				}
 			} else {
 				convertToFile(out, entry.listFiles(new NoHiddenFilter()), entry.getName());
 			}

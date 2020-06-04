@@ -46,7 +46,7 @@ public class Options {
 	private final OptionProcessor proc;
 
 	// Used to prevent the same file being read more than once.
-	private final Collection<String> readFiles = new HashSet<String>();
+	private final Collection<String> readFiles = new HashSet<>();
 
 	public Options(OptionProcessor proc) {
 		this.proc = proc;

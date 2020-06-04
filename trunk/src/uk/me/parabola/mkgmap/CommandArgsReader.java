@@ -91,15 +91,15 @@ public class CommandArgsReader {
 				// This is a long style 'property' format option.
 				addOption(arg.substring(2));
 
-			} else if (arg.equals("-c")) {
+			} else if ("-c".equals(arg)) {
 				// Config file
 				readConfigFile(args[i++]);
 
-			} else if (arg.equals("-n")) {
+			} else if ("-n".equals(arg)) {
 				// Map name (should be an 8 digit number).
 				addOption("mapname", args[i++]);
 
-			} else if (arg.equals("-v")) {
+			} else if ("-v".equals(arg)) {
 				// make commands more verbose
 				addOption("verbose");
 
@@ -256,7 +256,7 @@ public class CommandArgsReader {
 	 * filenames.  The options take effect where they appear.
 	 */
 	interface ArgType {
-		public abstract void processArg();
+		void processArg();
 	}
 
 	/**
@@ -316,7 +316,7 @@ public class CommandArgsReader {
 
 	}
 
-	private String extractMapName(String path) {
+	private static String extractMapName(String path) {
 		File file = new File(path);
 		String fname = file.getName();
 		Pattern pat = Pattern.compile("([0-9]{8})");

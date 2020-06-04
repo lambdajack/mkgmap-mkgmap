@@ -29,6 +29,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -223,12 +224,11 @@ public class Main implements ArgumentProcessor {
 	}
 
 	private static Set<String> getValidOptions(PrintStream err) {
-		String path = "/help/en/options";
-		try (InputStream stream = Main.class.getResourceAsStream(path)) {
+		try (InputStream stream = Main.class.getResourceAsStream("/help/en/options")) {
 			if (stream == null)
-				return null;
+				return Collections.emptySet();
 
-			Set<String> result = new HashSet<>();
+			Set<String> knownOptions = new HashSet<>();
 			BufferedReader r = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
 
 			Pattern p = Pattern.compile("^--?([a-zA-Z0-9-]*).*$");
@@ -236,15 +236,14 @@ public class Main implements ArgumentProcessor {
 			while ((line = r.readLine()) != null) {
 				Matcher matcher = p.matcher(line);
 				if (matcher.matches()) {
-					String opt = matcher.group(1);
-					result.add(opt);
+					knownOptions.add(matcher.group(1));
 				}
 			}
-			return result;
+			return knownOptions;
 
 		} catch (IOException e) {
 			err.println("Could not read valid options");
-			return null;
+			return Collections.emptySet();
 		}
 	}
 
@@ -284,18 +283,16 @@ public class Main implements ArgumentProcessor {
 		args.setSort(getSort(args));
 
 		log.info("Submitting job " + filename);
-		FilenameTask task = new FilenameTask(new Callable<String>() {
-			public String call() {
-				log.threadTag(filename);
-				if (filename.startsWith("test-map:") || new File(filename).exists()){
-					String output = mp.makeMap(args, filename);
-					log.debug("adding output name", output);
-					log.threadTag(null);
-					return output;
-				} else {
-					log.error("input file '" + filename + "' doesn't exist");
-					return null;
-				}
+		FilenameTask task = new FilenameTask(() -> {
+			log.threadTag(filename);
+			if (filename.startsWith("test-map:") || new File(filename).exists()){
+				String output = mp.makeMap(args, filename);
+				log.debug("adding output name", output);
+				log.threadTag(null);
+				return output;
+			} else {
+				log.error("input file '" + filename + "' doesn't exist");
+				return null;
 			}
 		});
 		task.setArgs(args);
@@ -318,7 +315,7 @@ public class Main implements ArgumentProcessor {
 			// This option always appears first.  We use it to turn on/off
 			// generation of the overview files if there is only one file
 			// to process.
-			int n = Integer.valueOf(val);
+			int n = Integer.parseInt(val);
 			if (n > 0) // TODO temporary, this option will become properly default of on.
 				createTdbFiles = true;
 
@@ -548,8 +545,9 @@ public class Main implements ArgumentProcessor {
 							// save the result for later use
 							future.setFilename(future.get());
 							filenames.add(future);
-						} else
+						} else {
 							Thread.sleep(100);
+						}
 					} catch (ExecutionException e) {
 						// Re throw the underlying exception
 						Throwable cause = e.getCause();
@@ -692,6 +690,7 @@ public class Main implements ArgumentProcessor {
 		}
 	}
 
+		
 	private void fileOptions(CommandArgs args) {
 		boolean indexOpt = args.exists("index");
 		boolean gmapsuppOpt = args.exists("gmapsupp");

@@ -1060,14 +1060,15 @@ public class StyledConverter implements OsmConverter {
 						+ points.get(0).toOSMURL() + ")");
 			else {
 				boolean clockwise = dir > 0;
+				boolean dirIsWrong = (Boolean.TRUE.equals(driveOnLeft) && !clockwise || Boolean.FALSE.equals(driveOnLeft) && clockwise);
 				if (points.get(0) == points.get(points.size() - 1)) {
 					// roundabout is a loop
-					if (driveOnLeft && !clockwise || !driveOnLeft && clockwise) {
+					if (dirIsWrong) {
 						log.warn("Roundabout " + way.getId() + " direction is wrong - reversing it (see "
 								+ centre.toOSMURL() + ")");
 						way.reverse();
 					}
-				} else if (driveOnLeft && !clockwise || !driveOnLeft && clockwise) {
+				} else if (dirIsWrong) {
 					// roundabout is a line
 					log.warn("Roundabout segment " + way.getId() + " direction looks wrong (see "
 							+ points.get(0).toOSMURL() + ")");
@@ -2231,7 +2232,7 @@ public class StyledConverter implements OsmConverter {
 				continue;
 			Way way = cw.getWay();
 			if ("true".equals(way.getTag("mkgmap:way-has-pois"))) {
-				String wayPOI = "";
+				StringBuilder wayPOI = new StringBuilder();
 
 				List<Coord> points = way.getPoints();
 				int numPoints = points.size();
@@ -2265,15 +2266,15 @@ public class StyledConverter implements OsmConverter {
 						}
 						if (usedInThisWay) {
 							cp.setUsed(true);
-							wayPOI += "[" + node.getId() + "]";
+							wayPOI.append('[').append(node.getId()).append(']');
 						}
 					}
 				} 
-				if (wayPOI.isEmpty()) {
+				if (wayPOI.length() == 0) {
 					way.deleteTag("mkgmap:way-has-pois");
 					log.info("ignoring CoordPOI(s) for way", way.toBrowseURL(), "because routing is not affected.");
 				} else {
-					way.addTag(WAY_POI_NODE_IDS, wayPOI);
+					way.addTag(WAY_POI_NODE_IDS, wayPOI.toString());
 				}
 			}
 		}

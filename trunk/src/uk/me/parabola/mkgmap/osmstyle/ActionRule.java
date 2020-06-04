@@ -83,13 +83,11 @@ public class ActionRule implements Rule {
 		}
 
 		// an action will be performed, so we may have to invalidate the cache
-		boolean invalidate_cache = false;
-		for (Action a : actions){
-			if (a.perform(element)){
-				invalidate_cache = true;
-			}
+		boolean invalidateCache = false;
+		for (Action a : actions) {
+			invalidateCache |= a.perform(element);
 		}
-		if (invalidate_cache)
+		if (invalidateCache)
 			cacheId++;
 		
 		if (type != null && finalizeRule != null) {

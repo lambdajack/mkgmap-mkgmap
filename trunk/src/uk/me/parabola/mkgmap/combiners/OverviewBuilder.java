@@ -112,12 +112,11 @@ public class OverviewBuilder implements Combiner {
 	}
 
 	private void calcLevels() {
-		List<MapShape> shapes = overviewSource.getShapes();
 		int maxRes = 16; // we can write a 0x4a polygon for planet in res 16
 		if (wantedLevels != null)
 			maxRes = wantedLevels[wantedLevels.length-1].getBits();
 		int maxSize = 0xffff << (24 - maxRes);
-		for (MapShape s : shapes){
+		for (MapShape s : overviewSource.getShapes()){
 			if (s.getType() != 0x4a)
 				continue;
 			int maxDimPoly = s.getBounds().getMaxDimension();
@@ -127,13 +126,14 @@ public class OverviewBuilder implements Combiner {
 					maxRes--;
 					maxSize = 0xffff << (24 - maxRes);
 				}
-				String[] name = s.getName().split("\u001d");
-				String msg = "Tile selection (0x4a) polygon for "; 
-				if (name != null && name.length == 2)
-					msg += "tile " + name[1].trim();
+				final String[] name = s.getName().split("\u001d");
+				final String msg = "Tile selection (0x4a) polygon for";
+				final String msg2;
+				if (name.length == 2)
+					msg2 = "tile " + name[1].trim();
 				else 
-					msg += s.getBounds(); 
-				log.error(msg,"cannot be written in level 0 resolution",oldMaxRes + ", using",maxRes,"instead");
+					msg2 = s.getBounds().toString(); 
+				log.error(msg, msg2, "cannot be written in level 0 resolution", oldMaxRes + ", using", maxRes, "instead");
 				
 			}
 		}

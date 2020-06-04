@@ -302,12 +302,7 @@ public class POIRecord {
 			while (i < number.length()) {
 
 				int c1 = decodeChar(number.charAt(i++));
-
-				int c2;
-				if (i < number.length()) {
-					c2 = decodeChar(number.charAt(i++));
-				} else
-					c2 = 10;
+				int c2 = (i < number.length()) ? decodeChar(number.charAt(i++)) : 10;
 
 				// Only 0-9 and - allowed
 				if (c1 < 0 || c1 > 10 || c2 < 0 || c2 > 10)

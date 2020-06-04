@@ -68,8 +68,7 @@ public abstract class FileBlock {
 	}
 
 	private byte[] writeToCommon(int codePage) throws IOException {
-		StructuredOutputStream output = getStructuredOutput(codePage);
-		writeBody(output);
+		writeBody(getStructuredOutput(codePage));
 
 		byte[] b = this.output.toByteArray();
 

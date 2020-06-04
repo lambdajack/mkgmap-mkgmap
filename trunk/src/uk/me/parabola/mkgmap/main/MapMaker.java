@@ -64,14 +64,7 @@ public class MapMaker implements MapProcessor {
 					String fname = OverviewBuilder.getOverviewImgName(args.getMapname());
 					
 					File f = new File(args.getOutputDir(), fname);
-					if (f.exists() && f.isFile()) {
-						try {
-							Files.delete(f.toPath());
-							log.warn("removed " + f);
-						} catch (IOException e) {
-							log.warn("removing " + f + "failed with " + e.getMessage());
-						}
-					}
+					tryRemove(f);
 				}
 			}
 			return makeMap(args, src, "");
@@ -82,6 +75,17 @@ public class MapMaker implements MapProcessor {
 		} catch (FileNotFoundException e) {
 			System.err.println("Could not open file: " + filename);
 			return filename;
+		}
+	}
+
+	private static void tryRemove(File f) {
+		if (f.exists() && f.isFile()) {
+			try {
+				Files.delete(f.toPath());
+				log.warn("removed " + f);
+			} catch (IOException e) {
+				log.warn("removing " + f + "failed with " + e.getMessage());
+			}
 		}
 	}
 
@@ -149,13 +153,11 @@ public class MapMaker implements MapProcessor {
 	 * @throws FileNotFoundException For non existing files.
 	 * @throws FormatException When the file format is not valid.
 	 */
-	private static LoadableMapDataSource loadFromFile(CommandArgs args, String name) throws
-			FileNotFoundException, FormatException
-	{
+	private static LoadableMapDataSource loadFromFile(CommandArgs args, String name) throws FileNotFoundException {
 		LoadableMapDataSource src = MapReader.createMapReader(name);
 		src.config(args.getProperties());
 		log.info("Started loading", name);
-		src.load(name, args.getProperties().getProperty("transparent", false) == false);
+		src.load(name, !args.getProperties().getProperty("transparent", false));
 		log.info("Finished loading", name);
 		return src;
 	}

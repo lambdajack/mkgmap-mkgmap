@@ -146,7 +146,7 @@ public class ExpressionArranger {
 	 *
 	 * The output is (a & c) | (b & c) | ...
 	 */
-	private Op distribute(Op op) {
+	private static Op distribute(Op op) {
 		Op ab = op.getFirst();
 		Op a = ab.getFirst();
 		Op b = ab.getSecond();
@@ -180,7 +180,7 @@ public class ExpressionArranger {
 	/**
 	 * Order the child nodes so that the 'best' one is on the left (first).
 	 */
-	private void orderBest(Op op) {
+	private static void orderBest(Op op) {
 		assert OPERATORS.contains(op.getType());
 
 		if (leftNodeWeight(op.getFirst()) > leftNodeWeight(op.getSecond())) {
@@ -193,7 +193,7 @@ public class ExpressionArranger {
 	 *
 	 * We prefer AND to OR and prefer everything else to AND.
 	 */
-	private int leftNodeWeight(Op op) {
+	private static int leftNodeWeight(Op op) {
 		switch (op.getType()) {
 		case AND: return 10;
 		case OR: return 20;
@@ -206,7 +206,7 @@ public class ExpressionArranger {
 	 *
 	 * Each node that is preceded by NOT is inverted.
 	 */
-	private Op removeAllNot(Op expr) {
+	private static Op removeAllNot(Op expr) {
 		if (expr == null)
 			return null;
 
@@ -232,14 +232,14 @@ public class ExpressionArranger {
 	 * @param op This will be a NOT node.
 	 * @return A new expression, could be the same as given.
 	 */
-	private Op removeNot(Op op) {
+	private static Op removeNot(Op op) {
 		return invert(op.getFirst());
 	}
 
 	/**
 	 * Invert an expression, ie apply NOT to it.
 	 */
-	private Op invert(Op op) {
+	private static Op invert(Op op) {
 		switch (op.getType()) {
 		case NOT:
 			Op f = op.getFirst();
@@ -283,9 +283,9 @@ public class ExpressionArranger {
 		case FUNCTION:
 		case OPEN_PAREN:
 		case CLOSE_PAREN:
+		default:
 			throw new ExitException("Programming error, tried to invert invalid node " + op);
 		}
-		return null;
 	}
 
 	/**
@@ -294,7 +294,7 @@ public class ExpressionArranger {
 	 * This is used when inverting nodes because !(a>0) is (a<=0 | a!=*) because
 	 * the statement is true when the tag does not exist.
 	 */
-	private Op neWith(Op op) {
+	private static Op neWith(Op op) {
 		return new OrOp().set(
 				new NotExistsOp().setFirst(op.getFirst()),
 				op
@@ -306,7 +306,7 @@ public class ExpressionArranger {
 	 *
 	 * Eg: given (A&B)&(C&D) we return (A&(B&(C&D)))
 	 */
-	private void reAssociate(Op op, NodeType kind) {
+	private static void reAssociate(Op op, NodeType kind) {
 		assert op.isType(kind);
 		assert kind == OR || kind == AND;
 
@@ -332,7 +332,7 @@ public class ExpressionArranger {
 	 * If any of A,B.. happen to be AND terms, then these are merged into the
 	 * chain first.  If there is an OR on the left it will float to the back.
 	 */
-	private void arrangeAndChain(Op op) {
+	private static void arrangeAndChain(Op op) {
 		Op last = op;
 		List<Op> terms = new ArrayList<>();
 		terms.add(op.getFirst());
@@ -353,7 +353,7 @@ public class ExpressionArranger {
 		}
 
 		if (terms.size() > 1)
-			terms.sort(Comparator.comparingInt(this::selectivity));
+			terms.sort(Comparator.comparingInt(ExpressionArranger::selectivity));
 
 		Op current = op;
 		for (Op o : terms) {
@@ -376,7 +376,7 @@ public class ExpressionArranger {
 	 * Ideally you might want to consider tag frequencies, since highway is a very
 	 * common tag, it would be better to push it behind other tags.
 	 */
-	private int selectivity(Op op) {
+	private static int selectivity(Op op) {
 		// Operations that involve a non-indexable function must always go to the back.
 		if (op.getFirst().isType(FUNCTION)) {
 			StyleFunction func = (StyleFunction) op.getFirst();

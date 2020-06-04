@@ -399,7 +399,7 @@ public class ExtTypeAttributes {
 					else return sectorStart > other.sectorStart? 1: -1;
 				}
 			}
-			List<SeamarkLight> lights = new ArrayList<SeamarkLight>();
+			List<SeamarkLight> lights = new ArrayList<>();
 			// create a SeamarkLight for each light
 			for(int n = 1; n <= 100; ++n) {
 				String desc = attributes.get("seamark:light:" + n);
@@ -412,29 +412,27 @@ public class ExtTypeAttributes {
 			lights.sort(null);
 			// generate the descriptor string - each light is
 			// specified as color,range,sectorStartAngle
-			String light = null;
+			StringBuilder light = null;
 			for(int i = 0; i < lights.size(); ++i) {
 				SeamarkLight sml = lights.get(i);
 				if(light == null)
-					light = "";
+					light = new StringBuilder();
 				else
-					light += "/";
-				light += sml.colour + "," + sml.range + "," + sml.sectorStart;
-				//light += sml.colour + "," + sml.range/10 + "." + sml.range%10 + "," + sml.sectorStart;
+					light.append('/');
+				light.append(sml.colour).append(',').append(sml.range).append(',').append(sml.sectorStart);
 				if((i + 1) < lights.size()) {
 					if(sml.sectorEnd != lights.get(i + 1).sectorStart) {
 						// gap between lit sectors
-						light += "/unlit,0," + sml.sectorEnd;
+						light.append("/unlit,0,").append(sml.sectorEnd);
 					}
 				}
 				else if(sml.sectorEnd != lights.get(0).sectorStart) {
 					// gap to end
-					light += "/unlit,0," + sml.sectorEnd;
+					light.append("/unlit,0,").append(sml.sectorEnd);
 				}
 			}
 			if(light != null) {
-				//System.err.println(light);
-				attributes.put("light", light);
+				attributes.put("light", light.toString());
 				if(attributes.get("seamark:light:character") == null)
 					attributes.put("type", "fixed");
 			}
@@ -443,8 +441,8 @@ public class ExtTypeAttributes {
 		String sequence = attributes.get("seamark:light:sequence");
 
 		if(sequence != null) {
-			StringBuffer periods = new StringBuffer();
-			StringBuffer eclipse = new StringBuffer();
+			StringBuilder periods = new StringBuilder();
+			StringBuilder eclipse = new StringBuilder();
 			for(String p : sequence.split("[+,]")) {
 				if (p.startsWith("(") && p.endsWith(")")) {
 					// phases of eclipse are enclosed in (), remove them
@@ -882,7 +880,7 @@ public class ExtTypeAttributes {
 			int di = dn.intValue();
 			flags[DISTANCE_FLAG_METRIC_INDEX] = true;
 			flags[DISTANCE_FLAG_TENTHS_INDEX] = false;
-			if("ft".equals(ds.substring(pp.getIndex()).trim().toLowerCase()))
+			if("ft".equalsIgnoreCase(ds.substring(pp.getIndex()).trim()))
 				flags[DISTANCE_FLAG_METRIC_INDEX] = false;
 			if((double)di != dd) {
 				// number has fractional part

@@ -37,21 +37,21 @@ public interface MapCollector {
 	 * @param p The coordinates of the point to add.  The type here
 	 * will change to Node.
 	 */
-	public void addToBounds(Coord p);
+	void addToBounds(Coord p);
 
 	/**
 	 * Add a point to the map.
 	 *
 	 * @param point The point to add.
 	 */
-	public void addPoint(MapPoint point);
+	void addPoint(MapPoint point);
 
 	/**
 	 * Add a line to the map.
 	 *
 	 * @param line The line information.
 	 */
-	public void addLine(MapLine line);
+	void addLine(MapLine line);
 
 	/**
 	 * Add the given shape (polygon) to the map.  A shape is very similar to
@@ -60,7 +60,7 @@ public interface MapCollector {
 	 *
 	 * @param shape The polygon to add.
 	 */
-	public void addShape(MapShape shape);
+	void addShape(MapShape shape);
 
 
 	/**
@@ -68,13 +68,13 @@ public interface MapCollector {
 	 * differently so that we can join up roads that are split into several
 	 * segments and to do routing etc.
 	 */
-	public void addRoad(MapRoad road);
+	void addRoad(MapRoad road);
 
 	/**
 	 * Add a routing restriction to the map.  This is something such as
 	 * no left turn.
 	 * @param exceptMask For exceptions eg. no-left-turn except for buses.
 	 */
-	public int addRestriction(GeneralRouteRestriction grr);
+	int addRestriction(GeneralRouteRestriction grr);
 }
 

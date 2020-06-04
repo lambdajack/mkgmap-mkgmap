@@ -17,6 +17,7 @@
 package uk.me.parabola.mkgmap.osmstyle;
 
 import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -46,7 +47,7 @@ import uk.me.parabola.log.Logger;
  *
  * @author Steve Ratcliffe
  */
-public class JarFileLoader extends StyleFileLoader {
+public class JarFileLoader extends StyleFileLoader implements Closeable {
 	private static final Logger log = Logger.getLogger(JarFileLoader.class);
 	private JarFile jarFile;
 	private String prefix;
@@ -63,7 +64,7 @@ public class JarFileLoader extends StyleFileLoader {
 		}
 	}
 
-	private String makeJarUrl(String url) {
+	private static String makeJarUrl(String url) {
 		if (url.toLowerCase().startsWith("jar:"))
 			return url;
 		else
@@ -93,7 +94,7 @@ public class JarFileLoader extends StyleFileLoader {
 	 * @param style a style name or null to find any version file
 	 * @return return prefix of (first) entry that contains file version
 	 */
-	private String searchVersion(JarFile file, String style) {
+	private static String searchVersion(JarFile file, String style) {
 		Enumeration<JarEntry> en = file.entries();
 		String flatEnd = style==null ? "version" : style + "/version";
 		String end = "/" + flatEnd;
@@ -143,14 +144,9 @@ public class JarFileLoader extends StyleFileLoader {
 		}
 	}
 
-	protected void finalize() throws Throwable {
-		super.finalize();
-		close();
-	}
-
 	public String[] list() {
 		Enumeration<JarEntry> en = jarFile.entries();
-		List<String> list = new ArrayList<String>();
+		List<String> list = new ArrayList<>();
 		while (en.hasMoreElements()) {
 			JarEntry entry = en.nextElement();
 

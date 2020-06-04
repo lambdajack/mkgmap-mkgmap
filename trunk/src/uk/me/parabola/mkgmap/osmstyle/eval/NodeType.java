@@ -39,7 +39,7 @@ public enum NodeType {
 
 	private final String symbol;
 
-	private NodeType(String symbol) {
+	NodeType(String symbol) {
 		this.symbol = symbol;
 	}
 

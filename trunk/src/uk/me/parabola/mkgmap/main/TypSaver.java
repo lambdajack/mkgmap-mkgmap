@@ -75,7 +75,7 @@ class TypSaver implements MapProcessor {
 	 * @param n The number of characters in the first block. The minimum size of the TYP file is
 	 * less than the buffer size.
 	 */
-	private void writeAlteredTyp(String outFilename, FileInputStream in, byte[] buf, int n) {
+	private static void writeAlteredTyp(String outFilename, FileInputStream in, byte[] buf, int n) {
 		try (FileOutputStream out = new FileOutputStream(outFilename)) {
 			do {
 				out.write(buf, 0, n);
@@ -97,7 +97,7 @@ class TypSaver implements MapProcessor {
 	 * @param path The original name
 	 * @return The modified name.
 	 */
-	private String makeOutName(String path) {
+	private static String makeOutName(String path) {
 		File f = new File(path);
 		File dir = f.getParentFile();
 

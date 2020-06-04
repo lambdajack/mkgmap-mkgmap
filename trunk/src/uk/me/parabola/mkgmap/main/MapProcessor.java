@@ -33,5 +33,5 @@ public interface MapProcessor {
 	 * @param filename The input filename.
 	 * @return The output filename; the name of the file that was created.
 	 */
-	public String makeMap(CommandArgs args, String filename);
+	String makeMap(CommandArgs args, String filename);
 }

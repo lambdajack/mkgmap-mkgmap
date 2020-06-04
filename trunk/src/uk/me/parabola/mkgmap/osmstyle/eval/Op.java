@@ -132,8 +132,8 @@ public interface Op {
 		if (t == AND || t == OR) {
 			return AbstractOp.createOp(getType())
 					.set(getFirst().copy(), getSecond().copy());
-		} else
-			return this;
+		}
+		return this;
 	}
 
 	default void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {}

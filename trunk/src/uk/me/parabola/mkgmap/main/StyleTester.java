@@ -14,21 +14,20 @@
 package uk.me.parabola.mkgmap.main;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileInputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Formatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -169,8 +168,9 @@ public class StyleTester implements OsmConverter {
 				showMatches = true;
 			} else if (s.startsWith("--no-print")) {
 				print = false;
-			} else
+			} else {
 				a.add(s);
+			}
 		}
 		return a.toArray(new String[a.size()]);
 	}
@@ -239,7 +239,7 @@ public class StyleTester implements OsmConverter {
 			List<String> actual = new ArrayList<>();
 			List<String> expected = new ArrayList<>();
 			for (Way w : ways) {
-				OsmConverter normal = new StyleTester("styletester.style", new LocalMapCollector(results), false);
+				OsmConverter normal = new StyleTester(STYLETESTER_STYLE, new LocalMapCollector(results), false);
 
 				String prefix = "WAY " + w.getId() + ": ";
 				normal.convertWay(w.copy());
@@ -248,7 +248,7 @@ public class StyleTester implements OsmConverter {
 				results.clear();
 
 				if (!noStrict) {
-					OsmConverter strict = new StyleTester("styletester.style", new LocalMapCollector(strictResults), true);
+					OsmConverter strict = new StyleTester(STYLETESTER_STYLE, new LocalMapCollector(strictResults), true);
 					strict.convertWay(w.copy());
 					strict.end();
 					expected.addAll(formatResults(prefix, strictResults));
@@ -409,18 +409,18 @@ public class StyleTester implements OsmConverter {
 	 * toString methods on MapLine and MapRoad.
 	 */
 	private static String lineToString(MapLine el) {
-		Formatter fmt = new Formatter();
-		fmt.format("Line 0x%x, labels=%s, res=%d-%d",
+		StringBuilder sb = new StringBuilder();
+		sb.append(String.format("Line 0x%x, labels=%s, res=%d-%d",
 				el.getType(), Arrays.toString(el.getLabels()),
-				el.getMinResolution(), el.getMaxResolution());
+				el.getMinResolution(), el.getMaxResolution()));
 		if (el.isDirection())
-			fmt.format(" oneway");
+			sb.append(" oneway");
 
-		fmt.format(" ");
+		sb.append(' ');
 		for (Coord co : el.getPoints())
-			fmt.format("(%s),", co);
+			sb.append(String.format("(%s),", co));
 
-		return fmt.toString();
+		return sb.toString();
 	}
 
 	/**
@@ -428,13 +428,11 @@ public class StyleTester implements OsmConverter {
 	 * toString methods on MapLine and MapRoad.
 	 */
 	private static String roadToString(MapRoad el) {
-		StringBuffer sb = new StringBuffer(lineToString(el));
-		sb.delete(0, 4);
-		sb.insert(0, "Road");
-		Formatter fmt = new Formatter(sb);
-		fmt.format(" road class=%d speed=%d", el.getRoadDef().getRoadClass(),
-				getRoadSpeed(el.getRoadDef()));
-		return fmt.toString();
+		StringBuilder sb = new StringBuilder(lineToString(el));
+		sb.replace(0, 4, "Road");
+		sb.append(String.format(" road class=%d speed=%d", el.getRoadDef().getRoadClass(),
+				getRoadSpeed(el.getRoadDef())));
+		return sb.toString();
 	}
 
 	/**
@@ -647,8 +645,9 @@ public class StyleTester implements OsmConverter {
 					if (showMatches) {
 						if (a.isFound()) {
 							out.println("# Matched: " + rule);
-						} else if (a.isActionsOnly())
+						} else if (a.isActionsOnly()) {
 							out.println("# Matched for actions: " + rule);
+						}
 					}
 
 					if (a.isResolved())
@@ -694,9 +693,7 @@ public class StyleTester implements OsmConverter {
 					if (rule.containsExpression(exp))
 						return true;
 				}
-				if (getFinalizeRule()!= null && getFinalizeRule().containsExpression(exp))
-					return true;
-				return false;
+				return getFinalizeRule()!= null && getFinalizeRule().containsExpression(exp);
 			}
 		}
 

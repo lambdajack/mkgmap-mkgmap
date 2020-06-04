@@ -61,11 +61,12 @@ public class DirectoryFileLoader extends StyleFileLoader {
 	 * Nothing needs doing in this case.
 	 */
 	public void close() {
+		// Nothing to do
 	}
 
 	public String[] list() {
 		log.debug("dir list", dir);
-		List<String> res = new ArrayList<String>();
+		List<String> res = new ArrayList<>();
 
 		File[] allFiles = dir.listFiles();
 		if (allFiles != null) {

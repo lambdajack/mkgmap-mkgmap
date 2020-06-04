@@ -51,7 +51,7 @@ public class ConvertedWay {
 		this.way = way;
 		this.gt = type;
 		// note that the gt.getType() may not be a routable type when overlays are used
-		if (type.isRoad() && MapObject.hasExtendedType(gt.getType()) == false) {
+		if (type.isRoad() && !MapObject.hasExtendedType(gt.getType())) {
 			this.roadClass = (byte) gt.getRoadClass();
 			this.roadSpeed = (byte) gt.getRoadSpeed();
 			recalcRoadClass(way);
@@ -122,7 +122,7 @@ public class ConvertedWay {
 	 * @param el an element 
 	 * @return {@code true} the road class has been changed, else {@code false} 
 	 */
-	private final static short roadClassTagKey = TagDict.getInstance().xlate("mkgmap:road-class");
+	private static final short roadClassTagKey = TagDict.getInstance().xlate("mkgmap:road-class");
 	public boolean recalcRoadClass(Element el) {
 		// save the original road class value
 		byte oldRoadClass = roadClass;
@@ -167,8 +167,8 @@ public class ConvertedWay {
 	 * @param el an element 
 	 * @return {@code true} the road speed has been changed, else {@code false} 
 	 */
-	private final static short roadSpeedTagKey = TagDict.getInstance().xlate("mkgmap:road-speed");
-	private final static short roadSpeedClassTagKey = TagDict.getInstance().xlate("mkgmap:road-speed-class");
+	private static final short roadSpeedTagKey = TagDict.getInstance().xlate("mkgmap:road-speed");
+	private static final short roadSpeedClassTagKey = TagDict.getInstance().xlate("mkgmap:road-speed-class");
 	public boolean recalcRoadSpeed(Element el) {
 		// save the original road speed value
 		byte oldRoadSpeed = roadSpeed;
@@ -228,11 +228,7 @@ public class ConvertedWay {
 	}
 
 	public boolean isValid() {
-		if (way == null)
-			return false;
-		if (way.getPoints() == null || way.getPoints().size()<2)
-			return false;
-		return true;
+		return way != null && way.getPoints().size() >= 2;
 	}
 	
 	public String toString(){
