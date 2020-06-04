@@ -86,7 +86,7 @@ public class Options {
 	public void readOptionFile(Reader r, String filename) {
 		BufferedReader br;
 		if (r instanceof BufferedReader)
-			br = (BufferedReader)r;
+			br = (BufferedReader) r;
 		else
 			br = new BufferedReader(r);
 		TokenScanner ts = new TokenScanner(filename, br);
@@ -113,9 +113,9 @@ public class Options {
 
 				String punc = ts.nextValue();
 				String val;
-				if (punc.equals(":") || punc.equals("=")) {
+				if (":".equals(punc) || "=".equals(punc)) {
 					val = ts.readLine();
-				} else if (punc.equals("{")) {
+				} else if ("{".equals(punc)) {
 					ts.skipSpace();
 					val = ts.readUntil(TokType.SYMBOL, "}");
 					ts.nextToken();  // discard the closing brace
@@ -126,7 +126,7 @@ public class Options {
 
 				// Relative file names in the file are taken relative to the
 				// location of the argument file.
-				if (key.equals("input-file") && !new File(val).isAbsolute()) 
+				if ("input-file".equals(key) && !new File(val).isAbsolute()) 
 					val = new File(parent, val).getPath();
 
 				proc.processOption(new Option(key, val));
