@@ -276,7 +276,7 @@ public class ExtTypeAttributes {
 					lt = "interrupted quick";
 				else if(parts[0].startsWith("IVQ "))
 					lt = "interrupted very quick";
-				else if(parts[0].startsWith("UQ"))
+				else if(parts[0].startsWith("IUQ"))
 					lt = "interrupted ultra quick";
 				else if(parts[0].startsWith("AI"))
 					lt = "alternating";
