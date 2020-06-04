@@ -61,8 +61,8 @@ public class DEMFile extends ImgFile {
 	 *            the bounding box of the tile
 	 * @param demPolygonMapUnits
 	 *            a bounding polygon which might be smaller than the area
-	 * @param pathToHGT
-	 *            comma separated list of directories or zip files
+	 * @param pathsToHGT
+	 *            string with comma separated list of directories or zip files
 	 * @param pointDistances
 	 *            list of distances which determine the resolution
 	 * @param outsidePolygonHeight
@@ -70,10 +70,10 @@ public class DEMFile extends ImgFile {
 	 *            bounding polygon
 	 * @return a new bounding box that should be used for the TRE file
 	 */
-	public Area calc(Area area, java.awt.geom.Area demPolygonMapUnits, String pathToHGT, List<Integer> pointDistances,
+	public Area calc(Area area, java.awt.geom.Area demPolygonMapUnits, String pathsToHGT, List<Integer> pointDistances,
 			short outsidePolygonHeight, InterpolationMethod interpolationMethod) {
 		// HGT area is extended by EXTRA degrees in each direction
-		HGTConverter hgtConverter = new HGTConverter(pathToHGT, area, demPolygonMapUnits, EXTRA);
+		HGTConverter hgtConverter = new HGTConverter(pathsToHGT, area, demPolygonMapUnits, EXTRA);
 		hgtConverter.setInterpolationMethod(interpolationMethod);
 		hgtConverter.setOutsidePolygonHeight(outsidePolygonHeight);
 		

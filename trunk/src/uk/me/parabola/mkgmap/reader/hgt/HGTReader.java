@@ -57,7 +57,7 @@ public class HGTReader {
 	 * Class to read a single HGT file. 
 	 * @param lat in degrees, -90 .. 90
 	 * @param lon - -180..180
-	 * @param dirsWithHGT comma separated list of directories to search for *.hgt files
+	 * @param dirsWithHGT string with comma separated list of directories to search for *.hgt files
 	 * Supported are also zip files containing *.hgt files and directories containing *.hgt.zip.
 	 */
 	public HGTReader(int lat, int lon, String dirsWithHGT) {

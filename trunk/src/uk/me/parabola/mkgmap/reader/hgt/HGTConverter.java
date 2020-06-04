@@ -60,13 +60,13 @@ public class HGTConverter {
 	
 	/**
 	 * Class to extract elevation information from SRTM files in hgt format.
-	 * @param path a comma separated list of directories which may contain *.hgt files.
+	 * @param paths a comma separated list of directories which may contain *.hgt files.
 	 * @param bbox the bounding box of the tile for which the DEM information is needed.
 	 * @param demPolygonMapUnits optional bounding polygon which describes the area for 
 	 * which elevation should be read from hgt files.
 	 * @param interpolationMethod 
 	 */
-	public HGTConverter(String path, Area bbox, java.awt.geom.Area demPolygonMapUnits, double extra) {
+	public HGTConverter(String paths, Area bbox, java.awt.geom.Area demPolygonMapUnits, double extra) {
 		// make bigger box for interpolation or aligning of areas
 		int minLat = (int) Math.floor(Utils.toDegrees(bbox.getMinLat()) - extra);
 		int minLon = (int) Math.floor(Utils.toDegrees(bbox.getMinLong()) - extra);
@@ -93,7 +93,7 @@ public class HGTConverter {
 				Area rdrBbox = new Area(lat, lon, lat+1.0, lon+1.0); 
 				int testMode = intersectsPoly(rdrBbox);
 				if (testMode != 0) {
-					HGTReader rdr = new HGTReader(lat, lon, path);
+					HGTReader rdr = new HGTReader(lat, lon, paths);
 					readers[row][col] = rdr;
 					maxRes = Math.max(maxRes, rdr.getRes()); 
 				} 
