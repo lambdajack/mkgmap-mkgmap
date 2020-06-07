@@ -21,6 +21,10 @@ import uk.me.parabola.mkgmap.osmstyle.function.MaxSpeedFunction.SpeedUnit;
  */
 public class FunctionFactory {
 
+	private FunctionFactory() {
+		// hide default public constructor
+	}
+	
 	/**
 	 * Returns a new instance of a style function with the given name.
 	 *
@@ -28,29 +32,29 @@ public class FunctionFactory {
 	 * @return the style function instance or {@code null} if there is no such function
 	 */
 	public static StyleFunction createFunction(String name) {
-		if ("length".equals(name))
+		switch (name) {
+		case "lenght":
 			return new LengthFunction();
-		//} else if ("get_tag".equals(name))
-		//	return new GetTagFunction(tag);
-		if ("is_closed".equals(name)) {
+		case "is_closed":
 			return new IsClosedFunction();
-		}
-		if ("is_complete".equals(name)) {
+		case "is_complete":
 			return new IsCompleteFunction();
-		}
-		if ("area_size".equals(name))
+		case "area_size":
 			return new AreaSizeFunction();
-		if ("maxspeedkmh".equals(name))
+		case "maxspeedkmh":
 			return new MaxSpeedFunction(SpeedUnit.KMH);
-		if ("maxspeedmph".equals(name))
+		case "maxspeedmph":
 			return new MaxSpeedFunction(SpeedUnit.MPH);
-		if ("type".equals(name))
+		case "type":
 			return new TypeFunction();
-		if ("osmid".equals(name))
+		case "osmid":
 			return new OsmIdFunction();
-		if ("is_in".equals(name))
+		case "is_in":
 			return new IsInFunction();
-		
-		return null;
+		case "is_drive_on_left":
+			return new IsDriveOnLeftFunction();
+		default:
+			return null;
+		}
 	}
 }

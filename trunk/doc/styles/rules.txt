@@ -286,6 +286,10 @@ some element ids are changed and some have a faked id > 4611686018427387904.
 +true+ if the element is in polygon(s) having the specified *tag*=*value* according to the *method*, +false+ otherwise.
 The methods available depend on the Style section:
 
+|is_drive_on_left()   |  | x  |  |
++true+ the element is in a drive_on_left country. +false+ the element is not a drive_on_left country or the information given 
+in the tags mkgmap:admin_level2 and mkgmap:country could not be used to retrieve the information.
+
 polygons:
  *all* - all of the closed 'way' is within the polygon(s).
  *any* - some is within.
