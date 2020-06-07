@@ -33,7 +33,7 @@ public class FunctionFactory {
 	 */
 	public static StyleFunction createFunction(String name) {
 		switch (name) {
-		case "lenght":
+		case "length":
 			return new LengthFunction();
 		case "is_closed":
 			return new IsClosedFunction();
