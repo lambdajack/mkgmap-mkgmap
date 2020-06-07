@@ -31,7 +31,6 @@ import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.filters.DouglasPeuckerFilter;
 import uk.me.parabola.mkgmap.general.MapPoint;
 import uk.me.parabola.mkgmap.reader.osm.CoordPOI;
-import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
 import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.RestrictionRelation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
@@ -423,7 +422,7 @@ public class WrongAngleFixer {
 					Coord p = points.get(i);
 					if (p.isToRemove()) {
 						if (pass >= maxPass - 1) {
-							log.warn("removed point in last pass. Way", getUsableId(way), p.toDegreeString());
+							log.warn("removed point in last pass. Way", way.getBasicLogInformation(), p.toDegreeString());
 						}
 						points.remove(i);
 						anotherPassRequired = true;
@@ -447,7 +446,7 @@ public class WrongAngleFixer {
 					}
 					p = replacement;
 					if (pass >= maxPass - 1) {
-						log.warn("changed point in last pass. Way", getUsableId(way), p.toDegreeString());
+						log.warn("changed point in last pass. Way", way.getBasicLogInformation(), p.toDegreeString());
 					}
 					// replace point in way
 					points.set(i, p);
@@ -1459,10 +1458,5 @@ public class WrongAngleFixer {
 			way.getFirstPoint().setEndOfWay(b);
 			way.getLastPoint().setEndOfWay(b);
 		}
-	}
-
-	
-	private static String getUsableId(Way w) {
-		return "Way " + (FakeIdGenerator.isFakeId(w.getId()) ? " generated from " : " ") + w.getOriginalId(); 
 	}
 }

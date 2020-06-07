@@ -300,4 +300,19 @@ public abstract class Element {
 			name += " ";
 		return name + "(OSM id " + getId() + ")";
 	}
+	
+	/**
+	 * Calculate a short string to be used in log messages or style functions
+	 * echo or echotags.
+	 * 
+	 * @return string containing the element type (Node/Way/Relation followed by
+	 *         either the id or - if the id is a fake id - the string "generated
+	 *         from " followed by the id of the source element that was used to
+	 *         generate this element.
+	 */
+	public String getBasicLogInformation() {
+		String className = getClass().getSimpleName();
+		return ("GeneralRelation".equals(className)) ? "Relation" : className 
+				+ (FakeIdGenerator.isFakeId(getId()) ? " generated from " : " ") + getOriginalId();
+	}
 }

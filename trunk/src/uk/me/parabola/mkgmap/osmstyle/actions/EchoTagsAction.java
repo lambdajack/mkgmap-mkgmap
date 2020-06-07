@@ -14,7 +14,6 @@
 package uk.me.parabola.mkgmap.osmstyle.actions;
 
 import uk.me.parabola.mkgmap.reader.osm.Element;
-import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
 
 /**
  * Sends a message including the tags of an element to System.err.
@@ -29,11 +28,7 @@ public class EchoTagsAction implements Action {
 	}
 
 	public boolean perform(Element el) {
-		String e = value.build(el, el);
-		String className = el.getClass().getSimpleName();
-		if (className.equals("GeneralRelation"))
-			className = "Relation";
-		System.err.println(className + (FakeIdGenerator.isFakeId(el.getId()) ? " generated from " : " ") + el.getOriginalId() + " " + el.toTagString() + " " + e);
+		System.err.println(el.getBasicLogInformation() + " " + el.toTagString() + " " + value.build(el, el));
 		return false;
 	}
 	

@@ -16,7 +16,6 @@
 package uk.me.parabola.mkgmap.osmstyle.actions;
 
 import uk.me.parabola.mkgmap.reader.osm.Element;
-import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
 
 /**
  * Sends a message to the console.
@@ -31,11 +30,7 @@ public class EchoAction implements Action {
 	}
 
 	public boolean perform(Element el) {
-		String e = value.build(el, el);
-		String className = el.getClass().getSimpleName();
-		if (className.equals("GeneralRelation"))
-			className = "Relation";
-		System.err.println(className + (FakeIdGenerator.isFakeId(el.getId()) ? " generated from " : " ") + el.getOriginalId() + " " + e);
+		System.err.println(el.getBasicLogInformation() + " " + value.build(el, el));
 		return false;
 	}
 }
