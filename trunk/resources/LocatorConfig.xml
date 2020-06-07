@@ -1009,10 +1009,12 @@
 		<variant>SJ</variant>
 		<variant>SJM</variant>
 	</country>
-	<country name="Swaziland" abr="SWZ" driveOnLeft="true">
+	<country name="Kingdom of Eswatini" abr="SWZ" driveOnLeft="true">
 		<variant>SZ</variant>
 		<variant>SWZ</variant>
 		<variant>Swatini</variant>
+		<variant>Eswatini</variant>
+		<variant>Swaziland</variant>
 	</country>
 	<country name="Sverige" abr="SWE" streetBeforeHousenumber="true" postalcodeBeforeCity="true">
 		<variant>Sweden</variant>
