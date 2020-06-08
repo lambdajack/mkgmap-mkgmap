@@ -326,13 +326,13 @@ public class NearbyPoiHandler {
 			if (biggestCloud == null || biggestCloud.isEmpty())
 				break;
 			
-			final Coord middle = calcMiddle(biggestCloud);
+			final Coord middle = calcMiddle(biggestCloud).getDisplayedCoord();
 			final Set<MapPoint> done = new HashSet<>(biggestCloud);
 			removeSimpleDuplicates(biggestCloud);
 			
 			// select point that is closest to the middle
 			MapPoint bestPoint = biggestCloud.stream()
-					.min(Comparator.comparingDouble(mp -> middle.distance(mp.getLocation())))
+					.min(Comparator.comparingDouble(mp -> middle.distance(mp.getLocation().getDisplayedCoord())))
 					.orElse(biggestCloud.iterator().next()); // should not happen, stream is not empty
 			
 			performAction(rule.action, bestPoint, biggestCloud, toKeep);
@@ -346,7 +346,7 @@ public class NearbyPoiHandler {
 	}
 
 	private void removeSimpleDuplicates(Set<MapPoint> biggestCloud) {
-		Set<Coord> locations = new HashSet<>();
+		Set<Coord> locations = new HashSet<>(); // uses Coord.equals()
 		Iterator<MapPoint> iter = biggestCloud.iterator();
 		while (iter.hasNext()) {
 			MapPoint mp = iter.next();
@@ -361,7 +361,7 @@ public class NearbyPoiHandler {
 
 	private static Map<MapPoint, Set<MapPoint>> buildGroups(List<MapPoint> points, int maxDistance, List<MapPoint> toKeep) {
 		final KdTree<MapPoint> kdTree = new KdTree<>();
-		points.forEach(kdTree::add);
+		points.forEach(kdTree::add); // should better use getDisplayedCoord()
 		Map<MapPoint, Set<MapPoint>> groupsMap = new LinkedHashMap<>();
 		for (MapPoint mp : points) {
 			Set<MapPoint> set = kdTree.findClosePoints(mp, maxDistance);
@@ -381,8 +381,8 @@ public class NearbyPoiHandler {
 			final MapPoint midPoint = bestPoint;
 			biggestCloud.stream().filter(mp -> mp != midPoint).forEach(mp -> {
 				if (log.isInfoEnabled()) {
-					double dist = mp.getLocation().distance(bestPoint.getLocation());
-					log.info(String.format("Removed name from nearby(<%d m)", (long) Math.ceil(dist)), getLogInfo(mp));
+					double dist = mp.getLocation().getDisplayedCoord().distance(bestPoint.getLocation().getDisplayedCoord());
+					log.info(String.format("Removed name from nearby(<= %d m)", (long) Math.ceil(dist)), getLogInfo(mp));
 				}
 				mp.setName(null);
 			});
@@ -398,8 +398,8 @@ public class NearbyPoiHandler {
 	private void logRemoval(Set<MapPoint> biggestCloud, MapPoint bestPoint) {
 		for (MapPoint mp : biggestCloud) {
 			if (mp != bestPoint) {
-				double dist = mp.getLocation().distance(bestPoint.getLocation());
-				log.info(String.format("Removed nearby (<%d m)", (long) Math.ceil(dist)), getLogInfo(mp));
+				double dist = mp.getLocation().getDisplayedCoord().distance(bestPoint.getLocation().getDisplayedCoord());
+				log.info(String.format("Removed nearby (<= %d m)", (long) Math.ceil(dist)), getLogInfo(mp));
 			}
 		}
 	}
@@ -410,7 +410,7 @@ public class NearbyPoiHandler {
 		double lon = 0;
 		final int n = points.size();
 		for (MapPoint mp : points) {
-			Coord p = mp.getLocation();
+			Coord p = mp.getLocation().getDisplayedCoord();
 			lat += (double) p.getHighPrecLat() / n;
 			lon += (double) p.getHighPrecLon() / n;
 		}
