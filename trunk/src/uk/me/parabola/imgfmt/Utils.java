@@ -387,7 +387,7 @@ public class Utils {
 		int latHp = co.getHighPrecLat();
 		int lonHp = co.getHighPrecLon();
 		
-		return (long)(latHp & 0xffffffffL) << 32 | (lonHp & 0xffffffffL);
+		return (latHp & 0xffffffffL) << 32 | (lonHp & 0xffffffffL);
 	}
 	
 	public static int numberToPointerSize(int n) {

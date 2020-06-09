@@ -32,6 +32,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.MapPoint;
@@ -210,7 +212,7 @@ public class NearbyPoiHandler {
 				default:
 					valid = false;
 					log.error("Invalid Action value", ruleParts[2], "in nearby poi rule", i + 1, rule,
-							"- 'delete-poi', 'delete-name' or'merge-at-mid-point' expected.");
+							"- 'delete-poi', or 'delete-name' expected.");
 					break;
 				}
 			}
@@ -346,11 +348,11 @@ public class NearbyPoiHandler {
 	}
 
 	private void removeSimpleDuplicates(Set<MapPoint> biggestCloud) {
-		Set<Coord> locations = new HashSet<>(); // uses Coord.equals()
+		Long2ObjectOpenHashMap<MapPoint> locations = new Long2ObjectOpenHashMap<>();
 		Iterator<MapPoint> iter = biggestCloud.iterator();
 		while (iter.hasNext()) {
 			MapPoint mp = iter.next();
-			if (!locations.add(mp.getLocation())) {
+			if (locations.put(Utils.coord2Long(mp.getLocation()), mp) != null) {
 				if (log.isInfoEnabled()) {
 					log.info("Removed duplicate", getLogInfo(mp));
 				}
