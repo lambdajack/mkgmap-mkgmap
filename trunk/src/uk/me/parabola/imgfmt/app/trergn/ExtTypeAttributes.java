@@ -281,7 +281,7 @@ public class ExtTypeAttributes {
 				else if(parts[0].startsWith("AI"))
 					lt = "alternating";
 				else if(parts[0].startsWith("Mo")) {
-					if(parts[0].indexOf("(") == 2)
+					if(parts[0].indexOf('(') == 2)
 						lt = parts[0].substring(3, 4);
 					else if(parts.length > 1 && parts[i].startsWith("(")) {
 						lt = parts[i].substring(1, 2);
@@ -290,8 +290,8 @@ public class ExtTypeAttributes {
 				}
 
 				String group2 = null;
-				if(!parts[0].startsWith("Mo") && parts[0].indexOf("(") > 0) {
-					group2 = parts[0].substring(parts[0].indexOf("(") + 1, parts[0].length() - 1);
+				if(!parts[0].startsWith("Mo") && parts[0].indexOf('(') > 0) {
+					group2 = parts[0].substring(parts[0].indexOf('(') + 1, parts[0].length() - 1);
 				}
 				else if(i < parts.length && parts[i].startsWith("(")) {
 					// should be (group)

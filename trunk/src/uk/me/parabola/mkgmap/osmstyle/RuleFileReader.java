@@ -316,7 +316,7 @@ public class RuleFileReader {
 			return false;
 		for (String tagKey : evaluated) {
 			for (String s : actionList.getChangeableTags()) {
-				int pos = s.indexOf("=");
+				int pos = s.indexOf('=');
 				String key = pos > 0 ? s.substring(0, pos) : s;
 				if (tagKey.equals(key)) {
 					return true;

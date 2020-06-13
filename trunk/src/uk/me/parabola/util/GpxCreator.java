@@ -19,7 +19,7 @@ public class GpxCreator {
 	public static String getGpxBaseName() {
 		String tilePath = (log.threadTag() == null ? "unknown" : log.threadTag());
 		
-		int tilenameStart = tilePath.lastIndexOf("/");
+		int tilenameStart = tilePath.lastIndexOf('/');
 		// check the case if the tiles are defined without path
 		tilenameStart = (tilenameStart < 0 ? 0 : tilenameStart+1);
 		

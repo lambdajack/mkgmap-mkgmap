@@ -65,7 +65,7 @@ public class OverlayReader {
 			String line = ts.readLine();
 
 			// Remove comments before parsing
-			int commentstart = line.indexOf("#");
+			int commentstart = line.indexOf('#');
 			if (commentstart != -1)
 				line = line.substring(0, commentstart);
 
