@@ -57,21 +57,38 @@ public class GType {
 	// actions will always be executed
 	private boolean propogateActionsOnContinue;
 
+	@SuppressWarnings("incomplete-switch")
 	public static boolean checkType(FeatureKind featureKind, int type) {
 		if (type >= 0x010000) {
 			if ((type & 0xff) > 0x1f)
 				return false;
 		} else {
-			if (featureKind == FeatureKind.POLYLINE && type > 0x3f
-					|| (featureKind == FeatureKind.POLYGON && (type > 0x7f || type == 0x4a))) {
-				return false;
-			} else if (featureKind == FeatureKind.POINT) {
+			switch (featureKind) {
+			case POLYLINE:
+				if (type > 0x3f)
+					return false;
+				break;
+			case POLYGON:
+				if (type > 0x7f || type == 0x4a)
+					return false;
+				break;
+			case POINT:
 				if (type < 0x0100)
 					return false;
 				int subtype = type & 0xff;
-				if (subtype > 0x1f || MapPoint.isCityType(type) && subtype != 0) {
-					return false;
+				if (MapPoint.isCityType(type)) {
+					if (subtype != 0)
+						return false;
+				} else if (type >= 0x1600 && type < 0x1e00 || // Andrzej Popowski says.
+						   type >= 0x2a00 && type < 0x3100 || // These may be indexed and this
+						   type >= 0x6400 && type < 0x6700) { // confines subtype to 5 bits
+					if (subtype > 0x1f)
+						return false;
+				} else {
+					if (subtype > 0x3f)
+						return false;
 				}
+				break;
 			}
 		}
 		return true;
@@ -243,7 +260,7 @@ public class GType {
 	 * known to cause routing errors if used for non-routable lines. 
 	 */
 	public static boolean isSpecialRoutableLineType(int type){
-		return type >= 0x01 && type <= 0x13 || type == 0x16 || type == 0x1b; 
+		return type >= 0x01 && type <= 0x13 || type == 0x16 || type == 0x1a || type == 0x1b;
 	}
 	
 	/**

@@ -15,13 +15,16 @@ package uk.me.parabola.mkgmap.reader.osm;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.Exit;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.util.ElementQuadTree;
 import uk.me.parabola.util.EnhancedProperties;
 
 /**
@@ -33,8 +36,8 @@ import uk.me.parabola.util.EnhancedProperties;
 public class HighwayHooks implements OsmReadingHooks {
 	private static final Logger log = Logger.getLogger(HighwayHooks.class);
 
-	private final List<Way> motorways = new ArrayList<>();
-	private final List<Node> exits = new ArrayList<>();
+	private final List<Element> motorways = new ArrayList<>(); // will all be Ways
+	private final List<Element> exits = new ArrayList<>();
 
 	private boolean makeOppositeCycleways;
 	private ElementSaver saver;
@@ -62,7 +65,7 @@ public class HighwayHooks implements OsmReadingHooks {
 	@Override
 	public Set<String> getUsedTags() {
 		Set<String> usedTags = new HashSet<>(Arrays.asList("highway", "access", "barrier", "FIXME", "fixme",
-				"route", "oneway", "junction", "name", Exit.TAG_ROAD_REF, "ref"));
+				"route", "oneway", "junction", "name", Exit.TAG_ROAD_REF, "ref", "motorroad"));
 		if (makeOppositeCycleways) {
 			// need the additional tags
 			usedTags.add("cycleway");
@@ -77,8 +80,8 @@ public class HighwayHooks implements OsmReadingHooks {
 	
 	@Override
 	public void onAddNode(Node node) {
-		String val = node.getTag("highway");
-		if (val != null && ("motorway_junction".equals(val) || "services".equals(val))) {
+		String highway = node.getTag("highway");
+		if (highway != null && ("motorway_junction".equals(highway) || "services".equals(highway) || "rest_area".equals(highway))) {
 			exits.add(node);
 			node.addTag("mkgmap:osmid", String.valueOf(node.getId()));
 		}
@@ -166,8 +169,12 @@ public class HighwayHooks implements OsmReadingHooks {
 			}
 		}
 
-		if("motorway".equals(highway) || "trunk".equals(highway))
+		if ("motorway".equals(highway) || "trunk".equals(highway) || "primary".equals(highway) || way.tagIsLikeYes("motorroad"))
 			motorways.add(way);
+		else if (linkPOIsToWays && ("services".equals(highway) || "rest_area".equals(highway))) {
+			exits.add(way);
+			way.addTag("mkgmap:osmid", String.valueOf(way.getId()));
+			}
 	}
 
 	@Override
@@ -177,8 +184,12 @@ public class HighwayHooks implements OsmReadingHooks {
 		motorways.clear();
 	}
 
+	private static final int XTRA = 150; // very approx 300m
 	private void finishExits() {
-		for (Node e : exits) {
+		if (exits.isEmpty() || motorways.isEmpty())
+			return;
+		ElementQuadTree majorRoads = new ElementQuadTree(saver.getBoundingBox(), motorways);
+		for (Element e : exits) {
 			String refTag = Exit.TAG_ROAD_REF;
 			if (e.getTag(refTag) == null) {
 				String exitName = e.getTag("name");
@@ -187,21 +198,86 @@ public class HighwayHooks implements OsmReadingHooks {
 
 				String ref = null;
 				Way motorway = null;
-				for (Way w : motorways) {
-					// uses an implicit call of Coord.equals()
-					if (w.getPoints().contains(e.getLocation())) {
-						motorway = w;
-						ref = w.getTag("ref");
-						if(ref != null)
-						    break;
+				Area bBox;
+				if (e instanceof Node)
+					bBox = Area.getBBox(Collections.singletonList(((Node) e).getLocation()));
+				else
+					bBox = Area.getBBox(((Way) e).getPoints());
+				String highway = e.getTag("highway");
+				final boolean isServices = "services".equals(highway) || "rest_area".equals(highway);
+				if (isServices) // services will be just off the road, so increase size
+					bBox = new Area(bBox.getMinLat() - XTRA, bBox.getMinLong() - XTRA, bBox.getMaxLat() + XTRA, bBox.getMaxLong() + XTRA);
+				List<Way> possibleRoads = new ArrayList<>();
+				for (Element w : majorRoads.get(bBox)) {
+					motorway = (Way) w;
+					ref = motorway.getTag("ref");
+					if (ref != null) {
+						if (isServices) {
+							possibleRoads.add(motorway);  // save all possibilities
+						} else { // probably on 2+ roads, save possibilities to find the more major road (doesn't have to be motorway)
+							// uses an implicit call of Coord.equals()
+							if (motorway.getPoints().contains(((Node) e).getLocation()))
+								possibleRoads.add(motorway);
+						}
 					}
 				}
 				
+				if (possibleRoads.size() > 1) {
+					if (isServices) { // pick the closest road
+						Coord serviceCoord;
+						if (e instanceof Node)
+							serviceCoord = ((Node) e).getLocation();
+						else
+							// Simple-minded logic to see if a Way that probably defines [part of] a
+							// services area, hence might become a POI if option --link-pois-to-ways,
+							// is near the specified road.
+							// Just pick an arbitary Coord on the services boundary and find the nearest
+							// any Coord in the roads.
+							// No need to check if it is near the line between far-apart Coords because
+							// there also needs to be a junction so that can get off the road to the
+							// services.
+							serviceCoord = ((Way)e).getFirstPoint();
+						long closestRoad = Long.MAX_VALUE;
+						for (Way road : possibleRoads) {
+							long closestCoord = Long.MAX_VALUE;
+							for (Coord pointOnRoad : road.getPoints()) {
+								long dist = pointOnRoad.distanceInHighPrecSquared(serviceCoord);
+								if (dist < closestCoord)
+									closestCoord = dist;
+							}
+							if (closestCoord < closestRoad) {
+								closestRoad = closestCoord;
+								motorway = road;
+								ref = motorway.getTag("ref");
+							}
+						}
+					} else { // pick the most major road
+						int bestRoad = Integer.MAX_VALUE;
+						for (Way road : possibleRoads) {
+							String roadType = road.getTag("highway");
+							int thisRoad = 4;
+							if ("motorway".equals(roadType))
+								thisRoad = 0;
+							else if (road.tagIsLikeYes("motorroad"))
+								thisRoad = 1;
+							else if ("trunk".equals(roadType))
+								thisRoad = 2;
+							else if ("primary".equals(roadType))
+								thisRoad = 3;
+							if (thisRoad < bestRoad) {
+								bestRoad = thisRoad;
+								motorway = road;
+								ref = motorway.getTag("ref");
+							}
+						}
+					}
+					//log.info("Exit", exit, possibleRoads.size(), "options, chosen:", motorway, ref);
+				} // else 0 or 1 road; ref/motorway null or set correctly
 				if (ref != null) {
 					log.info("Adding", refTag + "=" + ref, "to exit", exitName);
 					e.addTag(refTag, ref);
 				} else if(motorway != null) {
-					log.warn("Motorway exit", exitName, "is positioned on a motorway that doesn't have a 'ref' tag (" + e.getLocation().toOSMURL() + ")");
+					log.warn("Motorway exit", exitName, "is positioned on a motorway that doesn't have a 'ref' tag", e);
 				}
 			}
 		}

@@ -661,17 +661,22 @@ public class MapBuilder implements Configurable {
 
 	private void processExit(Map map, MapExitPoint mep) {
 		LBLFile lbl = map.getLblFile();
+		String exitName = mep.getName();
 		String ref = mep.getMotorwayRef();
 		String osmId = mep.getOSMId();
-		if(ref != null) {
+		if (ref == null)
+			log.warn("Can't create exit", exitName, "(OSM id", osmId, ") doesn't have exit:road_ref tag");
+		else {
 			Highway hw = highways.get(ref);
-			if(hw == null)
-				hw = makeHighway(map, ref);
-			if(hw == null) {
-			    log.warn("Can't create exit", mep.getName(), "(OSM id", osmId, ") on unknown highway", ref);
-			    return;
+			if (hw == null) {
+				String countryStr = mep.getCountry();
+				Country thisCountry = countryStr != null ? lbl.createCountry(locator.normalizeCountry(countryStr), locator.getCountryISOCode(countryStr)) : getDefaultCountry();
+				String regionStr = regionName != null ? regionName : mep.getRegion(); // use --region-name if set because highway will likely span regions
+				Region thisRegion = regionStr != null ? lbl.createRegion(thisCountry, regionStr, null) : getDefaultRegion(thisCountry);
+				hw = lbl.createHighway(thisRegion, ref);
+				log.info("creating highway", ref, "region:", regionStr, "country:", countryStr, "for exit:", exitName);
+				highways.put(ref, hw);
 			}
-			String exitName = mep.getName();
 			String exitTo = mep.getTo();
 			Exit exit = new Exit(hw);
 			String facilityDescription = mep.getFacilityDescription();
@@ -1281,16 +1286,6 @@ public class MapBuilder implements Configurable {
 				prev = last;
 			}
 		}
-	}
-
-	Highway makeHighway(Map map, String ref) {
-		if (getDefaultRegion(null) == null) {
-			log.warn("Highway " + ref + " has no region (define a default region to zap this warning)");
-		}
-		return highways.computeIfAbsent(ref, k-> {
-			log.info("creating highway", ref);
-			return map.getLblFile().createHighway(getDefaultRegion(null), ref);
-		});
 	}
 
 	/**

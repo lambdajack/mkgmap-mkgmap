@@ -191,9 +191,9 @@ landuse=village_green & name=* [0x2c06 resolution 24]
 healthcare=hospital | amenity=hospital | amenity=clinic [0x3002 resolution 22]
 healthcare=* | amenity=dentist | amenity=doctors [0x3002 resolution 24]
 
-highway=motorway_junction [0x2100 resolution 24]
+highway=motorway_junction & exit:road_ref=* {add exit:to='${exit_to}' | '${destination}'} [0x2000 resolution 24]
 
-highway=services & mkgmap:area2poi!=true [0x210f resolution 24 default_name 'Services']
+highway=services {add exit:facility="0x02,I,0x47,Features"} [0x230f resolution 20 default_name 'Services']
 
 historic=museum [0x2c02 resolution 24]
 historic=archaeological_site | historic=ruins [0x2c02 resolution 24]
