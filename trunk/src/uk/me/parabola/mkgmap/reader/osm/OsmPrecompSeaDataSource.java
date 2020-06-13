@@ -17,14 +17,14 @@ import java.util.Set;
 
 public class OsmPrecompSeaDataSource extends OsmMapDataSource {
 	
-	private static final Set<String> coastlineTags = Collections.singleton("natural");
-
+	@Override
 	protected OsmReadingHooks[] getPossibleHooks() {
 		// no hooks
 		return new OsmReadingHooks[] {};
 	}
 
+	@Override
 	public Set<String> getUsedTags() {
-		return coastlineTags;
+		return Collections.singleton("natural");
 	}
 }

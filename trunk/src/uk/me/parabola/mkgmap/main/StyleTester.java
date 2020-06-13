@@ -604,6 +604,7 @@ public class StyleTester implements OsmConverter {
 			return r;
 		}
 
+		@Override
 		public Set<String> getUsedTags() {
 			return null;
 		}

@@ -16,7 +16,6 @@ package uk.me.parabola.mkgmap.reader.osm;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -204,15 +203,9 @@ public class POIGeneratorHook implements OsmReadingHooks {
 		return tagList;
 	}
 	
-
 	@Override
 	public Set<String> getUsedTags() {
-		// return all tags defined in the poiPlacementTags
-		Set<String> tags = new HashSet<>();
-		for (Entry<String,String> poiTag : poiPlacementTags) {
-			tags.add(poiTag.getKey());
-		}
-		return tags;
+		return poiPlacementTags.stream().map(Map.Entry::getKey).collect(Collectors.toSet());
 	}
 	
 	@Override

@@ -17,18 +17,19 @@ import java.util.Set;
 
 public class OsmCoastDataSource extends OsmMapDataSource {
 
-	private static final Set<String> coastlineTags = Collections.singleton("natural");
-	
+	@Override
 	protected OsmReadingHooks[] getPossibleHooks() {
 		// no hooks
 		return new OsmReadingHooks[] {};
 	}
 
+	@Override
 	protected void createElementSaver() {
 		elementSaver = new CoastlineElementSaver(getConfig());
 	}
 
+	@Override
 	public Set<String> getUsedTags() {
-		return coastlineTags;
+		return Collections.singleton("natural");
 	}
 }
