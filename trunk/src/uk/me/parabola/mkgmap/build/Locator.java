@@ -56,9 +56,8 @@ public class Locator {
 	
 	public void addCityOrPlace(MapPoint p) 
 	{
-		if (p.isCity() == false) 
-		{
-			log.warn("MapPoint has no city type id: 0x"+Integer.toHexString(p.getType()));
+		if (!p.isCity()) {
+			log.warn("MapPoint has no city type id: 0x" + Integer.toHexString(p.getType()));
 			return;
 		}
 		
@@ -174,7 +173,7 @@ public class Locator {
 	 */
 	private void resolveIsInInfo(MapPoint p)
 	{
-		if (locationAutofill.contains("is_in") == false) {
+		if (!locationAutofill.contains("is_in")) {
 			return;
 		}
 		
@@ -282,7 +281,7 @@ public class Locator {
 	
 	private MapPoint findCityByIsIn(MapPoint place) {
 		
-		if (locationAutofill.contains("is_in") == false) {
+		if (!locationAutofill.contains("is_in")) {
 			return null;
 		}
 		
@@ -303,7 +302,7 @@ public class Locator {
 			cityCandidate = cityCandidate.trim();
 
 			Collection<MapPoint> candidateCityList = cityMap.get(cityCandidate);
-			if (candidateCityList.isEmpty() == false) {
+			if (!candidateCityList.isEmpty()) {
 				if (nextCityList == null) {
 					nextCityList = new ArrayList<MapPoint>(candidateCityList.size());
 				}
@@ -339,7 +338,7 @@ public class Locator {
 	}
 
 	public void autofillCities() {
-		if (locationAutofill.contains("nearest") == false && locationAutofill.contains("is_in") == false) {
+		if (!locationAutofill.contains("nearest") && !locationAutofill.contains("is_in")) {
 			return;
 		}
 		

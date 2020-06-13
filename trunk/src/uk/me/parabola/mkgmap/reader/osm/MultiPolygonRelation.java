@@ -554,7 +554,7 @@ public class MultiPolygonRelation extends Relation {
 	
 	/**
 	 * Removes all non closed ways from the given list.
-	 * <code>{@link Way#hasIdenticalEndPoints()} == false</code>)
+	 * <code>!{@link Way#hasIdenticalEndPoints()}</code>)
 	 * 
 	 * @param wayList
 	 *            list of ways

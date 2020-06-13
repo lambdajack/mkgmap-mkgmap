@@ -123,7 +123,7 @@ public class BoundaryCoverageUtil {
 								public Area call() {
 									String filename = "bounds_" + fLat + "_"
 											+ fLon + ".bnd";
-									if (boundaryFileNames.contains(filename) == false) {
+									if (!boundaryFileNames.contains(filename)) {
 										return new Area();
 									}
 									BoundaryCoverageUtil converter = new BoundaryCoverageUtil(
@@ -141,7 +141,7 @@ public class BoundaryCoverageUtil {
 			final AtomicInteger mergeSteps = new AtomicInteger();
 			while (areas.size() > 1) {
 				final List<Future<Area>> toMerge = new ArrayList<Future<Area>>();
-				for (int i = 0; i < maxSteps * 2 && areas.isEmpty() == false; i++) {
+				for (int i = 0; i < maxSteps * 2 && !areas.isEmpty(); i++) {
 					toMerge.add(areas.poll());
 				}
 				mergeSteps.incrementAndGet();

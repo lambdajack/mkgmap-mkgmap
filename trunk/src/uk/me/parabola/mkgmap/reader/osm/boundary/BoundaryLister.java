@@ -25,7 +25,7 @@ public class BoundaryLister {
 		File outDir = new File (outDirName);
 		
 		if (outDir.exists() ){
-			if (outDir.isDirectory() == false){
+			if (!outDir.isDirectory()) {
 				System.err.println("target is not a directory, output is written to bounds.txt");
 				outDir = new File(".");
 			}

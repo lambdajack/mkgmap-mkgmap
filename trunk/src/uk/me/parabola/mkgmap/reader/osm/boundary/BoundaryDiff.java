@@ -95,7 +95,7 @@ public class BoundaryDiff {
 		int bAll = bounds1.size() + bounds2.size();
 		long tProgress = System.currentTimeMillis();
 
-		while (bounds1.isEmpty() == false || bounds2.isEmpty() == false) {
+		while (!bounds1.isEmpty() || !bounds2.isEmpty()) {
 			String f1 = bounds1.peek();
 			String f2 = bounds2.peek();
 
@@ -110,14 +110,14 @@ public class BoundaryDiff {
 				if (cmp == 0) {
 					Area a1 = loadArea(inputName1, f1, tag, value);
 					Area a2 = loadArea(inputName2, f2, tag, value);
-					if (a1.isEmpty() == false|| a2.isEmpty() == false){
+					if (!a1.isEmpty() || !a2.isEmpty()){
 						Area o1 = new Area(a1);
 						o1.subtract(a2);
-						if (o1.isEmpty() == false)
+						if (!o1.isEmpty())
 							only1.add(o1);
 						Area o2 = new Area(a2);
 						o2.subtract(a1);
-						if (o2.isEmpty() == false)
+						if (!o2.isEmpty())
 							only2.add(o2);
 					}
 					bounds1.poll();
@@ -229,12 +229,12 @@ public class BoundaryDiff {
 		if (args.length < 2) 
 			printUsage();
 		File f1 = new File(args[0]);
-		if (f1.exists() == false){
+		if (!f1.exists()) {
 			System.err.println(args[0] + " does not exist");
 			printUsage();
 		}
 		File f2 = new File(args[1]);
-		if (f2.exists() == false){
+		if (!f2.exists()) {
 			System.err.println(args[1] + " does not exist");
 			printUsage();
 		}

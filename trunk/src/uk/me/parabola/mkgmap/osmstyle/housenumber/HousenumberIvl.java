@@ -168,7 +168,7 @@ public class HousenumberIvl {
 		MapRoad bestRoad = null;
 		// make sure that the closest road is one with a matching name
 		for (int i = 0; i < 2; i++){
-			while (streetName.equals(knownHouses[i].getRoad().getStreet()) == false && knownHouses[i].hasAlternativeRoad()){
+			while (!streetName.equals(knownHouses[i].getRoad().getStreet()) && knownHouses[i].hasAlternativeRoad()) {
 				HousenumberMatch testx = new HousenumberMatch(knownHouses[i]);
 				MapRoad r = knownHouses[i].getAlternativeRoads().remove(0);
 				if (streetName.equals(r.getStreet())){
@@ -190,7 +190,7 @@ public class HousenumberIvl {
 		HousenumberMatch[] closest = new HousenumberMatch[2];
 		boolean foundSingleRoad = false;
 		for (MapRoad r : toTest){
-			if (streetName.equals(r.getStreet()) == false)
+			if (!streetName.equals(r.getStreet()))
 				continue;
 			foundSingleRoad = true;
 			for (int i = 0; i < 2; i++){
@@ -246,11 +246,11 @@ public class HousenumberIvl {
 					}
 				}
 			}
-			if (foundSingleRoad){
-				if (r.isNamedByHousenumberProcessing() == false)
+			if (foundSingleRoad) {
+				if (!r.isNamedByHousenumberProcessing())
 					break;
 				// the closest road was originally unnamed , try to find one that is named in OSM 
-				if (bestRoad == null){
+				if (bestRoad == null) {
 					bestRoad = r;
 					closest[0] = test[0];
 					closest[1] = test[1];
@@ -264,7 +264,7 @@ public class HousenumberIvl {
 			test[1] = closest[1];
 		}
 		if (!foundSingleRoad){
-			if (streetName.equals(knownHouses[0].getRoad().getStreet()) == false || streetName.equals(knownHouses[1].getRoad().getStreet()) == false){
+			if (!streetName.equals(knownHouses[0].getRoad().getStreet()) || !streetName.equals(knownHouses[1].getRoad().getStreet())) {
 				log.warn("cannot find reasonable road for both nodes",streetName,this);
 				return false;
 			}
@@ -315,12 +315,12 @@ public class HousenumberIvl {
 		boolean distanceWarningIssued = false;
 		CityInfo ci = knownHouses[0].getCityInfo();
 		ZipCodeInfo zip = knownHouses[0].getZipCode();
-		if (ci != null && ci.equals(knownHouses[1].getCityInfo()) == false)
+		if (ci != null && !ci.equals(knownHouses[1].getCityInfo()))
 			log.warn("addr:interpolation way connects houses in different cities",streetName,this,"using city",ci,"for all interpolated adresses");
-		if (zip != null && zip.equals(knownHouses[1].getZipCode()) == false)
+		if (zip != null && !zip.equals(knownHouses[1].getZipCode()))
 			log.warn("addr:interpolation way connects houses with differnt zip codes",streetName,this,"using zip code",zip,"for all interpolated adresses");
 		
-		for (Coord co : interpolatedPoints){
+		for (Coord co : interpolatedPoints) {
 			hn += usedStep;
 			Node generated = new Node(interpolationWay.getId(), co);
 			generated.setFakeId();
@@ -338,7 +338,7 @@ public class HousenumberIvl {
 			if (roadForInterpolatedHouses != null){
 				HousenumberGenerator.findClosestRoadSegment(house, roadForInterpolatedHouses);
 				if (house.getRoad() == null || house.getDistance() > MAX_INTERPOLATION_DISTANCE_TO_ROAD ){
-					if (distanceWarningIssued == false){
+					if (!distanceWarningIssued){
 						log.warn("interpolated house is not close to expected road",this,house);
 						distanceWarningIssued = true;
 					}
@@ -352,7 +352,7 @@ public class HousenumberIvl {
 		
 		if (log.isDebugEnabled()){
 			String addrInterpolationMethod = interpolationWay.getTag(TK_ADDR_INTERPOLATION);
-			if (hasMultipleRoads == false)
+			if (!hasMultipleRoads)
 				log.debug(this,"generated",addrInterpolationMethod,"interpolated number(s) for",knownHouses[0].getRoad());
 			else 
 				log.debug(this,"generated",addrInterpolationMethod,"interpolated number(s) for",streetName);
@@ -496,9 +496,7 @@ public class HousenumberIvl {
 			if (elemPos == null || elemPos >= houseElems.size())
 				return false;
 			HousenumberElem he = houseElems.get(elemPos);
-			if (he instanceof HousenumberMatch == false)
-				return false;
-			if (he.getElement().getId() != id)
+			if (!(he instanceof HousenumberMatch) || he.getElement().getId() != id)
 				return false;
 			knownHouses[i] = (HousenumberMatch) he;
 			knownHouses[i].incIntervalInfoRefs();

@@ -13,6 +13,7 @@
 package uk.me.parabola.util;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.awt.geom.Area;
@@ -85,14 +86,14 @@ public class Java2DConverterTest {
 		List<Coord> singularPolygon2 = Java2DConverter.singularAreaToPoints(a2);
 		List<Coord> singularPolygon3 = Java2DConverter.singularAreaToPoints(a3);
 		
-		assertTrue(a1.equals(a2) == false);
-		assertTrue(a1.equals(a3) == false);
-		assertTrue(a2.equals(a3) == false);
+		assertFalse(a1.equals(a2));
+		assertFalse(a1.equals(a3));
+		assertFalse(a2.equals(a3));
 		assertEquals(1, convPolygon1.size());
 		assertEquals(1, convPolygon2.size());
 		assertEquals(1, convPolygon3.size());
-		assertTrue(Arrays.deepEquals(convPolygon1.toArray(), convPolygon2.toArray()) == true); 
-		assertTrue(Arrays.deepEquals(convPolygon1.toArray(), convPolygon3.toArray()) == false); 
+		assertTrue(Arrays.deepEquals(convPolygon1.toArray(), convPolygon2.toArray())); 
+		assertFalse(Arrays.deepEquals(convPolygon1.toArray(), convPolygon3.toArray())); 
 		assertEquals(4, convPolygon1.get(0).size());
 		assertEquals(4, convPolygon2.get(0).size());
 		assertEquals(5, convPolygon3.get(0).size());

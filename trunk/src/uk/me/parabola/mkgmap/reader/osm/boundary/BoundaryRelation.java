@@ -257,7 +257,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 						outmostPolygonProcessing = false;
 					} else {
 						for (String tag : new ArrayList<String>(outerTags.keySet())) {
-							if (outerTags.get(tag).equals(outerWay.getTag(tag)) == false) {
+							if (!outerTags.get(tag).equals(outerWay.getTag(tag))) {
 								outerTags.remove(tag);
 							}
 						}
@@ -312,7 +312,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 		List<JoinedWay> unclosed = new ArrayList<>();
 
 		for (JoinedWay w : allWays) {
-			if (w.hasIdenticalEndPoints() == false) {
+			if (!w.hasIdenticalEndPoints()) {
 				unclosed.add(w);
 			}
 		}

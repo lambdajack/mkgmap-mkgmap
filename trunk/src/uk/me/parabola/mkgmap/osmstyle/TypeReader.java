@@ -128,7 +128,7 @@ public class TypeReader {
 			for (int i = 0; i < usedTypes.size(); i++){
 				int usedType = usedTypes.get(i);
 				String typeOverlaidMsg = ". Type is overlaid with " + GType.formatType(usedType);
-				if (GType.checkType(kind, usedType) == false){
+				if (!GType.checkType(kind, usedType)) {
 					String msg = "Warning: invalid type " + type + " for " + kind + " in style file " + ts.getFileName() + ", line " + ts.getLinenumber();
 					if (fromOverlays)
 						msg += typeOverlaidMsg;
@@ -136,7 +136,7 @@ public class TypeReader {
 				}
 				if (kind == FeatureKind.POLYLINE && gt.getMinLevel() == 0 && gt.getMaxLevel() >= 0){ 
 					if (GType.isSpecialRoutableLineType(usedType)){
-						if (gt.hasRoadAttribute() == false){
+						if (!gt.hasRoadAttribute()) {
 							String msg = "Warning: routable type " + type  + " is used for non-routable line with level 0. This may break routing. Style file "+ ts.getFileName() + ", line " + ts.getLinenumber();
 							if (fromOverlays)
 								msg += typeOverlaidMsg;
@@ -154,7 +154,7 @@ public class TypeReader {
 						foundRoutableType = true;
 				}
 			}
-			if (gt.hasRoadAttribute() && foundRoutableType == false && gt.getMinLevel() == 0 && gt.getMaxLevel() >= 0){
+			if (gt.hasRoadAttribute() && !foundRoutableType && gt.getMinLevel() == 0 && gt.getMaxLevel() >= 0){
 				String msg = "Warning: non-routable type " + type  + " is used in combination with road_class/road_speed. Line will not be routable. Style file "+ ts.getFileName() + ", line " + ts.getLinenumber();
 				if (fromOverlays)
 					msg += ". Type is overlaid, but not with a routable type";

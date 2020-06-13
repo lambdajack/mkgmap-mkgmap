@@ -58,7 +58,7 @@ public abstract class StyleFileLoader implements Closeable {
 			File dir = file;
 			if (name != null) {
 				dir = new File(file, name);
-				if (dir.exists() == false)
+				if (!dir.exists())
 					throw new FileNotFoundException("style " + name + " not found in " + dir);
 				if (!dir.isDirectory())
 					dir = file;

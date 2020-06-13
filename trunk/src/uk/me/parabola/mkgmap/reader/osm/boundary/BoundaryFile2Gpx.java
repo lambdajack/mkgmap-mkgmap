@@ -102,7 +102,7 @@ public class BoundaryFile2Gpx {
 					break;
 				}
 			}
-			if (found == false){
+			if (!found) {
 				System.out.println("No boundary with admin_level=" + adminlevel
 						+ " found.");
 				continue;

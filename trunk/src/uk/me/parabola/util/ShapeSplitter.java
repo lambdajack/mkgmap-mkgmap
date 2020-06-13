@@ -71,7 +71,7 @@ public class ShapeSplitter {
 				break;
 			case PathIterator.SEG_CLOSE:
 				Path2D.Double segment = null;
-				if (clippingRect.contains(minX, minY) == false || clippingRect.contains(maxX,maxY) == false){
+				if (!clippingRect.contains(minX, minY) || !clippingRect.contains(maxX,maxY)) {
 					Rectangle2D.Double bbox = new Rectangle2D.Double(minX,minY,maxX-minX,maxY-minY);
 					segment = clipSinglePathWithSutherlandHodgman (points, num, clippingRect, bbox);
 				} else 
@@ -155,7 +155,7 @@ public class ShapeSplitter {
 	 * @return the clipped path as a Path2D.Double or null if the result is empty  
 	 */
 	public static Path2D.Double clipSinglePathWithSutherlandHodgman (double[] points, int num, Rectangle2D clippingRect, Rectangle2D.Double bbox) {
-		if (num <= 2 || bbox.intersects(clippingRect) == false){
+		if (num <= 2 || !bbox.intersects(clippingRect)) {
 			return null;
 		}
 		

@@ -30,18 +30,19 @@ public abstract class CachedFunction extends StyleFunction {
 		super(value);
 	}
 
+	@Override
 	public final String value(Element el) {
 		// check if the element type is supported by this function
 		if (el instanceof Node ) {
-			if (supportsNode() == false) {
+			if (!supportsNode()) {
 				return null;
 			}
 		} else if (el instanceof Way) {
-			if (supportsWay() == false) {
+			if (!supportsWay()) {
 				return null;
 			}
 		} else  if (el instanceof Relation) {
-			if (supportsRelation() == false) {
+			if (!supportsRelation()) {
 				return null;
 			}
 		}

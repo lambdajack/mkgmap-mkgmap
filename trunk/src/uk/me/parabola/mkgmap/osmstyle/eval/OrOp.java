@@ -40,7 +40,7 @@ public class OrOp extends AbstractBinaryOp {
 				throw new ExitException("fatal error: cache id invalid");
 			}
 			lastRes = getFirst().eval(cacheId, el);
-			if (lastRes == false)
+			if (!lastRes)
 				lastRes = getSecond().eval(cacheId, el);
 			lastCachedId = cacheId;
 		}

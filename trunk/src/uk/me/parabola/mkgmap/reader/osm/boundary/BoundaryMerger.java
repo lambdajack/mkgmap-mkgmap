@@ -130,21 +130,21 @@ public class BoundaryMerger {
 		File merge = new File(args[2]);
 
 		// TODO: maybe allow zip as input
-		if (b1.exists() == false || b1.isDirectory() == false) {
+		if (!b1.exists() || !b1.isDirectory()) {
 			System.err.println(b1 + " does not exist or is not a directory");
 			return;
 		}
 
-		if (b2.exists() == false || b2.isDirectory() == false) {
+		if (!b2.exists() || !b2.isDirectory()) {
 			System.err.println(b2 + " does not exist or is not a directory");
 			return;
 		}
 
-		if (merge.exists() && merge.isDirectory() == false) {
+		if (merge.exists() && !merge.isDirectory()) {
 			System.err.println(merge + " is not a directory");
 		}
 
-		if (merge.exists() == false) {
+		if (!merge.exists()) {
 			merge.mkdirs();
 		}
 	

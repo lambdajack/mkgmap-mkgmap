@@ -318,12 +318,12 @@ public class HousenumberGroup {
 			return true;
 		}
 			
-		if (housesFormAGroup(house, last) == false){
+		if (!housesFormAGroup(house, last)) {
 			return false;
 		}
 		if (houses.size() > 1){
 			HousenumberMatch first = houses.get(0);
-			if (housesFormAGroup(house, first) == false){
+			if (!housesFormAGroup(house, first)) {
 				HousenumberMatch preLast = houses.get(houses.size()-2);
 				double angle = Utils.getAngle(house.getLocation(), last.getLocation(), preLast.getLocation());
  				if (Math.abs(angle) > 30)

@@ -142,7 +142,7 @@ public class GpxCreator {
 					}
 				}
 
-				if (polygonpoints != null && polygonpoints.isEmpty() == false) {
+				if (polygonpoints != null && !polygonpoints.isEmpty()) {
 					pw.print("<trk><name>");
 					pw.print(fname);
 					pw.print("</name><trkseg>");

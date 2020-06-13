@@ -155,7 +155,7 @@ public final class ElementQuadTreeNode {
 	 * @return the resultList
 	 */
 	public void get(Area bbox, Set<Element> resultSet) {
-		if (isEmpty() || bbox.intersects(bounds) == false) {
+		if (isEmpty() || !bbox.intersects(bounds)) {
 			return;
 		}
 		if (elementList != null) {

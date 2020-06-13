@@ -78,7 +78,7 @@ public class BoundaryGrid {
 		int gridLat = (co.getLatitude() - minLat) / BoundaryUtil.RASTER;
 		int gridLon = (co.getLongitude() - minLon) / BoundaryUtil.RASTER;
 		if (grid[gridLat][gridLon] == null){
-			if (emptyMessagePrinted[gridLat][gridLon] == false){
+			if (!emptyMessagePrinted[gridLat][gridLon]) {
 				emptyMessagePrinted[gridLat][gridLon] = true;
 				int keyLat = BoundaryUtil.getSplitBegin(co.getLatitude());
 				int keyLon = BoundaryUtil.getSplitBegin(co.getLongitude());

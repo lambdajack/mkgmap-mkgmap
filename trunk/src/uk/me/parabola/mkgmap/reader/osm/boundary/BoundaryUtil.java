@@ -107,7 +107,7 @@ public class BoundaryUtil {
 				return bElements;
 
 			// result is not usable if first element is not outer 
-			if (tryAgain == false){
+			if (!tryAgain){
 				// cannot convert this area
 				log.error(" first element is not outer. "+ bElements.get(0));
 				
@@ -459,7 +459,7 @@ public class BoundaryUtil {
 				// 1st read the mkgmap release the boundary file is created by
 				String mkgmapRel = "?";
 				String firstId = inpStream.readUTF();
-				if ("BND".equals(firstId) == false){
+				if (!"BND".equals(firstId)) {
 					throw new FormatException("Unsupported boundary data type "+firstId);
 				}
 
@@ -590,7 +590,7 @@ public class BoundaryUtil {
 			
 			if ("boundary".equals(type) || "multipolygon".equals(type)) {
 				String boundaryVal = b.getTags().get("boundary");
-				if ("administrative".equals(boundaryVal) == false) 
+				if (!"administrative".equals(boundaryVal)) 
 					return false;
 				// for boundary=administrative the admin_level must be set
 				if (b.getTags().get("admin_level") == null) {

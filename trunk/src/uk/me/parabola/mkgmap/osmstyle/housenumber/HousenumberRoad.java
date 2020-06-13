@@ -114,7 +114,7 @@ public class HousenumberRoad {
 		assert road.getPoints().get(0).isNumberNode(); 
 		for (Coord p : road.getPoints()) {
 			// An ordinary point in the road.
-			if (p.isNumberNode() == false) {
+			if (!p.isNumberNode()) {
 				currNodePos++;
 				continue;
 			}
@@ -177,7 +177,7 @@ public class HousenumberRoad {
 					if (HousenumberGroup.housesFormAGroup(predHouse, house))
 						group = new HousenumberGroup(this, houses.subList(j-1, j+1));
 				} else {
-					if (group.tryAddHouse(house) == false){
+					if (!group.tryAddHouse(house)) {
 						if(group.verify())
 							groups.add(group);
 						group = null;
@@ -194,7 +194,7 @@ public class HousenumberRoad {
 		for (HousenumberGroup group : groups){
 			int oldNumPoints = getRoad().getPoints().size(); 
 			if (nodesAdded){
-				if (group.recalcPositions() == false)
+				if (!group.recalcPositions())
 					continue;
 			}
 			if (group.findSegment(streetName, groups)){
@@ -270,10 +270,10 @@ public class HousenumberRoad {
 		for (int i = 1; i < houseNumbers.size(); i++){
 			HousenumberMatch house1 = houseNumbers.get(i - 1);
 			HousenumberMatch house2 = houseNumbers.get(i);
-			if (house1.getSign().equals(house2.getSign()) == false){
+			if (!house1.getSign().equals(house2.getSign())) {
 				usedForCalc = null;
 			} else {
-				if (house1.isEqualAddress(house2) == false)
+				if (!house1.isEqualAddress(house2))
 					continue;
 				// found a duplicate address (e.g. 2 and 2 or 1b and 1b in same road,city etc.)
 				double distBetweenHouses = house2.getLocation().distance(house1.getLocation());
@@ -440,7 +440,7 @@ public class HousenumberRoad {
 			else {
 				if (used == null)
 					used = prev;
-				if (prev.getSign().equals(house.getSign()) &&  prev.isEqualAddress(house) == false){
+				if (prev.getSign().equals(house.getSign()) &&  !prev.isEqualAddress(house)) {
 					// we want to keep these duplicates 
 				} else {
 					house.setIgnored(true);
@@ -462,13 +462,13 @@ public class HousenumberRoad {
 			for (ExtNumbers en1 = head1; en1 != null; en1 = en1.next){
 				if (changed)
 					break;
-				if (en1.hasNumbers() == false)
+				if (!en1.hasNumbers())
 					continue;
 				ExtNumbers head2 = other.extNumbersHead;
 				for (ExtNumbers en2 = head2; en2 != null; en2 = en2.next){
 					if (changed)
 						break;
-					if (en2.hasNumbers() == false)
+					if (!en2.hasNumbers())
 						continue;
 					int res = ExtNumbers.checkIntervals(streetName, en1, en2);
 					switch (res) {
@@ -604,7 +604,7 @@ public class HousenumberRoad {
 	}
 
 	public void setRandom(boolean isRandom) {
-		if (this.isRandom == false)
+		if (!this.isRandom)
 			if (log.isDebugEnabled())
 				log.debug("detected random case",this);
 		this.isRandom = isRandom;
@@ -629,7 +629,7 @@ public class HousenumberRoad {
 					setChanged(true);
 				else {
 					ExtNumbers test = en.hasNumbers() ?  en : en.next;
-					if (test.getNumbers().isSimilar(curr.getNumbers()) == false)
+					if (!test.getNumbers().isSimilar(curr.getNumbers()))
 						setChanged(true);
 				}
 				if (curr.prev == null)
@@ -661,7 +661,7 @@ public class HousenumberRoad {
 		List<HousenumberMatch> wrongHouses = Collections.emptyList();
 		double minDist = Double.MAX_VALUE;
 		double maxDist = 0;
-		if (houseNumbers.isEmpty() == false){
+		if (!houseNumbers.isEmpty()) {
 			HashMap<String, Integer>possibleStreetNamesFromHouses = new HashMap<>();
 			HashMap<String, Integer>possiblePlaceNamesFromHouses = new HashMap<>();
 			for (HousenumberMatch house : houseNumbers){

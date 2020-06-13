@@ -121,7 +121,7 @@ public class HousenumberMatch extends HousenumberElem {
 	}
 
 	public boolean hasAlternativeRoad() {
-		return alternativeRoads != null && alternativeRoads.isEmpty() == false;
+		return alternativeRoads != null && !alternativeRoads.isEmpty();
 	}
 
 	public boolean isIgnored() {
@@ -310,20 +310,20 @@ public class HousenumberMatch extends HousenumberElem {
 	public boolean isEqualAddress(HousenumberElem other){
 		if (getRoad() != other.getRoad())
 			return false;
-		if (getSign().equals(other.getSign()) == false)
+		if (!getSign().equals(other.getSign()))
 			return false;
 		if (getPlace() != other.getPlace()) {
 			if (getPlace() == null)
 				return false;
-			if (getPlace().equals(other.getPlace()) == false)
+			if (!getPlace().equals(other.getPlace()))
 				return false;
 		}
 		if (getZipCode() != null && other.getZipCode() != null){
-			if (getZipCode().equals(other.getZipCode()) == false)
+			if (!getZipCode().equals(other.getZipCode()))
 				return false;
 		}
 		if (getCityInfo() != null && other.getCityInfo() != null){
-			if (getCityInfo().equals(other.getCityInfo()) == false)
+			if (!getCityInfo().equals(other.getCityInfo()))
 				return false;
 		}
 		return true;

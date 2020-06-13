@@ -171,7 +171,7 @@ public class ExtNumbers {
 		int assignedNumbers = 0;
 		startInRoad = startSegment;
 		endInRoad = endSegment;
-		if (housenumbers.isEmpty() == false) {
+		if (!housenumbers.isEmpty()) {
 			RoadSide rs = new RoadSide(); 
 			if (left)
 				leftSide = rs;
@@ -216,7 +216,7 @@ public class ExtNumbers {
 	private void fillNumbers(boolean left) {
 		NumberStyle style = NumberStyle.NONE;
 		List<HousenumberMatch> houses = getHouses(left);
-		if (houses.isEmpty() == false) {
+		if (!houses.isEmpty()) {
 			Set<CityInfo> cityInfos = new HashSet<>();
 			Set<ZipCodeInfo> zipCodes = new HashSet<>();
 			// get the sublist of house numbers
@@ -232,7 +232,7 @@ public class ExtNumbers {
 			HousenumberMatch pred = null;
 			for (int i = 0; i< numHouses; i++) {
 				HousenumberMatch house = houses.get(i);
-				if (house.getCityInfo() != null && house.getCityInfo().isEmpty() == false)
+				if (house.getCityInfo() != null && !house.getCityInfo().isEmpty())
 					cityInfos.add(house.getCityInfo());
 				if (house.getZipCode() != null && house.getZipCode().getZipCode() != null)
 					zipCodes.add(house.getZipCode());
@@ -316,16 +316,15 @@ public class ExtNumbers {
 			rs.multipleZipCodes = (zipCodes.size() > 1);
 			if (cityInfos.size() == 1){
 				CityInfo ci = cityInfos.iterator().next();
-				if (ci.isEmpty() == false){
-					if (ci.equals(housenumberRoad.getRoadCityInfo()) == false)
-						numbers.setCityInfo(left, ci);
+				if (!ci.isEmpty() && !ci.equals(housenumberRoad.getRoadCityInfo())) {
+					numbers.setCityInfo(left, ci);
 				}
 			}
 			
 			if (zipCodes.size() == 1){
 				ZipCodeInfo zipCodeInfo = zipCodes.iterator().next();
-				if (zipCodeInfo.getZipCode() != null){
-					if (zipCodeInfo.equals(housenumberRoad.getRoadZipCode()) == false){
+				if (zipCodeInfo.getZipCode() != null) {
+					if (!zipCodeInfo.equals(housenumberRoad.getRoadZipCode())) {
 						// we found a zip code and the road doesn't yet have one, use it for the whole road
 						if (housenumberRoad.getRoadZipCode() == null){ 
 							housenumberRoad.setZipCodeInfo(zipCodeInfo);
@@ -357,7 +356,7 @@ public class ExtNumbers {
 				list.add(cn);
 			}
 			if (log.isInfoEnabled()) {
-				if (headerWasReported == false) {
+				if (!headerWasReported) {
 					MapRoad road = curr.getRoad();
 					if (road.getStreet() == null && road.getName() == null)
 						log.info("final numbers for", road, curr.housenumberRoad.getName(), "in", road.getCity());
@@ -406,7 +405,7 @@ public class ExtNumbers {
 			}
 		}
 		for (curr = head; curr != null; curr = curr.next){
-			while (curr.isPlausible() == false){
+			while (!curr.isPlausible()) {
 				// this happens in the following cases:
 				// 1. correct OSM data, multiple houses build a block. Standing on the road
 				// you probably see a small service road which leads to the houses.
@@ -472,7 +471,7 @@ public class ExtNumbers {
 	public ExtNumbers tryChange(int reason){
 		ExtNumbers en = this; 
 		if (reason == SR_FIX_ERROR){
-			if (notInOrder(Numbers.LEFT) == false && notInOrder(Numbers.RIGHT) == false){
+			if (!notInOrder(Numbers.LEFT) && !notInOrder(Numbers.RIGHT)) {
 				if (badNum < 0 && worstHouse != null)
 					badNum = worstHouse.getHousenumber();
 				if (badNum > 0){
@@ -492,7 +491,7 @@ public class ExtNumbers {
 				changedInterval = true;
 			} else {
 				ExtNumbers test = en.hasNumbers() ?  en : en.next;
-				if (test.getNumbers().isSimilar(this.getNumbers()) == false)
+				if (!test.getNumbers().isSimilar(this.getNumbers()))
 					changedInterval = true;
 			}
 			if (changedInterval)
@@ -824,7 +823,7 @@ public class ExtNumbers {
 								toAdd = null;
 							else if (usedFraction > minFraction0To1 && wantedFraction < minFraction0To1 || usedFraction < maxFraction0To1 && wantedFraction > maxFraction0To1){
 								toAdd = null;
-							} else if (allowSplitBetween == false && usedFraction > minFraction0To1 && usedFraction < maxFraction0To1){
+							} else if (!allowSplitBetween && usedFraction > minFraction0To1 && usedFraction < maxFraction0To1){
 								toAdd = null;
 							} else {
 								if (bestDist > 0.2){
@@ -1005,7 +1004,7 @@ public class ExtNumbers {
 						else target = (atStart) ? 0 : 1;
 						targets.get(target).add(house);
 					}
-				} else if (multipleZipOrCity(left) == false){
+				} else if (!multipleZipOrCity(left)) {
 					if (atStart) 
 						targets.get(1).addAll(getHouses(left));
 					else 
@@ -1229,12 +1228,12 @@ public class ExtNumbers {
 			for (ExtNumbers en1 = head; en1 != null; en1 = en1.next){
 				if (anyChanges)
 					break;
-				if (en1.hasNumbers() == false)
+				if (!en1.hasNumbers())
 					continue;
 				for (ExtNumbers en2 = en1.next; en2 != null; en2 = en2.next){
 					if (anyChanges)
 						break;
-					if (en2.hasNumbers() == false)
+					if (!en2.hasNumbers())
 						continue;
 					
 					int res = checkIntervals(streetName, en1, en2);
@@ -1323,7 +1322,7 @@ public class ExtNumbers {
 					ok = checkIntervalBoundaries(s1, e1, s2, e2, left1 == left2 && en1.getRoad() == en2.getRoad());
 				if (ok) 
 					continue;
-				if (en1.getRoad() != en2.getRoad() && en1.hasGaps == false && en2.hasGaps == false){
+				if (en1.getRoad() != en2.getRoad() && !en1.hasGaps && !en2.hasGaps) {
 					allOK = false;
 					continue;
 				}
@@ -1357,7 +1356,7 @@ public class ExtNumbers {
 				List<HousenumberMatch> possibleRemoves1 = new ArrayList<>(); 
 				List<HousenumberMatch> possibleRemoves2 = new ArrayList<>();
 				
-				if (en1.housenumberRoad.isRandom() == false && en2.housenumberRoad.isRandom() == false){
+				if (!en1.housenumberRoad.isRandom() && !en2.housenumberRoad.isRandom()) {
 					// check if we can move a house from en1 to en2
 					for (HousenumberMatch house : houses1){
 						if (house.getGroup() != null)
@@ -1484,11 +1483,11 @@ public class ExtNumbers {
 				if (delta1 > 0 && delta2 > 0){
 					if (en1.hasGaps != en2.hasGaps){
 						if (en1.hasGaps){
-							if (possibleRemoves1.isEmpty() == false)
+							if (!possibleRemoves1.isEmpty())
 								splitNum = possibleRemoves1.get(0).getHousenumber();
 							toSplit = en1;
 						} else {
-							if (possibleRemoves2.isEmpty() == false)
+							if (!possibleRemoves2.isEmpty())
 								splitNum = possibleRemoves2.get(0).getHousenumber();
 							toSplit = en2;
 						}
@@ -1655,7 +1654,7 @@ public class ExtNumbers {
 	}
 
 	public boolean hasNumbers(){
-		return getNumbers().isEmpty() == false;
+		return !getNumbers().isEmpty();
 	}
 	
 	/**
@@ -1664,7 +1663,7 @@ public class ExtNumbers {
 	 * @return 
 	 */
 	public ExtNumbers splitLargeGaps(){
-		if (hasNumbers() == false)
+		if (!hasNumbers())
 			return this;
 		// calculate the length of each road segment and 
 		// the overall length covered by this interval
@@ -1858,7 +1857,7 @@ public class ExtNumbers {
 				double distToTarget = t.distance(p);
 
 				if (beforeTarget){
-					if (Double.isNaN(lastDist) == false && lastDist < distToTarget)
+					if (!Double.isNaN(lastDist) && lastDist < distToTarget)
 						beforeTarget = false;
 				}
 				if (beforeTarget && distToTarget < maxBefore || !beforeTarget && distToTarget < maxAfter){ 
@@ -1907,7 +1906,7 @@ public class ExtNumbers {
 		int countFilledSides = 0;
 		int countNotInOrder = 0;
 		for (ExtNumbers curr = this; curr != null; curr = curr.next){
-			if (curr.hasNumbers() == false)
+			if (!curr.hasNumbers())
 				continue;
 			countFilledIvls++;
 			if (curr.notInOrder(Numbers.LEFT))
@@ -1927,7 +1926,7 @@ public class ExtNumbers {
 	}
 	
 	private boolean isPlausible(){
-		if (getNumbers().isPlausible() == false)
+		if (!getNumbers().isPlausible())
 			return false;
 		if (multipleZipOrCity(true) || multipleZipOrCity(false))
 			return false;  

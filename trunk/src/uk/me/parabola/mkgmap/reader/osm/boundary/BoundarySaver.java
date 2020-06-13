@@ -90,7 +90,7 @@ public class BoundarySaver {
 
 	public BoundarySaver(File boundaryDir, String mode) {
 		this.boundaryDir = boundaryDir;
-		if (boundaryDir.exists() && boundaryDir.isDirectory() == false){
+		if (boundaryDir.exists() && !boundaryDir.isDirectory()) {
 			log.error("output target exists and is not a directory");
 			System.exit(-1);
 		}
@@ -190,7 +190,7 @@ public class BoundarySaver {
 	}
 
 	private void openStream(StreamInfo streamInfo, boolean newFile) {
-		if (streamInfo.file.getParentFile().exists() == false
+		if (!streamInfo.file.getParentFile().exists()
 				&& streamInfo.file.getParentFile() != null)
 			streamInfo.file.getParentFile().mkdirs();
 		FileOutputStream fileStream = null;
@@ -249,7 +249,7 @@ public class BoundarySaver {
 						+ ".bnd");
 				streams.put(filekey, stream);
 				openStream(stream, true);
-			} else if (stream.isOpen() == false) {
+			} else if (!stream.isOpen()) {
 				openStream(stream, false);
 			}
 		}
