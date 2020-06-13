@@ -275,7 +275,7 @@ public class HousenumberGenerator {
 		if("false".equals(n.getTag(TKM_NUMBERS)))
 			return;
 		
-		if ("true".equals(n.getTag(POIGeneratorHook.AREA2POI_TAG))) {
+		if ("true".equals(n.getTag(POIGeneratorHook.TKM_AREA2POI))) {
 			// ignore POI created for buildings
 			return; 		
 		}
