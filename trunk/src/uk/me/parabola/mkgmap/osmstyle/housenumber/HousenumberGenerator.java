@@ -83,17 +83,17 @@ public class HousenumberGenerator {
 	private HashMap<CityInfo, CityInfo> cityInfos = new HashMap<>();
 	private HashMap<ZipCodeInfo, ZipCodeInfo> zipInfos = new HashMap<>();
 
-	private static final short housenumberTagKey1 =  TagDict.getInstance().xlate("mkgmap:housenumber");
-	private static final short housenumberTagKey2 =  TagDict.getInstance().xlate("addr:housenumber");
-	private static final short streetTagKey = TagDict.getInstance().xlate("mkgmap:street");
-	private static final short addrStreetTagKey = TagDict.getInstance().xlate("addr:street");
-	private static final short addrInterpolationTagKey = TagDict.getInstance().xlate("addr:interpolation");
-	private static final short addrPlaceTagKey = TagDict.getInstance().xlate("addr:place");
-	private static final short cityTagKey = TagDict.getInstance().xlate("mkgmap:city");
-	private static final short regionTagKey = TagDict.getInstance().xlate("mkgmap:region");
-	private static final short countryTagKey = TagDict.getInstance().xlate("mkgmap:country");
-	private static final short postalCodeTagKey = TagDict.getInstance().xlate("mkgmap:postal_code");
-	private static final short numbersTagKey = TagDict.getInstance().xlate("mkgmap:numbers");
+	private static final short TKM_HOUSENUMBER =  TagDict.getInstance().xlate("mkgmap:housenumber");
+	private static final short TK_ADDR_HOUSENUMBER =  TagDict.getInstance().xlate("addr:housenumber");
+	private static final short TKM_STREET = TagDict.getInstance().xlate("mkgmap:street");
+	private static final short TK_ADDR_STREET = TagDict.getInstance().xlate("addr:street");
+	private static final short TK_ADDR_INTERPOLATION = TagDict.getInstance().xlate("addr:interpolation");
+	private static final short TK_ADDR_PLACE = TagDict.getInstance().xlate("addr:place");
+	private static final short TKM_CITY = TagDict.getInstance().xlate("mkgmap:city");
+	private static final short TKM_REGION = TagDict.getInstance().xlate("mkgmap:region");
+	private static final short TKM_COUNTRY = TagDict.getInstance().xlate("mkgmap:country");
+	private static final short TKM_POSTAL_CODE = TagDict.getInstance().xlate("mkgmap:postal_code");
+	private static final short TKM_NUMBERS = TagDict.getInstance().xlate("mkgmap:numbers");
 	
 	public HousenumberGenerator(EnhancedProperties props) {
 		this.interpolationWays = new MultiHashMap<>();
@@ -103,10 +103,11 @@ public class HousenumberGenerator {
 		
 		numbersEnabled = props.containsKey("housenumbers");
 		int n = props.getProperty("name-service-roads", 3);
-		if (n != nameSearchDepth){
+		if (n != nameSearchDepth) {
 			nameSearchDepth = Math.min(25, Math.max(0, n));
-			if (nameSearchDepth != n)
+			if (nameSearchDepth != n) {
 				System.err.println("name-service-roads=" + n + " was changed to name-service-roads=" + nameSearchDepth);
+			}
 		}
 	}
 
@@ -116,9 +117,9 @@ public class HousenumberGenerator {
 	 * @return the street name (or {@code null} if no street name set)
 	 */
 	private static String getStreetname(Element e) {
-		String streetname = e.getTag(streetTagKey);
+		String streetname = e.getTag(TKM_STREET);
 		if (streetname == null) {
-			streetname = e.getTag(addrStreetTagKey);
+			streetname = e.getTag(TK_ADDR_STREET);
 		}	
 		return streetname;
 	}
@@ -129,10 +130,10 @@ public class HousenumberGenerator {
 	 * @return the house number (or {@code null} if no house number set)
 	 */
 	public static String getHousenumber(Element e) {
-		String res = e.getTag(housenumberTagKey1); 
+		String res = e.getTag(TKM_HOUSENUMBER); 
 		if (res != null)
 			return res;
-		return e.getTag(housenumberTagKey2);
+		return e.getTag(TK_ADDR_HOUSENUMBER);
 	}
 	
 	/**
@@ -184,7 +185,7 @@ public class HousenumberGenerator {
 		int housenumber;
 		Pattern p = Pattern.compile("\\D*(\\d+)\\D?.*");
 		Matcher m = p.matcher(housenumberString);
-		if (m.matches() == false) {
+		if (!m.matches()) {
 			return null;
 		}
 		try {
@@ -197,13 +198,13 @@ public class HousenumberGenerator {
 	}
 
 	
-	private HousenumberElem parseElement(Element el, String sign){
-		String city = el.getTag(cityTagKey);
-		String region = el.getTag(regionTagKey);
-		String country = el.getTag(countryTagKey);
+	private HousenumberElem parseElement(Element el, String sign) {
+		String city = el.getTag(TKM_CITY);
+		String region = el.getTag(TKM_REGION);
+		String country = el.getTag(TKM_COUNTRY);
 		CityInfo ci = getCityInfos(city,region,country);
 		HousenumberElem house = new HousenumberElem(el, ci);
-		if (house.getLocation() == null){
+		if (house.getLocation() == null) {
 			// there has been a report that indicates match.getLocation() == null
 			// could not reproduce so far but catching it here with some additional
 			// information. (WanMil)
@@ -216,19 +217,19 @@ public class HousenumberGenerator {
 		
 		house.setSign(sign);
 		Integer hn = parseHousenumber(sign);
-		if (hn == null){
+		if (hn == null) {
 			if (log.isDebugEnabled())
 				log.debug("No housenumber (", el.toBrowseURL(), "): ", sign);
 			return null;
 		}
-		if (hn < 0 || hn > 1_000_000){
+		if (hn < 0 || hn > 1_000_000) {
 			log.warn("Number looks wrong, is ignored",house.getSign(),hn,"element",el.toBrowseURL());
 			return null;
 		}
 		house.setHousenumber(hn);
 		house.setStreet(getStreetname(el));
-		house.setPlace(el.getTag(addrPlaceTagKey));
-		String zipStr = el.getTag(postalCodeTagKey);
+		house.setPlace(el.getTag(TK_ADDR_PLACE));
+		String zipStr = el.getTag(TKM_POSTAL_CODE);
 		ZipCodeInfo zip = getZipInfos(zipStr);
 		house.setZipCode(zip);
 		return house;
@@ -239,7 +240,6 @@ public class HousenumberGenerator {
 		CityInfo ciOld = cityInfos.get(ci);
 		if (ciOld != null)
 			return ciOld;
-//		log.debug(ci);
 		cityInfos.put(ci, ci);
 		return ci;
 	}
@@ -253,7 +253,7 @@ public class HousenumberGenerator {
 		return zip;
 	}
 
-	private HousenumberElem handleElement(Element el){
+	private HousenumberElem handleElement(Element el) {
 		String sign = getHousenumber(el);
 		if (sign == null)
 			return null;
@@ -269,13 +269,13 @@ public class HousenumberGenerator {
 	 * @param n an OSM node
 	 */
 	public void addNode(Node n) {
-		if (numbersEnabled == false) {
+		if (!numbersEnabled) {
 			return;
 		}
-		if("false".equals(n.getTag(numbersTagKey)))
+		if("false".equals(n.getTag(TKM_NUMBERS)))
 			return;
 		
-		if ("true".equals(n.getTag(POIGeneratorHook.AREA2POI_TAG))){
+		if ("true".equals(n.getTag(POIGeneratorHook.AREA2POI_TAG))) {
 			// ignore POI created for buildings
 			return; 		
 		}
@@ -283,7 +283,7 @@ public class HousenumberGenerator {
 		if (houseElem == null)
 			return;
 		
-		if (n.getTag(HousenumberHooks.partOfInterpolationTagKey) != null)
+		if (n.getTag(HousenumberHooks.TKM_PART_OF_INTERPOLATION) != null)
 			interpolationNodes.put(n.getId(),houseElems.size()-1);
 	}
 	
@@ -292,28 +292,28 @@ public class HousenumberGenerator {
 	 * @param w a way
 	 */
 	public void addWay(Way w) {
-		if (numbersEnabled == false) {
+		if (!numbersEnabled) {
 			return;
 		}
-		if("false".equals(w.getTag(numbersTagKey)))
+		if("false".equals(w.getTag(TKM_NUMBERS)))
 			return;
 		
-		String ai = w.getTag(addrInterpolationTagKey);
-		if (ai != null){
+		String ai = w.getTag(TK_ADDR_INTERPOLATION);
+		if (ai != null) {
 			// the way has the addr:interpolation=* tag, parse info
 			// created by the HousenumberHook
 			List<HousenumberElem> nodes = new ArrayList<>();
-			String nodeIds = w.getTag(HousenumberHooks.mkgmapNodeIdsTagKey);
-			if (nodeIds == null){
+			String nodeIds = w.getTag(HousenumberHooks.TKM_NODE_IDS);
+			if (nodeIds == null) {
 				// way was rejected by hook
 			} else {
 				String[] ids = nodeIds.split(",");
-				for (String idString : ids){
+				for (String idString : ids) {
 					Long id = Long.decode(idString);
 					Integer elemPos = interpolationNodes.get(id);
-					if (elemPos != null){
+					if (elemPos != null) {
 						HousenumberElem node = houseElems.get(elemPos);
-						if (node != null){
+						if (node != null) {
 							assert node.getElement().getId() == id;
 							nodes.add(node);
 						}
@@ -324,7 +324,7 @@ public class HousenumberGenerator {
 			return;
 		}
 		
-		if (w.hasIdenticalEndPoints()){
+		if (w.hasIdenticalEndPoints()) {
 			// we are only interested in polygons now
 			handleElement(w);
 		}
@@ -342,7 +342,7 @@ public class HousenumberGenerator {
 	 */
 	private void interpretInterpolationWay(Way w, List<HousenumberElem> nodes) {
 		int numNodes = nodes.size();
-		String addrInterpolationMethod = w.getTag(addrInterpolationTagKey);
+		String addrInterpolationMethod = w.getTag(TK_ADDR_INTERPOLATION);
 		int step = 0;
 		switch (addrInterpolationMethod) {
 		case "all":
@@ -362,37 +362,38 @@ public class HousenumberGenerator {
 		int pos = 0;
 		List<HousenumberIvl> hivls = new ArrayList<>();
 		String streetName = null;
-		for (int i = 0; i+1 < numNodes; i++){
+		for (int i = 0; i+1 < numNodes; i++) {
 			// the way have other points, find the sequence including the pair of nodes    
 			HousenumberElem he1 = nodes.get(i);
 			HousenumberElem he2 = nodes.get(i+1);
-			int pos1 = -1, pos2 = -1;
-			for (int k = pos; k < w.getPoints().size(); k++){
-				if (w.getPoints().get(k) == he1.getLocation()){
+			int pos1 = -1;
+			for (int k = pos; k < w.getPoints().size(); k++) {
+				if (w.getPoints().get(k) == he1.getLocation()) {
 					pos1 = k;
 					break;
 				}
 			}
-			if (pos1 < 0){
+			if (pos1 < 0) {
 				log.error("addr:interpolation node not found in way",w);
 				return;
 			}
-			for (int k = pos1+1; k < w.getPoints().size(); k++){
-				if (w.getPoints().get(k) == he2.getLocation()){
+			int pos2 = -1;
+			for (int k = pos1+1; k < w.getPoints().size(); k++) {
+				if (w.getPoints().get(k) == he2.getLocation()) {
 					pos2 = k;
 					break;
 				}
 			}
-			if (pos2 < 0){
+			if (pos2 < 0) {
 				log.error("addr:interpolation node not found in way",w);
 				return;
 			}
 			pos = pos2;
 			String street = he1.getStreet();
-			if (street != null && street.equals(he2.getStreet())){
+			if (street != null && street.equals(he2.getStreet())) {
 				if (streetName == null)
 					streetName = street;
-				else if (streetName.equals(street) == false){
+				else if (!streetName.equals(street)) {
 					log.warn(w.toBrowseURL(),"addr:interpolation=even is used with different street names",streetName,street);
 					return;
 				}
@@ -405,31 +406,23 @@ public class HousenumberGenerator {
 				hivl.setStep(step);
 				hivl.calcSteps();
 				hivl.setPoints(w.getPoints().subList(pos1, pos2+1));
-//				if (pos1 > 0){
-//					double angle = Utils.getAngle(w.getPoints().get(pos1-1), w.getPoints().get(pos1), w.getPoints().get(pos1+1));
-//					if (Math.abs(angle) > 75){
-//						log.warn(w.toBrowseURL(),"addr:interpolation way has sharp angle at number",start,"cannot use it");
-//						return;
-//					}
-//						
-//				}
 				
 				hivls.add(hivl);
-				if ("even".equals(addrInterpolationMethod) && (start % 2 != 0 || end % 2 != 0)){
+				if ("even".equals(addrInterpolationMethod) && (start % 2 != 0 || end % 2 != 0)) {
 					log.warn(w.toBrowseURL(),"addr:interpolation=even is used with odd housenumber(s)",start,end);
 					return;
 				}
-				if ("odd".equals(addrInterpolationMethod) && (start % 2 == 0 || end % 2 == 0)){
+				if ("odd".equals(addrInterpolationMethod) && (start % 2 == 0 || end % 2 == 0)) {
 					log.warn(w.toBrowseURL(),"addr:interpolation=odd is used with even housenumber(s)",start,end);
 					return;
 				}
 				
-				if (start == end && he1.getSign().equals(he2.getSign())){
-					// handle special case from CanVec imports  
-					if (pos1 == 0 && pos2 +1 == w.getPoints().size()){
-						hivl.setEqualEnds();
-						log.warn(w.toBrowseURL(),"addr:interpolation way connects two points with equal numbers, numbers are ignored");
-					}
+				if (start == end && he1.getSign().equals(he2.getSign()) && pos1 == 0
+						&& pos2 + 1 == w.getPoints().size()) {
+					// handle special case from CanVec imports
+					hivl.setEqualEnds();
+					log.warn(w.toBrowseURL(),
+							"addr:interpolation way connects two points with equal numbers, numbers are ignored");
 				}
 			}
 		}
@@ -446,7 +439,7 @@ public class HousenumberGenerator {
 	public void addRoad(Way osmRoad, MapRoad road) {
 		allRoads.add(road);
 		if (numbersEnabled) {
-			if("false".equals(osmRoad.getTag(numbersTagKey))) 
+			if("false".equals(osmRoad.getTag(TKM_NUMBERS))) 
 				road.setSkipHousenumberProcessing(true);
 			
 			/*
@@ -454,15 +447,13 @@ public class HousenumberGenerator {
 			 * only the first. This ensures that we don't try to assign numbers from bad
 			 * matches to these copies.
 			 */
-			if(!road.isSkipHousenumberProcessing()){
-				if (firstRoadSameOSMWay != null){
-					if (firstRoadSameOSMWay.getRoadDef().getId() == road.getRoadDef().getId()){
-						if (firstRoadSameOSMWay.getPoints().equals(road.getPoints())){
-							road.setSkipHousenumberProcessing(true);
-							return;
-						}
-					}
-				} 
+			if(!road.isSkipHousenumberProcessing()) {
+				if (firstRoadSameOSMWay != null 
+						&& firstRoadSameOSMWay.getRoadDef().getId() == road.getRoadDef().getId()
+						&& firstRoadSameOSMWay.getPoints().equals(road.getPoints())) {
+					road.setSkipHousenumberProcessing(true);
+					return;
+				}
 				road.getPoints().get(0).setNumberNode(true);
 				road.getPoints().get(road.getPoints().size() - 1).setNumberNode(true);
 				firstRoadSameOSMWay = road;
@@ -480,7 +471,7 @@ public class HousenumberGenerator {
 	public void addRelation(Relation r) {
 		String relType = r.getTag("type");
 		// the wiki says that we should also evaluate type=street
-		if ("associatedStreet".equals(relType) || "street".equals(relType)){
+		if ("associatedStreet".equals(relType) || "street".equals(relType)) {
 			List<Element> houses= new ArrayList<>();
 			List<Element> streets = new ArrayList<>();
 			for (Map.Entry<String, Element> member : r.getElements()) {
@@ -500,7 +491,7 @@ public class HousenumberGenerator {
 						streets.add(w);
 						break;
 					case "":
-						if (w.getTag("highway") != null){
+						if (w.getTag("highway") != null) {
 							streets.add(w);
 							continue;
 						}
@@ -521,57 +512,58 @@ public class HousenumberGenerator {
 			String streetNameFromRoads = null;
 			List<Element> unnamedStreetElems = new ArrayList<>();
 			boolean nameFromStreetsIsUnclear = false;
-			if (streets.isEmpty() == false) {
+			if (!streets.isEmpty()) {
 				for (Element street : streets) {
-					String roadName = street.getTag(streetTagKey);
+					String roadName = street.getTag(TKM_STREET);
 					if (roadName == null) 
 						roadName = street.getTag("name");
-					if (roadName == null){
+					if (roadName == null) {
 						unnamedStreetElems.add(street);
 						continue;
 					}
 					if (streetNameFromRoads == null)
 						streetNameFromRoads = roadName;
-					else if (streetNameFromRoads.equals(roadName) == false)
+					else if (!streetNameFromRoads.equals(roadName)) {
 						nameFromStreetsIsUnclear = true;
+					}
 				}
 			}
-			if (streetName == null){
-				if (nameFromStreetsIsUnclear == false)
+			if (streetName == null) {
+				if (!nameFromStreetsIsUnclear) {
 					streetName = streetNameFromRoads;
-				else {
+				} else {
 					log.warn("Relation",r.toBrowseURL(),": ignored, street name is not clear.");
 					return;
 				}
 
 			} else {
-				if (streetNameFromRoads != null){
-					if (nameFromStreetsIsUnclear == false && streetName.equals(streetNameFromRoads) == false){
-						if (unnamedStreetElems.isEmpty() == false){
+				if (streetNameFromRoads != null) {
+					if (!nameFromStreetsIsUnclear && !streetName.equals(streetNameFromRoads)) {
+						if (!unnamedStreetElems.isEmpty()) {
 							log.warn("Relation",r.toBrowseURL(),": ignored, street name is not clear.");
 							return;
 						}
 						log.warn("Relation",r.toBrowseURL(),": street name is not clear, using the name from the way, not that of the relation.");
 						streetName = streetNameFromRoads;
 					} 
-					else if (nameFromStreetsIsUnclear == true){
+					else if (nameFromStreetsIsUnclear) {
 						log.warn("Relation",r.toBrowseURL(),": street name is not clear, using the name from the relation.");
 					}
 				} 
 			}
 			int countModHouses = 0;
-			if (streetName != null && streetName.isEmpty() == false){
+			if (streetName != null && !streetName.isEmpty()) {
 				for (Element house : houses) {
-					if (addStreetTagFromRel(r, house, streetName) )
+					if (addStreetTagFromRel(r, house, streetName))
 						countModHouses++;
 				}
 				for (Element street : unnamedStreetElems) {
-					street.addTag(streetTagKey, streetName);
+					street.addTag(TKM_STREET, streetName);
 					street.addTag("name", streetName);
 				}
 			}
-			if (log.isInfoEnabled()){
-				if (countModHouses > 0 || !unnamedStreetElems.isEmpty()){
+			if (log.isInfoEnabled()) {
+				if (countModHouses > 0 || !unnamedStreetElems.isEmpty()) {
 					if (countModHouses > 0)
 						log.info("Relation",r.toBrowseURL(),": added tag mkgmap:street=",streetName,"to",countModHouses,"of",houses.size(),"house members" );
 					if (!unnamedStreetElems.isEmpty())
@@ -588,21 +580,21 @@ public class HousenumberGenerator {
 	 * Add the tag mkgmap:street=streetName to the element of the 
 	 * relation if it does not already have a street name tag.
 	 */
-	private static boolean addStreetTagFromRel(Relation r, Element house, String streetName){
+	private static boolean addStreetTagFromRel(Relation r, Element house, String streetName) {
 		String addrStreet = getStreetname(house);
-		if (addrStreet == null){
-			house.addTag(streetTagKey, streetName);
+		if (addrStreet == null) {
+			house.addTag(TKM_STREET, streetName);
 			if (log.isDebugEnabled())
 				log.debug("Relation",r.toBrowseURL(),": adding tag mkgmap:street=" + streetName, "to house",house.toBrowseURL());
 			return true;
 		}
-		else if (addrStreet.equals(streetName) == false){
-			if (house.getTag(streetTagKey) != null){
+		if (!addrStreet.equals(streetName)) {
+			if (house.getTag(TKM_STREET) != null) {
 				log.warn("Relation",r.toBrowseURL(),": street name from relation doesn't match existing mkgmap:street tag for house",house.toBrowseURL(),"the house seems to be member of another type=associatedStreet relation");
-				house.deleteTag(streetTagKey);
-			}
-			else 
+				house.deleteTag(TKM_STREET);
+			} else { 
 				log.warn("Relation",r.toBrowseURL(),": street name from relation doesn't match existing name for house",house.toBrowseURL());
+			}
 		}
 		return false;
 	}
@@ -623,18 +615,18 @@ public class HousenumberGenerator {
 			initialHousesForRoads = null;
 			log.info("found",hnrList.size(),"road candidates for address search");
 			
-			useAddrPlaceTag(hnrList);
+			useAddrPlaceTag();
 			Map<MapRoad, HousenumberRoad> road2HousenumberRoadMap = new HashMap<>();
-			for (HousenumberRoad hnr : hnrList){
+			for (HousenumberRoad hnr : hnrList) {
 				road2HousenumberRoadMap.put(hnr.getRoad(), hnr);
 			}
 			Int2ObjectOpenHashMap<HashSet<MapRoad>> nodeId2RoadLists = new Int2ObjectOpenHashMap<>();
-			for (MapRoad road : allRoads){
-				for (Coord co : road.getPoints()){
+			for (MapRoad road : allRoads) {
+				for (Coord co : road.getPoints()) {
 					if (co.getId() == 0)
 						continue;
 					HashSet<MapRoad> connectedRoads = nodeId2RoadLists.get(co.getId());
-					if (connectedRoads == null){
+					if (connectedRoads == null) {
 						connectedRoads = new HashSet<>();
 						nodeId2RoadLists.put(co.getId(), connectedRoads);
 					}
@@ -643,15 +635,15 @@ public class HousenumberGenerator {
 			}
 			List<HousenumberRoad> addedRoads = new ArrayList<>();
 			Iterator<HousenumberRoad> iter = hnrList.iterator();
-			while (iter.hasNext()){
+			while (iter.hasNext()) {
 				HousenumberRoad hnr = iter.next();
 				
 				List<HousenumberMatch> lostHouses = hnr.checkStreetName(road2HousenumberRoadMap, nodeId2RoadLists);
-				for (HousenumberMatch house : lostHouses){
+				for (HousenumberMatch house : lostHouses) {
 					MapRoad r = house.getRoad();
-					if (r != null){
+					if (r != null) {
 						HousenumberRoad hnr2 = road2HousenumberRoadMap.get(r);
-						if (hnr2 == null){
+						if (hnr2 == null) {
 							CityInfo ci = getCityInfos(r.getCity(), r.getRegion(), r.getCountry());
 							hnr2 = new HousenumberRoad(r, ci, Arrays.asList(house));
 							if (r.getZip() != null)
@@ -663,57 +655,49 @@ public class HousenumberGenerator {
 						}
 					}
 				}
-				if (hnr.getName() == null){
+				if (hnr.getName() == null) {
 					iter.remove();
-					for (HousenumberMatch house : hnr.getHouses()){
+					for (HousenumberMatch house : hnr.getHouses()) {
 						log.warn("found no plausible road name for address",house.toBrowseURL(),", closest road id:",house.getRoad());
 					}
 				}
 			}
 			hnrList.addAll(addedRoads);
 			// TODO: interpolate addr:interpolation houses
-			removeDupsGroupedByCityAndName(hnrList);
+			removeDupsGroupedByCityAndName();
 			
 			// group by street name and city
 			TreeMap<String, TreeMap<CityInfo, List<HousenumberRoad>>> streetnameCityRoadMap = new TreeMap<>();
-			for (HousenumberRoad hnr : hnrList){
-				TreeMap<CityInfo, List<HousenumberRoad>> cluster = streetnameCityRoadMap.get(hnr.getName());
-				if (cluster == null){
-					cluster = new TreeMap<>();
-					streetnameCityRoadMap.put(hnr.getName(), cluster);
-				}
-				List<HousenumberRoad> roadsInCluster = cluster.get(hnr.getRoadCityInfo());
-				if (roadsInCluster == null){
-					roadsInCluster = new ArrayList<>();
-					cluster.put(hnr.getRoadCityInfo(), roadsInCluster);
-				}
-				roadsInCluster.add(hnr);
+			for (HousenumberRoad hnr : hnrList) {
+				TreeMap<CityInfo, List<HousenumberRoad>> cluster = streetnameCityRoadMap.computeIfAbsent(hnr.getName(),
+						k -> new TreeMap<>());
+				cluster.computeIfAbsent(hnr.getRoadCityInfo(), k -> new ArrayList<>()).add(hnr);
 			}
 			
-			for (Entry<String, TreeMap<CityInfo, List<HousenumberRoad>>> streetNameEntry : streetnameCityRoadMap.entrySet()){
+			for (Entry<String, TreeMap<CityInfo, List<HousenumberRoad>>> streetNameEntry : streetnameCityRoadMap.entrySet()) {
 				String streetName = streetNameEntry.getKey();
 				
-				for (Entry<CityInfo, List<HousenumberRoad>> clusterEntry : streetNameEntry.getValue().entrySet()){
+				for (Entry<CityInfo, List<HousenumberRoad>> clusterEntry : streetNameEntry.getValue().entrySet()) {
 					useInterpolationInfo(streetName, clusterEntry.getValue(), road2HousenumberRoadMap);
 				}
 				
-				for (Entry<CityInfo, List<HousenumberRoad>> clusterEntry : streetNameEntry.getValue().entrySet()){
+				for (Entry<CityInfo, List<HousenumberRoad>> clusterEntry : streetNameEntry.getValue().entrySet()) {
 					List<HousenumberRoad> roadsInCluster = clusterEntry.getValue();
-					if (log.isDebugEnabled()){
+					if (log.isDebugEnabled()) {
 						log.debug("processing road(s) with name",streetName,"in",clusterEntry.getKey() );
 					}
-					for (HousenumberRoad hnr : roadsInCluster){
+					for (HousenumberRoad hnr : roadsInCluster) {
 						hnr.buildIntervals();
 					}
 					boolean optimized = false;
-					for (int loop = 0; loop < 10; loop++){
-						for (HousenumberRoad hnr : roadsInCluster){
+					for (int loop = 0; loop < 10; loop++) {
+						for (HousenumberRoad hnr : roadsInCluster) {
 							hnr.checkIntervals();
 						}
 						checkWrongRoadAssignmments(roadsInCluster);
 						boolean changed = hasChanges(roadsInCluster);
-						if (!optimized && !changed){
-							for (HousenumberRoad hnr : roadsInCluster){
+						if (!optimized && !changed) {
+							for (HousenumberRoad hnr : roadsInCluster) {
 								hnr.improveSearchResults();
 							}
 							changed = hasChanges(roadsInCluster);
@@ -722,16 +706,16 @@ public class HousenumberGenerator {
 						if (!changed)
 							break;
 					}
-					for (HousenumberRoad hnr : roadsInCluster){
+					for (HousenumberRoad hnr : roadsInCluster) {
 						hnr.setNumbers();
 					}
 				}
 			}
 		}
 			
-		if (log.isInfoEnabled()){
-			for (HousenumberElem house : houseElems){
-				if (house.getRoad() == null){
+		if (log.isInfoEnabled()) {
+			for (HousenumberElem house : houseElems) {
+				if (house.getRoad() == null) {
 					if (house.getStreet() != null)
 						log.info("found no plausible road for house number element",house.toBrowseURL(),house.getStreet(),house.getSign());
 					else 
@@ -740,11 +724,11 @@ public class HousenumberGenerator {
 			}
 		}
 		for (MapRoad r : allRoads) {
-			if (log.isDebugEnabled()){
+			if (log.isDebugEnabled()) {
 				List<Numbers> finalNumbers = r.getRoadDef().getNumbersList();
-				if (finalNumbers != null){
+				if (finalNumbers != null) {
 					log.info("id:"+r.getRoadDef().getId(),", final numbers,",r,"in",r.getCity());
-					for (Numbers cn : finalNumbers){
+					for (Numbers cn : finalNumbers) {
 						if (cn.isEmpty())
 							continue;
 						log.info("id:"+r.getRoadDef().getId(),", Left: ",cn.getLeftNumberStyle(),cn.getIndex(),"Start:",cn.getLeftStart(),"End:",cn.getLeftEnd());
@@ -759,7 +743,7 @@ public class HousenumberGenerator {
 	private List<HousenumberRoad> createHousenumberRoads(
 			MultiHashMap<MapRoad, HousenumberMatch> initialHousesForRoads) {
 		List<HousenumberRoad> hnrList = new ArrayList<>();
-		for (MapRoad road : allRoads){
+		for (MapRoad road : allRoads) {
 			if (road.isSkipHousenumberProcessing())
 				continue;
 			List<HousenumberMatch> houses = initialHousesForRoads.get(road);
@@ -784,11 +768,11 @@ public class HousenumberGenerator {
 		
 		long t3 = System.currentTimeMillis();
 		MultiHashMap<MapRoad,HousenumberMatch> initialHousesForRoads = new MultiHashMap<>();
-		for (int i = 0; i < houseElems.size(); i++){
+		for (int i = 0; i < houseElems.size(); i++) {
 			HousenumberElem house = houseElems.get(i);
 			HousenumberMatch bestMatch = roadSegmentIndex.createHousenumberMatch(house);
 			houseElems.set(i, bestMatch);
-			if (bestMatch.getRoad() == null){
+			if (bestMatch.getRoad() == null) {
 				bestMatch.setIgnored(true); // XXX maybe create a pseudo road with zero length?
 //				log.warn("found no plausible road for house number element",house.getElement().toBrowseURL());
 				continue;
@@ -801,33 +785,26 @@ public class HousenumberGenerator {
 		return initialHousesForRoads;
 	}
 
-	private void useAddrPlaceTag(List<HousenumberRoad> hnrList){
+	private void useAddrPlaceTag() {
 		HashMap<CityInfo,MultiHashMap<String,HousenumberMatch>> cityPlaceHouseMap = new LinkedHashMap<>();
-		for (int i = 0; i < houseElems.size(); i++){
+		for (int i = 0; i < houseElems.size(); i++) {
 			HousenumberElem house = houseElems.get(i);
-			if (house.getRoad() == null)
+			if (house.getRoad() == null || house.getPlace() == null)
 				continue;
-			if (house.getPlace() == null)
-				continue;
-			if (house instanceof HousenumberMatch){
+			if (house instanceof HousenumberMatch) {
 				HousenumberMatch hm = (HousenumberMatch) house;
-				if (hm.getHousenumberRoad() == null)
-					continue;
-			} else 
-				continue;
-			MultiHashMap<String, HousenumberMatch> subMap = cityPlaceHouseMap.get(house.getCityInfo());
-			if (subMap == null){
-				subMap = new MultiHashMap<>();
-				cityPlaceHouseMap.put(house.getCityInfo(), subMap);
+				if (hm.getHousenumberRoad() != null) {
+					cityPlaceHouseMap.computeIfAbsent(house.getCityInfo(), k -> new MultiHashMap<>())
+							.add(house.getPlace(), (HousenumberMatch) house);
+				}
 			}
-			subMap.add(house.getPlace(), (HousenumberMatch) house);
 		}
 		log.info("analysing",cityPlaceHouseMap.size(),"cities with addr:place=* houses" );
-		for (Entry<CityInfo, MultiHashMap<String, HousenumberMatch>> topEntry : cityPlaceHouseMap.entrySet()){
+		for (Entry<CityInfo, MultiHashMap<String, HousenumberMatch>> topEntry : cityPlaceHouseMap.entrySet()) {
 			CityInfo cityInfo = topEntry.getKey();
 			List<String> placeNames = new ArrayList<>(topEntry.getValue().keySet());
 			placeNames.sort(null);
-			for (String placeName : placeNames){
+			for (String placeName : placeNames) {
 				List<HousenumberMatch> placeHouses = topEntry.getValue().get(placeName);
 				HashSet<HousenumberRoad> roads = new LinkedHashSet<>();
 				Int2IntOpenHashMap usedNumbers = new Int2IntOpenHashMap();
@@ -839,10 +816,10 @@ public class HousenumberGenerator {
 				int roadsWithNames = 0;
 				int unnamedCloseRoads = 0;
 				
-				for (HousenumberMatch house : placeHouses){
-					if (house.getStreet() != null ){
+				for (HousenumberMatch house : placeHouses) {
+					if (house.getStreet() != null ) {
 						++housesWithStreet;
-						if (house.getStreet().equalsIgnoreCase(house.getRoad().getStreet())){
+						if (house.getStreet().equalsIgnoreCase(house.getRoad().getStreet())) {
 							++housesWithMatchingStreet;
 						}
 					} else {
@@ -853,18 +830,18 @@ public class HousenumberGenerator {
 					if (added && house.getRoad().getStreet() != null)
 						++roadsWithNames;
 					int oldCount = usedNumbers.put(house.getHousenumber(),1);
-					if (oldCount != 0){
+					if (oldCount != 0) {
 						usedNumbers.put(house.getHousenumber(), oldCount + 1);
 						++dupNumbers;
 					}
 					Integer oldSignCount = usedSigns.put(house.getSign(), 1);
-					if (oldSignCount != null){
+					if (oldSignCount != null) {
 						usedSigns.put(house.getSign(), oldSignCount + 1);
 						++dupSigns;
 					}
 				}
 				
-				if (log.isDebugEnabled()){
+				if (log.isDebugEnabled()) {
 					log.debug("place",placeName,"in city",cityInfo, ":", "houses:", placeHouses.size(),
 							",duplicate numbers/signs:", dupNumbers+"/"+dupSigns,
 							",roads (named/unnamed):", roads.size(),"("+roadsWithNames+"/"+(roads.size()- roadsWithNames)+")",
@@ -872,16 +849,16 @@ public class HousenumberGenerator {
 							",street = name of closest road:", housesWithMatchingStreet,
 							",houses without addr:street near named road:",	unnamedCloseRoads);
 				}
-				if ((float) dupSigns / placeHouses.size() < 0.25 ){
+				if ((float) dupSigns / placeHouses.size() < 0.25 ) {
 					if (log.isDebugEnabled())
 						log.debug("will not use gaps in intervals for roads in",placeName );
-					for (HousenumberRoad hnr : roads){
+					for (HousenumberRoad hnr : roads) {
 						hnr.setRemoveGaps(true);
 					}
 				}
-				if (placeHouses.size() > housesWithStreet){ // XXX: threshold value?
+				if (placeHouses.size() > housesWithStreet) { // XXX: threshold value?
 					LongArrayList ids = new LongArrayList();
-					for (HousenumberRoad hnr : roads){
+					for (HousenumberRoad hnr : roads) {
 						ids.add(hnr.getRoad().getRoadDef().getId());
 						hnr.addPlaceName(placeName);
 					}
@@ -901,26 +878,26 @@ public class HousenumberGenerator {
 	 * @param initialHousesForRoads map that is updated when wrong road assignments were found
 	 */
 	private void handleInterpolationWays(MultiHashMap<MapRoad, HousenumberMatch> initialHousesForRoads) {
-		for (Entry<String, List<HousenumberIvl>> entry : interpolationWays.entrySet()){
+		for (Entry<String, List<HousenumberIvl>> entry : interpolationWays.entrySet()) {
 			List<HousenumberIvl> infos = entry.getValue();
-			for (HousenumberIvl info : infos){
-				if (info.isBad()){
+			for (HousenumberIvl info : infos) {
+				if (info.isBad()) {
 					continue;
 				}
 				boolean isOK = info.setNodeRefs(interpolationNodes, houseElems);
 				if (!isOK)
 					continue;
 				HousenumberMatch[] houses = info.getHouseNodes();
-				MapRoad uncheckedRoads[] = new MapRoad[houses.length];
+				MapRoad[] uncheckedRoads = new MapRoad[houses.length];
 				for (int i = 0 ; i < houses.length; i++)
 					uncheckedRoads[i] = houses[i].getRoad();
 				isOK = info.checkRoads();
 				// check if houses are assigned to different roads now
 				houses = info.getHouseNodes();
-				for (int i = 0 ; i < houses.length; i++){
-					if (houses[i].getRoad() != uncheckedRoads[i]){
+				for (int i = 0 ; i < houses.length; i++) {
+					if (houses[i].getRoad() != uncheckedRoads[i]) {
 						initialHousesForRoads.removeMapping(uncheckedRoads[i], houses[i]);
-						if (houses[i].isIgnored() == false)
+						if (!houses[i].isIgnored())
 							initialHousesForRoads.add(houses[i].getRoad(), houses[i]);
 						else {
 							if (!isOK)
@@ -932,33 +909,26 @@ public class HousenumberGenerator {
 		}
 	}
 
-	private void removeDupsGroupedByCityAndName(List<HousenumberRoad> hnrList){
+	private void removeDupsGroupedByCityAndName() {
 		HashMap<CityInfo,MultiHashMap<String,HousenumberMatch>> cityNameHouseMap = new LinkedHashMap<>();
-		for (int i = 0; i < houseElems.size(); i++){
-			HousenumberElem house = houseElems.get(i);
+		for (HousenumberElem house : houseElems) {
 			if (house.getRoad() == null)
 				continue;
-			if (house instanceof HousenumberMatch){
+			if (house instanceof HousenumberMatch) {
 				HousenumberMatch hm = (HousenumberMatch) house;
 				if (hm.isIgnored())
 					continue;
 				HousenumberRoad hnr = hm.getHousenumberRoad();
 				if (hnr == null || hnr.getName() == null)
 					continue;
-				MultiHashMap<String, HousenumberMatch> subMap = cityNameHouseMap.get(hm.getCityInfo());
-				if (subMap == null){
-					subMap = new MultiHashMap<>();
-					cityNameHouseMap.put(hm.getCityInfo(), subMap);
-				}
-				subMap.add(hnr.getName(), hm);
+				cityNameHouseMap.computeIfAbsent(hm.getCityInfo(), k -> new MultiHashMap<>()).add(hnr.getName(), hm);
 			}
 		}
-		
-		for (Entry<CityInfo, MultiHashMap<String, HousenumberMatch>> topEntry : cityNameHouseMap.entrySet()){
-			for (Entry<String, List<HousenumberMatch>> entry : topEntry.getValue().entrySet()){
+
+		for (Entry<CityInfo, MultiHashMap<String, HousenumberMatch>> topEntry : cityNameHouseMap.entrySet()) {
+			for (Entry<String, List<HousenumberMatch>> entry : topEntry.getValue().entrySet()) {
 				markSimpleDuplicates(entry.getKey(), entry.getValue());
 			}
-			
 		}
 	}	
 	
@@ -983,17 +953,17 @@ public class HousenumberGenerator {
 		long t1 = System.currentTimeMillis();
 
 		List<MapRoad> unnamedRoads = new ArrayList<>();
-		for (MapRoad road : allRoads){
+		for (MapRoad road : allRoads) {
 			if (road.isSkipHousenumberProcessing())
 				continue;
 			
-			if (road.getStreet() == null){
+			if (road.getStreet() == null) {
 				// if a road has a label but getStreet() returns null,
 				// the road probably has a ref. We assume these are not service roads. 
-				if (road.getName() == null){
+				if (road.getName() == null) {
 					unnamedRoads.add(road);
 					List<Coord> nodes = new ArrayList<>();
-					for (Coord co : road.getPoints()){
+					for (Coord co : road.getPoints()) {
 						if (co.getId() != 0)
 							nodes.add(co);
 					}
@@ -1009,18 +979,18 @@ public class HousenumberGenerator {
 			log.debug("identifyServiceRoad step 1 took",(t2-t1),"ms, found",roadNamesByNodeIds.size(),"nodes to check and",numUnnamedRoads,"unnamed roads" );
 		long t3 = System.currentTimeMillis();
 		int named = 0;
-		for (int pass = 1; pass <= nameSearchDepth; pass ++){
+		for (int pass = 1; pass <= nameSearchDepth; pass ++) {
 			int unnamed = 0;
 			List<MapRoad> namedRoads = new ArrayList<>();
-			for (int j = 0; j < unnamedRoads.size(); j++){
+			for (int j = 0; j < unnamedRoads.size(); j++) {
 				MapRoad road = unnamedRoads.get(j);
 				if (road == null)
 					continue;
 				unnamed++;
 				List<Coord> coordNodes = coordNodesUnnamedRoads.get(road); 
 				String name = null;
-				for (Coord co : coordNodes){
-					if (unclearNodeIds.contains(co.getId())){
+				for (Coord co : coordNodes) {
+					if (unclearNodeIds.contains(co.getId())) {
 						name = null;
 						unnamedRoads.set(j, null); // don't process again
 						break;
@@ -1030,20 +1000,20 @@ public class HousenumberGenerator {
 						continue;
 					if (name == null)
 						name = possibleName;
-					else if (name.equals(possibleName) == false){
+					else if (!name.equals(possibleName)) {
 						name = null;
 						unnamedRoads.set(j, null); // don't process again
 						break;
 					}
 				}
-				if (name != null){
+				if (name != null) {
 					named++;
 					road.setStreet(name);
 					namedRoads.add(road);
 					unnamedRoads.set(j, null); // don't process again
 				}
 			}
-			for (MapRoad road : namedRoads){
+			for (MapRoad road : namedRoads) {
 				road.setNamedByHousenumberProcessing(true);
 				String name = road.getStreet();
 				if (log.isDebugEnabled())
@@ -1058,20 +1028,18 @@ public class HousenumberGenerator {
 				log.debug("pass",pass,unnamed,named);
 		}
 		long t4 = System.currentTimeMillis();
-		if (log.isDebugEnabled()){
+		if (log.isDebugEnabled()) {
 			log.debug("indentifyServiceRoad step 2 took",(t4-t3),"ms, found a name for",named,"of",numUnnamedRoads,"roads" );
 		}
-		return;
 	}
 
 	private void identifyNodes(List<Coord> roadPoints,
 			String streetName, Int2ObjectOpenHashMap<String> roadNamesByNodeIds, HashSet<Integer> unclearNodes) {
-		for (Coord co : roadPoints){
-			if (co.getId() != 0){
+		for (Coord co : roadPoints) {
+			if (co.getId() != 0) {
 				String prevName = roadNamesByNodeIds.put(co.getId(), streetName);
-				if (prevName != null){
-					if (prevName.equals(streetName) == false)
-						unclearNodes.add(co.getId());
+				if (prevName != null && !prevName.equals(streetName)) {
+					unclearNodes.add(co.getId());
 				}
 			}
 		}			
@@ -1097,8 +1065,8 @@ public class HousenumberGenerator {
 		if (interpolationInfos.isEmpty())
 			return;
 		List<HousenumberMatch> housesWithIvlInfo = new ArrayList<>();
-		for (HousenumberRoad hnr : roadsInCluster){
-			for (HousenumberMatch house : hnr.getHouses()){
+		for (HousenumberRoad hnr : roadsInCluster) {
+			for (HousenumberMatch house : hnr.getHouses()) {
 				if (house.getIntervalInfoRefs() > 0)
 					housesWithIvlInfo.add(house);
 			}
@@ -1113,21 +1081,21 @@ public class HousenumberGenerator {
 		Int2ObjectOpenHashMap<HousenumberMatch> existingNumbers = new Int2ObjectOpenHashMap<>();
 		HashMap<HousenumberIvl, List<HousenumberMatch>> housesToAdd = new LinkedHashMap<>();
 		
-		for (HousenumberRoad hnr : roadsInCluster){
+		for (HousenumberRoad hnr : roadsInCluster) {
 			for (HousenumberMatch house : hnr.getHouses())
 				existingNumbers.put(house.getHousenumber(), house);
 		}
 		int inCluster = 0;
 		boolean allOK = true;
 		// for loop may change the list 
-		for (int i = 0; i < interpolationInfos.size(); i++){
+		for (int i = 0; i < interpolationInfos.size(); i++) {
 			HousenumberIvl hivl = interpolationInfos.get(i);
-			if (hivl.inCluster(housesWithIvlInfo) == false || hivl.ignoreForInterpolation())
+			if (!hivl.inCluster(housesWithIvlInfo) || hivl.ignoreForInterpolation())
 				continue;
 			++inCluster;
 			String hivlDesc = hivl.getDesc();
 			HousenumberIvl hivlTest = simpleDupCheckSet.get(hivlDesc);
-			if (hivlTest != null){
+			if (hivlTest != null) {
 				// happens often in Canada (CanVec imports): two or more addr:interpolation ways with similar meaning
 				// sometimes at completely different road parts, sometimes at exactly the same
 				log.warn("found additional addr:interpolation way with same meaning, is ignored:",streetName, hivl, hivlTest);
@@ -1139,26 +1107,26 @@ public class HousenumberGenerator {
 
 			id2IvlMap.put(hivl.getId(), hivl);
 			List<HousenumberMatch> interpolatedHouses = hivl.getInterpolatedHouses();
-			if (interpolatedHouses.isEmpty() == false){
-				if (interpolatedHouses.get(0).getRoad() == null){
+			if (!interpolatedHouses.isEmpty()) {
+				if (interpolatedHouses.get(0).getRoad() == null) {
 					// the interpolated houses are not all along one road
 					findRoadForInterpolatedHouses(streetName, interpolatedHouses, roadsInCluster);
 				}
 				
 				int dupCount = 0;
-				for (HousenumberMatch house : interpolatedHouses){
+				for (HousenumberMatch house : interpolatedHouses) {
 					if (house.getRoad() == null || house.getDistance() > HousenumberIvl.MAX_INTERPOLATION_DISTANCE_TO_ROAD)
 						continue;
 					boolean ignoreGenOnly = false;
 					HousenumberMatch old = interpolatedNumbers.get(house.getHousenumber());
-					if (old == null){
+					if (old == null) {
 						ignoreGenOnly = true;
 						old = existingNumbers.get(house.getHousenumber());
 					}
-					if (old != null){
+					if (old != null) {
 						// try to build new intervals using existing node
 						HousenumberIvl[] splitIvls = hivl.trySplitAt(old);
-						if (splitIvls != null){
+						if (splitIvls != null) {
 							log.info("adding address",streetName,old,old.toBrowseURL(),"to addr:interpolation way, replacing", hivl,"by",Arrays.deepToString(splitIvls));
 							interpolationInfos.add(splitIvls[0]);
 							interpolationInfos.add(splitIvls[1]);
@@ -1168,13 +1136,13 @@ public class HousenumberGenerator {
 						// forget both or only one ? Which one?
 						house.setIgnored(true);
 						double distToOld = old.getLocation().distance(house.getLocation()); 
-						if (distToOld > MAX_DISTANCE_SAME_NUM){
+						if (distToOld > MAX_DISTANCE_SAME_NUM) {
 							if (old.isInterpolated())
 								log.info("conflict caused by addr:interpolation way",streetName,hivl,"and interpolated address",old,"at",old.getLocation().toDegreeString());
 							else 
 								log.info("conflict caused by addr:interpolation way",streetName,hivl,"and address element",old,"at",old.getLocation().toDegreeString());
 							dupCount++;
-							if (!ignoreGenOnly){
+							if (!ignoreGenOnly) {
 								old.setIgnored(true);
 								long ivlId = old.getElement().getOriginalId();
 								HousenumberIvl bad = id2IvlMap.get(ivlId);
@@ -1186,7 +1154,7 @@ public class HousenumberGenerator {
 				}
 				if (hivl.ignoreForInterpolation())
 					continue;
-				if (dupCount > 0){
+				if (dupCount > 0) {
 					log.warn("addr:interpolation way",streetName,hivl,"is ignored, it produces",dupCount,"duplicate number(s) too far from existing nodes");
 					badIvls.add(hivl);
 				}
@@ -1199,20 +1167,20 @@ public class HousenumberGenerator {
 		}
 		if (inCluster == 0)
 			return;
-		for (HousenumberIvl badIvl: badIvls){
+		for (HousenumberIvl badIvl: badIvls) {
 			allOK = false;
 			badIvl.ignoreNodes();
 			housesToAdd.remove(badIvl);
 		}
 		Iterator<Entry<HousenumberIvl, List<HousenumberMatch>>> iter = housesToAdd.entrySet().iterator();
-		while (iter.hasNext()){
+		while (iter.hasNext()) {
 			Entry<HousenumberIvl, List<HousenumberMatch>> entry = iter.next();
 			if (log.isInfoEnabled())
 				log.info("using generated house numbers from addr:interpolation way",entry.getKey());
-			for (HousenumberMatch house : entry.getValue()){
-				if (house.getRoad() != null && house.isIgnored() == false){
+			for (HousenumberMatch house : entry.getValue()) {
+				if (house.getRoad() != null && !house.isIgnored()) {
 					HousenumberRoad hnr = road2HousenumberRoadMap.get(house.getRoad());
-					if (hnr == null){
+					if (hnr == null) {
 						log.error("internal error: found no housenumber road for interpolated house",house.toBrowseURL());
 						continue;
 					}
@@ -1220,7 +1188,7 @@ public class HousenumberGenerator {
 				}
 			}
 		}
-		if (log.isDebugEnabled()){
+		if (log.isDebugEnabled()) {
 			if (allOK)
 				log.debug("found no problems with interpolated numbers from addr:interpolations ways for roads with name",streetName);
 			else 
@@ -1242,29 +1210,28 @@ public class HousenumberGenerator {
 			house.setDistance(Double.POSITIVE_INFINITY); // make sure that we don't use an old match
 			house.setRoad(null);
 			List<HousenumberMatch> matches = new ArrayList<>();
-			for (HousenumberRoad hnr : roadsInCluster){
+			for (HousenumberRoad hnr : roadsInCluster) {
 				MapRoad r = hnr.getRoad();
 				// make sure that we use the street info if available
-				if (house.getPlace() != null){
-					if (house.getStreet() != null && r.getStreet() != null && house.getStreet().equals(r.getStreet()) == false)
-						continue;
+				if (house.getPlace() != null && house.getStreet() != null && r.getStreet() != null
+						&& house.getStreet().equals(r.getStreet())) {
+					continue;
 				}
 				HousenumberMatch test = new HousenumberMatch(house);
 				findClosestRoadSegment(test, r);
-				if (test.getRoad() != null && test.getGroup() != null || test.getDistance() < MAX_DISTANCE_TO_ROAD){
+				if (test.getRoad() != null && test.getGroup() != null || test.getDistance() < MAX_DISTANCE_TO_ROAD) {
 					matches.add(test);
 				}
 			}
-			if (matches.isEmpty()){
+			if (matches.isEmpty()) {
 				house.setIgnored(true);
 				continue;
-			}
+			}			
 			
+			HousenumberMatch closest = matches.get(0); 
+			HousenumberMatch best = closest;
 			
-			HousenumberMatch closest, best; 
-			best = closest  = matches.get(0);
-			
-			if (matches.size() > 1){
+			if (matches.size() > 1) {
 				// multiple roads, we assume that the closest is the best
 				// but we may have to check the alternatives as well
 				
@@ -1276,7 +1243,7 @@ public class HousenumberGenerator {
 			house.setSegmentFrac(best.getSegmentFrac());
 			house.setRoad(best.getRoad());
 			house.setSegment(best.getSegment());
-			for (HousenumberMatch altHouse : matches){
+			for (HousenumberMatch altHouse : matches) {
 				if (altHouse.getRoad() != best.getRoad() && altHouse.getDistance() < MAX_DISTANCE_TO_ROAD)
 					house.addAlternativeRoad(altHouse.getRoad());
 			}
@@ -1287,29 +1254,27 @@ public class HousenumberGenerator {
 				house.calcRoadSide();
 			}
 			// plausibility check for duplicate house numbers
-			if (prev != null && prev.getHousenumber() == house.getHousenumber()){
+			if (prev != null && prev.getHousenumber() == house.getHousenumber()
+					&& prev.getSign().equals(house.getSign())) {
 				// duplicate number (e.g. 10 and 10 or 10 and 10A or 10A and 10B)
-				if (prev.getSign().equals(house.getSign())){
-					prev.setDuplicate(true);
-					house.setDuplicate(true);
-				}
+				prev.setDuplicate(true);
+				house.setDuplicate(true);
 			}
 			
-			if (house.getRoad() == null) {
-				if (house.isIgnored() == false)
-					log.warn("found no plausible road for house number element",house.toBrowseURL(),"(",streetName,house.getSign(),")");
+			if (house.getRoad() == null && !house.isIgnored()) {
+				log.warn("found no plausible road for house number element",house.toBrowseURL(),"(",streetName,house.getSign(),")");
 			}
-			if (!house.isIgnored())
+			if (!house.isIgnored()) {
 				prev = house;
+			}
 		}
 	}
-
 	
 	private static void markSimpleDuplicates(String streetName, List<HousenumberMatch> housesNearCluster) {
 		List<HousenumberMatch> sortedHouses = new ArrayList<>(housesNearCluster);
 		sortedHouses.sort(new HousenumberMatchByNumComparator());
 		int n = sortedHouses.size();
-		for (int i = 1; i < n; i++){
+		for (int i = 1; i < n; i++) {
 			HousenumberMatch house1 = sortedHouses.get(i-1);
 			if (house1.isIgnored())
 				continue;
@@ -1318,7 +1283,7 @@ public class HousenumberGenerator {
 				continue;
 			if (house1.getHousenumber() != house2.getHousenumber())
 				continue;
-			if (house1.getRoad() == house2.getRoad()){
+			if (house1.getRoad() == house2.getRoad()) {
 				if (house1.isFarDuplicate())
 					house2.setFarDuplicate(true);
 				continue; // handled later
@@ -1332,11 +1297,11 @@ public class HousenumberGenerator {
 			else {
 				CityInfo city1 = house1.getCityInfo();
 				CityInfo city2 = house2.getCityInfo();
-				if (city1 != null && city1.equals(city2) == false){
+				if (city1 != null && !city1.equals(city2)) {
 					markFarDup = true;
 				}
 			}
-			if (markFarDup){
+			if (markFarDup) {
 				if (log.isDebugEnabled())
 					log.debug("keeping duplicate numbers assigned to different roads in cluster ", streetName, house1,house2);
 				house1.setFarDuplicate(true);
@@ -1344,21 +1309,21 @@ public class HousenumberGenerator {
 				continue;
 			}
 			boolean ignore2nd = false;
-			if (dist < 30){
+			if (dist < 30) {
 				ignore2nd = true;
 			} else {
 				Coord c1s = house1.getRoad().getPoints().get(house1.getSegment());
 				Coord c1e = house1.getRoad().getPoints().get(house1.getSegment() + 1);
 				Coord c2s = house2.getRoad().getPoints().get(house2.getSegment());
 				Coord c2e = house2.getRoad().getPoints().get(house2.getSegment() + 1);
-				if (c1s == c2s || c1s == c2e || c1e == c2s || c1e == c2e){
+				if (c1s == c2s || c1s == c2e || c1e == c2s || c1e == c2e) {
 					// roads are directly connected
 					ignore2nd = true;
 				} 
 			}
-			if (ignore2nd){
+			if (ignore2nd) {
 				house2.setIgnored(true);
-				if (log.isDebugEnabled()){
+				if (log.isDebugEnabled()) {
 					if (house1.getSign().equals(house2.getSign()))
 						log.debug("duplicate number is ignored",streetName,house2.getSign(),house2.toBrowseURL() );
 					else 
@@ -1389,13 +1354,13 @@ public class HousenumberGenerator {
 		house.setDistance(Double.POSITIVE_INFINITY);
 		boolean foundGroupLink = false;
 		int end = Math.min(r.getPoints().size(), stopSeg+1);
-		for (int node = firstSeg; node + 1 < end; node++){
+		for (int node = firstSeg; node + 1 < end; node++) {
 			Coord c1 = r.getPoints().get(node);
 			Coord c2 = r.getPoints().get(node + 1);
 			double frac = getFrac(c1, c2, cx);
 			double dist = distanceToSegment(c1,c2,cx,frac);
-			if (house.getGroup() != null && house.getGroup().linkNode == c1){
-				if (c1.highPrecEquals(c2) == false){
+			if (house.getGroup() != null && house.getGroup().linkNode == c1) {
+				if (!c1.highPrecEquals(c2)) {
 					log.debug("block doesn't have zero length segment! Road:",r,house);
 				}
 				foundGroupLink = true;
@@ -1412,24 +1377,17 @@ public class HousenumberGenerator {
 			} 
 		}
 		
-		if (house.getGroup() != null && house.getGroup().linkNode != null && foundGroupLink == false){
+		if (house.getGroup() != null && house.getGroup().linkNode != null && !foundGroupLink) {
 			log.debug(r,house,"has a group but the link was not found, should only happen after split of zero-length-segment");
 		}
-		if (oldRoad == r){
-			if (house.getDistance() > MAX_DISTANCE_TO_ROAD + 2.5 && oldDist <= MAX_DISTANCE_TO_ROAD ){
-				log.warn("line distorted? Road segment was moved by more than",
-						String.format("%.2f m", 2.5), ", from address", r, house.getSign());
-			}
+		if (oldRoad == r && house.getDistance() > MAX_DISTANCE_TO_ROAD + 2.5 && oldDist <= MAX_DISTANCE_TO_ROAD) {
+			log.warn("line distorted? Road segment was moved by more than", String.format("%.2f m", 2.5),
+					", from address", r, house.getSign());
 		}
 	}
 
-	private static boolean hasChanges(
-			List<HousenumberRoad> housenumberRoads) {
-		for (HousenumberRoad hnr : housenumberRoads){
-			if (hnr.isChanged())
-				return true;
-		}
-		return false;
+	private static boolean hasChanges(List<HousenumberRoad> housenumberRoads) {
+		return housenumberRoads.stream().anyMatch(HousenumberRoad::isChanged);
 	}
 
 	/**
@@ -1439,20 +1397,20 @@ public class HousenumberGenerator {
 	private static void checkWrongRoadAssignmments(List<HousenumberRoad> housenumberRoads) {
 		if (housenumberRoads.size() < 2)
 			return;
-		for (int loop = 0; loop < 10; loop++){
+		for (int loop = 0; loop < 10; loop++) {
 			boolean changed = false;
-			for (int i = 0; i+1 < housenumberRoads.size(); i++){
+			for (int i = 0; i+1 < housenumberRoads.size(); i++) {
 				HousenumberRoad hnr1 = housenumberRoads.get(i);
 				hnr1.setChanged(false);
-				for (int j = i+1; j < housenumberRoads.size(); j++){
+				for (int j = i+1; j < housenumberRoads.size(); j++) {
 					HousenumberRoad hnr2 = housenumberRoads.get(j);
 					hnr2.setChanged(false);
 					hnr1.checkWrongRoadAssignmments(hnr2);
-					if (hnr1.isChanged()){
+					if (hnr1.isChanged()) {
 						changed = true;
 						hnr1.checkIntervals();
 					}
-					if (hnr2.isChanged()){
+					if (hnr2.isChanged()) {
 						changed = true;
 						hnr2.checkIntervals();
 					}
@@ -1562,7 +1520,7 @@ public class HousenumberGenerator {
 		if (otherMatches.isEmpty())
 			return closestMatch;
 		HousenumberMatch bestMatch = closestMatch;
-		for (HousenumberMatch alternative : otherMatches){
+		for (HousenumberMatch alternative : otherMatches) {
 			if (alternative == closestMatch)
 				continue;
 			if (closestMatch.getDistance() < alternative.getDistance())
@@ -1574,7 +1532,7 @@ public class HousenumberGenerator {
 			Coord cx = closestMatch.getLocation();
 			double dist = closestMatch.getDistance();
 			double dist1 = cx.distance(c1);
-			double angle, altAngle;
+			double angle;
 			if (dist1 == dist)
 				angle = Utils.getAngle(c2, c1, cx);
 			else 
@@ -1583,22 +1541,21 @@ public class HousenumberGenerator {
 			Coord c4 = alternative.getRoad().getPoints().get(alternative.getSegment()+1);
 			
 			double dist3 = cx.distance(c3);
+			double altAngle;
 			if (dist3 == dist)
 				altAngle = Utils.getAngle(c4, c3, cx);
 			else 
 				altAngle = Utils.getAngle(c3, c4, cx);
 			double delta = 90 - Math.abs(angle);
 			double deltaAlt = 90 - Math.abs(altAngle);
-			if (delta > deltaAlt){
+			if (delta > deltaAlt) {
 				bestMatch = alternative;
-				c1 = c3;
-				c2 = c4;
-			} 
+			}
 		}
-		if (log.isDebugEnabled()){
-			if (closestMatch.getRoad() != bestMatch.getRoad()){
+		if (log.isDebugEnabled()) {
+			if (closestMatch.getRoad() != bestMatch.getRoad()) {
 				log.debug("check angle: using road",bestMatch.getRoad().getRoadDef().getId(),"instead of",closestMatch.getRoad().getRoadDef().getId(),"for house number",bestMatch.getSign(),bestMatch.toBrowseURL());
-			} else if (closestMatch != bestMatch){
+			} else if (closestMatch != bestMatch) {
 				log.debug("check angle: using road segment",bestMatch.getSegment(),"instead of",closestMatch.getSegment(),"for house number element",bestMatch.toBrowseURL());
 			}
 		}
@@ -1613,7 +1570,7 @@ public class HousenumberGenerator {
 	 * @return {@code true} point lies on the left side; {@code false} point lies on the right side
 	 */
 	public static boolean isLeft(Coord spoint1, Coord spoint2, Coord point) {
-		if (spoint1.distance(spoint2) == 0){
+		if (spoint1.distance(spoint2) == 0) {
 			log.warn("road segment length is 0 in left/right evaluation");
 		}
 
@@ -1679,7 +1636,7 @@ public class HousenumberGenerator {
 	 * @param length
 	 * @return string with length, e.g. "0.23 m" or "116.12 m"
 	 */
-	public static String formatLen(double length){
+	public static String formatLen(double length) {
 		return String.format("%.2f m", length);
 	}
 	
@@ -1728,8 +1685,8 @@ public class HousenumberGenerator {
 			
 		}
 
-		public void build(List<MapRoad> roads){
-			for (MapRoad road : roads){
+		public void build(List<MapRoad> roads) {
+			for (MapRoad road : roads) {
 				if (road.isSkipHousenumberProcessing())
 					continue;
 				List<Coord> points = road.getPoints();
@@ -1738,13 +1695,13 @@ public class HousenumberGenerator {
 
 				List<RoadPoint> roadPoints = new ArrayList<>();
 				RoadPoint rp;
-				for (int i = 0; i + 1 < points.size(); i++){
+				for (int i = 0; i + 1 < points.size(); i++) {
 					Coord c1 = points.get(i);
 					Coord c2 = points.get(i + 1);
 					int part = 0;
 					rp = new RoadPoint(road, c1, i, part++);
 					roadPoints.add(rp);
-					while (true){
+					while (true) {
 						double segLen = c1.distance(c2);
 						double frac = maxSegmentLength / segLen;
 						if (frac >= 1)
@@ -1753,7 +1710,6 @@ public class HousenumberGenerator {
 						c1 = c1.makeBetweenPoint(c2, frac);
 						rp = new RoadPoint(road, c1, i, part++);
 						roadPoints.add(rp);
-						segLen -= maxSegmentLength;
 					}
 				}
 				int last = points.size() - 1;
@@ -1761,14 +1717,14 @@ public class HousenumberGenerator {
 				roadPoints.add(rp);
 				
 				Collections.shuffle(roadPoints);
-				for (RoadPoint toAdd : roadPoints){
+				for (RoadPoint toAdd : roadPoints) {
 					int id = toAdd.p.getId();
 					if (id == 0)
 						kdTree.add(toAdd);
 					else {
 						// Coord node, add only once to KD-tree with all roads
 						Set<RoadPoint> set = nodeId2RoadPointMap.get(id);
-						if (set == null){
+						if (set == null) {
 							set = new LinkedHashSet<>();
 							nodeId2RoadPointMap.put(id, set);
 							kdTree.add(toAdd);
@@ -1779,10 +1735,10 @@ public class HousenumberGenerator {
 			}
 		}
 		
-		public List<RoadPoint> getCLoseRoadPoints(HousenumberElem house){
+		public List<RoadPoint> getCLoseRoadPoints(HousenumberElem house) {
 			Set<RoadPoint> closeRoadPoints = kdTree.findClosePoints(house, kdSearchRange);
 			List<RoadPoint> result = new ArrayList<>();
-			for (RoadPoint rp : closeRoadPoints){
+			for (RoadPoint rp : closeRoadPoints) {
 				int id = rp.p.getId();
 				if (id != 0)
 					result.addAll(nodeId2RoadPointMap.get(id));
@@ -1797,7 +1753,7 @@ public class HousenumberGenerator {
 		 * @param house
 		 * @return null if no road was found, else a {@link HousenumberMatch} instance 
 		 */
-		public HousenumberMatch createHousenumberMatch(HousenumberElem house){
+		public HousenumberMatch createHousenumberMatch(HousenumberElem house) {
 			HousenumberMatch closest = new HousenumberMatch(house);
 			List<RoadPoint> closeRoadPoints = getCLoseRoadPoints(house);
 			if (closeRoadPoints.isEmpty())
@@ -1819,37 +1775,32 @@ public class HousenumberGenerator {
 			BitSet testedSegments = new BitSet();
 			MapRoad lastRoad = null;
 			HousenumberMatch hnm = null;
-			for (RoadPoint rp : closeRoadPoints){
-				if (house.getStreet() != null){
+			for (RoadPoint rp : closeRoadPoints) {
+				if (house.getStreet() != null && rp.r.getStreet() != null
+						&& !house.getStreet().equalsIgnoreCase(rp.r.getStreet())) {
 					// we have a given street name, accept only roads with similar name or no name
-					if (rp.r.getStreet() != null && house.getStreet().equalsIgnoreCase(rp.r.getStreet()) == false)
-						continue;
+					continue;
 				}
-				if (rp.r != lastRoad){
+				if (rp.r != lastRoad) {
 					hnm = new HousenumberMatch(house);
 					testedSegments.clear();
 					matches.add(hnm);
 					lastRoad = rp.r;
 				}
-				double oldDist = hnm.getDistance();
-				if (rp.partOfSeg >= 0){
-					// rp.p is at start or before end of segment 
-					if (testedSegments.get(rp.segment) == false){
-						testedSegments.set(rp.segment);
-						checkSegment(hnm, rp.r, rp.segment);
-					}
-				} 
-				if (rp.partOfSeg < 0){
-					// rp is at end of road, check (also) the preceding segment 
-					if (rp.segment < 1){
-						log.error("internal error: trying to use invalid roadPoint",rp);
-					} else if (testedSegments.get(rp.segment - 1) == false){
-						testedSegments.set(rp.segment-1);
-						checkSegment(hnm, rp.r, rp.segment-1);
+				if (rp.partOfSeg >= 0 && !testedSegments.get(rp.segment)) {
+					// rp.p is at start or before end of segment
+					testedSegments.set(rp.segment);
+					checkSegment(hnm, rp.r, rp.segment);
+				}
+				if (rp.partOfSeg < 0) {
+					// rp is at end of road, check (also) the preceding segment
+					if (rp.segment < 1) {
+						log.error("internal error: trying to use invalid roadPoint", rp);
+					} else if (!testedSegments.get(rp.segment - 1)) {
+						testedSegments.set(rp.segment - 1);
+						checkSegment(hnm, rp.r, rp.segment - 1);
 					}
 				}
-				if (oldDist == hnm.getDistance())
-					continue;
 			}
 			if (matches.isEmpty())
 				return closest; // closest has not yet a road
@@ -1862,13 +1813,13 @@ public class HousenumberGenerator {
 			if (closest.getStreet() != null && closest.getStreet().equalsIgnoreCase(closest.getRoad().getStreet()))
 				bestMatchingName = closest;
 			
-			for (HousenumberMatch altHouse : matches){
+			for (HousenumberMatch altHouse : matches) {
 				if (altHouse.getDistance() >= MAX_DISTANCE_TO_ROAD)
 					break;
-				if (altHouse.getRoad() != closest.getRoad()){
-					if (house.getStreet() != null && altHouse.getDistance() > closest.getDistance()){
-						if (house.getStreet().equalsIgnoreCase(altHouse.getRoad().getStreet())){
-							if (bestMatchingName == null || bestMatchingName.getDistance() > altHouse.getDistance()){
+				if (altHouse.getRoad() != closest.getRoad()) {
+					if (house.getStreet() != null && altHouse.getDistance() > closest.getDistance()) {
+						if (house.getStreet().equalsIgnoreCase(altHouse.getRoad().getStreet())) {
+							if (bestMatchingName == null || bestMatchingName.getDistance() > altHouse.getDistance()) {
 								bestMatchingName = altHouse;
 							}
 						} else {
@@ -1879,12 +1830,11 @@ public class HousenumberGenerator {
 					closest.addAlternativeRoad(altHouse.getRoad());
 				}
 			}
-			if (bestMatchingName != null){
-				if (house.getStreet().equals(bestMatchingName.getRoad().getStreet()) == false){
-					log.warn("accepting match in spite of different capitalisation" , house.getStreet(),house.getSign(), bestMatchingName.getRoad().getRoadDef(), "house:",house.toBrowseURL());
-					bestMatchingName.setStreet(bestMatchingName.getRoad().getStreet());
-					closest.setStreet(bestMatchingName.getStreet());
-				}
+			if (bestMatchingName != null && !house.getStreet().equals(bestMatchingName.getRoad().getStreet())) {
+				log.warn("accepting match in spite of different capitalisation", house.getStreet(), house.getSign(),
+						bestMatchingName.getRoad().getRoadDef(), "house:", house.toBrowseURL());
+				bestMatchingName.setStreet(bestMatchingName.getRoad().getStreet());
+				closest.setStreet(bestMatchingName.getStreet());
 			}
 			if (closest == bestMatchingName || bestMatchingName == null || bestMatchingName.getDistance() > MAX_DISTANCE_TO_ROAD)
 				return closest;
@@ -1893,16 +1843,16 @@ public class HousenumberGenerator {
 			if (ratio < 0.25)
 				return closest;
 			HousenumberMatch best = closest;
-			if (ratio > 0.75){
+			if (ratio > 0.75) {
 				// prefer the road with the matching name
-				for (MapRoad r : closest.getAlternativeRoads()){
+				for (MapRoad r : closest.getAlternativeRoads()) {
 					if (house.getStreet().equalsIgnoreCase(r.getStreet()))
 						bestMatchingName.addAlternativeRoad(r);
 				}
 				best = bestMatchingName;
 				best.calcRoadSide();
 			} else {
-				if (log.isDebugEnabled()){
+				if (log.isDebugEnabled()) {
 					log.debug("further checks needed for address", closest.getStreet(), closest.getSign(), closest.toBrowseURL(), 
 							formatLen(closest.getDistance()), formatLen(bestMatchingName.getDistance()));
 				}
@@ -1911,22 +1861,20 @@ public class HousenumberGenerator {
 			return best;
 		}
 
-	}
-	
-	private static void checkSegment(HousenumberMatch house, MapRoad road, int seg){
-		Coord cx = house.getLocation();
-		Coord c0 = road.getPoints().get(seg);
-		Coord c1 = road.getPoints().get(seg + 1);
-		double frac = getFrac(c0, c1, cx);
-		double dist = distanceToSegment(c0,c1,cx,frac);
-		if (dist < house.getDistance()){
-			house.setDistance(dist);
-			house.setRoad(road);
-			house.setSegment(seg);
-			house.setSegmentFrac(frac);
+		private static void checkSegment(HousenumberMatch house, MapRoad road, int seg) {
+			Coord cx = house.getLocation();
+			Coord c0 = road.getPoints().get(seg);
+			Coord c1 = road.getPoints().get(seg + 1);
+			double frac = getFrac(c0, c1, cx);
+			double dist = distanceToSegment(c0,c1,cx,frac);
+			if (dist < house.getDistance()) {
+				house.setDistance(dist);
+				house.setRoad(road);
+				house.setSegment(seg);
+				house.setSegmentFrac(frac);
+			}
 		}
 	}
-
 }
 
 

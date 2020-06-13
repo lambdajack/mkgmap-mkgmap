@@ -12,17 +12,17 @@ import uk.me.parabola.mkgmap.reader.osm.TagDict;
  */
 public class IsDriveOnLeftFunction extends CachedFunction {
 	private static final Logger log = Logger.getLogger(IsDriveOnLeftFunction.class);
-	private static final short TK_M_ADM_LVL2 = TagDict.getInstance().xlate("mkgmap:admin_level2");
-	private static final short TK_M_COUNTRY = TagDict.getInstance().xlate("mkgmap:country");
+	private static final short TKM_ADM_LVL2 = TagDict.getInstance().xlate("mkgmap:admin_level2");
+	private static final short TKM_COUNTRY = TagDict.getInstance().xlate("mkgmap:country");
 
 	public IsDriveOnLeftFunction() {
 		super(null);
 	}
 
 	protected String calcImpl(Element el) {
-		String iso = el.getTag(TK_M_ADM_LVL2);
+		String iso = el.getTag(TKM_ADM_LVL2);
 		if (iso == null) 
-			iso = el.getTag(TK_M_COUNTRY);
+			iso = el.getTag(TKM_COUNTRY);
 		if (iso == null && log.isInfoEnabled()) {
 			log.info(getName(), el.getBasicLogInformation(), "Neither mkgmap:admin_level2 nor mkgmap:country is set, assuming this element is not in a drive-on-left country");
 		}

@@ -66,9 +66,9 @@ public class HousenumberIvl {
 	private boolean ignoreForInterpolation;
 
 	private boolean equalEnds;
-	private static final short streetTagKey = TagDict.getInstance().xlate("mkgmap:street");
-	private static final short housenumberTagKey = TagDict.getInstance().xlate("mkgmap:housenumber");		
-	private static final short addrInterpolationTagKey = TagDict.getInstance().xlate("addr:interpolation");
+	private static final short TKM_STREET = TagDict.getInstance().xlate("mkgmap:street");
+	private static final short TKM_HOUSENUMBER = TagDict.getInstance().xlate("mkgmap:housenumber");		
+	private static final short TK_ADDR_INTERPOLATION = TagDict.getInstance().xlate("addr:interpolation");
 
 	
 	public HousenumberIvl(String streetName, Way interpolationWay, Node n1, Node n2) {
@@ -324,9 +324,9 @@ public class HousenumberIvl {
 			hn += usedStep;
 			Node generated = new Node(interpolationWay.getId(), co);
 			generated.setFakeId();
-			generated.addTag(streetTagKey, streetName);
+			generated.addTag(TKM_STREET, streetName);
 			String number = String.valueOf(hn);
-			generated.addTag(housenumberTagKey, number);
+			generated.addTag(TKM_HOUSENUMBER, number);
 			// TODO: maybe add check that city info and zip code of both houses is equal ?
 			// what if not ?
 			HousenumberElem houseElem = new HousenumberElem(generated, ci);
@@ -351,7 +351,7 @@ public class HousenumberIvl {
 		}
 		
 		if (log.isDebugEnabled()){
-			String addrInterpolationMethod = interpolationWay.getTag(addrInterpolationTagKey);
+			String addrInterpolationMethod = interpolationWay.getTag(TK_ADDR_INTERPOLATION);
 			if (hasMultipleRoads == false)
 				log.debug(this,"generated",addrInterpolationMethod,"interpolated number(s) for",knownHouses[0].getRoad());
 			else 

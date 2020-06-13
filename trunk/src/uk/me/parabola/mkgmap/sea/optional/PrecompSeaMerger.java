@@ -208,7 +208,7 @@ class PrecompSeaMerger implements Runnable {
 						continue;
 					}
 					w.deleteTag(MultiPolygonRelation.STYLE_FILTER_TAG);
-					w.deleteTag(MultiPolygonRelation.MP_CREATED_TAG_KEY);
+					w.deleteTag(MultiPolygonRelation.TKM_MP_CREATED);
 					ways.add(w);
 				}
 			}

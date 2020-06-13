@@ -296,7 +296,7 @@ public class StyledConverter implements OsmConverter {
 			}
 			
 			boolean wasReversed = false;
-			String oneWay = way.getTag(onewayTagKey);
+			String oneWay = way.getTag(TK_ONEWAY);
 			if (oneWay != null){
 				if("-1".equals(oneWay) || "reverse".equals(oneWay)) {
 					// it's a oneway street in the reverse direction
@@ -304,15 +304,15 @@ public class StyledConverter implements OsmConverter {
 					// the oneway tag to "yes"
 					way.reverse();
 					wasReversed = true;
-					way.addTag(onewayTagKey, "yes");
+					way.addTag(TK_ONEWAY, "yes");
 				}
 
-				if (way.tagIsLikeYes(onewayTagKey)) {
-					way.addTag(onewayTagKey, "yes");
+				if (way.tagIsLikeYes(TK_ONEWAY)) {
+					way.addTag(TK_ONEWAY, "yes");
 					if (foundType.isRoad() && hasSkipDeadEndCheckNode(way))
 						way.addTag("mkgmap:dead-end-check", "false");
 				} else { 
-					way.deleteTag(onewayTagKey);
+					way.deleteTag(TK_ONEWAY);
 				}
 			}
 			ConvertedWay cw = new ConvertedWay(lineIndex++, way, foundType);
@@ -321,7 +321,7 @@ public class StyledConverter implements OsmConverter {
 				roads.add(cw);
 				numRoads++;
 				if (!cw.isFerry()) {
-					String countryIso = LocatorConfig.get().getCountryISOCode(way.getTag(countryTagKey));
+					String countryIso = LocatorConfig.get().getCountryISOCode(way.getTag(TKM_COUNTRY));
 					if (countryIso != null) {
 						boolean drivingSideIsLeft = LocatorConfig.get().getDriveOnLeftFlag(countryIso);
 						if (drivingSideIsLeft)
@@ -362,7 +362,7 @@ public class StyledConverter implements OsmConverter {
 			shape.setPoints(way.getPoints());
 
 			long areaVal = 0;
-			String tagStringVal = way.getTag(drawLevelTagKey);
+			String tagStringVal = way.getTag(TKM_DRAW_LEVEL);
 			if (tagStringVal != null) {
 				try {
 					areaVal = Integer.parseInt(tagStringVal);
@@ -414,8 +414,8 @@ public class StyledConverter implements OsmConverter {
 	 *
 	 * @param way The OSM way.
 	 */
-	private static final short styleFilterTagKey = TagDict.getInstance().xlate("mkgmap:stylefilter");
-	private static final short makeCycleWayTagKey = TagDict.getInstance().xlate("mkgmap:make-cycle-way");
+	private static final short TKM_STYLEFILTER = TagDict.getInstance().xlate("mkgmap:stylefilter");
+	private static final short TKM_MAKE_CYCLE_WAY = TagDict.getInstance().xlate("mkgmap:make-cycle-way");
 	private long lastRoadId = 0; 
 	private int lineCacheId = 0;
 	private BitSet routingWarningWasPrinted = new BitSet();
@@ -434,7 +434,7 @@ public class StyledConverter implements OsmConverter {
 
 		preConvertRules(way);
 
-		String styleFilterTag = way.getTag(styleFilterTagKey);
+		String styleFilterTag = way.getTag(TKM_STYLEFILTER);
 		Rule rules;
 		if ("polyline".equals(styleFilterTag))
 			rules = lineRules;
@@ -450,9 +450,9 @@ public class StyledConverter implements OsmConverter {
 				rules = wayRules;
 		}
 		Way cycleWay = null;
-		String cycleWayTag = way.getTag(makeCycleWayTagKey);
+		String cycleWayTag = way.getTag(TKM_MAKE_CYCLE_WAY);
 		if ("yes".equals(cycleWayTag)){
-			way.deleteTag("mkgmap:make-cycle-way");
+			way.deleteTag(TKM_MAKE_CYCLE_WAY);
 			cycleWay = makeCycleWay(way);
 			way.addTag("bicycle", "no"); // make sure that bicycles are using the added bicycle way 
 		}
@@ -511,7 +511,7 @@ public class StyledConverter implements OsmConverter {
 	}
 
 	private int lineIndex = 0;
-	private static final short onewayTagKey = TagDict.getInstance().xlate("oneway"); 
+	private static final short TK_ONEWAY = TagDict.getInstance().xlate("oneway"); 
 
 	/** One type result for nodes to avoid recreating one for each node. */ 
 	private NodeTypeResult nodeTypeResult = new NodeTypeResult();
@@ -635,7 +635,7 @@ public class StyledConverter implements OsmConverter {
 		cycleWay.addTag("access", "no");
 		cycleWay.addTag("bicycle", "yes");
 		cycleWay.addTag("mkgmap:synthesised", "yes");
-		cycleWay.addTag(onewayTagKey, "no");
+		cycleWay.addTag(TK_ONEWAY, "no");
 		// remove explicit access tags 
 		cycleWay.deleteTag("foot");
 		cycleWay.deleteTag("motorcar");
@@ -661,7 +661,6 @@ public class StyledConverter implements OsmConverter {
 	@Override
 	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
 		// wayRules doesn't need to be done (or must be done first) because is concat. of line & polygon rules
-		//wayRules.augmentWith(elementSaver);
 		nodeRules.augmentWith(elementSaver);
 		lineRules.augmentWith(elementSaver);
 		polygonRules.augmentWith(elementSaver);
@@ -1222,7 +1221,7 @@ public class StyledConverter implements OsmConverter {
 		line.setPoints(points);
 
 		
-		if (way.tagIsLikeYes(onewayTagKey))
+		if (way.tagIsLikeYes(TK_ONEWAY))
 			line.setDirection(true);
 
 		clipper.clipLine(line, lineAdder);
@@ -1234,18 +1233,18 @@ public class StyledConverter implements OsmConverter {
 		TagDict.getInstance().xlate("mkgmap:label:3"),
 		TagDict.getInstance().xlate("mkgmap:label:4"),
 	};
-	private static final short highResOnlyTagKey = TagDict.getInstance().xlate("mkgmap:highest-resolution-only");
-	private static final short skipSizeFilterTagKey = TagDict.getInstance().xlate("mkgmap:skipSizeFilter");
-	private static final short drawLevelTagKey = TagDict.getInstance().xlate("mkgmap:drawLevel");
+	private static final short TKM_HIGHEST_RES_ONLY = TagDict.getInstance().xlate("mkgmap:highest-resolution-only");
+	private static final short TKM_SKIP_SIZE_FILTER = TagDict.getInstance().xlate("mkgmap:skipSizeFilter");
+	private static final short TKM_DRAW_LEVEL = TagDict.getInstance().xlate("mkgmap:drawLevel");
 
-	private static final short countryTagKey = TagDict.getInstance().xlate("mkgmap:country");
-	private static final short regionTagKey = TagDict.getInstance().xlate("mkgmap:region");
-	private static final short cityTagKey = TagDict.getInstance().xlate("mkgmap:city");
-	private static final short postal_codeTagKey = TagDict.getInstance().xlate("mkgmap:postal_code");
-	private static final short streetTagKey = TagDict.getInstance().xlate("mkgmap:street");
-	private static final short housenumberTagKey = TagDict.getInstance().xlate("mkgmap:housenumber");
-	private static final short phoneTagKey = TagDict.getInstance().xlate("mkgmap:phone");
-	private static final short is_inTagKey = TagDict.getInstance().xlate("mkgmap:is_in");
+	private static final short TKM_COUNTRY = TagDict.getInstance().xlate("mkgmap:country");
+	private static final short TKM_REGION = TagDict.getInstance().xlate("mkgmap:region");
+	private static final short TKM_CITY = TagDict.getInstance().xlate("mkgmap:city");
+	private static final short TKM_POSTAL_CODE = TagDict.getInstance().xlate("mkgmap:postal_code");
+	private static final short TKM_STREET = TagDict.getInstance().xlate("mkgmap:street");
+	private static final short TKM_HOUSENUMBER = TagDict.getInstance().xlate("mkgmap:housenumber");
+	private static final short TKM_PHONE = TagDict.getInstance().xlate("mkgmap:phone");
+	private static final short TKM_IS_IN = TagDict.getInstance().xlate("mkgmap:is_in");
 	
 	private void elementSetup(MapElement ms, GType gt, Element element) {
 		String[] labels = new String[4];
@@ -1266,24 +1265,24 @@ public class StyledConverter implements OsmConverter {
 		ms.setMinResolution(gt.getMinResolution());
 		ms.setMaxResolution(gt.getMaxResolution());
 
-		if (element.tagIsLikeYes(highResOnlyTagKey)){
+		if (element.tagIsLikeYes(TKM_HIGHEST_RES_ONLY)){
 			ms.setMinResolution(ms.getMaxResolution());
 		}
 		
-		if (ms instanceof MapLine && element.tagIsLikeYes(skipSizeFilterTagKey)){
+		if (ms instanceof MapLine && element.tagIsLikeYes(TKM_SKIP_SIZE_FILTER)){
 			((MapLine)ms).setSkipSizeFilter(true);
 		}
 		
 		// Now try to get some address info for POIs
 		
-		String country      = element.getTag(countryTagKey);
-		String region       = element.getTag(regionTagKey);
-		String city         = element.getTag(cityTagKey);
-		String zip          = element.getTag(postal_codeTagKey);
-		String street 	    = element.getTag(streetTagKey);
-		String houseNumber  = element.getTag(housenumberTagKey);
-		String phone        = element.getTag(phoneTagKey);
-		String isIn         = element.getTag(is_inTagKey);
+		String country      = element.getTag(TKM_COUNTRY);
+		String region       = element.getTag(TKM_REGION);
+		String city         = element.getTag(TKM_CITY);
+		String zip          = element.getTag(TKM_POSTAL_CODE);
+		String street 	    = element.getTag(TKM_STREET);
+		String houseNumber  = element.getTag(TKM_HOUSENUMBER);
+		String phone        = element.getTag(TKM_PHONE);
+		String isIn         = element.getTag(TKM_IS_IN);
 
 		if(country != null)
 			ms.setCountry(country);
@@ -2195,7 +2194,7 @@ public class StyledConverter implements OsmConverter {
 						List<Coord> otherPoints = connectedWay.getPoints();
 						Coord otherFirst = otherPoints.get(0);
 						Coord otherLast = otherPoints.get(otherPoints.size() - 1);
-						if (otherFirst == otherLast || !connectedWay.tagIsLikeYes(onewayTagKey))
+						if (otherFirst == otherLast || !connectedWay.tagIsLikeYes(TK_ONEWAY))
 							isDeadEnd = false;
 						else {
 							Coord pOther;

@@ -101,7 +101,7 @@ public class BoundaryLocationPreparer {
 	 * @return a name or null if no usable name tag was found
 	 */
 	private String getName(Tags tags) {
-		if ("2".equals(tags.get(admin_levelTagKey))) {
+		if ("2".equals(tags.get(TK_ADMIN_LEVEL))) {
 			// admin_level=2 boundaries. They need to be handled special because their name is changed 
 			// to the 3 letter ISO code using the Locator class and the LocatorConfig.xml file. 
 			for (short nameTagKey : Locator.PREFERRED_NAME_TAG_KEYS) {
@@ -124,17 +124,17 @@ public class BoundaryLocationPreparer {
 		return null;
 	}
 	
-	private static final short postal_codeTagKey = TagDict.getInstance().xlate("postal_code");
-	private static final short boundaryTagKey = TagDict.getInstance().xlate("boundary");
+	private static final short TK_POSTAL_CODE = TagDict.getInstance().xlate("postal_code");
+	private static final short TK_BOUNDARY = TagDict.getInstance().xlate("boundary");
 	/**
 	 * Try to extract a zip code from the the tags of a boundary. 
 	 * @param tags the boundary tags
 	 * @return null if no zip code was found, else a String that should be a zip code. 
 	 */
 	private String getZip(Tags tags) {
-		String zip = tags.get(postal_codeTagKey);
+		String zip = tags.get(TK_POSTAL_CODE);
 		if (zip == null) {
-			if ("postal_code".equals(tags.get(boundaryTagKey))){
+			if ("postal_code".equals(tags.get(TK_BOUNDARY))){
 				// unlikely
 				String name = tags.get("name"); 
 				if (name == null) {
@@ -152,7 +152,7 @@ public class BoundaryLocationPreparer {
 	}
 
 	public static final int UNSET_ADMIN_LEVEL = 100; // must be higher than real levels
-	private static final short admin_levelTagKey = TagDict.getInstance().xlate("admin_level");
+	private static final short TK_ADMIN_LEVEL = TagDict.getInstance().xlate("admin_level");
 	/**
 	 * translate the admin_level tag to an integer. 
 	 * @param tags the boundary tags
@@ -160,8 +160,8 @@ public class BoundaryLocationPreparer {
 	 * the conversion failed. 
 	 */
 	private static int getAdminLevel(Tags tags) {
-		if ("administrative".equals(tags.get(boundaryTagKey))) {
-			String level = tags.get(admin_levelTagKey);
+		if ("administrative".equals(tags.get(TK_BOUNDARY))) {
+			String level = tags.get(TK_ADMIN_LEVEL);
 			if (level != null) {
 				try {
 					int res = Integer.parseInt(level);

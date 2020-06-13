@@ -69,7 +69,7 @@ public class ElementSaver {
 	private final String[] deadEndArgs;
 
 	/** name of the tag that contains a ;-separated list of tag names that should be removed after all elements have been processed */
-	public static final short MKGMAP_REMOVE_TAG_KEY = TagDict.getInstance().xlate("mkgmap:removetags");
+	public static final short TKM_REMOVETAGS = TagDict.getInstance().xlate("mkgmap:removetags");
 
 	public ElementSaver(EnhancedProperties args) {
 		if (args.getProperty("preserve-element-order", false)) {

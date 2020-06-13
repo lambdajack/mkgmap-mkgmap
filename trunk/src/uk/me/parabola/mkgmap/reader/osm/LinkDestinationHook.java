@@ -64,10 +64,10 @@ public class LinkDestinationHook implements OsmReadingHooks {
 	private boolean processDestinations;
 	private boolean processExits;
 	
-	private static final short TAG_KEY_HIGHWAY = TagDict.getInstance().xlate("highway");
-	private static final short TAG_KEY_ONEWAY = TagDict.getInstance().xlate("oneway");
-	private static final short TAG_KEY_EXIT_TO = TagDict.getInstance().xlate("exit_to");
-	private static final short TAG_KEY_DEST_HINT_WORK = TagDict.getInstance().xlate("mkgmap:dest_hint_work");
+	private static final short TK_HIGHWAY = TagDict.getInstance().xlate("highway");
+	private static final short TK_ONEWAY = TagDict.getInstance().xlate("oneway");
+	private static final short TK_EXIT_TO = TagDict.getInstance().xlate("exit_to");
+	private static final short TKM_DEST_HINT_WORK = TagDict.getInstance().xlate("mkgmap:dest_hint_work");
 	
 	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
@@ -88,7 +88,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 				// ignore one-node or zero-node ways
 				continue;
 			}
-			String highwayTag = w.getTag(TAG_KEY_HIGHWAY);
+			String highwayTag = w.getTag(TK_HIGHWAY);
 			if (highwayTag != null && highwayTypes.contains(highwayTag)) {
 				processHighWay(w, highwayTag);
 			}
@@ -170,7 +170,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 		}
 
 		if (destHint != null) {
-			w.addTag(TAG_KEY_DEST_HINT_WORK, destHint);
+			w.addTag(TKM_DEST_HINT_WORK, destHint);
 			destinationLinkWays.add(w);
 
 			if (log.isDebugEnabled() && !standardTagKey.equals(destSourceTagKey)) {
@@ -335,8 +335,8 @@ public class LinkDestinationHook implements OsmReadingHooks {
 	 * @return <code>true</code> if the node is a usable exit, else <code>false</code> 
 	 */
 	private boolean isTaggedAsExit(Node node) {
-		return "motorway_junction".equals(node.getTag(TAG_KEY_HIGHWAY))
-				&& (node.getTag("ref") != null || (nameFinder.getName(node) != null) || node.getTag(TAG_KEY_EXIT_TO) != null);
+		return "motorway_junction".equals(node.getTag(TK_HIGHWAY))
+				&& (node.getTag("ref") != null || (nameFinder.getName(node) != null) || node.getTag(TK_EXIT_TO) != null);
 	}
 	
 	/**
@@ -374,7 +374,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 		log.debug(destinationLinkWays.size(),"links with destination tag");
 		while (!linksWithDestination.isEmpty()) {
 			Way linkWay = linksWithDestination.poll();
-			String destination = linkWay.getTag(TAG_KEY_DEST_HINT_WORK);
+			String destination = linkWay.getTag(TKM_DEST_HINT_WORK);
 			if (log.isDebugEnabled())
 				log.debug("Check way", linkWay.getId(), linkWay.toTagString());
 			
@@ -384,7 +384,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 			Set<Way> nextWays = adjacentWays.get(c);
 			if (nextWays != null) {
 				for (Way connectedWay : nextWays) {
-					String nextDest = connectedWay.getTag(TAG_KEY_DEST_HINT_WORK);
+					String nextDest = connectedWay.getTag(TKM_DEST_HINT_WORK);
 					
 					if (log.isDebugEnabled())
 						log.debug("Followed by",connectedWay.getId(),connectedWay.toTagString());
@@ -396,7 +396,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 
 					boolean startEndConnection = c == c2;
 					if (startEndConnection && !connectedWay.equals(linkWay)
-							&& connectedWay.getTag(TAG_KEY_HIGHWAY).endsWith("_link")
+							&& connectedWay.getTag(TK_HIGHWAY).endsWith("_link")
 							&& destination.equals(nextDest)) {
 						// do not use this way because there is another link before that with the same destination
 						boolean removed = destinationLinkWays.remove(connectedWay);
@@ -436,12 +436,12 @@ public class LinkDestinationHook implements OsmReadingHooks {
 			log.debug("Exit node", exitNode, "has no connected ways. Skip it.");
 			return;
 		}
-		String exitTo = exitNode.getTag(TAG_KEY_EXIT_TO);
+		String exitTo = exitNode.getTag(TK_EXIT_TO);
 		if (exitTo != null) {
 			int countMatches = 0;
 			int preferred = Integer.MAX_VALUE;
 			for (Way w : exitWays) {
-				String hw = w.getTag(TAG_KEY_HIGHWAY);
+				String hw = w.getTag(TK_HIGHWAY);
 				int pos = hwSorted.indexOf(hw);
 				if (pos < preferred) {
 					preferred = pos;
@@ -464,7 +464,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 	}
 
 	private void processExitWay(Node exitNode, Way w, String exitTo) {
-		String highwayLinkTag = w.getTag(TAG_KEY_HIGHWAY);
+		String highwayLinkTag = w.getTag(TK_HIGHWAY);
 		if (highwayLinkTag.endsWith("_link")) {
 			log.debug("Try to cut", highwayLinkTag, w, "into three parts for giving hint to exit", exitNode);
 			Way hintWay = splitWay(w, "exit");
@@ -488,9 +488,9 @@ public class LinkDestinationHook implements OsmReadingHooks {
 
 	private String fixDestHint(Way hintWay) {
 		if (processDestinations) {
-			String hint = hintWay.getTag(TAG_KEY_DEST_HINT_WORK);
+			String hint = hintWay.getTag(TKM_DEST_HINT_WORK);
 			if (hint != null) {
-				hintWay.deleteTag(TAG_KEY_DEST_HINT_WORK);
+				hintWay.deleteTag(TKM_DEST_HINT_WORK);
 				hintWay.addTag("mkgmap:dest_hint", hint);
 			}
 			return hint;
@@ -505,7 +505,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 		while (!destinationLinkWays.isEmpty()) {
 			Way w = destinationLinkWays.iterator().next();
 			destinationLinkWays.remove(w);
-			String highwayLinkTag = w.getTag(TAG_KEY_HIGHWAY);
+			String highwayLinkTag = w.getTag(TK_HIGHWAY);
 			if (!canSplit(w) || !highwayLinkTag.endsWith("_link")) 
 				continue;
 
@@ -623,13 +623,13 @@ public class LinkDestinationHook implements OsmReadingHooks {
 	 * @return <code>true</code> way is oneway
 	 */
 	private static boolean isOnewayInDirection(Way w) {
-		if (w.tagIsLikeYes(TAG_KEY_ONEWAY)) {
+		if (w.tagIsLikeYes(TK_ONEWAY)) {
 			return true;
 		}
 		
 		// check if oneway is set implicitly by the highway type (motorway and motorway_link)
-		String onewayTag = w.getTag(TAG_KEY_ONEWAY);
-		String highwayTag = w.getTag(TAG_KEY_HIGHWAY);
+		String onewayTag = w.getTag(TK_ONEWAY);
+		String highwayTag = w.getTag(TK_HIGHWAY);
 		return onewayTag == null && highwayTag != null
 				&& ("motorway".equals(highwayTag)|| "motorway_link".equals(highwayTag));
 	}
@@ -640,7 +640,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 	 * @return <code>true</code> way is oneway in opposite direction
 	 */
 	private static boolean isOnewayOppositeDirection(Way w) {
-		return "-1".equals(w.getTag(TAG_KEY_ONEWAY));
+		return "-1".equals(w.getTag(TK_ONEWAY));
 	}
 
 	/**
@@ -649,6 +649,6 @@ public class LinkDestinationHook implements OsmReadingHooks {
 	 * @return <code>true</code> way is not oneway
 	 */
 	private static boolean isNotOneway(Way w) {
-		return "no".equals(w.getTag(TAG_KEY_ONEWAY)) || (!isOnewayInDirection(w) && !isOnewayOppositeDirection(w));
+		return "no".equals(w.getTag(TK_ONEWAY)) || (!isOnewayInDirection(w) && !isOnewayOppositeDirection(w));
 	}
 }

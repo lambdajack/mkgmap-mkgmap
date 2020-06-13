@@ -56,9 +56,9 @@ public class MultiPolygonRelation extends Relation {
 	public static final String STYLE_FILTER_POLYGON = "polygon";
 	
 	/** A tag that is set with value true on each polygon that is created by the mp processing. */
-	public static final short MP_CREATED_TAG_KEY = TagDict.getInstance().xlate("mkgmap:mp_created");
-	private static final short MP_ROLE_TAG_KEY = TagDict.getInstance().xlate("mkgmap:mp_role");
-	private static final short CACHE_AREA_SIZE_TAG_KEY = TagDict.getInstance().xlate("mkgmap:cache_area_size");
+	public static final short TKM_MP_CREATED = TagDict.getInstance().xlate("mkgmap:mp_created");
+	private static final short TKM_MP_ROLE = TagDict.getInstance().xlate("mkgmap:mp_role");
+	private static final short TKM_CACHE_AREA_SIZEKEY = TagDict.getInstance().xlate("mkgmap:cache_area_size");
 	private final Map<Long, Way> tileWayMap;
 	private final Map<Long, String> roleMap = new HashMap<>();
  
@@ -1002,14 +1002,14 @@ public class MultiPolygonRelation extends Relation {
 						mpWay.setFullArea(fullArea);
 						// mark this polygons so that only polygon style rules are applied
 						mpWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_POLYGON);
-						mpWay.addTag(MP_CREATED_TAG_KEY, "true");
+						mpWay.addTag(TKM_MP_CREATED, "true");
 						
 						if (currentPolygon.outer) {
-							mpWay.addTag(MP_ROLE_TAG_KEY, "outer");
+							mpWay.addTag(TKM_MP_ROLE, "outer");
 							if (isAreaSizeCalculated())
 								mpAreaSize += calcAreaSize(mpWay.getPoints());
 						} else {
-							mpWay.addTag(MP_ROLE_TAG_KEY, "inner");
+							mpWay.addTag(TKM_MP_ROLE, "inner");
 						}
 						
 						getMpPolygons().put(mpWay.getId(), mpWay);
@@ -1072,10 +1072,10 @@ public class MultiPolygonRelation extends Relation {
 			Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
 			lineTagWay.setFakeId();
 			lineTagWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
-			lineTagWay.addTag(MP_CREATED_TAG_KEY, "true");
+			lineTagWay.addTag(TKM_MP_CREATED, "true");
 			if (mpAreaSizeStr != null) {
 				// assign the area size of the whole multipolygon to all outer polygons
-				lineTagWay.addTag(CACHE_AREA_SIZE_TAG_KEY, mpAreaSizeStr);
+				lineTagWay.addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
 			}
 			for (Entry<String,String> tag : outerTags.entrySet()) {
 				lineTagWay.addTag(tag.getKey(), tag.getValue());
@@ -1105,10 +1105,10 @@ public class MultiPolygonRelation extends Relation {
 		if (isAreaSizeCalculated()) {
 			// assign the area size of the whole multipolygon to all outer polygons
 			String mpAreaSizeStr = String.format(Locale.US, "%.3f", mpAreaSize); 
-			addTag(CACHE_AREA_SIZE_TAG_KEY, mpAreaSizeStr);
+			addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
 			for (Way w : mpPolygons.values()) {
-				if ("outer".equals(w.getTag(MP_ROLE_TAG_KEY))) {
-					w.addTag(CACHE_AREA_SIZE_TAG_KEY, mpAreaSizeStr);
+				if ("outer".equals(w.getTag(TKM_MP_ROLE))) {
+					w.addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
 				}
 			}
 		}
@@ -1808,7 +1808,7 @@ public class MultiPolygonRelation extends Relation {
 			Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
 			lineTagWay.setFakeId();
 			lineTagWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
-			lineTagWay.addTag(MP_CREATED_TAG_KEY, "true");
+			lineTagWay.addTag(TKM_MP_CREATED, "true");
 			for (Entry<String, String> tag : tags.entrySet()) {
 				lineTagWay.addTag(tag.getKey(), tag.getValue());
 				
@@ -1871,7 +1871,7 @@ public class MultiPolygonRelation extends Relation {
 		if (tag == null || tag.isEmpty()) {
 			return;
 		}
-		String tagsToRemove = way.getTag(ElementSaver.MKGMAP_REMOVE_TAG_KEY);
+		String tagsToRemove = way.getTag(ElementSaver.TKM_REMOVETAGS);
 		
 		if (tagsToRemove == null) {
 			tagsToRemove = tag;
@@ -1884,7 +1884,7 @@ public class MultiPolygonRelation extends Relation {
 			}
 			tagsToRemove += ";" + tag;
 		} 
-		way.addTag(ElementSaver.MKGMAP_REMOVE_TAG_KEY, tagsToRemove);
+		way.addTag(ElementSaver.TKM_REMOVETAGS, tagsToRemove);
 	}
 	
 	/**

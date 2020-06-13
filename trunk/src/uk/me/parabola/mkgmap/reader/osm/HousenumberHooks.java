@@ -35,11 +35,11 @@ public class HousenumberHooks implements OsmReadingHooks {
 	private final List<Node> nodes = new ArrayList<>();
 	private boolean clearNodes;
 	
-	private static final short addrHousenumberTagKey = TagDict.getInstance().xlate("addr:housenumber");
-	private static final short addrInterpolationTagKey = TagDict.getInstance().xlate("addr:interpolation");
+	private static final short TK_ADDR_HOUSENUMBER = TagDict.getInstance().xlate("addr:housenumber");
+	private static final short TK_ADDR_INTERPOLATION = TagDict.getInstance().xlate("addr:interpolation");
 	
-	public static final short partOfInterpolationTagKey = TagDict.getInstance().xlate("mkgmap:part-of-interpolation");
-	public static final short mkgmapNodeIdsTagKey = TagDict.getInstance().xlate("mkgmap:node-ids");
+	public static final short TKM_PART_OF_INTERPOLATION = TagDict.getInstance().xlate("mkgmap:part-of-interpolation");
+	public static final short TKM_NODE_IDS = TagDict.getInstance().xlate("mkgmap:node-ids");
 	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		this.saver = saver;
@@ -60,7 +60,7 @@ public class HousenumberHooks implements OsmReadingHooks {
 			clearNodes = false;
 		}
 		Node currentNodeInWay = saver.getNode(id);
-		if (currentNodeInWay == null || currentNodeInWay.getTag(addrHousenumberTagKey) == null)
+		if (currentNodeInWay == null || currentNodeInWay.getTag(TK_ADDR_HOUSENUMBER) == null)
 			return;
 		// this node might be part of a way that has the addr:interpolation tag
 		nodes.add(currentNodeInWay);
@@ -69,7 +69,7 @@ public class HousenumberHooks implements OsmReadingHooks {
 	@Override
 	public void onAddWay(Way way) {
 		clearNodes = true; // make sure that the list is cleared with the next coord
-		String ai = way.getTag(addrInterpolationTagKey);
+		String ai = way.getTag(TK_ADDR_INTERPOLATION);
 		if (ai == null)
 			return;
 		if (nodes.size() < 2){
@@ -97,9 +97,9 @@ public class HousenumberHooks implements OsmReadingHooks {
 			sb.append(id);
 			if (i + 1 < num)
 				sb.append(",");
-			n.addTag(partOfInterpolationTagKey, "1");
+			n.addTag(TKM_PART_OF_INTERPOLATION, "1");
 		}
-		way.addTag(mkgmapNodeIdsTagKey, sb.toString());
+		way.addTag(TKM_NODE_IDS, sb.toString());
 	}
 
 	@Override

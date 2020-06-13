@@ -122,12 +122,12 @@ public class ConvertedWay {
 	 * @param el an element 
 	 * @return {@code true} the road class has been changed, else {@code false} 
 	 */
-	private static final short roadClassTagKey = TagDict.getInstance().xlate("mkgmap:road-class");
+	private static final short TKM_ROAD_CLASS = TagDict.getInstance().xlate("mkgmap:road-class");
 	public boolean recalcRoadClass(Element el) {
 		// save the original road class value
 		byte oldRoadClass = roadClass;
 		
-		String val = el.getTag(roadClassTagKey);
+		String val = el.getTag(TKM_ROAD_CLASS);
 		if (val != null) {
 			if (val.startsWith("-")) {
 				roadClass -= Byte.decode(val.substring(1));
@@ -167,14 +167,14 @@ public class ConvertedWay {
 	 * @param el an element 
 	 * @return {@code true} the road speed has been changed, else {@code false} 
 	 */
-	private static final short roadSpeedTagKey = TagDict.getInstance().xlate("mkgmap:road-speed");
-	private static final short roadSpeedClassTagKey = TagDict.getInstance().xlate("mkgmap:road-speed-class");
+	private static final short TKM_ROAD_SPEED = TagDict.getInstance().xlate("mkgmap:road-speed");
+	private static final short TKM_ROAD_SPEED_CLASS = TagDict.getInstance().xlate("mkgmap:road-speed-class");
 	public boolean recalcRoadSpeed(Element el) {
 		// save the original road speed value
 		byte oldRoadSpeed = roadSpeed;
 		
 		// check if the road speed is modified
-		String roadSpeedOverride = el.getTag(roadSpeedClassTagKey);
+		String roadSpeedOverride = el.getTag(TKM_ROAD_SPEED_CLASS);
 		if (roadSpeedOverride != null) {
 			try {
 				byte rs = Byte.decode(roadSpeedOverride);
@@ -194,7 +194,7 @@ public class ConvertedWay {
 		}
 		
 		// check if the road speed should be modified more
-		String val = el.getTag(roadSpeedTagKey);
+		String val = el.getTag(TKM_ROAD_SPEED);
 		if(val != null) {
 			if(val.startsWith("-")) {
 				roadSpeed -= Byte.decode(val.substring(1));

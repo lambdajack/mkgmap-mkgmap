@@ -33,7 +33,7 @@ public class MultiPolygonFinishHook implements OsmReadingHooks {
 		long t1 = System.currentTimeMillis();
 		log.info("Finishing multipolygons");
 		for (Way way : saver.getWays().values()) {
-			String removeTag = way.getTag(ElementSaver.MKGMAP_REMOVE_TAG_KEY);
+			String removeTag = way.getTag(ElementSaver.TKM_REMOVETAGS);
 			if (removeTag == null) {
 				continue;
 			}
@@ -41,7 +41,7 @@ public class MultiPolygonFinishHook implements OsmReadingHooks {
 			if (log.isDebugEnabled()) {
 				log.debug("Remove tags",Arrays.toString(tagsToRemove),"from way",way.getId(),way.toTagString());
 			}
-			way.deleteTag(ElementSaver.MKGMAP_REMOVE_TAG_KEY);
+			way.deleteTag(ElementSaver.TKM_REMOVETAGS);
 			for (String rTag : tagsToRemove) {
 				way.deleteTag(rTag);
 			}

@@ -28,7 +28,7 @@ import uk.me.parabola.mkgmap.reader.osm.TagDict;
  * @author Steve Ratcliffe
  */
 public class NameAction extends ValueBuildedAction {
-	private final short label1TagKey = TagDict.getInstance().xlate("mkgmap:label:1"); 
+	private static final short TKM_LABEL_1 = TagDict.getInstance().xlate("mkgmap:label:1"); 
 	/**
 	 * search for the first matching name pattern and set the element name
 	 * to it.
@@ -39,13 +39,13 @@ public class NameAction extends ValueBuildedAction {
 	 * @return 
 	 */
 	public boolean perform(Element el) {
-		if (el.getTag(label1TagKey) != null)
+		if (el.getTag(TKM_LABEL_1) != null)
 			return false;
 		
 		for (ValueBuilder vb : getValueBuilder()) {
 			String s = vb.build(el, el);
 			if (s != null) {
-				el.addTag(label1TagKey, s);
+				el.addTag(TKM_LABEL_1, s);
 				return true;
 			}
 		}

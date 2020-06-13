@@ -78,21 +78,21 @@ public class ResidentialHook implements OsmReadingHooks {
 		residentialBoundaries = null;
 	}
 
-	private static final short landuseTagKey = TagDict.getInstance().xlate("landuse"); 
-	private static final short nameTagKey = TagDict.getInstance().xlate("name");  
-	private static final short styleFilterTagKey = TagDict.getInstance().xlate("mkgmap:stylefilter");
-	private static final short otherKey = TagDict.getInstance().xlate("mkgmap:other");
+	private static final short TK_LANDUSE = TagDict.getInstance().xlate("landuse"); 
+	private static final short TK_NAME = TagDict.getInstance().xlate("name");  
+	private static final short TKM_STYLEFILTER = TagDict.getInstance().xlate("mkgmap:stylefilter");
+	private static final short TKM_OTHER = TagDict.getInstance().xlate("mkgmap:other");
 	
 	private BoundaryQuadTree buildResidentialBoundaryTree() {
 		List<Boundary> residentials = new ArrayList<>();
 		Tags tags = new Tags();
 		
 		for (Way way : saver.getWays().values()) {
-			if (way.hasIdenticalEndPoints() && "residential".equals(way.getTag(landuseTagKey))) {
-				if ("polyline".equals(way.getTag(styleFilterTagKey)))
+			if (way.hasIdenticalEndPoints() && "residential".equals(way.getTag(TK_LANDUSE))) {
+				if ("polyline".equals(way.getTag(TKM_STYLEFILTER)))
 					continue;
 				String name = nameFinder.getName(way);
-				tags.put(nameTagKey, name == null ? "yes": name);
+				tags.put(TK_NAME, name == null ? "yes": name);
 				Boundary b = new Boundary(Java2DConverter.createArea(way.getPoints()), tags, "w"+way.getId());
 				residentials.add(b);
 			}
@@ -117,12 +117,12 @@ public class ResidentialHook implements OsmReadingHooks {
 			// try the mid point of the way first
 			int middle = way.getPoints().size() / 2;
 			Coord loc = way.hasIdenticalEndPoints() ? way.getCofG() : way.getPoints().get(middle);
-			if (! "residential".equals(way.getTag(landuseTagKey)))
+			if (! "residential".equals(way.getTag(TK_LANDUSE)))
 				residentialTags = residentialBoundaries.get(loc);
 		}
 
 		if (residentialTags != null) {
-			elem.addTag("mkgmap:residential", residentialTags.get(otherKey));
+			elem.addTag("mkgmap:residential", residentialTags.get(TKM_OTHER));
 		}
 	}
 	

@@ -53,7 +53,7 @@ public class RuleSet implements Rule, Iterable<Rule> {
 	int cacheId;
 	boolean compiled = false;
 
-	private static final short executeFinalizeRulesTagKey = TagDict.getInstance().xlate("mkgmap:execute_finalize_rules");
+	private static final short TKM_EXECUTE_FINALIZE_RULES = TagDict.getInstance().xlate("mkgmap:execute_finalize_rules");
 
 	private RuleIndex index = new RuleIndex();
 	private final Set<String> usedTags = new HashSet<>();
@@ -99,7 +99,7 @@ public class RuleSet implements Rule, Iterable<Rule> {
 				return cacheId;
 		}
 		if (lastRule != null && lastRule.getFinalizeRule() != null
-				&& "true".equals(el.getTag(executeFinalizeRulesTagKey))) {
+				&& "true".equals(el.getTag(TKM_EXECUTE_FINALIZE_RULES))) {
 			cacheId = lastRule.getFinalizeRule().resolveType(cacheId, el, a);
 		}
 		return cacheId;

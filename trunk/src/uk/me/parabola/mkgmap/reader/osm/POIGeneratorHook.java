@@ -85,10 +85,10 @@ public class POIGeneratorHook implements OsmReadingHooks {
 	private Set<String> usedTagsPOI;
 	
 	/** Name of the bool tag that is set to true if a POI is created from an area */
-	public static final short AREA2POI_TAG = TagDict.getInstance().xlate("mkgmap:area2poi");
-	public static final short LINE2POI_TAG = TagDict.getInstance().xlate("mkgmap:line2poi");
-	public static final short LINE2POI_TYPE_TAG  = TagDict.getInstance().xlate("mkgmap:line2poitype");
-	public static final short WAY_LENGTH_TAG  = TagDict.getInstance().xlate("mkgmap:way-length");
+	public static final short TKM_AREA2POI = TagDict.getInstance().xlate("mkgmap:area2poi");
+	public static final short TKM_LINE2POI = TagDict.getInstance().xlate("mkgmap:line2poi");
+	public static final short TKM_LINE2POI_TYPE = TagDict.getInstance().xlate("mkgmap:line2poitype");
+	public static final short TKM_WAY_LENGTH = TagDict.getInstance().xlate("mkgmap:way-length");
 	
 	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
@@ -270,7 +270,7 @@ public class POIGeneratorHook implements OsmReadingHooks {
 			}
 
 			// do not add POIs for polygons created by multipolygon processing
-			if (w.tagIsLikeYes(MultiPolygonRelation.MP_CREATED_TAG_KEY)) {
+			if (w.tagIsLikeYes(MultiPolygonRelation.TKM_MP_CREATED)) {
 				if (log.isDebugEnabled())
 					log.debug("MP processed: Do not create POI for", w.toTagString());
 				continue;
@@ -329,7 +329,7 @@ public class POIGeneratorHook implements OsmReadingHooks {
 		}
 		// add tag mkgmap:cache_area_size to the original polygon so that it is copied to the POI
 		areaSizeFunction.value(polygon);
-		addPOI(polygon, poiCoord, AREA2POI_TAG, 0); 
+		addPOI(polygon, poiCoord, TKM_AREA2POI, 0); 
 	}
 	
 	
@@ -349,14 +349,14 @@ public class POIGeneratorHook implements OsmReadingHooks {
 		
 		int countPOIs = 0;
 		if (poisToLinesStart) {
-			Node startNode = addPOI(line, line.getFirstPoint(), LINE2POI_TAG, sumDist);
-			startNode.addTag(LINE2POI_TYPE_TAG, "start");
+			Node startNode = addPOI(line, line.getFirstPoint(), TKM_LINE2POI, sumDist);
+			startNode.addTag(TKM_LINE2POI_TYPE, "start");
 			countPOIs++;
 		}
 
 		if (poisToLinesEnd) {
-			Node endNode = addPOI(line, line.getLastPoint(), LINE2POI_TAG, sumDist);
-			endNode.addTag(LINE2POI_TYPE_TAG, "end");
+			Node endNode = addPOI(line, line.getLastPoint(), TKM_LINE2POI, sumDist);
+			endNode.addTag(TKM_LINE2POI_TYPE, "end");
 			countPOIs++;
 		}
 		
@@ -367,8 +367,8 @@ public class POIGeneratorHook implements OsmReadingHooks {
 					continue;
 				}
 				lastPoint = inPoint;
-				Node innerNode = addPOI(line, inPoint, LINE2POI_TAG, sumDist);
-				innerNode.addTag(LINE2POI_TYPE_TAG, "inner");
+				Node innerNode = addPOI(line, inPoint, TKM_LINE2POI, sumDist);
+				innerNode.addTag(TKM_LINE2POI_TYPE, "inner");
 				countPOIs++;
 			}
 		}
@@ -386,8 +386,8 @@ public class POIGeneratorHook implements OsmReadingHooks {
 			}
 
 			if (midPoint != null) {
-				Node midNode = addPOI(line, midPoint, LINE2POI_TAG, sumDist);
-				midNode.addTag(LINE2POI_TYPE_TAG, "mid");
+				Node midNode = addPOI(line, midPoint, TKM_LINE2POI, sumDist);
+				midNode.addTag(TKM_LINE2POI_TYPE, "mid");
 				countPOIs++;
 			}
 		}
@@ -404,8 +404,8 @@ public class POIGeneratorHook implements OsmReadingHooks {
 		poi.copyTags(source);
 		poi.deleteTag(MultiPolygonRelation.STYLE_FILTER_TAG);
 		poi.addTag(poiTypeTagKey, "true");
-		if (poiTypeTagKey == LINE2POI_TAG) {
-			poi.addTag(WAY_LENGTH_TAG, String.valueOf(Math.round(wayLength)));
+		if (poiTypeTagKey == TKM_LINE2POI) {
+			poi.addTag(TKM_WAY_LENGTH, String.valueOf(Math.round(wayLength)));
 		}
 		
 		Node node = null;
@@ -482,7 +482,7 @@ public class POIGeneratorHook implements OsmReadingHooks {
 			}
 
 			if (point != null) {
-				Node poi = addPOI(r, point, AREA2POI_TAG, 0);
+				Node poi = addPOI(r, point, TKM_AREA2POI, 0);
 				// remove the type tag which makes only sense for relations
 				poi.deleteTag("type");
 				mps2POI++;

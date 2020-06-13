@@ -98,8 +98,8 @@ public final class AccessTagsAndBits {
 	private static final short TKM_UNPAVED = TagDict.getInstance().xlate("mkgmap:unpaved");
 	private static final short TKM_FERRY = TagDict.getInstance().xlate("mkgmap:ferry");
 	private static final short TKM_THROUGHROUTE = TagDict.getInstance().xlate("mkgmap:throughroute");
-	private static final short TKM_JUNCTION = TagDict.getInstance().xlate("junction");
-	private static final short TKM_ONEWAY = TagDict.getInstance().xlate("oneway");
+	private static final short TK_JUNCTION = TagDict.getInstance().xlate("junction");
+	private static final short TK_ONEWAY = TagDict.getInstance().xlate("oneway");
 	
 	public static byte evalRouteTags(Element el) {
 		byte routeFlags = 0;
@@ -121,9 +121,9 @@ public final class AccessTagsAndBits {
 			routeFlags |= R_THROUGHROUTE;
 
 		// tags without the mkgmap: prefix
-		if ("roundabout".equals(el.getTag(TKM_JUNCTION))) 
+		if ("roundabout".equals(el.getTag(TK_JUNCTION))) 
 			routeFlags |= R_ROUNDABOUT;
-		if (el.tagIsLikeYes(TKM_ONEWAY))
+		if (el.tagIsLikeYes(TK_ONEWAY))
 			routeFlags |= R_ONEWAY;
 
 		return routeFlags;
