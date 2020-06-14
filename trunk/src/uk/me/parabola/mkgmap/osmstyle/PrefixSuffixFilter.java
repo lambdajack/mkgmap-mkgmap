@@ -187,6 +187,7 @@ public class PrefixSuffixFilter {
 			}
 			prefixes.add(p1 + " ");
 		}
+		sortByLength(prefixes);
 		return prefixes;
 	}
 
