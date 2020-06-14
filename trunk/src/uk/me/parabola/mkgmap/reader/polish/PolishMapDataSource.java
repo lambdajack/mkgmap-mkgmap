@@ -615,12 +615,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 	}
 
 	private void addLineString (String value, boolean close) {
-		List<List<Coord>> lists = lineStringMap.get(currentLevel);
-		if (lists == null) {
-			lists = new ArrayList<>();
-			lineStringMap.put(currentLevel, lists);
-		}
-		lists.add(coordsFromString(value, close));
+		lineStringMap.computeIfAbsent(currentLevel, k -> new ArrayList<>()).add(coordsFromString(value, close));
 	}
 	
 	private boolean isCommonValue(MapElement elem, String name, String value) {

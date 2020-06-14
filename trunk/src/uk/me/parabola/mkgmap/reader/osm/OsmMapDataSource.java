@@ -289,11 +289,7 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 						if ("*".equals(parts[1])) {
 							deletedTags.put(parts[0], new HashSet<String>());
 						} else {
-							Set<String> vals = deletedTags.get(parts[0]);
-							if (vals == null)
-								vals = new HashSet<>();
-							vals.add(parts[1]);
-							deletedTags.put(parts[0], vals);
+							deletedTags.computeIfAbsent(parts[0], k-> new HashSet<>()).add(parts[1]);
 						}
 					} else {
 						log.error("Ignoring bad line in deleted tags file: " + line);

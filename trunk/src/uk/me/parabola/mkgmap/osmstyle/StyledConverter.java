@@ -1754,12 +1754,7 @@ public class StyledConverter implements OsmConverter {
 						if (wayPOI != null && wayPOI.contains("[" + cp.getNode().getId() + "]")){
 							byte nodeAccess = AccessTagsAndBits.evalAccessTags(cp.getNode());
 							if (nodeAccess != cw.getAccess()){
-								List<Way> wayList = poiRestrictions.get(cp.getNode());
-								if (wayList == null){
-									wayList = new ArrayList<>();
-									poiRestrictions.put(cp.getNode(), wayList);
-								}
-								wayList.add(way);
+								poiRestrictions.computeIfAbsent(cp.getNode(), k -> new ArrayList<>()).add(way);
 							}
 						}
 					}

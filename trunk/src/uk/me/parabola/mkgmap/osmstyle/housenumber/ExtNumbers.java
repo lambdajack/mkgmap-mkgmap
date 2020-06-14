@@ -1862,12 +1862,7 @@ public class ExtNumbers {
 				}
 				if (beforeTarget && distToTarget < maxBefore || !beforeTarget && distToTarget < maxAfter){ 
 					Double distLine = t.distToLineSegment(c1Dspl, c2Dspl);
-					List<Coord> list = sortedByDistToLine.get(distLine);
-					if (list == null){
-						list = new ArrayList<>();
-						sortedByDistToLine.put(distLine, list);
-					}
-					list.add(t);
+					sortedByDistToLine.computeIfAbsent(distLine, k -> new ArrayList<>()).add(t);
 				}
 				lastDist = distToTarget;
 			}

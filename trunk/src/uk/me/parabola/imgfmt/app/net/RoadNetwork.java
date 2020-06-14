@@ -527,12 +527,7 @@ public class RoadNetwork {
 				if (arc.getLengthInMeter() <= 0.0001)
 					ignoreAngle = true;
 				Integer angle = Math.round(getAngle(fromArc, arc));
-				List<RouteArc> list = angleMap.get(angle);
-				if (list == null){
-					list = new ArrayList<>();
-					angleMap.put(angle, list);
-				}
-				list.add(arc);
+				angleMap.computeIfAbsent(angle, k-> new ArrayList<>()).add(arc);
 			}
 
 			// find the group that fits best 
