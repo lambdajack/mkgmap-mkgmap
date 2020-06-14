@@ -46,12 +46,12 @@ public class LocatorConfig {
 	private final Set<String> continents = new HashSet<>();
 
 	/** maps ISO => default country name */
-	private final Map<String, String> defaultCountryNames = new HashMap<String, String>();
+	private final Map<String, String> defaultCountryNames = new HashMap<>();
 	
 	/** Maps 3 letter ISO code to all tags of a country */
-	private final Map<String, Tags> countryTagMap = new HashMap<String, Tags>();
+	private final Map<String, Tags> countryTagMap = new HashMap<>();
 	
-	private final static LocatorConfig instance = new LocatorConfig();
+	private static final LocatorConfig instance = new LocatorConfig();
 	
 	public static LocatorConfig get() {
 		return instance;
@@ -86,13 +86,13 @@ public class LocatorConfig {
   		
 			Node rootNode = document.getDocumentElement();
 			
-			if(rootNode.getNodeName().equals("locator"))
+			if("locator".equals(rootNode.getNodeName()))
 			{
 				  Node cNode = rootNode.getFirstChild();
 
 					while(cNode != null)
 					{
-						if(cNode.getNodeName().equals("continent"))
+						if("continent".equals(cNode.getNodeName()))
 						{
 							NamedNodeMap attr = cNode.getAttributes();
 	
@@ -105,7 +105,7 @@ public class LocatorConfig {
 
 						}
 
-						if (cNode.getNodeName().equals("country")) {
+						if ("country".equals(cNode.getNodeName())) {
 							NamedNodeMap attr = cNode.getAttributes();
 							String iso = null;
 							if (attr != null) {
@@ -163,7 +163,7 @@ public class LocatorConfig {
 								Node cEntryNode = cNode.getFirstChild();
 								while(cEntryNode != null)
 								{
-									if(cEntryNode.getNodeName().equals("variant"))
+									if("variant".equals(cEntryNode.getNodeName()))
 									{
 										Node nodeText = cEntryNode.getFirstChild();
 									

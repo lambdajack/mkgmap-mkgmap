@@ -35,7 +35,7 @@ public class LayerFilterChain implements MapFilterChain {
 	private static final Logger log = Logger.getLogger(LayerFilterChain.class);
 	
 	// The filters that will be applied to the element.
-	private List<MapFilter> filters = new ArrayList<MapFilter>();
+	private List<MapFilter> filters = new ArrayList<>();
 
 	// The position in the filter list.
 	private int position;

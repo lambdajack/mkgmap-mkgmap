@@ -32,10 +32,10 @@ public class Locator {
 	private static final Logger log = Logger.getLogger(Locator.class);
 
     /** hash map to collect equally named MapPoints*/ 
-	private final MultiHashMap<String, MapPoint> cityMap = new MultiHashMap<String, MapPoint>();
+	private final MultiHashMap<String, MapPoint> cityMap = new MultiHashMap<>();
 	
 	private final KdTree<MapPoint> cityFinder = new KdTree<>();
-	private final List<MapPoint> placesMap  =  new ArrayList<MapPoint>();
+	private final List<MapPoint> placesMap  =  new ArrayList<>();
 
 	private final NameFinder nameFinder;
 
@@ -51,7 +51,7 @@ public class Locator {
 	
 	public Locator(EnhancedProperties props) {
 		this.nameFinder = new NameFinder(props);
-		this.locationAutofill = new HashSet<String>(LocatorUtil.parseAutofillOption(props));
+		this.locationAutofill = new HashSet<>(LocatorUtil.parseAutofillOption(props));
 	}
 	
 	public void addCityOrPlace(MapPoint p) 
@@ -132,7 +132,7 @@ public class Locator {
 		}
 	}
 	
-	public final static ShortArrayList PREFERRED_NAME_TAG_KEYS = TagDict.compileTags("name","name:en","int_name");
+	public static final ShortArrayList PREFERRED_NAME_TAG_KEYS = TagDict.compileTags("name","name:en","int_name");
 	
 	public String getCountryISOCode(Tags tags) {
 		for (short nameTagKey : PREFERRED_NAME_TAG_KEYS) {
@@ -304,7 +304,7 @@ public class Locator {
 			Collection<MapPoint> candidateCityList = cityMap.get(cityCandidate);
 			if (!candidateCityList.isEmpty()) {
 				if (nextCityList == null) {
-					nextCityList = new ArrayList<MapPoint>(candidateCityList.size());
+					nextCityList = new ArrayList<>(candidateCityList.size());
 				}
 				nextCityList.addAll(candidateCityList);
 			}
