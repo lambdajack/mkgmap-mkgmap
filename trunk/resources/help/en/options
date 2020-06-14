@@ -200,7 +200,7 @@ filename
         that is in the map. Only MapSource shows a corresponding hint.
 
         Another effect is that the index is smaller.
-    See comments in the sample roadNameConfig.txt for further details.
+    See comments in the example roadNameConfig.txt for further details.
 
 --mdr7-excl=name[,name...]
     Specify words which should be omitted from the road index. It was added
@@ -454,10 +454,10 @@ filename
 
 --polygon-size-limits=resolution:value[,resolution:value...]
     Allows you to specify different min-size-polygon values for each
-    resolution. Sample:
+    resolution. Example:
         --polygon-size-limits="24:12, 18:10, 16:8, 14:4, 12:2, 11:0"
     If a resolution is not given, mkgmap uses the value for the next higher
-    one. For the given sample, resolutions 19 to 24 will use value 12,
+    one. For the given example, resolutions 19 to 24 will use value 12,
     resolution 17 and 18 will use 10, and so on. Value 0 means to not apply the
     size filter. Note that in resolution 24 the filter is not used. The
     following options are equivalent:
