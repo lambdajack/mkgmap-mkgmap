@@ -234,6 +234,9 @@
 		<javac srcdir="${src}" destdir="${build.classes}" encoding="utf-8" debug="true" includeantruntime="false">
 			<include name="**/*.java" />
 			<classpath refid="main"/>
+			<compilerarg value="-Xlint:all"/>
+			<compilerarg value="-Xlint:-serial"/>
+			<compilerarg value="-Xlint:-path"/>
 			<exclude name="**/optional/*.java"/>
 		</javac>
 	</target>
