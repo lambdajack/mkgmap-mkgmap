@@ -30,20 +30,17 @@ import uk.me.parabola.imgfmt.app.ImgFileWriter;
  * @author Steve Ratcliffe
  */
 public class Mdr10 extends MdrMapSection {
-	// The maximum group number.  Note that this is 1 based, not 0 based.
+	/** The maximum group number.  Note that this is 1 based, not 0 based. */
 	private static final int MAX_GROUP_NUMBER = MdrUtils.MAX_GROUP;
 
-	@SuppressWarnings({"unchecked"})
-	private List<Mdr10Record>[] poiTypes = new ArrayList[MAX_GROUP_NUMBER+1];
+	private List<List<Mdr10Record>> poiTypes = new ArrayList<>();
 
 	private int numberOfPois;
 
 	public Mdr10(MdrConfig config) {
 		setConfig(config);
-
-		for (int i = 1; i <= MAX_GROUP_NUMBER; i++) {
-			poiTypes[i] = new ArrayList<>();
-		}
+		while (poiTypes.size() <= MAX_GROUP_NUMBER)
+			poiTypes.add(new ArrayList<>());
 	}
 
 	public void addPoiType(Mdr11Record poi) {
@@ -60,7 +57,7 @@ public class Mdr10 extends MdrMapSection {
 			t.setSubtype(MdrUtils.getSubtypeFromFullType(fullType));
 		}
 		t.setMdr11ref(poi);
-		poiTypes[group].add(t);
+		poiTypes.get(group).add(t);
 	}
 
 	public void writeSectData(ImgFileWriter writer) {
@@ -103,10 +100,10 @@ public class Mdr10 extends MdrMapSection {
 	public Map<Integer, Integer> getGroupSizes() {
 		Map<Integer, Integer> m = new LinkedHashMap<>();
 
-		for (int i = 1; i <= MAX_GROUP_NUMBER; i++) {
-			List<Mdr10Record> poiGroup = poiTypes[i];
-			if (!poiGroup.isEmpty())
-				m.put(i, poiGroup.size());
+		for (int group = 1; group <= MAX_GROUP_NUMBER; group++) {
+			int size = poiTypes.get(group).size();
+			if (size > 0)
+				m.put(group, size);
 		}
 		return m;
 	}
