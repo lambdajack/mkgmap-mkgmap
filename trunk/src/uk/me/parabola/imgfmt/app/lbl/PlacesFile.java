@@ -24,6 +24,7 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.TreeMap;
 
+import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Exit;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
 import uk.me.parabola.imgfmt.app.Label;
@@ -104,9 +105,13 @@ public class PlacesFile {
 
 		int poistart = writer.position();
 		int poiglobalflags = placeHeader.getPOIGlobalFlags();
+		final int cityPtrSize = Utils.numberToPointerSize(cityList.size());
+		final int zipPtrSize = Utils.numberToPointerSize(postalCodes.size());
+		final int highwayPtrSize = Utils.numberToPointerSize(highways.size());
+		final int exitFacilityPtrSize = Utils.numberToPointerSize(exitFacilities.size());
 		for (POIRecord p : pois)
 			p.write(writer, poiglobalflags,
-				writer.position() - poistart, cityList.size(), postalCodes.size(), highways.size(), exitFacilities.size());
+				writer.position() - poistart, cityPtrSize, zipPtrSize, highwayPtrSize, exitFacilityPtrSize);
 		placeHeader.endPOI(writer.position());
 
 		int numPoiIndexEntries = 0;
@@ -287,8 +292,12 @@ public class PlacesFile {
 		placeHeader.setPOIGlobalFlags(poiFlags);
 
 		int ofs = 0;
+		final int cityPtrSize = Utils.numberToPointerSize(cityList.size());
+		final int zipPtrSize = Utils.numberToPointerSize(postalCodes.size());
+		final int highwayPtrSize = Utils.numberToPointerSize(highways.size());
+		final int exitFacilityPtrSize = Utils.numberToPointerSize(exitFacilities.size());
 		for (POIRecord p : pois)
-			ofs += p.calcOffset(ofs, poiFlags, cityList.size(), postalCodes.size(), highways.size(), exitFacilities.size());
+			ofs += p.calcOffset(ofs, poiFlags, cityPtrSize, zipPtrSize, highwayPtrSize, exitFacilityPtrSize);
 	}
 
 	/**

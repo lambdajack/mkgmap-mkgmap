@@ -317,7 +317,7 @@ public class RouteArc {
 
 		// We write this big endian
 		if(log.isDebugEnabled())
-			log.debug("val is", Integer.toHexString((int)val));
+			log.debug("val is", Integer.toHexString(val));
 		writer.put1u(val >> 8);
 		writer.put1u(val & 0xff);
 	}

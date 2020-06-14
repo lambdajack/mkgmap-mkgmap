@@ -18,7 +18,6 @@ package uk.me.parabola.imgfmt.app.lbl;
 
 import java.util.List;
 
-import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Exit;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
 import uk.me.parabola.imgfmt.app.Label;
@@ -106,7 +105,7 @@ public class POIRecord {
 	}
 
 	void write(ImgFileWriter writer, int POIGlobalFlags, int realofs,
-		   long numCities, long numZips, long numHighways, long numExitFacilities) {
+		   int cityPtrSize, int zipPtrSize, int highwayPtrSize, int exitFacilityPtrSize) {
 		assert offset == realofs : "offset = " + offset + " realofs = " + realofs;
 		int ptr = poiName.getOffset();
 		if (POIGlobalFlags != getPOIFlags())
@@ -130,10 +129,10 @@ public class POIRecord {
 			writer.put3u(streetName.getOffset());
 
 		if (city != null)
-			writer.putNu(Utils.numberToPointerSize((int)numCities), city.getIndex());
+			writer.putNu(cityPtrSize, city.getIndex());
 
 		if (zip != null)
-			writer.putNu(Utils.numberToPointerSize((int)numZips), zip.getIndex());
+			writer.putNu(zipPtrSize, zip.getIndex());
 
 		if (complexPhoneNumber != null)
 		{
@@ -163,11 +162,11 @@ public class POIRecord {
 			writer.put3u(val);
 
 			int highwayIndex = exit.getHighway().getIndex();
-			writer.putNu(Utils.numberToPointerSize((int)numHighways), highwayIndex);
+			writer.putNu(highwayPtrSize, highwayIndex);
 
 			if(ef != null) {
 				int exitFacilityIndex = ef.getIndex();
-				writer.putNu(Utils.numberToPointerSize((int)numExitFacilities), exitFacilityIndex);
+				writer.putNu(exitFacilityPtrSize, exitFacilityIndex);
 			}
 		}
 	}
@@ -179,9 +178,9 @@ public class POIRecord {
 		if (simpleStreetNumber.isUsed() || streetNumberName != null)
 			b |= HAS_STREET_NUM;
 		if (city != null)
-		        b |= HAS_CITY;
+			b |= HAS_CITY;
 		if (zip != null)
-		        b |= HAS_ZIP;
+			b |= HAS_ZIP;
 		if (simplePhoneNumber.isUsed() || complexPhoneNumber != null)
 			b |= HAS_PHONE;
 		if (exit != null)
@@ -214,7 +213,7 @@ public class POIRecord {
 		}
 
 		flag |= 0x80; // gpsmapedit asserts for this bit set
-	    
+
 		return flag;
 	}
 
@@ -223,14 +222,14 @@ public class POIRecord {
 	 *
 	 * @return Number of bytes needed by this entry
 	 */
-	int calcOffset(int ofs, int POIGlobalFlags, long numCities, long numZips, long numHighways, long numExitFacilities) {
+	int calcOffset(int ofs, int POIGlobalFlags, int cityPtrSize, int zipPtrSize, int highwayPtrSize, int exitFacilityPtrSize) {
 		offset = ofs;
 		int size = 3;
 		if (exit != null) {
 			size += 3;
-			size += Utils.numberToPointerSize((int)numHighways);
+			size += highwayPtrSize;
 			if(!exit.getFacilities().isEmpty())
-				size += Utils.numberToPointerSize((int)numExitFacilities);
+				size += exitFacilityPtrSize;
 		}
 		if (POIGlobalFlags != getPOIFlags())
 			size += 1;
@@ -244,18 +243,10 @@ public class POIRecord {
 			size += 3;			
 		if (streetName != null)
 			size += 3;	
-		if (city != null) 
-		{
-			/*
-			  depending on how many cities are in the LBL block we have
-			  to write one to three bytes 
-			*/
-			size += Utils.numberToPointerSize((int)numCities);
-		}
-		if (zip != null) {
-			// depending on how many zips are in the LBL block we have to write one to three bytes
-			size += Utils.numberToPointerSize((int)numZips);
-		}
+		if (city != null)
+			size += cityPtrSize;
+		if (zip != null)
+			size += zipPtrSize;
 		return size;
 	}
 

@@ -167,7 +167,6 @@ public class PrefixSuffixFilter {
 			}
 			countryLanguageMap .put(iso, langs);
 			languages.addAll(langs);
-		default:
 			break;
 		}
 	}

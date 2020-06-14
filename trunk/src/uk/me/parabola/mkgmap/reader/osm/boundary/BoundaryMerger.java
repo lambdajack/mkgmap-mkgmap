@@ -42,8 +42,6 @@ public class BoundaryMerger {
 		try (FileChannel in = (new FileInputStream(file)).getChannel();
 				FileChannel out = (new FileOutputStream(new File(to, filename))).getChannel()) {
 			in.transferTo(0, file.length(), out);
-			in.close();
-			out.close();
 		} catch (IOException exp) {
 			System.err.println(exp);
 		}

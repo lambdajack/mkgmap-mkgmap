@@ -183,7 +183,7 @@ public class MdrBuilder implements Combiner {
 		for (Country c : countries) {
 			if (c != null) {
 				Mdr14Record record = mdrFile.addCountry(c);
-				countryMap.put((int) c.getIndex(), record);
+				countryMap.put(c.getIndex(), record);
 			}
 		}
 		return countryMap;
@@ -195,9 +195,9 @@ public class MdrBuilder implements Combiner {
 		List<Region> regions = mr.getRegions();
 		for (Region region : regions) {
 			if (region != null) {
-				Mdr14Record mdr14 = maps.countries.get((int) region.getCountry().getIndex());
+				Mdr14Record mdr14 = maps.countries.get(region.getCountry().getIndex());
 				Mdr13Record record = mdrFile.addRegion(region, mdr14);
-				regionMap.put((int) region.getIndex(), record);
+				regionMap.put(region.getIndex(), record);
 			}
 		}
 		return regionMap;

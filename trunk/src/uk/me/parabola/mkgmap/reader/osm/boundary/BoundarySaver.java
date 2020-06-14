@@ -378,6 +378,7 @@ public class BoundarySaver {
 	 * @param area the area (can be non-singular)
 	 * @throws IOException
 	 */
+	@SuppressWarnings("fallthrough")
 	public static void writeArea(DataOutputStream dos, Shape area) throws IOException{
 		double[] res = new double[6];
 		double[] lastRes = new double[2];
