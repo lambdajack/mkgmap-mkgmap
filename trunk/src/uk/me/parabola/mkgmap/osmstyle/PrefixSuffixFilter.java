@@ -21,11 +21,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import uk.me.parabola.imgfmt.app.mdr.Mdr7;
 import uk.me.parabola.log.Logger;
@@ -111,21 +111,22 @@ public class PrefixSuffixFilter {
 			
 			if (tok.getType() == TokType.SYMBOL) {
 
-				String punc = ts.nextValue();
-				String val;
-				if (punc.equals(":") || punc.equals("=")) {
-					val = ts.readLine();
-				} else {
+				switch (ts.nextValue()) {
+				case ":":
+				case "=":
+					processOption(key, ts.readLine());
+					break;
+				default:
 					ts.skipLine();
-					continue;
 				}
-				processOption(key, val);
+
 			} else if (key != null){
 				throw new IllegalArgumentException("don't understand line with " + key );
 			} else {
 				ts.skipLine();
 			}
 		}
+		
 		/**
 		 * process lines starting with prefix1 or prefix2. 
 		 */
@@ -134,7 +135,7 @@ public class PrefixSuffixFilter {
 			if (prefix1 == null)
 				continue;
 			String prefix2 = options.getProperty("prefix2:" + lang, null);
-			List<String> p1 = prefix1 != null ? Arrays.asList(prefix1.split(",")) : Collections.emptyList();
+			List<String> p1 = Arrays.asList(prefix1.split(","));
 			List<String> p2 = prefix2 != null ? Arrays.asList(prefix2.split(",")) : Collections.emptyList();
 			langPrefixMap.put(lang, genPrefix(p1, p2));
 		}
@@ -177,7 +178,7 @@ public class PrefixSuffixFilter {
 	 * @param prefix2 list of prepositions
 	 * @return all combinations
 	 */
-	private List<String> genPrefix (List<String> prefix1, List<String> prefix2) {
+	private static List<String> genPrefix (List<String> prefix1, List<String> prefix2) {
 		List<String> prefixes = new ArrayList<>();
 		for (String p1 : prefix1) {
 			p1 = stripBlanksAndQuotes(p1);
@@ -196,7 +197,7 @@ public class PrefixSuffixFilter {
 	 * @param s the string 
 	 * @return the modified string
 	 */
-	private String stripBlanksAndQuotes(String s) {
+	private static String stripBlanksAndQuotes(String s) {
 		s = s.trim();
 		if (s.startsWith("'") && s.endsWith("'") || s.startsWith("\"") && s.endsWith("\"")) {
 			return s.substring(1, s.length()-1);
@@ -221,53 +222,53 @@ public class PrefixSuffixFilter {
 		if (country == null)
 			return;
 		
-		List<String> prefixesCountry = getSearchStrings(country, MODE_PREFIX);
-		List<String> suffixesCountry = getSearchStrings(country, MODE_SUFFIX);
+		final List<String> prefixesCountry = getSearchStrings(country, MODE_PREFIX);
+		final List<String> suffixesCountry = getSearchStrings(country, MODE_SUFFIX);
 		
-		// perform brute force search, seems to be fast enough
 		String[] labels = road.getLabels();
 		for (int i = 0; i < labels.length; i++) {
 			String label = labels[i];
-			if (label == null || label.length() == 0)
+			if (label == null || label.isEmpty())
 				continue;
-			boolean modified = false;
-			for (String prefix : prefixesCountry) {
-				if (label.charAt(0) < 7)
-					break; // label starts with shield code
-				if (label.length() < prefix.length())
-					continue;
-				if (prefix.equalsIgnoreCase(label.substring(0, prefix.length()))) {
-					if (prefix.endsWith(" ")) {
-						label = prefix.substring(0, prefix.length() - 1) + (char) 0x1e
-								+ label.substring(prefix.length());
-					} else {
-						label = prefix + (char) 0x1b + label.substring(prefix.length());
-					}
-					modified = true;
-					break;
-				}
-			}
-			for (String suffix : suffixesCountry) {
-				int len = label.length();
-				if (len < suffix.length())
-					continue;
-				int pos = len - suffix.length();
-				if (suffix.equalsIgnoreCase(label.substring(pos, len))) {
-					if (suffix.startsWith(" "))
-						label = label.substring(0, pos) + (char) 0x1f + suffix.substring(1);
-					else 
-						label = label.substring(0, pos) + (char) 0x1c + suffix;
-					modified = true;
-					break;
-				}
-			}
-			if (modified) {
+			label = applyPrefixes(label, prefixesCountry);
+			label = applySuffixes(label, suffixesCountry);
+			if (!label.equals(labels[i])) {
 				labels[i] = label;
-				log.debug("modified",label,country,road.getRoadDef());
+				log.debug("modified", label, country, road.getRoadDef());
 			}
 		}
 	}
 	
+	static String applyPrefixes(String label, List<String> prefixesCountry) {
+		if (label.charAt(0) < 7)
+			return label; // label starts with shield code
+		// perform brute force search, seems to be fast enough
+		for (String prefix : prefixesCountry) {
+			if (label.length() >= prefix.length() && prefix.equalsIgnoreCase(label.substring(0, prefix.length()))) {
+				if (prefix.endsWith(" ")) {
+					return prefix.substring(0, prefix.length() - 1) + (char) 0x1e + label.substring(prefix.length());
+				}
+				return prefix + (char) 0x1b + label.substring(prefix.length());
+			}
+		}
+		return label;
+	}
+
+	private static String applySuffixes(String label, List<String> suffixesCountry) {
+		// perform brute force search, seems to be fast enough
+		for (String suffix : suffixesCountry) {
+			int len = label.length();
+			int pos = len - suffix.length();
+			if (pos >= 0 && suffix.equalsIgnoreCase(label.substring(pos, len))) {
+				if (suffix.startsWith(" ")) {
+					return label.substring(0, pos) + (char) 0x1f + suffix.substring(1);
+				}
+				return label.substring(0, pos) + (char) 0x1c + suffix;
+			}
+		}
+		return label;
+	}
+
 	/**
 	 * Build list of prefixes or suffixes for a given country.
 	 * @param country String with 3 letter ISO code
@@ -276,44 +277,29 @@ public class PrefixSuffixFilter {
 	 */
 	private List<String> getSearchStrings(String country, int mode) {
 		Map<String, List<String>>  cache = (mode == MODE_PREFIX) ? countryPrefixMap : countrySuffixMap;
-		List<String> res = cache.get(country); 
-		if (res == null) {
+		return cache.computeIfAbsent(country, k-> {
 			// compile the list 
-			List<String> languages = countryLanguageMap.get(country);
-			if (languages == null)
-				res = Collections.emptyList();
-			else  {
-				List<List<String>> all = new ArrayList<>();
-				for (String lang : languages) {
-					List<String> prefixes = mode == MODE_PREFIX ? langPrefixMap.get(lang) : langSuffixMap.get(lang);
-					if(prefixes != null)
-						all.add(prefixes);
-				}
-				if(all.isEmpty())
-					res = Collections.emptyList();
-				else if (all.size() == 1) {
-					res = all.get(0);
-				}
-				else {
-					Set<String> allPrefixesSet = new HashSet<>();
-					for (List<String> prefOneLang : all)
-						allPrefixesSet.addAll(prefOneLang);
-					res = new ArrayList<>(allPrefixesSet);
-					sortByLength(res);
-					
-				}
-			}
-			// cache the result
-			cache.put(country, res);
-		}
-		return res;
+			List<String> languageList = countryLanguageMap.get(country);
+			if (languageList == null)
+				return Collections.emptyList();
+			final Map<String, List<String>> map = mode == MODE_PREFIX ? langPrefixMap : langSuffixMap;
+			List<String> res = languageList.stream()
+					.map(lang -> map.getOrDefault(lang, Collections.emptyList()))
+					.flatMap(List::stream)
+					.distinct()
+					.collect(Collectors.toList());
+			if (res.isEmpty())
+				return Collections.emptyList();
+			sortByLength(res);
+			return res;
+		});
 	}
 
 	/**
 	 * Sort by string length so that longest string comes first.
 	 * @param strings
 	 */
-	private void sortByLength(List<String> strings) {
+	private static void sortByLength(List<String> strings) {
 		strings.sort((o1, o2) -> Integer.compare(o2.length(), o1.length()));
 	}
 }
