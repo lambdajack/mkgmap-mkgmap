@@ -182,8 +182,11 @@ public abstract class OsmHandler {
 		Coord co = saver.getCoord(id);
 
 		if (co != null) {
-			hooks.onCoordAddedToWay(way, id, co);
-			co = saver.getCoord(id);
+			Node currentNodeInWay = saver.getNode(id);
+			if (currentNodeInWay != null) {
+				hooks.onNodeAddedToWay(way, id, currentNodeInWay);
+				co = saver.getCoord(id);
+			}
 			way.addPoint(co);
 		} else {
 			missingNodeRef = true;
