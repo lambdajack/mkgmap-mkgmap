@@ -64,8 +64,8 @@ public class HighwayHooks implements OsmReadingHooks {
 
 	@Override
 	public Set<String> getUsedTags() {
-		Set<String> usedTags = new HashSet<>(Arrays.asList("highway", "access", "barrier", "FIXME", "fixme",
-				"route", "oneway", "junction", "name", Exit.TAG_ROAD_REF, "ref", "motorroad"));
+		Set<String> usedTags = new HashSet<>(Arrays.asList("highway", "access", "barrier", "oneway", "junction", "name",
+				Exit.TAG_ROAD_REF, "ref", "motorroad"));
 		if (makeOppositeCycleways) {
 			// need the additional tags
 			usedTags.add("cycleway");
@@ -140,7 +140,7 @@ public class HighwayHooks implements OsmReadingHooks {
 	@Override
 	public void onAddWay(Way way) {
 		String highway = way.getTag("highway");
-		if (highway != null || "ferry".equals(way.getTag("route"))) {
+		if (highway != null) {
 			// if the way is a roundabout but isn't already
 			// flagged as "oneway", flag it here
 			if ("roundabout".equals(way.getTag("junction")) && way.getTag("oneway") == null) {
