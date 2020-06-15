@@ -396,7 +396,7 @@ public class RuleSetTest {
 	}
 	
 	private List<GType> resolveList(RuleSet rs, Way el) {
-		final List<GType> list = new ArrayList<GType>();
+		final List<GType> list = new ArrayList<>();
 		rs.resolveType(el, new TypeResult() {
 			public void add(Element el, GType type) {
 				list.add(type);
@@ -406,7 +406,7 @@ public class RuleSetTest {
 	}
 
 	private GType getFirstType(Rule rs, Element el) {
-		final List<GType> types = new ArrayList<GType>();
+		final List<GType> types = new ArrayList<>();
 		rs.resolveType(el, new TypeResult() {
 			public void add(Element el, GType type) {
 				types.add(type);

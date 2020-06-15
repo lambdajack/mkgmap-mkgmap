@@ -46,11 +46,10 @@ import uk.me.parabola.mkgmap.scan.TokenScanner;
  * it is replaced by three lines with the type 0x12, 0x14, 0x15.
  *
  * @author Steve Ratcliffe
- * @see <a href="TODO: find url">Example of the technique</a>
  *
  */
 public class OverlayReader {
-	private final Map<Integer, List<Integer>> overlays = new HashMap<Integer, List<Integer>>();
+	private final Map<Integer, List<Integer>> overlays = new HashMap<>();
 	private final Reader reader;
 	private final String filename;
 
@@ -83,8 +82,8 @@ public class OverlayReader {
 	/**
 	 * Read the line of replacements.
 	 */
-	private List<Integer> readReplacements(TokenScanner ts, String line) {
-		List<Integer> l = new ArrayList<Integer>();
+	private static List<Integer> readReplacements(TokenScanner ts, String line) {
+		List<Integer> l = new ArrayList<>();
 
 		String[] nums = line.split("[ ,]");
 		for (String n : nums) {
@@ -115,7 +114,7 @@ public class OverlayReader {
 			for (ListIterator<Integer> t=integerList.listIterator(1); t.hasNext(); ) {
 				newline = new MapLine(line);
 				newline.setType(t.next());
-				newline.setPoints(new ArrayList<Coord>(points));
+				newline.setPoints(new ArrayList<>(points));
 				adder.add(newline);
 			}
 		} else {

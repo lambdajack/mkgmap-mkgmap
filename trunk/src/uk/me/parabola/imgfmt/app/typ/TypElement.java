@@ -36,7 +36,7 @@ public abstract class TypElement implements Comparable<TypElement> {
 	private int type;
 	private int subType;
 
-	protected final List<TypLabel> labels = new ArrayList<TypLabel>();
+	protected final List<TypLabel> labels = new ArrayList<>();
 
 	protected Xpm xpm;
 

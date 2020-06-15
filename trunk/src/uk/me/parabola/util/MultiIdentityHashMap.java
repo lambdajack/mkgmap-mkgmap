@@ -13,7 +13,6 @@
 
 package uk.me.parabola.util;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedList;
@@ -25,8 +24,7 @@ public class MultiIdentityHashMap<K,V> extends IdentityHashMap<K,List<V>> {
 	/**
 	* the empty list to be returned when there is key without values.
 	*/
-	private final List<V> emptyList = Collections.unmodifiableList(new ArrayList<V>(0));
-
+	
 	/**
 	* Returns the list of values associated with the given key.
 	*
@@ -36,14 +34,14 @@ public class MultiIdentityHashMap<K,V> extends IdentityHashMap<K,List<V>> {
 	*/
 	public List<V> get(Object key) {
 		List<V> result = super.get(key);
-		return result == null ? emptyList : result;
+		return result == null ? Collections.emptyList() : result;
 	}
 
 
 	public V add(K key, V value ) {
 		List<V> values = super.get(key);
 	    if (values == null ) {
-	        values = new LinkedList<V>();
+	        values = new LinkedList<>();
 	        super.put( key, values );
 	    }
 	    

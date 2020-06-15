@@ -51,7 +51,7 @@ class BlockTable {
 	private char[] currTable;
 
 	BlockTable() {
-		blocks = new ArrayList<char[]>(200);
+		blocks = new ArrayList<>(200);
 	}
 
 	/**

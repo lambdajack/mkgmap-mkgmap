@@ -969,8 +969,8 @@ public class ExtNumbers {
 		this.endInRoad = addAsNumberNode(splitSegment, toAdd);
 		
 		// distribute the houses to the new intervals
-		List<ArrayList<HousenumberMatch>> leftTargets = Arrays.asList(new ArrayList<HousenumberMatch>(),new ArrayList<HousenumberMatch>());
-		List<ArrayList<HousenumberMatch>> rightTargets = Arrays.asList(new ArrayList<HousenumberMatch>(),new ArrayList<HousenumberMatch>());
+		List<ArrayList<HousenumberMatch>> leftTargets = Arrays.asList(new ArrayList<>(),new ArrayList<>());
+		List<ArrayList<HousenumberMatch>> rightTargets = Arrays.asList(new ArrayList<>(),new ArrayList<>());
 		int target;
 		if (reason == SR_SPLIT_ROAD_END || reason == SR_OPT_LEN){
 			for (int side = 0; side < 2; side++){

@@ -39,8 +39,8 @@ public class ColourInfo implements Writeable, AlphaAdder {
 
 	private boolean hasBitmap;
 	private boolean hasBorder;
-	private final List<RgbWithTag> colours = new ArrayList<RgbWithTag>();
-	private final Map<String, Integer> indexMap = new HashMap<String, Integer>();
+	private final List<RgbWithTag> colours = new ArrayList<>();
+	private final Map<String, Integer> indexMap = new HashMap<>();
 
 	private char width;
 	private char height;

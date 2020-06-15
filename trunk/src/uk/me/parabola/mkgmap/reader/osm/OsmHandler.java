@@ -78,7 +78,7 @@ public abstract class OsmHandler {
 			usedTags = null;
 			return;
 		}
-		usedTags = new HashMap<String, String>();
+		usedTags = new HashMap<>();
 		for (String s : used) {
 			if (s == null) {
 				continue;

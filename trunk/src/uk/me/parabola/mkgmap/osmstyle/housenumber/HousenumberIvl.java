@@ -79,7 +79,7 @@ public class HousenumberIvl {
 	}
 	
 	public void setPoints(List<Coord> points) {
-		this.points = new ArrayList<Coord>(points);
+		this.points = new ArrayList<>(points);
 	}
 	public void setStep(int step) {
 		this.step = step;

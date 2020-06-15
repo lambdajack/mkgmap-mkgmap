@@ -223,7 +223,7 @@ public class CommandArgsTest {
 			}
 		}
 
-		private final List<FileArgs> files = new ArrayList<FileArgs>();
+		private final List<FileArgs> files = new ArrayList<>();
 
 		public void processOption(String opt, String val) {
 		}

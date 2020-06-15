@@ -29,10 +29,10 @@ public class TypData {
 
 	private final ShapeStacking stacking = new ShapeStacking();
 	private final TypParam param = new TypParam();
-	private final List<TypPolygon> polygons = new ArrayList<TypPolygon>();
-	private final List<TypLine> lines = new ArrayList<TypLine>();
-	private final List<TypPoint> points = new ArrayList<TypPoint>();
-	private final List<TypIconSet> icons = new ArrayList<TypIconSet>();
+	private final List<TypPolygon> polygons = new ArrayList<>();
+	private final List<TypLine> lines = new ArrayList<>();
+	private final List<TypPoint> points = new ArrayList<>();
+	private final List<TypIconSet> icons = new ArrayList<>();
 
 	private Sort sort;
 	private CharsetEncoder encoder;

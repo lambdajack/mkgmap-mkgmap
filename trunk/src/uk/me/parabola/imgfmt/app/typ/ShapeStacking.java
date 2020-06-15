@@ -30,17 +30,11 @@ import uk.me.parabola.imgfmt.app.ImgFileWriter;
  * @author Steve Ratcliffe
  */
 public class ShapeStacking {
-	private final SortedMap<Integer, DrawOrder> bar = new TreeMap<Integer, DrawOrder>();
+	private final SortedMap<Integer, DrawOrder> bar = new TreeMap<>();
 
 	public void addPolygon(int level, int type, int subtype) {
 		int levelType = (level << 16) + type;
-		DrawOrder order = bar.get(levelType);
-		if (order == null) {
-			order = new DrawOrder(type);
-			bar.put(levelType, order);
-		}
-		
-		order.addSubtype(subtype);
+		bar.computeIfAbsent(levelType, k -> new DrawOrder(type)).addSubtype(subtype);
 	}
 
 	public void write(ImgFileWriter writer) {

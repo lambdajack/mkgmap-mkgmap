@@ -33,7 +33,7 @@ import uk.me.parabola.mkgmap.osmstyle.StyleFileLoader;
  * @author Steve Ratcliffe
  */
 public class StringStyleFileLoader extends StyleFileLoader {
-	private final Map<String, String> files = new HashMap<String, String>();
+	private final Map<String, String> files = new HashMap<>();
 
 	/**
 	 * Pass filename and file contents like so:

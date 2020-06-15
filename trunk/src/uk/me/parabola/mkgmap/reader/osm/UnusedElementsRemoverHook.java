@@ -63,7 +63,7 @@ public class UnusedElementsRemoverHook implements OsmReadingHooks {
 		long nodes = saver.getNodes().size();
 
 		// go through all nodes 
-		for (Node node : new ArrayList<Node>(saver.getNodes().values())) {
+		for (Node node : new ArrayList<>(saver.getNodes().values())) {
 
 			// nodes without tags can be removed
 			if (node.getTagCount() == 0) {
@@ -96,7 +96,7 @@ public class UnusedElementsRemoverHook implements OsmReadingHooks {
 		
 		Rectangle bboxRect = new Rectangle(bbox.getMinLong(), bbox.getMinLat(), bbox.getWidth(), bbox.getHeight());
 		long ways = saver.getWays().size();
-		for (Way way : new ArrayList<Way>(saver.getWays().values())) {
+		for (Way way : new ArrayList<>(saver.getWays().values())) {
 			if (way.isViaWay())
 				continue;
 			if (way.getPoints().isEmpty()) {

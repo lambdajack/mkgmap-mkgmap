@@ -284,7 +284,7 @@ public class NumberPreparerTest {
 		return list;
 	}
 
-	private List<Numbers> createList(String[] specs) {
+	private static List<Numbers> createList(String[] specs) {
 		List<Numbers> numbers = new ArrayList<>();
 		for (String s : specs) {
 			Numbers n = new Numbers(s);
@@ -294,7 +294,7 @@ public class NumberPreparerTest {
 		return numbers;
 	}
 
-	private Matcher<Integer> lessThanOrEqual(final int val) {
+	private static Matcher<Integer> lessThanOrEqual(final int val) {
 		return new BaseMatcher<Integer>() {
 			public boolean matches(Object o) {
 				return (Integer) o <= val;

@@ -287,7 +287,7 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 						parts[0] = parts[0].trim();
 						parts[1] = parts[1].trim();
 						if ("*".equals(parts[1])) {
-							deletedTags.put(parts[0], new HashSet<String>());
+							deletedTags.put(parts[0], new HashSet<>());
 						} else {
 							deletedTags.computeIfAbsent(parts[0], k-> new HashSet<>()).add(parts[1]);
 						}

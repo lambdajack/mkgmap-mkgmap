@@ -40,7 +40,7 @@ import uk.me.parabola.util.Java2DConverter;
 public class ShapeMergeFilter{
 	private static final Logger log = Logger.getLogger(ShapeMergeFilter.class);
 	private final int resolution;
-	private static final ShapeHelper DUP_SHAPE = new ShapeHelper(new ArrayList<Coord>(0)); 
+	private static final ShapeHelper DUP_SHAPE = new ShapeHelper(new ArrayList<>(0)); 
 	private final boolean orderByDecreasingArea;
 
 	public ShapeMergeFilter(int resolution, boolean orderByDecreasingArea) {

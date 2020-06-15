@@ -43,7 +43,7 @@
 @SuppressWarnings({"UnusedDeclaration"})
 public class MKGMapTask extends Task {
 
-	private final ArrayList<Path> paths = new ArrayList<Path>();
+	private final ArrayList<Path> paths = new ArrayList<>();
 	private String configFile;
 
 	public void addPath(Path path) {
@@ -55,7 +55,7 @@ public class MKGMapTask extends Task {
 	}
 
 	public void execute() {
-		List<String> args = new ArrayList<String>();
+		List<String> args = new ArrayList<>();
 
 		try {
 			CommandArgsReader argsReader = new CommandArgsReader(new Main());

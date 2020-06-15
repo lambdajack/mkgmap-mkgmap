@@ -42,7 +42,7 @@ public class BoundaryLister {
 				break;
 			Map<String, Tags> map = bqt.getTagsMap(); 
 			for ( Entry<String, Tags>  entry: map.entrySet()) {
-				TreeMap<String,String> btree = new TreeMap<String, String>();
+				TreeMap<String,String> btree = new TreeMap<>();
 				String line = bndFile+ ":" + entry.getKey();
 				Iterator<Entry<String,String>> tagIter = entry.getValue().entryIterator();
 				while (tagIter.hasNext()) {

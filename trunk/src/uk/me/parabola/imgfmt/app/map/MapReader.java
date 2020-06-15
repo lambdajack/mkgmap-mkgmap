@@ -57,7 +57,7 @@ public class MapReader implements Closeable {
 	public static final boolean WITH_EXT_TYPE_DATA = true;
 	public static final boolean WITHOUT_EXT_TYPE_DATA = false;
 	
-	private final Deque<Closeable> toClose = new ArrayDeque<Closeable>();
+	private final Deque<Closeable> toClose = new ArrayDeque<>();
 
 	public MapReader(String filename) throws FileNotFoundException {
 		FileSystem fs = ImgFS.openFs(filename);
@@ -112,7 +112,7 @@ public class MapReader implements Closeable {
 	 * @param level The level, lower numbers are the most detailed.
 	 */
 	public List<Point> pointsForLevel(int level, boolean withExtType) {
-		List<Point> points = new ArrayList<Point>();
+		List<Point> points = new ArrayList<>();
 
 		Subdivision[] subdivisions = treFile.subdivForLevel(level);
 		for (Subdivision sd : subdivisions) {
@@ -135,7 +135,7 @@ public class MapReader implements Closeable {
 	 * @param level The level, lower numbers are the most detailed.
 	 */
 	public List<Polyline> linesForLevel(int level) {
-		ArrayList<Polyline> lines = new ArrayList<Polyline>();
+		ArrayList<Polyline> lines = new ArrayList<>();
 
 		Subdivision[] subdivisions = treFile.subdivForLevel(level);
 		for (Subdivision div : subdivisions) {
@@ -148,7 +148,7 @@ public class MapReader implements Closeable {
 
 
 	public List<Polygon> shapesForLevel(int level, boolean witExtTypeData) {
-		ArrayList<Polygon> shapes = new ArrayList<Polygon>();
+		ArrayList<Polygon> shapes = new ArrayList<>();
 
 		Subdivision[] subdivisions = treFile.subdivForLevel(level);
 		for (Subdivision div : subdivisions) {

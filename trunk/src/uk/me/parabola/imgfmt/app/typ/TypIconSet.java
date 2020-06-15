@@ -25,7 +25,7 @@ import uk.me.parabola.imgfmt.app.ImgFileWriter;
  * @author Steve Ratcliffe
  */
 public class TypIconSet extends TypElement {
-	private final List<Xpm> icons = new ArrayList<Xpm>();
+	private final List<Xpm> icons = new ArrayList<>();
 
 	public void write(ImgFileWriter writer, CharsetEncoder encoder) {
 		offset = writer.position();
@@ -44,7 +44,7 @@ public class TypIconSet extends TypElement {
 		}
 	}
 
-	private int calcBits(ColourInfo colourInfo) {
+	private static int calcBits(ColourInfo colourInfo) {
 		int bits = 0;
 		int bpp = colourInfo.getBitsPerPixel();
 
@@ -69,6 +69,7 @@ public class TypIconSet extends TypElement {
 	/**
 	 * Icon sets can have full colour pixmaps.
 	 */
+	@Override
 	public boolean simpleBitmap() {
 		return false;
 	}

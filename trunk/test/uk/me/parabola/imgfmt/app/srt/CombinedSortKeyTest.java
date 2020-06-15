@@ -23,27 +23,27 @@ public class CombinedSortKeyTest {
 
 	@Test
 	public void testGetObject() {
-		IntegerSortKey<String> k1 = new IntegerSortKey<String>(HELLO1, 1, 1);
-		CombinedSortKey<String> ck1 = new CombinedSortKey<String>(k1, 2, 2);
+		IntegerSortKey<String> k1 = new IntegerSortKey<>(HELLO1, 1, 1);
+		CombinedSortKey<String> ck1 = new CombinedSortKey<>(k1, 2, 2);
 
 		assertEquals("retrieve original object", HELLO1, ck1.getObject());
 	}
 
 	@Test
 	public void testCompletelyEqual() {
-		IntegerSortKey<String> k1 = new IntegerSortKey<String>(HELLO1, 1, 1);
-		CombinedSortKey<String> ck1 = new CombinedSortKey<String>(k1, 2, 2);
-		CombinedSortKey<String> ck2 = new CombinedSortKey<String>(k1, 2, 2);
+		IntegerSortKey<String> k1 = new IntegerSortKey<>(HELLO1, 1, 1);
+		CombinedSortKey<String> ck1 = new CombinedSortKey<>(k1, 2, 2);
+		CombinedSortKey<String> ck2 = new CombinedSortKey<>(k1, 2, 2);
 
 		assertEquals(0, ck1.compareTo(ck2));
 	}
 
 	@Test
 	public void testDifferentKey() {
-		IntegerSortKey<String> k1 = new IntegerSortKey<String>(HELLO1, 1, 1);
-		IntegerSortKey<String> k2 = new IntegerSortKey<String>(HELLO1, 1, 2);
-		CombinedSortKey<String> ck1 = new CombinedSortKey<String>(k1, 2, 2);
-		CombinedSortKey<String> ck2 = new CombinedSortKey<String>(k2, 2, 2);
+		IntegerSortKey<String> k1 = new IntegerSortKey<>(HELLO1, 1, 1);
+		IntegerSortKey<String> k2 = new IntegerSortKey<>(HELLO1, 1, 2);
+		CombinedSortKey<String> ck1 = new CombinedSortKey<>(k1, 2, 2);
+		CombinedSortKey<String> ck2 = new CombinedSortKey<>(k2, 2, 2);
 
 		assertEquals(-1, k1.compareTo(k2));
 
@@ -53,10 +53,10 @@ public class CombinedSortKeyTest {
 
 	@Test
 	public void testDifferentFirst() {
-		IntegerSortKey<String> k1 = new IntegerSortKey<String>(HELLO1, 1, 1);
-		IntegerSortKey<String> k2 = new IntegerSortKey<String>(HELLO1, 1, 1);
-		CombinedSortKey<String> ck1 = new CombinedSortKey<String>(k1, 2, 2);
-		CombinedSortKey<String> ck2 = new CombinedSortKey<String>(k2, 3, 2);
+		IntegerSortKey<String> k1 = new IntegerSortKey<>(HELLO1, 1, 1);
+		IntegerSortKey<String> k2 = new IntegerSortKey<>(HELLO1, 1, 1);
+		CombinedSortKey<String> ck1 = new CombinedSortKey<>(k1, 2, 2);
+		CombinedSortKey<String> ck2 = new CombinedSortKey<>(k2, 3, 2);
 
 		assertEquals(0, k1.compareTo(k2));
 
@@ -66,10 +66,10 @@ public class CombinedSortKeyTest {
 
 	@Test
 	public void testDifferentSecond() {
-		IntegerSortKey<String> k1 = new IntegerSortKey<String>(HELLO1, 1, 1);
-		IntegerSortKey<String> k2 = new IntegerSortKey<String>(HELLO1, 1, 1);
-		CombinedSortKey<String> ck1 = new CombinedSortKey<String>(k1, 2, 2);
-		CombinedSortKey<String> ck2 = new CombinedSortKey<String>(k2, 2, 3);
+		IntegerSortKey<String> k1 = new IntegerSortKey<>(HELLO1, 1, 1);
+		IntegerSortKey<String> k2 = new IntegerSortKey<>(HELLO1, 1, 1);
+		CombinedSortKey<String> ck1 = new CombinedSortKey<>(k1, 2, 2);
+		CombinedSortKey<String> ck2 = new CombinedSortKey<>(k2, 2, 3);
 
 		assertEquals(0, k1.compareTo(k2));
 
@@ -79,10 +79,10 @@ public class CombinedSortKeyTest {
 
 	@Test
 	public void testKeyOverridesFirst() {
-		IntegerSortKey<String> k1 = new IntegerSortKey<String>(HELLO1, 1, 1);
-		IntegerSortKey<String> k2 = new IntegerSortKey<String>(HELLO1, 2, 1);
-		CombinedSortKey<String> ck1 = new CombinedSortKey<String>(k1, 3, 2);
-		CombinedSortKey<String> ck2 = new CombinedSortKey<String>(k2, 2, 2);
+		IntegerSortKey<String> k1 = new IntegerSortKey<>(HELLO1, 1, 1);
+		IntegerSortKey<String> k2 = new IntegerSortKey<>(HELLO1, 2, 1);
+		CombinedSortKey<String> ck1 = new CombinedSortKey<>(k1, 3, 2);
+		CombinedSortKey<String> ck2 = new CombinedSortKey<>(k2, 2, 2);
 
 		assertEquals(-1, k1.compareTo(k2));
 
@@ -92,10 +92,10 @@ public class CombinedSortKeyTest {
 
 	@Test
 	public void testPrimaryOverridesSecond() {
-		IntegerSortKey<String> k1 = new IntegerSortKey<String>(HELLO1, 1, 1);
-		IntegerSortKey<String> k2 = new IntegerSortKey<String>(HELLO1, 1, 1);
-		CombinedSortKey<String> ck1 = new CombinedSortKey<String>(k1, 2, 3);
-		CombinedSortKey<String> ck2 = new CombinedSortKey<String>(k2, 3, 2);
+		IntegerSortKey<String> k1 = new IntegerSortKey<>(HELLO1, 1, 1);
+		IntegerSortKey<String> k2 = new IntegerSortKey<>(HELLO1, 1, 1);
+		CombinedSortKey<String> ck1 = new CombinedSortKey<>(k1, 2, 3);
+		CombinedSortKey<String> ck2 = new CombinedSortKey<>(k2, 3, 2);
 
 		assertEquals(0, k1.compareTo(k2));
 

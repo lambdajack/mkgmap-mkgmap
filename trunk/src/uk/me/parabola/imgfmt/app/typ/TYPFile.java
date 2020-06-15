@@ -50,8 +50,8 @@ public class TYPFile extends ImgFile {
 
 	private TypData data;
 
-	private final Map<Integer, Integer> strToType = new TreeMap<Integer, Integer>();
-	private final Map<Integer, Integer> typeToStr = new TreeMap<Integer, Integer>();
+	private final Map<Integer, Integer> strToType = new TreeMap<>();
+	private final Map<Integer, Integer> typeToStr = new TreeMap<>();
 
 	public TYPFile(ImgChannel chan) {
 		setHeader(header);
@@ -91,7 +91,7 @@ public class TYPFile extends ImgFile {
 		
 		SectionWriter writer = header.getLabels().makeSectionWriter(in);
 
-		List<SortKey<TypIconSet>> keys = new ArrayList<SortKey<TypIconSet>>();
+		List<SortKey<TypIconSet>> keys = new ArrayList<>();
 		Sort sort = data.getSort();
 		for (TypIconSet icon : data.getIcons()) {
 			String label = icon.getLabel();
@@ -186,7 +186,7 @@ public class TYPFile extends ImgFile {
 		zapZero(dataSection, indexSection);
 	}
 
-	private void zapZero(Section... sect) {
+	private static void zapZero(Section... sect) {
 		for (Section s : sect) {
 			if (s.getSize() == 0) {
 				s.setPosition(0);

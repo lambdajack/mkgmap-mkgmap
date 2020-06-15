@@ -45,7 +45,7 @@ public class NumberRangeTest {
         Random rand = new Random(8866028);
 
         for (int iter = 0; iter < 1000000; iter++) {
-            List<String> sl = new ArrayList<String>();
+            List<String> sl = new ArrayList<>();
             for (int i = 0; i < 20; i++) {
                 String n;
                 do {
@@ -69,7 +69,7 @@ public class NumberRangeTest {
     }
 
 	private void run(String[] strings) {
-		List<Numbers> numbers = new ArrayList<Numbers>();
+		List<Numbers> numbers = new ArrayList<>();
 		for (String s : strings) {
 			Numbers n = new Numbers(s);
 			n.setIndex(n.getPolishIndex());

@@ -305,7 +305,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 					cConnection = alternative;
 				// create the new way with identical tags
 				w.getPoints().add(i, cConnection);
-				Way precedingWay = new Way(w.getOriginalId(), new ArrayList<Coord>(w.getPoints().subList(0, i + 1)));
+				Way precedingWay = new Way(w.getOriginalId(), new ArrayList<>(w.getPoints().subList(0, i + 1)));
 				precedingWay.setFakeId();
 				precedingWay.copyTags(w);
 				

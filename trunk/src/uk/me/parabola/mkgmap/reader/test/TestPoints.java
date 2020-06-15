@@ -112,7 +112,7 @@ class TestPoints {
 				double baseLat = startLat + y * ELEMENT_SPACING;
 				double baseLong = startLong + x * ELEMENT_SPACING;
 
-				List<Coord> coords = new ArrayList<Coord>();
+				List<Coord> coords = new ArrayList<>();
 
 				for (int i = 0; i < 5; i++) {
 					Coord co = new Coord(baseLat + i * ELEMENT_SIZE, baseLong + i * ELEMENT_SIZE);

@@ -20,7 +20,7 @@ import java.util.Set;
 
 public abstract class ValueBuildedAction implements Action {
 
-	private final List<ValueBuilder> valueBuilder = new ArrayList<ValueBuilder>();
+	private final List<ValueBuilder> valueBuilder = new ArrayList<>();
 
 	/**
 	 * Adds a value building rule.
@@ -35,7 +35,7 @@ public abstract class ValueBuildedAction implements Action {
 	 * @return all required tags
 	 */
 	public Set<String> getUsedTags() {
-		Set<String> set = new HashSet<String>();
+		Set<String> set = new HashSet<>();
 		for (ValueBuilder vb : valueBuilder) {
 			set.addAll(vb.getUsedTags());
 		}

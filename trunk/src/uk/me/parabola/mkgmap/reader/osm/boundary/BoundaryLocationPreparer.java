@@ -86,7 +86,7 @@ public class BoundaryLocationPreparer {
 	 */
 	public HashMap<String, BoundaryLocationInfo> getPreparedLocationInfo(
 			List<Boundary> boundaries) {
-		HashMap<String, BoundaryLocationInfo> preparedLocationInfo = new HashMap<String, BoundaryLocationInfo> ();
+		HashMap<String, BoundaryLocationInfo> preparedLocationInfo = new HashMap<> ();
 		if (boundaries != null){
 			for (Boundary b :boundaries){
 				preparedLocationInfo.put(b.getId(), parseTags(b.getTags())); 

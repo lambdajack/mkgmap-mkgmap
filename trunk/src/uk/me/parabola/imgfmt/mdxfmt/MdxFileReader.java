@@ -29,7 +29,7 @@ public class MdxFileReader {
 	private final ImgFileReader reader;
 	private int numberOfMaps;
 
-	private final List<MapInfo> maps = new ArrayList<MapInfo>();
+	private final List<MapInfo> maps = new ArrayList<>();
 
 	public MdxFileReader(ImgChannel chan) {
 		this.reader = new BufferedImgFileReader(chan);

@@ -116,7 +116,7 @@ class AllElements {
 		shape.setMinResolution(10);
 		shape.setName("background");
 
-		List<Coord> coords = new ArrayList<Coord>();
+		List<Coord> coords = new ArrayList<>();
 
 		Coord co = new Coord(startLat, startLong);
 		coords.add(co);
@@ -210,7 +210,7 @@ class AllElements {
 
 				double baseLat = lat + y * ELEMENT_SPACING;
 				double baseLong = lon + x * ELEMENT_SPACING;
-				List<Coord> coords = new ArrayList<Coord>();
+				List<Coord> coords = new ArrayList<>();
 
 				Coord co = new Coord(baseLat, baseLong);
 				coords.add(co);
@@ -254,7 +254,7 @@ class AllElements {
 				double baseLat = lat + y * ELEMENT_SPACING;
 				double baseLong = lon + x * ELEMENT_SPACING;
 				
-				List<Coord> coords = new ArrayList<Coord>();
+				List<Coord> coords = new ArrayList<>();
 
 				Coord co = new Coord(baseLat, baseLong);
 				//pg.addCoord(co);

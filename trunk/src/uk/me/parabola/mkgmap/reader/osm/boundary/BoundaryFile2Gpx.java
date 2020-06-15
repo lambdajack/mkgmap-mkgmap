@@ -157,7 +157,7 @@ public class BoundaryFile2Gpx {
 			boundaryDirName = boundaryDir.getParent();
 			if (boundaryDirName == null)
 				boundaryDirName = ".";
-			boundaryFileNames = new ArrayList<String>();
+			boundaryFileNames = new ArrayList<>();
 			boundaryFileNames.add(boundaryDir.getName());
 		} else {
 			boundaryFileNames = BoundaryUtil.getBoundaryDirContent(boundaryDirName);

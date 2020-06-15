@@ -45,7 +45,7 @@ import org.junit.Test;
 public class StyledConverterTest {
 	private static final String LOC = "classpath:teststyles";
 	private OsmConverter converter;
-	private final List<MapLine> lines = new ArrayList<MapLine>();
+	private final List<MapLine> lines = new ArrayList<>();
 
 	@Test
 	public void testConvertWay() throws FileNotFoundException {

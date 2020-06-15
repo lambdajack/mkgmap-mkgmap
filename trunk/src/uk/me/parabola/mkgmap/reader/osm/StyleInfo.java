@@ -30,7 +30,7 @@ public class StyleInfo {
 	private String version;
 	private String summary;
 	private String longDescription;
-	private final List<String> baseStyleNames = new ArrayList<String>();
+	private final List<String> baseStyleNames = new ArrayList<>();
 
 
 	public String getSummary() {

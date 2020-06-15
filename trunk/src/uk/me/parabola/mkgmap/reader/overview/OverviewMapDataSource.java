@@ -46,7 +46,7 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 {
 	private static final Logger log = Logger.getLogger(OverviewMapDataSource.class);
 	
-	private final List<String> copyrights = new ArrayList<String>();
+	private final List<String> copyrights = new ArrayList<>();
 	LevelInfo[] levels = null;
 	private Path2D tileAreaPath = new Path2D.Double();
 

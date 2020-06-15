@@ -34,7 +34,7 @@ import uk.me.parabola.mkgmap.reader.osm.Relation;
  * @author Steve Ratcliffe
  */
 public class SubAction implements Action {
-	private final List<Action> actionList = new ArrayList<Action>();
+	private final List<Action> actionList = new ArrayList<>();
 	private final String role;
 	private final String selector;
 
@@ -60,7 +60,7 @@ public class SubAction implements Action {
 
 		boolean once = "once".equals(selector);
 		boolean first_only = "first".equals(selector);
-		HashSet<Element> elems = once ? new HashSet<Element>() : null;
+		HashSet<Element> elems = once ? new HashSet<>() : null;
 
 		for (Map.Entry<String,Element> r_el : elements) {
 			if ((role == null || role.equals(r_el.getKey())) &&

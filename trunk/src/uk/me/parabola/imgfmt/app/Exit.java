@@ -29,13 +29,13 @@ import uk.me.parabola.imgfmt.app.lbl.Highway;
  */
 public class Exit {
 
-	public final static String TAG_ROAD_REF = "exit:road_ref";
-	public final static String TAG_TO = "exit:to";
-	public final static String TAG_FACILITY = "exit:facility";
+	public static final String TAG_ROAD_REF = "exit:road_ref";
+	public static final String TAG_TO = "exit:to";
+	public static final String TAG_FACILITY = "exit:facility";
 
 	private final Highway highway;
 	private Label description;
-	private final List<ExitFacility> facilities = new ArrayList<ExitFacility>();
+	private final List<ExitFacility> facilities = new ArrayList<>();
 
 	public Exit(Highway highway) {
 		this.highway = highway;

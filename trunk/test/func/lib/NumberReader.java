@@ -95,7 +95,7 @@ public class NumberReader {
 
 		getInitialBase();
 
-		List<Numbers> numbers = new ArrayList<Numbers>();
+		List<Numbers> numbers = new ArrayList<>();
 
 		// To do this properly we need to know the number of nodes I think, this is the
 		// best we can do: if there are more than 8 bits left, there must be another command

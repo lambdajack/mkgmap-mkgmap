@@ -36,7 +36,7 @@ import java.util.logging.LogManager;
 public class Logger {
 	private final java.util.logging.Logger log;
 
-	private static final ThreadLocal<String> threadTags = new ThreadLocal<String>();
+	private static final ThreadLocal<String> threadTags = new ThreadLocal<>();
 
 	static {
 		initLogging();
@@ -242,7 +242,7 @@ public class Logger {
 		log.log(type, tagMessage(msg));
 	}
 
-	private String tagMessage(String message) {
+	private static String tagMessage(String message) {
 		String threadTag = threadTags.get();
 		return (threadTag != null) ? threadTag + ": " + message : message;
 	}

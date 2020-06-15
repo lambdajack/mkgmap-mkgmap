@@ -60,7 +60,7 @@ public class BoundaryMerger {
 		BoundarySaver bSave = new BoundarySaver(targetDir, BoundarySaver.QUADTREE_DATA_FORMAT);
 		bSave.setCreateEmptyFiles(false);
 		
-		List<File> copy = new ArrayList<File>();
+		List<File> copy = new ArrayList<>();
 		
 		int processed = 0;
 		int all = fl1.size()+fl2.size();

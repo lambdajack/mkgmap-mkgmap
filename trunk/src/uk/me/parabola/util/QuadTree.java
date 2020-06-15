@@ -39,11 +39,11 @@ public class QuadTree {
 	}
 
 	public List<Coord> get(Area bbox) {
-		return root.get(bbox, new ArrayList<Coord>(2000));
+		return root.get(bbox, new ArrayList<>(2000));
 	}
 
 	public List<Coord> get(Collection<List<Coord>> polygons) {
-		return root.get(new QuadTreePolygon(polygons), new ArrayList<Coord>(2000));
+		return root.get(new QuadTreePolygon(polygons), new ArrayList<>(2000));
 	}
 
 	public List<Coord> get(List<Coord> polygon) {
@@ -57,7 +57,7 @@ public class QuadTree {
 		if (!polygon.get(0).equals(polygon.get(polygon.size() - 1))) {
 			throw new IllegalArgumentException("polygon is not closed");
 		}
-		List<Coord> points = root.get(new QuadTreePolygon(polygon), new ArrayList<Coord>(2000));
+		List<Coord> points = root.get(new QuadTreePolygon(polygon), new ArrayList<>(2000));
 		if (offset > 0) {
 			ListIterator<Coord> pointIter = points.listIterator();
 			while (pointIter.hasNext()) {

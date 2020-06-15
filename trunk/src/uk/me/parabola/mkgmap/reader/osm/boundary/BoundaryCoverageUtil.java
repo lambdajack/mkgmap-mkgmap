@@ -63,12 +63,11 @@ public class BoundaryCoverageUtil {
 	public static void main(String[] args) throws InterruptedException {
 		int processors = Runtime.getRuntime().availableProcessors();
 		ExecutorService excSvc = Executors.newFixedThreadPool(processors);
-		ExecutorCompletionService<Area> executor = new ExecutorCompletionService<Area>(
-				excSvc);
+		ExecutorCompletionService<Area> executor = new ExecutorCompletionService<>(excSvc);
 		String workDirName = args[0];
 		System.out.println(workDirName);
 		File boundaryDir = new File(workDirName);
-		final Set<String> boundsFileNames = new HashSet<String>();
+		final Set<String> boundsFileNames = new HashSet<>();
 		if (boundaryDir.isFile() && boundaryDir.getName().endsWith(".bnd")) {
 			workDirName = boundaryDir.getParent();
 			if (workDirName == null)
@@ -103,9 +102,9 @@ public class BoundaryCoverageUtil {
 
 		final String boundaryDirName = workDirName;
 		for (int adminlevel = 2; adminlevel < 12; adminlevel++) {
-			final Set<String> boundaryFileNames = Collections.synchronizedSet(new HashSet<String>(boundsFileNames));
+			final Set<String> boundaryFileNames = Collections.synchronizedSet(new HashSet<>(boundsFileNames));
 			final int adminLevel = adminlevel;
-			final Queue<Future<Area>> areas = new LinkedBlockingQueue<Future<Area>>();
+			final Queue<Future<Area>> areas = new LinkedBlockingQueue<>();
 			for (int lat = minLat; lat <= maxLat; lat += maxSteps
 					* BoundaryUtil.RASTER) {
 				for (int lon = minLon; lon <= maxLon; lon += maxSteps
@@ -140,7 +139,7 @@ public class BoundaryCoverageUtil {
 
 			final AtomicInteger mergeSteps = new AtomicInteger();
 			while (areas.size() > 1) {
-				final List<Future<Area>> toMerge = new ArrayList<Future<Area>>();
+				final List<Future<Area>> toMerge = new ArrayList<>();
 				for (int i = 0; i < maxSteps * 2 && !areas.isEmpty(); i++) {
 					toMerge.add(areas.poll());
 				}
@@ -172,7 +171,6 @@ public class BoundaryCoverageUtil {
 			} catch (Exception exp) {
 				System.err.println(exp);
 			}
-			// }
 		}
 		excSvc.shutdown();
 	}

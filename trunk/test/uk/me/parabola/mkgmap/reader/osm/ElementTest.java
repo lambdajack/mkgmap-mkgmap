@@ -35,8 +35,8 @@ public class ElementTest {
 		el.addTag("b", "2");
 		el.addTag("c", "3");
 
-		List<String> keys = new ArrayList<String>();
-		List<String> values = new ArrayList<String>();
+		List<String> keys = new ArrayList<>();
+		List<String> values = new ArrayList<>();
 
 		for (Map.Entry<String, String> ent : el.getTagEntryIterator()) {
 			keys.add(ent.getKey());

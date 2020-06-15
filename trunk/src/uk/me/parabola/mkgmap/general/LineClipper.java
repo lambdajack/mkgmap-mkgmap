@@ -47,7 +47,7 @@ public class LineClipper {
 			return null;
 
 		class LineCollector {
-			private final List<List<Coord>> ret = new ArrayList<List<Coord>>(4);
+			private final List<List<Coord>> ret = new ArrayList<>(4);
 			private List<Coord> currentLine;
 			private Coord last;
 
@@ -58,7 +58,7 @@ public class LineClipper {
 					// we start a new line if there isn't a current one, or if the first
 					// point of the segment is not equal to the last one in the line.
 					if (currentLine == null || !segment[0].equals(last)) {
-						currentLine = new ArrayList<Coord>(5);
+						currentLine = new ArrayList<>(5);
 						currentLine.add(segment[0]);
 						currentLine.add(segment[1]);
 						ret.add(currentLine);

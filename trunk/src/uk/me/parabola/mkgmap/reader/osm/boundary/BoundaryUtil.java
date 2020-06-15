@@ -711,7 +711,7 @@ public class BoundaryUtil {
 	 * @return a map with the divided shapes 
 	 */
 	public static Map<String, Shape> rasterArea(Area areaToSplit) {
-		return rasterShape(areaToSplit, new HashMap<String, Shape>());
+		return rasterShape(areaToSplit, new HashMap<>());
 	}
 
 	/**

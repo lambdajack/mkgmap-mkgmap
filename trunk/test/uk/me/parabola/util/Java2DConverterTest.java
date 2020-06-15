@@ -34,7 +34,7 @@ public class Java2DConverterTest {
 	 */
 	@Test
 	public void testPolygonConversion() throws Exception {
-		List<Coord> polygon = new ArrayList<Coord>();
+		List<Coord> polygon = new ArrayList<>();
 		polygon.add(new Coord(0,0));
 		polygon.add(new Coord(100,10));
 		polygon.add(new Coord(120,89));

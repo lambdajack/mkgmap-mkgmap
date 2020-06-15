@@ -30,7 +30,7 @@ import uk.me.parabola.mkgmap.reader.osm.Element;
 public class HighwaySymbolFilter extends ValueFilter {
 	private final String prefix;
 
-	private static final Map<String, String>symbols = new HashMap<String, String>();
+	private static final Map<String, String>symbols = new HashMap<>();
 	private static final int MAX_REF_LENGTH = 8; // enough for "A6144(M)" (RIP)
 
 	private int maxAlphaNum = MAX_REF_LENGTH; // Max. length for alphanumeric (e.g., 'A67')

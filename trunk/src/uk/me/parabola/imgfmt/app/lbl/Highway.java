@@ -49,7 +49,7 @@ public class Highway {
 
 	private final Region region;
 
-	private final List<ExitPoint> exits = new ArrayList<ExitPoint>();
+	private final List<ExitPoint> exits = new ArrayList<>();
 
 	private Label label;
 

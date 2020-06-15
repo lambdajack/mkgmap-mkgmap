@@ -42,9 +42,9 @@ import uk.me.parabola.util.EnhancedProperties;
 public class MapDetails implements MapCollector, MapDataSource {
 	private static final Logger log = Logger.getLogger(MapDetails.class);
 	
-	private final List<MapLine> lines = new ArrayList<MapLine>();
-	private final List<MapShape> shapes = new ArrayList<MapShape>();
-	private final List<MapPoint> points = new ArrayList<MapPoint>();
+	private final List<MapLine> lines = new ArrayList<>();
+	private final List<MapShape> shapes = new ArrayList<>();
+	private final List<MapPoint> points = new ArrayList<>();
 
 	private int minLatHp = Integer.MAX_VALUE;
 	private int minLonHp = Integer.MAX_VALUE;
@@ -52,9 +52,9 @@ public class MapDetails implements MapCollector, MapDataSource {
 	private int maxLonHp = Integer.MIN_VALUE;
 
 	// Keep lists of all items that were used.
-	private final Map<Integer, Integer> pointOverviews = new HashMap<Integer, Integer>();
-	private final Map<Integer, Integer> lineOverviews = new HashMap<Integer, Integer>();
-	private final Map<Integer, Integer> shapeOverviews = new HashMap<Integer, Integer>();
+	private final Map<Integer, Integer> pointOverviews = new HashMap<>();
+	private final Map<Integer, Integer> lineOverviews = new HashMap<>();
+	private final Map<Integer, Integer> shapeOverviews = new HashMap<>();
 
 	private final RoadNetwork roadNetwork = new RoadNetwork();
 
@@ -197,7 +197,7 @@ public class MapDetails implements MapCollector, MapDataSource {
 	 * @return A list of overviews.
 	 */
 	public List<Overview> getOverviews() {
-		List<Overview> ovlist = new ArrayList<Overview>();
+		List<Overview> ovlist = new ArrayList<>();
 
 		for (Map.Entry<Integer, Integer> ent : pointOverviews.entrySet()) {
 			Overview ov = new PointOverview(ent.getKey(), ent.getValue());

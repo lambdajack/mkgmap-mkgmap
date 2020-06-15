@@ -26,7 +26,7 @@ public class BoundaryElement  {
 
 	public BoundaryElement(boolean outer, List<Coord> points) {
 		this.outer = outer;
-		this.points = new ArrayList<Coord>(points);
+		this.points = new ArrayList<>(points);
 	}
 
 	public Area getArea() {

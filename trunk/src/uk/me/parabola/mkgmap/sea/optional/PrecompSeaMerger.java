@@ -216,7 +216,7 @@ class PrecompSeaMerger implements Runnable {
 
 		try {
 			// forward the ways to the queue of the saver thread
-			saveQueue.put(new SimpleEntry<String, List<Way>>(mergeData.getKey(), ways));
+			saveQueue.put(new SimpleEntry<>(mergeData.getKey(), ways));
 		} catch (InterruptedException exp) {
 			exp.printStackTrace();
 		}

@@ -142,7 +142,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 			return;
 		}
 
-		Queue<PolygonStatus> polygonWorkingQueue = new LinkedBlockingQueue<PolygonStatus>();
+		Queue<PolygonStatus> polygonWorkingQueue = new LinkedBlockingQueue<>();
 		BitSet nestedOuterPolygons = new BitSet();
 		BitSet nestedInnerPolygons = new BitSet();
 
@@ -256,7 +256,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 						}
 						outmostPolygonProcessing = false;
 					} else {
-						for (String tag : new ArrayList<String>(outerTags.keySet())) {
+						for (String tag : new ArrayList<>(outerTags.keySet())) {
 							if (!outerTags.get(tag).equals(outerWay.getTag(tag))) {
 								outerTags.remove(tag);
 							}

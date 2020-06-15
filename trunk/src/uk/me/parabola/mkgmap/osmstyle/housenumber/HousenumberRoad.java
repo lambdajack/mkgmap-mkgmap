@@ -84,8 +84,8 @@ public class HousenumberRoad {
 		filterGroups();
 		if (houseNumbers.isEmpty())
 			return;
-		List<HousenumberMatch> leftNumbers = new ArrayList<HousenumberMatch>();
-		List<HousenumberMatch> rightNumbers = new ArrayList<HousenumberMatch>();
+		List<HousenumberMatch> leftNumbers = new ArrayList<>();
+		List<HousenumberMatch> rightNumbers = new ArrayList<>();
 		
 		for (HousenumberMatch house : houseNumbers) {
 			if (house.getRoad() == null || house.isIgnored()){

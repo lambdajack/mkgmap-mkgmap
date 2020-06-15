@@ -33,11 +33,11 @@ public class PrependFilter extends ValueFilter {
 
 	static {
 		// Firstly, the symbols common to both encodings.
-		symbols_6bit = new HashMap<String, String>();
+		symbols_6bit = new HashMap<>();
 		symbols_6bit.put("ele", "\u001f"); // name.height separator
 
 		// Copy to other encoding
-		symbols_8bit = new HashMap<String, String>(symbols_6bit);
+		symbols_8bit = new HashMap<>(symbols_6bit);
 
 		// Now add other symbols
 		symbols_6bit.put("interstate", "\u002a"); // US Interstate

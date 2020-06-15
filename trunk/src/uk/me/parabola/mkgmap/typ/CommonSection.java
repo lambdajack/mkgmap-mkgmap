@@ -36,7 +36,7 @@ import uk.me.parabola.mkgmap.scan.TokenScanner;
  * @author Steve Ratcliffe
  */
 public class CommonSection {
-	private static final Set<String> seen = new HashSet<String>();
+	private static final Set<String> seen = new HashSet<>();
 	protected final TypData data;
 	private boolean hasXpm;
 

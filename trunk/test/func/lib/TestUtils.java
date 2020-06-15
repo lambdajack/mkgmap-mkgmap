@@ -45,8 +45,8 @@ import static org.junit.Assert.*;
  * @author Steve Ratcliffe
  */
 public class TestUtils {
-	private static final List<String> files = new ArrayList<String>();
-	private static final Deque<Closeable> open = new ArrayDeque<Closeable>();
+	private static final List<String> files = new ArrayList<>();
+	private static final Deque<Closeable> open = new ArrayDeque<>();
 
 	static {
 		files.add(Args.DEF_MAP_FILENAME);
@@ -109,7 +109,7 @@ public class TestUtils {
 	 * @param in The arguments to use.
 	 */
 	public static Outputs run(String ... in) {
-		List<String> args = new ArrayList<String>(Arrays.asList(in));
+		List<String> args = new ArrayList<>(Arrays.asList(in));
 		args.add(0, Args.TEST_STYLE_ARG);
 
 		OutputStream outsink = new ByteArrayOutputStream();
