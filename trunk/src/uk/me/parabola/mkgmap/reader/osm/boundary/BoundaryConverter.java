@@ -12,8 +12,6 @@
  */
 package uk.me.parabola.mkgmap.reader.osm.boundary;
 
-import uk.me.parabola.imgfmt.app.Area;
-import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.mkgmap.reader.osm.OsmConverter;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
 import uk.me.parabola.mkgmap.reader.osm.Way;
@@ -22,6 +20,7 @@ import uk.me.parabola.util.Java2DConverter;
 public class BoundaryConverter implements OsmConverter {
 
 	private final BoundarySaver saver;
+	
 	public BoundaryConverter(BoundarySaver saver) {
 		this.saver= saver;
 	}
@@ -34,10 +33,6 @@ public class BoundaryConverter implements OsmConverter {
 	}
 
 	@Override
-	public void convertNode(Node node) {
-	}
-
-	@Override
 	public void convertRelation(Relation relation) {
 		if (relation instanceof BoundaryRelation) {
 			Boundary boundary = ((BoundaryRelation)relation).getBoundary();
@@ -46,18 +41,4 @@ public class BoundaryConverter implements OsmConverter {
 		}
 	}
 
-	@Override
-	public void setBoundingBox(Area bbox) {
-
-	}
-
-	@Override
-	public void end() {
-	}
-
-	@Override
-	public Boolean getDriveOnLeft(){
-		return null; // unknown
-	}
-	
 }

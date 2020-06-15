@@ -295,29 +295,29 @@ public class StyleTester implements OsmConverter {
 		return givenResults;
 	}
 
+	@Override
 	public void convertWay(Way way) {
 		converter.convertWay(way);
 	}
 
+	@Override
 	public void convertNode(Node node) {
 		converter.convertNode(node);
 	}
 
+	@Override
 	public void convertRelation(Relation relation) {
 		converter.convertRelation(relation);
 	}
 
+	@Override
 	public void setBoundingBox(Area bbox) {
 		converter.setBoundingBox(bbox);
 	}
 
+	@Override
 	public void end() {
 		converter.end();
-	}
-
-	@Override
-	public Boolean getDriveOnLeft() {
-		return null; // unknown
 	}
 
 	private static void printResult(String prefix, List<String> results) {
@@ -343,9 +343,6 @@ public class StyleTester implements OsmConverter {
 				// read the rest of the file
 				readStyles(br, line);
 			} 
-			/*else if ("".equals(line) || line.startsWith("#")) {
-				// ignore blank lines.
-			}*/
 		}
 
 		return ways;
@@ -482,7 +479,7 @@ public class StyleTester implements OsmConverter {
 	 * @param coll A map collector to receive the created elements.
 
 	 */
-	private StyledConverter makeStyleConverter(String styleFile, MapCollector coll) throws FileNotFoundException {
+	private static StyledConverter makeStyleConverter(String styleFile, MapCollector coll) throws FileNotFoundException {
 		Style style = new StyleImpl(styleFile, null);
 		return new StyledConverter(style, coll, new EnhancedProperties());
 	}
@@ -544,6 +541,7 @@ public class StyleTester implements OsmConverter {
 		 * @return A simple list of rules with a resolving method that applies
 		 * each rule in turn to the element until there is match.
 		 */
+		@Override
 		public Rule getWayRules() {
 			ReferenceRuleSet r = new ReferenceRuleSet();
 			r.addAll((ReferenceRuleSet) getLineRules());
@@ -558,6 +556,7 @@ public class StyleTester implements OsmConverter {
 		 *
 		 * @return A Reference rule set of the lines.
 		 */
+		@Override
 		public Rule getLineRules() {
 			ReferenceRuleSet r = new ReferenceRuleSet();
 
@@ -578,6 +577,7 @@ public class StyleTester implements OsmConverter {
 		 *
 		 * @return A Reference rule set of the polygons.
 		 */
+		@Override
 		public Rule getPolygonRules() {
 			ReferenceRuleSet r = new ReferenceRuleSet();
 
@@ -591,6 +591,7 @@ public class StyleTester implements OsmConverter {
 			return r;
 		}
 		
+		@Override
 		public Rule getRelationRules() {
 			ReferenceRuleSet r = new ReferenceRuleSet();
 

@@ -31,7 +31,7 @@ public interface OsmConverter {
 	 *
 	 * @param way The OSM way.
 	 */
-	public void convertWay(Way way);
+	default void convertWay(Way way) {}
 
 	/**
 	 * Takes a node (that has its own identity) and converts it from the OSM
@@ -39,7 +39,7 @@ public interface OsmConverter {
 	 *
 	 * @param node The node to convert.
 	 */
-	public void convertNode(Node node);
+	default void convertNode(Node node) {}
 
 	/**
 	 * Takes a relation and applies rules that affect the garmin types
@@ -52,10 +52,9 @@ public interface OsmConverter {
 	 *
 	 * @param relation The relation to convert.
 	 */
-	public void convertRelation(Relation relation);
+	default void convertRelation(Relation relation) {}
 
-	public default void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
-	}
+	default void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {}
 
 	/**
 	 * Set the bounding box for this map.  This should be set before any other
@@ -69,15 +68,17 @@ public interface OsmConverter {
 	 *
 	 * @param bbox The bounding area.
 	 */
-	public void setBoundingBox(Area bbox);
+	default void setBoundingBox(Area bbox) {}
 
 	/**
 	 * Called when all conversion has been done.
 	 */
-	public void end();
+	default void end() {}
 	
 	/**
 	 * @return true/false if source contains info about driving side, else null
 	 */
-	public Boolean getDriveOnLeft();
+	default Boolean getDriveOnLeft() {
+		return null; // unknown
+	}
 }
