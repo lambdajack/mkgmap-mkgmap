@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
@@ -47,8 +46,7 @@ public class BoundaryCoverageUtil {
 	}
 
 	private static void saveArea(String attribute, Integer level, Area covered) {
-		String gpxBasename = "gpx/summary/" + attribute + "/admin_level="
-				+ level;
+		String gpxBasename = "gpx/summary/" + attribute + "/admin_level=" + level;
 
 		List<List<Coord>> coveredPolys = Java2DConverter.areaToShapes(covered);
 		Collections.reverse(coveredPolys);
@@ -85,8 +83,8 @@ public class BoundaryCoverageUtil {
 		for (String fileName : boundsFileNames) {
 			String[] parts = fileName.substring("bounds_".length(),
 					fileName.length() - 4).split("_");
-			int lat = Integer.valueOf(parts[0]);
-			int lon = Integer.valueOf(parts[1]);
+			int lat = Integer.parseInt(parts[0]);
+			int lon = Integer.parseInt(parts[1]);
 			if (lat < minLat)
 				minLat = lat;
 			if (lat > maxLat)
@@ -96,8 +94,7 @@ public class BoundaryCoverageUtil {
 			if (lon > maxLon)
 				maxLon = lon;
 		}
-		System.out.format("Covered area: (%d,%d)-(%d,%d)\n", minLat, minLon,
-				maxLat, maxLon);
+		System.out.format("Covered area: (%d,%d)-(%d,%d)%n", minLat, minLon, maxLat, maxLon);
 		int maxSteps = 2;
 
 		final String boundaryDirName = workDirName;
@@ -105,32 +102,24 @@ public class BoundaryCoverageUtil {
 			final Set<String> boundaryFileNames = Collections.synchronizedSet(new HashSet<>(boundsFileNames));
 			final int adminLevel = adminlevel;
 			final Queue<Future<Area>> areas = new LinkedBlockingQueue<>();
-			for (int lat = minLat; lat <= maxLat; lat += maxSteps
-					* BoundaryUtil.RASTER) {
-				for (int lon = minLon; lon <= maxLon; lon += maxSteps
-						* BoundaryUtil.RASTER) {
+			for (int lat = minLat; lat <= maxLat; lat += maxSteps * BoundaryUtil.RASTER) {
+				for (int lon = minLon; lon <= maxLon; lon += maxSteps * BoundaryUtil.RASTER) {
 					for (int latStep = 0; latStep < maxSteps
 							&& lat + latStep * BoundaryUtil.RASTER <= maxLat; latStep++) {
 						for (int lonStep = 0; lonStep < maxSteps
 								&& lon + lonStep * BoundaryUtil.RASTER <= maxLon; lonStep++) {
-							final int fLat = lat + latStep
-									* BoundaryUtil.RASTER;
-							final int fLon = lon + lonStep
-									* BoundaryUtil.RASTER;
+							final int fLat = lat + latStep * BoundaryUtil.RASTER;
+							final int fLon = lon + lonStep * BoundaryUtil.RASTER;
 
-							areas.add(executor.submit(new Callable<Area>() {
-								public Area call() {
-									String filename = "bounds_" + fLat + "_"
-											+ fLon + ".bnd";
-									if (!boundaryFileNames.contains(filename)) {
-										return new Area();
-									}
-									BoundaryCoverageUtil converter = new BoundaryCoverageUtil(
-											boundaryDirName, filename);
-									boundaryFileNames.remove(filename);
-									System.out.format("%5d bounds files remaining\n", boundaryFileNames.size());
-									return converter.getCoveredArea(adminLevel);
+							areas.add(executor.submit(() -> {
+								String filename = "bounds_" + fLat + "_" + fLon + ".bnd";
+								if (!boundaryFileNames.contains(filename)) {
+									return new Area();
 								}
+								BoundaryCoverageUtil converter = new BoundaryCoverageUtil(boundaryDirName, filename);
+								boundaryFileNames.remove(filename);
+								System.out.format("%5d bounds files remaining%n", boundaryFileNames.size());
+								return converter.getCoveredArea(adminLevel);
 							}));
 						}
 					}
@@ -144,24 +133,21 @@ public class BoundaryCoverageUtil {
 					toMerge.add(areas.poll());
 				}
 				mergeSteps.incrementAndGet();
-				areas.add(executor.submit(new Callable<Area>() {
-					public Area call() {
-						Area a = new Area();
-						ListIterator<Future<Area>> mergeAreas = toMerge
-								.listIterator();
-						while (mergeAreas.hasNext()) {
-							try {
-								a.add(mergeAreas.next().get());
-							} catch (InterruptedException exp) {
-								System.err.println(exp);
-							} catch (ExecutionException exp) {
-								System.err.println(exp);
-							}
-							mergeAreas.remove();
+				areas.add(executor.submit(() -> {
+					Area a = new Area();
+					ListIterator<Future<Area>> mergeAreas = toMerge.listIterator();
+					while (mergeAreas.hasNext()) {
+						try {
+							a.add(mergeAreas.next().get());
+						} catch (InterruptedException exp1) {
+							System.err.println(exp1);
+						} catch (ExecutionException exp2) {
+							System.err.println(exp2);
 						}
-						System.out.format("%5d merges remaining\n",mergeSteps.decrementAndGet());
-						return a;
+						mergeAreas.remove();
 					}
+					System.out.format("%5d merges remaining%n",mergeSteps.decrementAndGet());
+					return a;
 				}));
 			}
 			try {
