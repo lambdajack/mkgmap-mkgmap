@@ -146,10 +146,10 @@ public abstract class StyleFileLoader implements Closeable {
 		}
 
 		String proto = url.getProtocol().toLowerCase();
-		if (proto.equals("jar")) {
+		if ("jar".equals(proto)) {
 			log.debug("classpath loading from jar with url", url);
 			return new JarFileLoader(url);
-		} else if (proto.equals("file")) {
+		} else if ("file".equals(proto)) {
 			log.debug("classpath loading from directory", url.getPath());
 			return new DirectoryFileLoader(new File(url.getPath()));
 		}

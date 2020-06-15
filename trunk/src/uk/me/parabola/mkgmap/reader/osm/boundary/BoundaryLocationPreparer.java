@@ -14,6 +14,7 @@ package uk.me.parabola.mkgmap.reader.osm.boundary;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import uk.me.parabola.log.Logger;
@@ -22,7 +23,6 @@ import uk.me.parabola.mkgmap.osmstyle.NameFinder;
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.TagDict;
 import uk.me.parabola.mkgmap.reader.osm.Tags;
-import uk.me.parabola.mkgmap.reader.osm.boundary.Boundary;
 import uk.me.parabola.util.EnhancedProperties;
 
 /**
@@ -84,7 +84,7 @@ public class BoundaryLocationPreparer {
 	 * @param boundaries list of boundaries
 	 * @return A Map that maps boundary Ids to the location relevant tags
 	 */
-	public HashMap<String, BoundaryLocationInfo> getPreparedLocationInfo(
+	public Map<String, BoundaryLocationInfo> getPreparedLocationInfo(
 			List<Boundary> boundaries) {
 		HashMap<String, BoundaryLocationInfo> preparedLocationInfo = new HashMap<> ();
 		if (boundaries != null){
@@ -133,18 +133,16 @@ public class BoundaryLocationPreparer {
 	 */
 	private String getZip(Tags tags) {
 		String zip = tags.get(TK_POSTAL_CODE);
-		if (zip == null) {
-			if ("postal_code".equals(tags.get(TK_BOUNDARY))){
-				// unlikely
-				String name = tags.get("name"); 
-				if (name == null) {
-					name = getName(tags);
-				}
-				if (name != null) {
-					String[] nameParts = name.split(Pattern.quote(" "));
-					if (nameParts.length > 0) {
-						zip = nameParts[0].trim();
-					}
+		if (zip == null && "postal_code".equals(tags.get(TK_BOUNDARY))){
+			// unlikely
+			String name = tags.get("name"); 
+			if (name == null) {
+				name = getName(tags);
+			}
+			if (name != null) {
+				String[] nameParts = name.split(Pattern.quote(" "));
+				if (nameParts.length > 0) {
+					zip = nameParts[0].trim();
 				}
 			}
 		}

@@ -334,7 +334,7 @@ public class StyleImpl implements Style {
 			Options opts = new Options(opt -> {
 				String key = opt.getOption();
 				String val = opt.getValue();
-				if (key.equals("name-tag-list")) {
+				if ("name-tag-list".equals(key)) {
 					if (!"name".equals(val)) {
 						System.err.println("Warning: option name-tag-list used in the style options is ignored. "
 								+ "Please use only the command line option to specify this value.");
@@ -364,13 +364,13 @@ public class StyleImpl implements Style {
 			Options opts = new Options(opt -> {
 				String word = opt.getOption();
 				String value = opt.getValue();
-				if (word.equals("summary"))
+				if ("summary".equals(word))
 					info.setSummary(value);
-				else if (word.equals("version")) {
+				else if ("version".equals(word)) {
 					info.setVersion(value);
-				} else if (word.equals("base-style")) {
+				} else if ("base-style".equals(word)) {
 					info.addBaseStyleName(value);
-				} else if (word.equals("description")) {
+				} else if ("description".equals(word)) {
 					info.setLongDescription(value);
 				}
 			});

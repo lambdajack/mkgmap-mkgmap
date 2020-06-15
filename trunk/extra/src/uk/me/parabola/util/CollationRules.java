@@ -64,7 +64,7 @@ public class CollationRules {
 		RuleBasedCollator col = (RuleBasedCollator) Collator.getInstance();
 
 		charset = Charset.forName(charsetName);
-		if (charsetName.equalsIgnoreCase("utf-8"))
+		if ("utf-8".equalsIgnoreCase(charsetName))
 			isUnicode = true;
 		decoder = charset.newDecoder();
 

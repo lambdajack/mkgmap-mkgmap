@@ -359,7 +359,7 @@ public class Main implements ArgumentProcessor {
 	}
 
 	public void removeOption(String opt) {
-		if (Objects.equals("tdbfile", opt))
+		if ("tdbfile".equals(opt))
 			createTdbFiles = false;
 	}
 
@@ -436,8 +436,8 @@ public class Main implements ArgumentProcessor {
 			}
 			++checked;
 			boolean performChecks = true;
-			if (Objects.equals("classpath:styles", styleFile) && !Objects.equals("default", name)){
-					performChecks = false;
+			if ("classpath:styles".equals(styleFile) && !"default".equals(name)) {
+				performChecks = false;
 			}
 			Style style = readOneStyle(name, performChecks);
 			if (style == null){

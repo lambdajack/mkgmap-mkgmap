@@ -51,7 +51,7 @@ public class CommonSection {
 	 * @return True if this routine has processed the tag.
 	 */
 	protected boolean commonKey(TokenScanner scanner, TypElement current, String name, String value) {
-		if (name.equalsIgnoreCase("Type")) {
+		if ("Type".equalsIgnoreCase(name)) {
 			try {
 				int ival = Integer.decode(value);
 				if (ival >= 0x100) {
@@ -64,7 +64,7 @@ public class CommonSection {
 				throw new SyntaxException(scanner, "Bad number " + value);
 			}
 
-		} else if (name.equalsIgnoreCase("SubType")) {
+		} else if ("SubType".equalsIgnoreCase(name)) {
 			try {
 				int ival = Integer.decode(value);
 				current.setSubType(ival);
@@ -79,24 +79,24 @@ public class CommonSection {
 				throw new SyntaxException(scanner, "Bad number in " + value);
 			}
 
-		} else if (name.equalsIgnoreCase("Xpm")) {
+		} else if ("Xpm".equalsIgnoreCase(name)) {
 			Xpm xpm = readXpm(scanner, value, current.simpleBitmap());
 			current.setXpm(xpm);
 
-		} else if (name.equalsIgnoreCase("FontStyle")) {
+		} else if ("FontStyle".equalsIgnoreCase(name)) {
 			int font = decodeFontStyle(value);
 			current.setFontStyle(font);
 
-		} else if (name.equalsIgnoreCase("CustomColor") || name.equals("ExtendedLabels")) {
+		} else if ("CustomColor".equalsIgnoreCase(name) || "ExtendedLabels".equals(name)) {
 			// These are just noise, the appropriate flag is set if any feature is used.
 
-		} else if (name.equalsIgnoreCase("DaycustomColor")) {
+		} else if ("DaycustomColor".equalsIgnoreCase(name)) {
 			current.setDayFontColor(value);
 
-		} else if (name.equalsIgnoreCase("NightcustomColor")) {
+		} else if ("NightcustomColor".equalsIgnoreCase(name)) {
 			current.setNightCustomColor(value);
 
-		} else if (name.equalsIgnoreCase("Comment")) {
+		} else if ("Comment".equalsIgnoreCase(name)) {
 			// a comment that is ignored.
 		} else {
 			return false;
@@ -106,15 +106,15 @@ public class CommonSection {
 	}
 
 	protected int decodeFontStyle(String value) {
-		if (value.startsWith("NoLabel") || value.equalsIgnoreCase("nolabel")) {
+		if (value.startsWith("NoLabel") || "nolabel".equalsIgnoreCase(value)) {
 			return 1;
-		} else if (value.equalsIgnoreCase("SmallFont") || value.equalsIgnoreCase("Small")) {
+		} else if ("SmallFont".equalsIgnoreCase(value) || "Small".equalsIgnoreCase(value)) {
 			return 2;
-		} else if (value.equalsIgnoreCase("NormalFont") || value.equalsIgnoreCase("Normal")) {
+		} else if ("NormalFont".equalsIgnoreCase(value) || "Normal".equalsIgnoreCase(value)) {
 			return 3;
-		} else if (value.equalsIgnoreCase("LargeFont") || value.equalsIgnoreCase("Large")) {
+		} else if ("LargeFont".equalsIgnoreCase(value) || "Large".equalsIgnoreCase(value)) {
 			return 4;
-		} else if (value.equalsIgnoreCase("Default")) {
+		} else if ("Default".equalsIgnoreCase(value)) {
 			return 0;
 		} else {
 			warnUnknown("font value " + value);
@@ -132,7 +132,7 @@ public class CommonSection {
 	 * @param header The string containing the xpm header and other extended data provided on the
 	 * same line.
 	 */
-	private void parseXpmHeader(TokenScanner scanner, ColourInfo info, String header) {
+	private static void parseXpmHeader(TokenScanner scanner, ColourInfo info, String header) {
 		TokenScanner s2 = new TokenScanner("string", new StringReader(header));
 
 		if (s2.checkToken("\""))
@@ -173,7 +173,7 @@ public class CommonSection {
 			if (colour.charAt(0) == '#') {
 				colour = scanner.nextValue();
 				colourInfo.addColour(colourTag, new Rgb(colour));
-			} else if (colour.equalsIgnoreCase("none")) {
+			} else if ("none".equalsIgnoreCase(colour)) {
 				colourInfo.addTransparent(colourTag);
 			} else {
 				throw new SyntaxException(scanner, "Unrecognised colour: " + colour);
@@ -191,7 +191,7 @@ public class CommonSection {
 	 * Get any keywords that are on the end of the colour line. Must not step
 	 * over the new line boundary.
 	 */
-	private void readExtraColourInfo(TokenScanner scanner, AlphaAdder colour) {
+	private static void readExtraColourInfo(TokenScanner scanner, AlphaAdder colour) {
 		while (!scanner.isEndOfFile()) {
 			Token tok = scanner.nextRawToken();
 			if (tok.isEol())
@@ -329,7 +329,7 @@ public class CommonSection {
 	 * by quotes.  The can be trailing attribute that sets the opacity of
 	 * the final pixel.
 	 */
-	private int readTrueImageLine(TokenScanner scanner, final int[] image, int count) {
+	private static int readTrueImageLine(TokenScanner scanner, final int[] image, int count) {
 		do {
 			scanner.validateNext("#");
 			String col = scanner.nextValue();

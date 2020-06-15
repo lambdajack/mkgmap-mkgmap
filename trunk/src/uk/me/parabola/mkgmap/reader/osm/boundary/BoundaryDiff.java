@@ -165,7 +165,7 @@ public class BoundaryDiff {
 				dir = "."; // the local directory
 		}
 		BoundaryQuadTree bqt = BoundaryUtil.loadQuadTree(dir, bndFileName);
-		if (tag.equals("admin_level"))
+		if ("admin_level".equals(tag))
 			return (bqt.getCoveredArea(Integer.valueOf(value)));
 		Map<String, Tags> bTags = bqt.getTagsMap();
 		Map<String, List<Area>> areas = bqt.getAreas();

@@ -39,7 +39,7 @@ public class TypeReader {
 		if (t == null || t.getType() == TokType.EOF)
 			throw new SyntaxException(ts, "No garmin type information given");
 
-		if (!t.getValue().equals("[")) {
+		if (!"[".equals(t.getValue())) {
 			throw new SyntaxException(ts, "No type definition");
 		}
 
@@ -60,32 +60,32 @@ public class TypeReader {
 		while (!ts.isEndOfFile()) {
 			ts.skipSpace();
 			String w = ts.nextValue();
-			if (w.equals("]"))
+			if ("]".equals(w))
 				break;
 
-			if (w.equals("level")) {
+			if ("level".equals(w)) {
 				setLevel(ts, gt);
-			} else if (w.equals("resolution")) {
+			} else if ("resolution".equals(w)) {
 				setResolution(ts, gt);
-			} else if (w.equals("default_name")) {
+			} else if ("default_name".equals(w)) {
 				gt.setDefaultName(nextValue(ts));
-			} else if (w.equals("road_class")) {
+			} else if ("road_class".equals(w)) {
 				gt.setRoadClass(nextIntValue(ts));
-			} else if (w.equals("road_speed")) {
+			} else if ("road_speed".equals(w)) {
 				gt.setRoadSpeed(nextIntValue(ts));
-			} else if (w.equals("copy")) {
+			} else if ("copy".equals(w)) {
 				// Reserved
-			} else if (w.equals("continue")) {
+			} else if ("continue".equals(w)) {
 				gt.setContinueSearch(true);
 				// By default no propagate of actions on continue 
 				gt.propagateActions(false);
-			} else if (w.equals("propagate") || w.equals("with_actions") || w.equals("withactions")) {
+			} else if ("propagate".equals(w) || "with_actions".equals(w) || "withactions".equals(w)) {
 				gt.propagateActions(true);
-			} else if (w.equals("no_propagate")) {
+			} else if ("no_propagate".equals(w)) {
 				gt.propagateActions(false);
-			} else if (w.equals("oneway")) {
+			} else if ("oneway".equals(w)) {
 				// reserved
-			} else if (w.equals("access")) {
+			} else if ("access".equals(w)) {
 				// reserved
 			} else {
 				throw new SyntaxException(ts, "Unrecognised type command '" + w + '\'');

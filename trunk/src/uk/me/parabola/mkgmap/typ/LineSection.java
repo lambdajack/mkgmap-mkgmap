@@ -38,16 +38,16 @@ class LineSection extends CommonSection implements ProcessSection {
 		if (commonKey(scanner, current, name, value))
 			return;
 
-		if (name.equalsIgnoreCase("UseOrientation")) {
+		if ("UseOrientation".equalsIgnoreCase(name)) {
 			current.setUseOrientation(value.charAt(0) == 'Y');
-		} else if (name.equalsIgnoreCase("LineWidth")) {
+		} else if ("LineWidth".equalsIgnoreCase(name)) {
 			try {
 				int ival = Integer.decode(value);
 				current.setLineWidth(ival);
 			} catch (NumberFormatException e) {
 				throw new SyntaxException(scanner, "Bad number for line width: " + value);
 			}
-		} else if (name.equalsIgnoreCase("BorderWidth")) {
+		} else if ("BorderWidth".equalsIgnoreCase(name)) {
 			try {
 				int ival = Integer.decode(value);
 				current.setBorderWidth(ival);

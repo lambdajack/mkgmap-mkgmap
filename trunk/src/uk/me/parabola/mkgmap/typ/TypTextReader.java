@@ -73,7 +73,7 @@ public class TypTextReader {
 				String name = tok.getValue();
 
 				String sep = scanner.nextValue();
-				if (!sep.equals("=") && !sep.equals(":"))
+				if (!"=".equals(sep) && !":".equals(sep))
 					throw new SyntaxException(scanner, "Expecting '=' or ':' instead of " + sep);
 
 				String value = scanner.readLine();

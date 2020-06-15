@@ -15,20 +15,17 @@ package uk.me.parabola.imgfmt.app.labelenc;
 
 import java.util.Locale;
 
-import uk.me.parabola.log.Logger;
-
 /**
  * A sparse character-based transliterator that leaves most characters unchanged.
  *
  */
 public class SparseTransliterator implements Transliterator {
-	private static final Logger log = Logger.getLogger(SparseTransliterator.class);
 
 	private final boolean useNoMacron;
 	private boolean forceUppercase;
 
 	public SparseTransliterator(String targetCharset) {
-		useNoMacron = (targetCharset.equals("nomacron")) ? true : false;
+		useNoMacron = "nomacron".equals(targetCharset);
 	}
 
 	/**
@@ -48,13 +45,13 @@ public class SparseTransliterator implements Transliterator {
 				// Only macrons are modified, all other chars (including non-ascii) are left unchanged
 				if (c == 0x101) // Unicode Character 'LATIN SMALL LETTER A WITH MACRON' (U+0101)
 					c = 'a';
-				if (c == 0x113) // Unicode Character 'LATIN SMALL LETTER E WITH MACRON' (U+0113)
+				else if (c == 0x113) // Unicode Character 'LATIN SMALL LETTER E WITH MACRON' (U+0113)
 					c = 'e';
-				if (c == 0x12b) // Unicode Character 'LATIN SMALL LETTER I WITH MACRON' (U+012B)
+				else if (c == 0x12b) // Unicode Character 'LATIN SMALL LETTER I WITH MACRON' (U+012B)
 					c = 'i';
-				if (c == 0x14d) // Unicode Character 'LATIN SMALL LETTER O WITH MACRON' (U+014D)
+				else if (c == 0x14d) // Unicode Character 'LATIN SMALL LETTER O WITH MACRON' (U+014D)
 					c = 'o';
-				if (c == 0x16b) // Unicode Character 'LATIN SMALL LETTER U WITH MACRON' (U+016B)
+				else if (c == 0x16b) // Unicode Character 'LATIN SMALL LETTER U WITH MACRON' (U+016B)
 					c = 'u';
 			}
 			sb.append(c);			

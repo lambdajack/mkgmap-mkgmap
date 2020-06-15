@@ -110,7 +110,7 @@ public class BoundaryPreprocessor implements Runnable {
 	
 	
 	public static void main(String[] args) {
-		if (args[0].equals("--help") || args.length != 2) {
+		if ("--help".equals(args[0]) || args.length != 2) {
 			System.err.println("Usage:");
 			System.err.println("java -cp mkgmap.jar uk.me.parabola.mkgmap.reader.osm.boundary.BoundaryPreprocessor <inputfile> <boundsdir>");
 			System.err.println(" <inputfile>: File containing boundary data (OSM, PBF or O5M format)");

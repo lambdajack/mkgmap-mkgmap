@@ -157,7 +157,7 @@ public class CodeFunctions {
 				// wasn't in the right form to guess
 				throw new ExitException("Invalid character set: " + cs);
 			}
-		} else if (cs.equals("latin1")) {
+		} else if ("latin1".equals(cs)) {
 			return 1252;
 		}
 		return 0;

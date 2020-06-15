@@ -32,7 +32,7 @@ class DrawOrderSection implements ProcessSection {
 	 * There is only one tag in this section.
 	 */
 	public void processLine(TokenScanner scanner, String name, String value) {
-		if (!name.equalsIgnoreCase("Type"))
+		if (!"Type".equalsIgnoreCase(name))
 			throw new SyntaxException(scanner, "Unrecognised keyword in draw order section: " + name);
 
 		String[] typeDrawOrder = value.split(",",-1);

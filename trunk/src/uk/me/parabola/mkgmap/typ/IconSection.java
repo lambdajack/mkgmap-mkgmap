@@ -30,7 +30,7 @@ public class IconSection extends CommonSection implements ProcessSection {
 	}
 
 	public void processLine(TokenScanner scanner, String name, String value) {
-		if (name.equalsIgnoreCase("String")) {
+		if ("String".equalsIgnoreCase(name)) {
 			// There is only one string and it doesn't have a language prefix.
 			// But if it does we will just ignore it.
 			current.addLabel(value);
@@ -40,7 +40,7 @@ public class IconSection extends CommonSection implements ProcessSection {
 		if (commonKey(scanner, current, name, value))
 			return;
 
-		if (name.equalsIgnoreCase("IconXpm")) {
+		if ("IconXpm".equalsIgnoreCase(name)) {
 			Xpm xpm = readXpm(scanner, value, current.simpleBitmap());
 			current.addIcon(xpm);
 		} else {

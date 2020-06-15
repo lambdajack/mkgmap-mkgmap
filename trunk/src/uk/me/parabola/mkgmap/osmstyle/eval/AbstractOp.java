@@ -55,19 +55,19 @@ public abstract class AbstractOp implements Op {
 		case '(': op = new OpenOp(); break;
 		case ')': op = new CloseOp(); break;
 		case '>':
-			if (value.equals(">="))
+			if (">=".equals(value))
 				op = new GTEOp();
 			else
 				op = new GTOp();
 			break;
 		case '<':
-			if (value.equals("<="))
+			if ("<=".equals(value))
 				op = new LTEOp();
 			else
 				op = new LTOp();
 			break;
 		case '!':
-			if (value.equals("!="))
+			if ("!=".equals(value))
 				op = new NotEqualOp();
 			else
 				op = new NotOp();

@@ -63,9 +63,9 @@ public class BoundaryQuadTree {
 	
 	// maps the "normal" tags of the boundaries that are saved in this tree to
 	// the boundaryId
-	private final HashMap<String, Tags> boundaryTags = new LinkedHashMap<>();
+	private final Map<String, Tags> boundaryTags = new LinkedHashMap<>();
 	// maps the location relevant info to the boundaryId 
-	private final HashMap<String, BoundaryLocationInfo> preparedLocationInfo;
+	private final Map<String, BoundaryLocationInfo> preparedLocationInfo;
 	// property controlled preparer
 	private final BoundaryLocationPreparer preparer;
 	

@@ -48,13 +48,13 @@ class IdSection implements ProcessSection {
 			ival = -1;
 		}
 
-		if (name.equalsIgnoreCase("FID")) {
+		if ("FID".equalsIgnoreCase(name)) {
 			if (ival != -1)
 				data.setFamilyId(ival);
-		} else if (name.equalsIgnoreCase("ProductCode")) {
+		} else if ("ProductCode".equalsIgnoreCase(name)) {
 			if (ival != -1)
 				data.setProductId(ival);
-		} else if (name.equalsIgnoreCase("CodePage")) {
+		} else if ("CodePage".equalsIgnoreCase(name)) {
 			if (ival != -1 && data.getSort() == null) // ignore if --code-page
 				data.setSort(SrtTextReader.sortForCodepage(ival));
 		} else {

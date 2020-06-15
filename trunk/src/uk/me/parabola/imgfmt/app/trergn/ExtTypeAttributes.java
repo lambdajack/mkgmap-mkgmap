@@ -334,21 +334,21 @@ public class ExtTypeAttributes {
 				}
 
 				String period = null;
-				if((i + 1) < parts.length && parts[i+1].equals("s")) {
+				if((i + 1) < parts.length && "s".equals(parts[i+1])) {
 					// period
 					period = parts[i];
 					i += 2;
 				}
 
 				String height = null;
-				if((i + 1) < parts.length && parts[i+1].equals("m")) {
+				if((i + 1) < parts.length && "m".equals(parts[i+1])) {
 					// height
 					height = parts[i];
 					i += 2;
 				}
 
 				String range = null;
-				if((i + 1) < parts.length && parts[i+1].equals("M")) {
+				if((i + 1) < parts.length && "M".equals(parts[i+1])) {
 					// range
 					range = parts[i];
 					i += 2;
@@ -381,7 +381,7 @@ public class ExtTypeAttributes {
 					String[] parts = desc.split(":");
 					if(parts.length == 4) {
 						colour = parts[0];
-						if (parts[1].equalsIgnoreCase("shore") || parts[2].equalsIgnoreCase("shore")) {
+						if ("shore".equalsIgnoreCase(parts[1]) || "shore".equalsIgnoreCase(parts[2])) {
 							log.error(objectName + ": shore is no valid sector bound, please annotate a numeric value");
 						} else {
 							sectorStart = Double.valueOf(parts[1]).intValue();

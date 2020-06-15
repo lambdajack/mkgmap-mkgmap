@@ -137,7 +137,7 @@ public class OptionsTest {
 	@Test
 	public void testAbsoluteFilenamesInFile() {
 		String s, exp_dir;
-		if (PATH_SEP.equals("\\")) {
+		if ("\\".equals(PATH_SEP)) {
 			s = "input-file: c:\\home\\foo\n";
 			exp_dir = "c:\\home";
 		}
