@@ -282,16 +282,7 @@ public class OsmXmlHandler extends OsmHandler {
 				if ("way".equals(type)){
 					el = saver.getWay(id);
 				} else if ("node".equals(type)) {
-					el = saver.getNode(id);
-					if(el == null) {
-						// we didn't make a node for this point earlier,
-						// do it now (if it exists)
-						Coord co = saver.getCoord(id);
-						if(co != null) {
-							el = new Node(id, co);
-							saver.addNode((Node)el);
-						}
-					}
+					el = saver.getOrCreateNode(id);
 				} else if ("relation".equals(type)) {
 					el = saver.getRelation(id);
 					if (el == null) {

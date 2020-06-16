@@ -275,16 +275,7 @@ public class O5mBinHandler extends OsmHandler{
 			lastRef[refType] += deltaRef;
 			long memId = lastRef[refType];
 			if (refType == 0) {
-				el = saver.getNode(memId);
-				if (el == null) {
-					// we didn't make a node for this point earlier,
-					// do it now (if it exists)
-					Coord co = saver.getCoord(memId);
-					if (co != null) {
-						el = new Node(memId, co);
-						saver.addNode((Node) el);
-					}
-				}
+				el = saver.getOrCreateNode(memId);
 			} else if (refType == 1) {
 				el = saver.getWay(memId);
 			} else if (refType == 2) {

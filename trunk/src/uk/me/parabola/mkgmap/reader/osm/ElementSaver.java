@@ -363,4 +363,24 @@ public class ElementSaver {
 	public void deferRelation(long id, Relation parentRel, String role) {
 		deferredRelationMap.add(id, new AbstractMap.SimpleEntry<>(role, parentRel));
 	}
+
+	/**
+	 * Return the node object associated with the given id or create one.
+	 * This is called for the node members of a relation. We always want a node for them, not just a coord.
+	 * @param id the node id
+	 * @return the existing node or a newly created one (without tags) or null if no coord is associated with the id
+	 */
+	public Node getOrCreateNode(long id) {
+		Node node = nodeMap.get(id);
+		if (node == null) {
+			// we didn't make a node for this point earlier,
+			// do it now (if it exists)
+			Coord co = getCoord(id);
+			if (co != null) {
+				node = new Node(id, co);
+				addNode(node);
+			}
+		}
+		return node;
+	}
 }

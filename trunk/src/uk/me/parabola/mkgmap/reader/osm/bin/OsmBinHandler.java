@@ -37,9 +37,6 @@ import crosby.binary.file.BlockInputStream;
  */
 public class OsmBinHandler extends OsmHandler {
 
-	public OsmBinHandler() {
-	}
-
 	@Override
 	public boolean isFileSupported(String name) {
 		// The extension for the protobuf format is now fixed at .pbf
@@ -203,16 +200,7 @@ public class OsmBinHandler extends OsmHandler {
 					Element el = null;
 
 					if (binRel.getTypes(j) == Osmformat.Relation.MemberType.NODE) {
-						el = saver.getNode(mid);
-						if(el == null) {
-							// we didn't make a node for this point earlier,
-							// do it now (if it exists)
-							Coord co = saver.getCoord(mid);
-							if(co != null) {
-								el = new Node(mid, co);
-								saver.addNode((Node)el);
-							}
-						}
+						el = saver.getOrCreateNode(mid);
 					} else if (binRel.getTypes(j) == Osmformat.Relation.MemberType.WAY) {
 						el = saver.getWay(mid);
 					} else if (binRel.getTypes(j) == Osmformat.Relation.MemberType.RELATION) {

@@ -88,15 +88,19 @@ public class HighwayHooks implements OsmReadingHooks {
 	}
 
 	@Override
-	public void onCoordAddedToWay(Way way, long id, Coord co) {
+	public void onNodeAddedToWay(Way way, long id) {
 		if (!linkPOIsToWays)
 			return;
 			
 		currentNodeInWay = saver.getNode(id);
+		if (currentNodeInWay == null)
+			return;
+		Coord co = currentNodeInWay.getLocation();
+		
 		// if this Coord is also a POI, replace it with an
 		// equivalent CoordPOI that contains a reference to
 		// the POI's Node so we can access the POI's tags
-		if (!(co instanceof CoordPOI) && currentNodeInWay != null) {
+		if (!(co instanceof CoordPOI)) {
 			// for now, only do this for nodes that have
 			// certain tags otherwise we will end up creating
 			// a CoordPOI for every node in the way

@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
@@ -162,7 +163,7 @@ public abstract class OsmHandler {
 	 * It is saved
 	 * @param way The way that was read.
 	 */
-	protected void endWay(Way way) {
+	protected final void endWay(Way way) {
 		way.setClosedInOSM(firstNodeRef == lastNodeRef);
 		way.setComplete(!missingNodeRef);
 
@@ -175,15 +176,22 @@ public abstract class OsmHandler {
 	 * @param way The Way.
 	 * @param id The coordinate id.
 	 */
-	protected void addCoordToWay(Way way, long id) {
+	protected final void addCoordToWay(Way way, long id) {
 		lastNodeRef = id;
 		if (firstNodeRef == 0) firstNodeRef = id;
 
 		Coord co = saver.getCoord(id);
 
 		if (co != null) {
-			hooks.onCoordAddedToWay(way, id, co);
-			co = saver.getCoord(id);
+			Node node = saver.getNode(id); 
+			if (node != null && node.getTagCount() > 0) {
+				hooks.onNodeAddedToWay(way, id);
+				// hooks can change the node and the coord object associated with the id 
+				co = saver.getCoord(id);
+				if (co == null) {
+					throw new ExitException("Internal error: hooks removed coord with id " + id);
+				}
+			}
 			way.addPoint(co);
 		} else {
 			missingNodeRef = true;
