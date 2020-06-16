@@ -34,5 +34,5 @@ public interface Action {
 	 * @param el
 	 * @return true if one or more tags of the element were changed.
 	 */
-	public boolean perform(Element el);
+	boolean perform(Element el);
 }

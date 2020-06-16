@@ -23,9 +23,6 @@ import uk.me.parabola.mkgmap.reader.osm.Element;
  */
 public class CountryISOFilter extends ValueFilter {
 
-	public CountryISOFilter() {
-	}
-
 	protected String doFilter(String value, Element el) {
 		if (value == null)
 			return value;

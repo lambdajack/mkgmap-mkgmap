@@ -44,7 +44,6 @@ public class OrOp extends AbstractBinaryOp {
 				lastRes = getSecond().eval(cacheId, el);
 			lastCachedId = cacheId;
 		}
-		//else System.out.println("cached: " + cacheId + " " + toString());
 		return lastRes;
 	}
 

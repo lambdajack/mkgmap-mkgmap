@@ -37,7 +37,8 @@ public class SubstitutionFilter extends ValueFilter {
 
 		if (i == -1) { // no occurrences of =>, let's try with ~>
 			i = arg.indexOf("~>");
-			if ( i >= 0 ) isRegexp = true;
+			if (i >= 0)
+				isRegexp = true;
 		}
 
 		if (i >= 0) {
@@ -56,7 +57,5 @@ public class SubstitutionFilter extends ValueFilter {
 	public String doFilter(String value, Element el) {
 		if (value == null) return null;
 		return pattern.matcher(value).replaceAll(isRegexp ? to : Matcher.quoteReplacement(to));
-		// replaceAll expects a regexp as 1st argument
-//				return (isRegexp ? value.replaceAll(from, to) : value.replace(from, to) );
 	}
 }

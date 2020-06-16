@@ -40,8 +40,8 @@ import uk.me.parabola.mkgmap.scan.SyntaxException;
  * @author Maxim Duester
  */
 public class NotContainedFilter extends ValueFilter {
-	private String separator;
-	private short tagKey;
+	private final String quotedSeparator;
+	private final short tagKey;
 
 	public NotContainedFilter(String arg) {
 		String[] temp = arg.split(":");
@@ -53,9 +53,9 @@ public class NotContainedFilter extends ValueFilter {
 
 		// set the separator (default to ;)
 		if (temp[0].length() > 0)
-			separator = temp[0];
+			quotedSeparator = Pattern.quote(temp[0]);
 		else
-			separator = ";";
+			quotedSeparator = Pattern.quote(";");
 		// set the tag short value
 		tagKey = TagDict.getInstance().xlate(temp[1]);
 	}
@@ -70,8 +70,7 @@ public class NotContainedFilter extends ValueFilter {
 			return value;
 
 		// split uses a regex we need to replace special characters
-		String[] temp = tagValue.split(Pattern.quote(separator));
-
+		String[] temp = tagValue.split(quotedSeparator);
 		for (String s : temp)
 			if (s.equals(value))
 				return null;

@@ -12,9 +12,7 @@
  */
 package uk.me.parabola.mkgmap.osmstyle.actions;
 
-import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.mkgmap.reader.osm.Element;
-import uk.me.parabola.mkgmap.reader.osm.Node;
 
 /**
  * Delete all tags from an element. This is useful to stop its processing.
@@ -23,16 +21,9 @@ import uk.me.parabola.mkgmap.reader.osm.Node;
  */
 public class DeleteAllTagsAction implements Action {
 
-	// as long as there is not deleteAll method copy the tags of element without tags
-	private final Element noTagElement;
 	
-	public DeleteAllTagsAction() {
-		this.noTagElement = new Node(0, new Coord(0,0));
-	}
-
 	public boolean perform(Element el) {
-		// remove all tags by copying the tags from a no tag element
-		el.copyTags(noTagElement);
+		el.removeAllTags();
 		return true;
 	}
 

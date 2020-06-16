@@ -30,7 +30,7 @@ public class ValueItem {
 	private short tagKey;
 	private ValueFilter filter;
 	private String value;
-	private boolean tagname_is_local;
+	private boolean tagnameIsLocal;
 
 	public ValueItem() {
 	}
@@ -39,15 +39,15 @@ public class ValueItem {
 		this.value = value;
 	}
 
-	public String getValue(Element el, Element local_el) {
+	public String getValue(Element el, Element localElement) {
 		if (tagname == null && value != null)
 			return value;   // already known
 
 		if (tagname != null) {
-			Element e = tagname_is_local ? local_el : el;
+			Element e = tagnameIsLocal ? localElement : el;
 			String tagval = e.getTag(tagKey);
 			if (filter != null)
-				value = filter.filter(tagval, local_el);
+				value = filter.filter(tagval, localElement);
 			else
 				value = tagval;
 		}
@@ -68,18 +68,17 @@ public class ValueItem {
 
 	public void setTagname(String tagname, boolean local) {
 		this.tagname = tagname;
-		this.tagname_is_local = local;
+		this.tagnameIsLocal = local;
 		this.tagKey = TagDict.getInstance().xlate(tagname);
 	}
 
 	public String toString() {
+		// TODO: don't ignore filter.
 		if (tagname == null)
 			return value;
-		if (tagname_is_local) {
-			// TODO: don't ignore filter.
+		if (tagnameIsLocal) {
 			return "$(" + tagname + ")";
 		} else {
-			// TODO: don't ignore filter.
 			return "${" + tagname + "}";
 		}
 	}

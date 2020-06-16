@@ -53,13 +53,6 @@ public class NameAction extends ValueBuildedAction {
 	}
 
 	public String toString() {
-		StringBuilder sb = new  StringBuilder();
-		sb.append("name ");
-		for (ValueBuilder vb : getValueBuilder()) {
-			sb.append(vb);
-			sb.append(" | ");
-		}
-		sb.setLength(sb.length() - 3);
-		return sb.toString();
+		return "name " + calcValueBuildersString();
 	}
 }

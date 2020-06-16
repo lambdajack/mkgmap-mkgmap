@@ -39,7 +39,6 @@ public class NotOp extends AbstractOp {
 	public String toString() {
 		if (this.hasHigherPriority(getFirst()))
 			return "!(" + first + ")";
-		else
-			return "!" + first;
+		return "!" + first;
 	}
 }

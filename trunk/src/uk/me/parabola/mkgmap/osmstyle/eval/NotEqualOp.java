@@ -28,11 +28,13 @@ public class NotEqualOp extends EqualsOp {
 		setType(NodeType.NOT_EQUALS);
 	}
 
+	@Override
 	public boolean eval(Element el) {
 		return !super.eval(el);
 	}
 
+	@Override
 	public String toString() {
-		return getFirst().toString() + "!=" + getSecond();
+		return getFirst() + "!=" + getSecond();
 	}
 }

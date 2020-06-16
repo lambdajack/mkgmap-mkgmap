@@ -19,11 +19,13 @@ public class NotRegexOp extends RegexOp {
 		setType(NodeType.NOT_REGEX);
 	}
 
+	@Override
 	public boolean eval(Element el) {
 		return !super.eval(el);
 	}
 
+	@Override
 	public String toString() {
-		return getFirst().toString() + "!~" + getSecond();
+		return getFirst() + "!~" + getSecond();
 	}
 }

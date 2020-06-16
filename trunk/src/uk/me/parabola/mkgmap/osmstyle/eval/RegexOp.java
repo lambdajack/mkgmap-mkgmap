@@ -45,14 +45,16 @@ public class RegexOp extends AbstractBinaryOp {
 		return 10;
 	}
 
+	@Override
 	public void setSecond(Op second) {
 		assert second.isType(VALUE);
 		super.setSecond(second);
 		pattern = Pattern.compile(second.getKeyValue());
 	}
 
+	@Override
 	public String toString() {
-		return getFirst().toString() + "~" + getSecond();
+		return getFirst() + "~" + getSecond();
 	}
 
 }

@@ -31,10 +31,9 @@ public class HeightFilter extends ConvertFilter {
 			throw new SyntaxException(String.format("height filter reqires ft (feet) as target unit: '%s'", s));
 	}
 
+	@Override
 	public String doFilter(String value, Element el) {
 		String s = super.doFilter(value, el);
-		if (s != null)
-			s = "\u001f" + s;
-		return s;
+		return s != null ? "\u001f" + s : null;
 	}
 }

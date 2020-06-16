@@ -40,7 +40,8 @@ public class EqualsOp extends AbstractBinaryOp {
 		return 10;
 	}
 
+	@Override
 	public String toString() {
-		return getFirst().toString() + "=" + getSecond();
+		return getFirst() + "=" + getSecond();
 	}
 }

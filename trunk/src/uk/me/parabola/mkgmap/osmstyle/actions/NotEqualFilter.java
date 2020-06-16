@@ -29,9 +29,7 @@ public class NotEqualFilter extends ValueFilter {
 	private final short tagKey; 
 
 	public NotEqualFilter(String s) {
-
 		tagKey = TagDict.getInstance().xlate(s);
-
 	}
 
 	public String doFilter(String value, Element el) {
@@ -39,13 +37,9 @@ public class NotEqualFilter extends ValueFilter {
 
 		String tagValue = el.getTag(tagKey);
 
-		if (tagValue == null)
-			return value;
-
-		if (value.equals(tagValue))
+		if (tagValue != null && value.equals(tagValue))
 			return null;  // Return nothing if value is identical to the tag's value 
-		else
-			return value;
+		return value;
 
 	}
 }

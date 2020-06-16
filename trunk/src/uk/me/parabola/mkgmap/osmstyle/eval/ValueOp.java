@@ -16,6 +16,8 @@
  */
 package uk.me.parabola.mkgmap.osmstyle.eval;
 
+import java.util.EnumMap;
+
 import uk.me.parabola.mkgmap.reader.osm.Element;
 
 /**
@@ -39,6 +41,7 @@ public class ValueOp extends AbstractOp {
 		return 0;
 	}
 
+	@Override
 	public String value(Element el) {
 		return value;
 	}

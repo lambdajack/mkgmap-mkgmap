@@ -23,14 +23,13 @@ import uk.me.parabola.mkgmap.reader.osm.Element;
 
 /**
  * Prepend a Garmin magic-character to the value.
- * TODO: symbolic names?
  *
  * @author Toby Speight
  */
 public class HighwaySymbolFilter extends ValueFilter {
 	private final String prefix;
 
-	private static final Map<String, String>symbols = new HashMap<>();
+	private static final Map<String, String> symbols = new HashMap<>();
 	private static final int MAX_REF_LENGTH = 8; // enough for "A6144(M)" (RIP)
 
 	private int maxAlphaNum = MAX_REF_LENGTH; // Max. length for alphanumeric (e.g., 'A67')
@@ -39,9 +38,6 @@ public class HighwaySymbolFilter extends ValueFilter {
 	private static final Pattern spacePattern = Pattern.compile(" ", Pattern.LITERAL);
 	private static final Pattern semicolonPattern = Pattern.compile(";", Pattern.LITERAL);
 	static {
-		//symbols.put("ele", "\u001f"); // name.height separator
-
-		// Now add other symbols
 		symbols.put("interstate", "\u0001"); // US Interstate
 		symbols.put("shield", "\u0002"); // US Highway shield
 		symbols.put("round", "\u0003"); // US Highway round
@@ -78,25 +74,9 @@ public class HighwaySymbolFilter extends ValueFilter {
 	public String doFilter(String value, Element el) {
 		if (value == null) return value;
 
-		// is it mostly alphabetic?
-		/* int alpha_balance = 0;
-		for (char c : value.toCharArray()) {
-			alpha_balance += (Character.isLetter(c)) ? 1 : -1;
-		}
-		if (alpha_balance > 0) return value;
-
-		// remove space if there is exactly one
-		int first_space = value.indexOf(" ");
-		if (first_space >= 0 && value.indexOf(" ", first_space + 1) < 0) {
-			value = value.replace(" ", "");
-		} */
-
-
 		// Nuke all spaces
-//		String shieldText = value.replace(" ", "");
 		String shieldText = spacePattern.matcher(value).replaceAll(Matcher.quoteReplacement(""));
 		// Also replace ";" with "/", to change B3;B4 to B3/B4
-		//shieldText = shieldText.replace(";", "/");
 		shieldText = semicolonPattern.matcher(shieldText).replaceAll(Matcher.quoteReplacement("/"));
 		
 		// Check if value is alphanumeric

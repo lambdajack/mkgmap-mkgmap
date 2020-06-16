@@ -60,6 +60,7 @@ public abstract class NumericOp extends AbstractBinaryOp {
 		return doesCompare(inter);
 	}
 
+	@Override
 	public String toString() {
 		return first + getType().toSymbol() + getSecond();
 	}

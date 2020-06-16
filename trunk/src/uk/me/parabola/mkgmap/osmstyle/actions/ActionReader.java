@@ -35,7 +35,7 @@ import static uk.me.parabola.imgfmt.app.net.AccessTagsAndBits.*;
  * @author Steve Ratcliffe
  */
 public class ActionReader {
-	Set<String> VALID_ACCESS = new HashSet<>(Arrays.asList("yes", "no", "true", "false", "1", "0"));
+	private static final Set<String> VALID_ACCESS = new HashSet<>(Arrays.asList("yes", "no", "true", "false", "1", "0"));
 
 	private final TokenScanner scanner;
 

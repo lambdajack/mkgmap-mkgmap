@@ -207,11 +207,8 @@ public abstract class AbstractOp implements Op {
 			set.addAll(getSecond().getEvaluatedTagKeys());
 		} else if (this instanceof NumericOp) {
 			set.addAll(getFirst().getEvaluatedTagKeys());
-		}
-		else if (this.isType(NodeType.EXISTS) || this.isType(NodeType.NOT_EXISTS) || this.isType(NodeType.NOT)) {
+		} else if (this.isType(NodeType.EXISTS) || this.isType(NodeType.NOT_EXISTS) || this.isType(NodeType.NOT)) {
 			set.addAll(getFirst().getEvaluatedTagKeys());
-		} else if (this instanceof GetTagFunction) {
-			set.add(getKeyValue());
 		} else if (this.getFirst() != null) {
 			System.err.println("Unhandled type of Op");
 		}

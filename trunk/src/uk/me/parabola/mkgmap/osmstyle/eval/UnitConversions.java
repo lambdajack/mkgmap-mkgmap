@@ -16,6 +16,7 @@
  */
 package uk.me.parabola.mkgmap.osmstyle.eval;
 
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -31,7 +32,7 @@ import uk.me.parabola.mkgmap.scan.SyntaxException;
 public class UnitConversions {
 	private static final Pattern CODE_RE = Pattern.compile("(.*)=>(.*)");
 
-	private static final Map<UnitType, Map<String, Double>> CONVERSIONS = new HashMap<>();
+	private static final EnumMap<UnitType, Map<String, Double>> CONVERSIONS = new EnumMap<>(UnitType.class);
 
 	private static final Map<String, Double> LENGTH_FACTORS = new HashMap<>();
 	private static final Map<String, Double> SPEED_FACTORS = new HashMap<>();
@@ -151,13 +152,6 @@ public class UnitConversions {
 		return null;
 	}
 
-	private double getFactor(String unit) {
-		assert isValid();
-
-		Double d = CONVERSIONS.get(unitType).get(unit);
-		return d == null? 0: d;
-	}
-
 	private Double getConversion(String source) {
 		Double in = getInFactor(unitType, source);
 		if (in == null)
@@ -185,7 +179,7 @@ public class UnitConversions {
 		return defaultFactor;
 	}
 
-	public static enum UnitType {
+	public enum UnitType {
 		LENGTH,
 		SPEED,
 		WEIGHT,

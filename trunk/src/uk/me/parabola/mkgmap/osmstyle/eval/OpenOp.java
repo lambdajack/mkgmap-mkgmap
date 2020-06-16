@@ -48,6 +48,7 @@ public class OpenOp extends AbstractOp {
 	 * @param other The other operation.
 	 * @return Always returns false.
 	 */
+	@Override
 	public boolean hasHigherPriority(Op other) {
 		return false;
 	}

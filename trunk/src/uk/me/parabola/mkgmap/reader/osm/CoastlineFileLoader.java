@@ -173,7 +173,7 @@ public final class CoastlineFileLoader {
 		}
 
 		@Override
-		protected void removeAllTags() {
+		public void removeAllTags() {
 		}
 
 		@Override

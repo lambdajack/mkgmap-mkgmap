@@ -255,7 +255,7 @@ public abstract class Element {
 		return tags.getTagsWithPrefix(prefix, removePrefix);
 	}
 
-	protected void removeAllTags() {
+	public void removeAllTags() {
 		tags = null;
 	}
 

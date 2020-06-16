@@ -14,9 +14,9 @@
 package uk.me.parabola.mkgmap.osmstyle.actions;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public abstract class ValueBuildedAction implements Action {
 
@@ -35,11 +35,7 @@ public abstract class ValueBuildedAction implements Action {
 	 * @return all required tags
 	 */
 	public Set<String> getUsedTags() {
-		Set<String> set = new HashSet<>();
-		for (ValueBuilder vb : valueBuilder) {
-			set.addAll(vb.getUsedTags());
-		}
-		return set;
+		return valueBuilder.stream().flatMap(vb -> vb.getUsedTags().stream()).collect(Collectors.toSet());
 	}
 
 	/**
@@ -48,5 +44,9 @@ public abstract class ValueBuildedAction implements Action {
 	 */
 	protected List<ValueBuilder> getValueBuilder() {
 		return valueBuilder;
+	}
+	
+	protected String calcValueBuildersString() {
+		return valueBuilder.stream().map(ValueBuilder::toString).collect(Collectors.joining(" | "));
 	}
 }

@@ -12,10 +12,9 @@
  */
 package uk.me.parabola.mkgmap.osmstyle.actions;
 
-import java.util.List;
+import static uk.me.parabola.imgfmt.app.net.AccessTagsAndBits.ACCESS_TAGS_COMPILED;
 
 import uk.me.parabola.mkgmap.reader.osm.Element;
-import static uk.me.parabola.imgfmt.app.net.AccessTagsAndBits.*;
 
 /**
  * Add one value to all mkgmap access tags, optionally changing them if they already exist.  
@@ -41,7 +40,7 @@ public class AddAccessAction extends ValueBuildedAction {
 
 	public boolean perform(Element el) {
 		// 1st build the value
-		Element tags = valueTags!=null? valueTags: el;
+		Element tags = valueTags != null ? valueTags : el;
 		String accessValue = null;
 		for (ValueBuilder value : getValueBuilder()) {
 			accessValue = value.build(tags, el);
@@ -67,11 +66,14 @@ public class AddAccessAction extends ValueBuildedAction {
 	 * @param value the value to be set
 	 */
 	private void setTag(Element el, Short tagKey, String value) {
-		String tv = el.getTag(tagKey);
-		if (tv != null && !modify)
-			return;
-
-		el.addTag(tagKey, value);
+		if (modify) {
+			el.addTag(tagKey, value);
+		} else {
+			String tv = el.getTag(tagKey);
+			if (tv == null) {
+				el.addTag(tagKey, value);
+			}
+		}
 	}
 
 	public void setValueTags(Element valueTags) {
@@ -79,15 +81,6 @@ public class AddAccessAction extends ValueBuildedAction {
 	}
 
 	public String toString() {
-		StringBuilder sb = new StringBuilder();
-		sb.append(modify ? "setaccess " : "addaccess ");
-		List<ValueBuilder> values = getValueBuilder();
-		for (int i = 0; i < values.size(); i++) {
-			sb.append(values.get(i));
-			if (i < values.size() - 1)
-				sb.append(" | ");
-		}
-		sb.append(';');
-		return sb.toString();
+		return  modify ? "setaccess " : "addaccess " + calcValueBuildersString() + ";";
 	}
 }

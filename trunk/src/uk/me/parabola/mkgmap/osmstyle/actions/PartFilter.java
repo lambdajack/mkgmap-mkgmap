@@ -100,18 +100,18 @@ public class PartFilter extends ValueFilter {
 		if ( !isLt && !isGt ) {
 			return temp[idx].trim();
 		} else {
-			StringBuffer returnValue= new StringBuffer();
+			StringBuilder returnValue= new StringBuilder();
 
 			// operator "<": collate all the parts before the partnumber
-			if ( isLt ) {
-				for (int i=0;i<idx;i++) {
+			if (isLt) {
+				for (int i = 0; i < idx; i++) {
 					returnValue.append(temp[i]).append(separator);
 				}
 			}
 
 			// operator ">": collate all the parts after the partnumber
-			if ( isGt ) {
-				for (int i=idx+1;i<temp.length;i++) {
+			if (isGt) {
+				for (int i = idx + 1; i < temp.length; i++) {
 					returnValue.append(temp[i]).append(separator);
 				}
 			}

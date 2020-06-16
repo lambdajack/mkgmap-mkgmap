@@ -17,19 +17,18 @@
 package uk.me.parabola.mkgmap.osmstyle.actions;
 
 import java.util.ArrayList;
-import java.util.Formatter;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
 
 /**
- * This is an action that contains sub-actions.  It is used for Relations
- * where you want to apply the commands to the elements that are contained
- * in the relation and not on the relation itself.
+ * This is an action that contains sub-actions. It is used for Relations where
+ * you want to apply the commands to the elements that are contained in the
+ * relation and not on the relation itself.
  *
  * @author Steve Ratcliffe
  */
@@ -46,30 +45,29 @@ public class SubAction implements Action {
 	public boolean perform(Element el) {
 		if (el instanceof Relation)
 			performOnSubElements((Relation) el);
-		return true; // probably false, but relation may contain itself in complex recursive structures 
+		return true; // probably false, but relation may contain itself in
+						// complex recursive structures
 	}
 
 	private void performOnSubElements(Relation rel) {
-		List<Map.Entry<String,Element>> elements = rel.getElements();
+		List<Map.Entry<String, Element>> elements = rel.getElements();
 
-		for (Action a : actionList)
+		for (Action a : actionList) {
 			if (a instanceof AddTagAction)
 				((AddTagAction) a).setValueTags(rel);
 			else if (a instanceof AddAccessAction)
 				((AddAccessAction) a).setValueTags(rel);
+		}
 
 		boolean once = "once".equals(selector);
-		boolean first_only = "first".equals(selector);
+		boolean onlyFirst = "first".equals(selector);
 		HashSet<Element> elems = once ? new HashSet<>() : null;
 
-		for (Map.Entry<String,Element> r_el : elements) {
-			if ((role == null || role.equals(r_el.getKey())) &&
-				(!once || elems.add(r_el.getValue()))) {
-
-				for (Action a : actionList)
-					a.perform(r_el.getValue());
+		for (Map.Entry<String, Element> r_el : elements) {
+			if ((role == null || role.equals(r_el.getKey())) && (!once || elems.add(r_el.getValue()))) {
+				actionList.forEach(a -> a.perform(r_el.getValue()));
 			}
-			if (first_only)
+			if (onlyFirst)
 				break;
 		}
 	}
@@ -79,24 +77,15 @@ public class SubAction implements Action {
 	}
 
 	public String toString() {
-		Formatter fmt = new Formatter();
-		fmt.format("apply");
+		StringBuilder sb = new StringBuilder();
+		sb.append("apply");
 		if (selector != null) {
-			fmt.format("_%s",selector);
+			sb.append(String.format("_%s", selector));
 		}
 		if (role != null)
-			fmt.format(" role=%s ", role);
-		
-		fmt.format(" {");
+			sb.append(String.format(" role=%s ", role));
 
-		for (Iterator<Action> it = actionList.iterator(); it.hasNext();) {
-			Action a = it.next();
-			fmt.format(a.toString());
-			if (it.hasNext())
-				fmt.format(" ");
-		}
-		
-		fmt.format("}");
-		return fmt.toString();
+		sb.append(actionList.stream().map(Action::toString).collect(Collectors.joining(" ", "{", "}")));
+		return sb.toString();
 	}
 }

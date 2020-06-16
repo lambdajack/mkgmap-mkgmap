@@ -43,11 +43,8 @@ public class AndOp extends AbstractBinaryOp {
 			lastRes = getFirst().eval(cacheId, el) && getSecond().eval(cacheId, el);
 			lastCachedId = cacheId;
 		}
-		//else System.out.println("cached: " + cacheId + " " + toString());
 		return lastRes;
 	}
-
-
 	
 	public int priority() {
 		return 5;

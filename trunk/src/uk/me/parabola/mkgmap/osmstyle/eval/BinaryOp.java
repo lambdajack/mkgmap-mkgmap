@@ -22,10 +22,11 @@ public interface BinaryOp extends Op {
 	/**
 	 * Get the second operand.
 	 */
-	public Op getSecond();
+	Op getSecond();
 
 	/**
 	 * Set the second operand.
 	 */
-	public void setSecond(Op second);
+	@Override
+	void setSecond(Op second);
 }

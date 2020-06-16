@@ -38,6 +38,7 @@ public class CloseOp extends AbstractOp {
 		return -100;
 	}
 
+	@Override
 	public boolean hasHigherPriority(Op other) {
 		return other.isType(OPEN_PAREN);
 	}

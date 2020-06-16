@@ -16,8 +16,6 @@
  */
 package uk.me.parabola.mkgmap.osmstyle.actions;
 
-import java.util.List;
-
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.TagDict;
 
@@ -48,12 +46,10 @@ public class AddTagAction extends ValueBuildedAction {
 	}
 
 	public boolean perform(Element el) {
-		if (!modify){
-			String tv = el.getTag(tagKey);
-			if (tv != null)
-				return false;
-		}
-		Element tags = valueTags!=null? valueTags: el;
+		if (!modify && el.getTag(tagKey) != null)
+			return false;
+		
+		Element tags = valueTags != null ? valueTags : el;
 
 		for (ValueBuilder value : getValueBuilder()) {
 			String newval = value.build(tags, el);
@@ -71,17 +67,6 @@ public class AddTagAction extends ValueBuildedAction {
 	}
 
 	public String toString() {
-		StringBuilder sb = new StringBuilder();
-		sb.append(modify ? "set " : "add ");
-		sb.append(tag);
-		sb.append("=");
-		List<ValueBuilder> values = getValueBuilder();
-		for (int i = 0; i < values.size(); i++) {
-			sb.append(values.get(i));
-			if (i < values.size() - 1)
-				sb.append(" | ");
-		}
-		sb.append(';');
-		return sb.toString();
+		return modify ? "set " : "add " + tag + "=" + calcValueBuildersString() + ";";
 	}
 }

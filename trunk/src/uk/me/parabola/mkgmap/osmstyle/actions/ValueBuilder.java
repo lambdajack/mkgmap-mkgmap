@@ -17,11 +17,12 @@
 package uk.me.parabola.mkgmap.osmstyle.actions;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.scan.SyntaxException;
@@ -116,8 +117,9 @@ public class ValueBuilder {
 			case '\0':
 				if (c == '$') {
 					state = '$';
-				} else
+				} else {
 					text.append(c);
+				}
 				break;
 			case '$':
 				switch (c) {
@@ -153,17 +155,17 @@ public class ValueBuilder {
 			}
 		}
 
-		if (text.length() > 0)
+		if (text.length() > 0) 
 			items.add(new ValueItem(text.toString()));
 	}
 
-	private void addTagValue(String tagname, boolean is_local) {
+	private void addTagValue(String tagname, boolean isLocal) {
 		ValueItem item = new ValueItem();
 		if (tagname.contains("|")) {
 			String[] parts = tagname.split("[ \t]*\\|", 2);
 			assert parts.length > 1;
 
-			item.setTagname(parts[0], is_local);
+			item.setTagname(parts[0], isLocal);
 
 			String s = parts[1];
 
@@ -187,12 +189,12 @@ public class ValueBuilder {
 				}
 			}
 		} else {
-			item.setTagname(tagname, is_local);
+			item.setTagname(tagname, isLocal);
 		}
 		items.add(item);
 	}
 
-	private void addFilter(ValueItem item, String expr) {
+	private static void addFilter(ValueItem item, String expr) {
 		Matcher matcher = NAME_ARG_SPLIT.matcher(expr);
 
 		matcher.matches();
@@ -245,21 +247,10 @@ public class ValueBuilder {
 	}
 
 	public String toString() {
-		StringBuilder sb = new StringBuilder("'");
-		for (ValueItem v : items) {
-			sb.append(v);
-		}
-		sb.append("'");
-		return sb.toString();
+		return items.stream().map(ValueItem::toString).collect(Collectors.joining(" | "));
 	}
 
 	public Set<String> getUsedTags() {
-		Set<String> set = new HashSet<>();
-		for (ValueItem v : items) {
-			String tagname = v.getTagname();
-			if (tagname != null)
-				set.add(tagname);
-		}
-		return set;
+		return items.stream().map(ValueItem::getTagname).filter(Objects::nonNull).collect(Collectors.toSet());
 	}
 }

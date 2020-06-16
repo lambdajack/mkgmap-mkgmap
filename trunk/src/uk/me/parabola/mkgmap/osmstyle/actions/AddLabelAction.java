@@ -12,6 +12,9 @@
  */
 package uk.me.parabola.mkgmap.osmstyle.actions;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import uk.me.parabola.mkgmap.reader.osm.Element;
 
 /**
@@ -21,6 +24,7 @@ import uk.me.parabola.mkgmap.reader.osm.Element;
  * We have a list of possible substitutions.
  */
 public class AddLabelAction extends ValueBuildedAction {
+	private final List<String> labels = new ArrayList<>(4);
 	
 	/**
 	 * Search for the first matching pattern and set the first unset element label
@@ -32,40 +36,32 @@ public class AddLabelAction extends ValueBuildedAction {
 	 * @return 
 	 */
 	public boolean perform(Element el) {
-		for (int index = 1; index <=4; index++) {
+		labels.clear();
+		for (int index = 1; index <= 4; index++) {
+			String tag = "mkgmap:label:" + index;
+			String label = el.getTag(tag);
 			// find the first unset label and set it
-			if (el.getTag("mkgmap:label:"+index) == null) {
-				for (ValueBuilder vb : getValueBuilder()) {
-					String s = vb.build(el, el);
-					if (s != null) {
-						// now check if the new label is different to all other labels
-						for (int n = index-1; n>= 1; n--) {
-							if (s.equals(el.getTag("mkgmap:label:"+n))) {
-								// value is equal to a previous label
-								// do not use it
-								return false;
-							}
-						}
-						
-						// set the label
-						el.addTag("mkgmap:label:"+index, s);
-						return true;
-					}
-				}
-				return false;
+			if (label != null) {
+				labels.add(label);
+				continue;
 			}
+			for (ValueBuilder vb : getValueBuilder()) {
+				String s = vb.build(el, el);
+				if (s != null) {
+					// now check if the new label is different to all other labels
+					if (labels.contains(s))
+						return false;
+					// set the label
+					el.addTag(tag, s);
+					return true;
+				}
+			}
+			return false;
 		}
 		return false;
 	}
 
 	public String toString() {
-		StringBuilder sb = new  StringBuilder();
-		sb.append("addlabel ");
-		for (ValueBuilder vb : getValueBuilder()) {
-			sb.append(vb);
-			sb.append(" | ");
-		}
-		sb.setLength(sb.length() - 3); 
-		return sb.toString();
+		return "addlabel " + calcValueBuildersString();
 	}
 }
