@@ -141,21 +141,21 @@ public class ActionRule implements Rule {
 	}
 
 	public String toString() {
-		StringBuilder fmt = new StringBuilder();
+		StringBuilder sb = new StringBuilder();
 		if (expression != null)
-			fmt.append(expression);
+			sb.append(expression);
 
-		fmt.append(" {");
+		sb.append(" {");
 		for (Action a : actions)
-			fmt.append(a);
-		fmt.append("}");
+			sb.append(a);
+		sb.append("}");
 
 		if (type != null) {
-			fmt.append(' ');
-			fmt.append(type);
+			sb.append(' ');
+			sb.append(type);
 		}
 
-		return fmt.toString();
+		return sb.toString();
 	}
 
 	public void setFinalizeRule(Rule finalizeRule) {
