@@ -15,6 +15,7 @@ package uk.me.parabola.mkgmap.reader.osm;
 import java.util.Collections;
 import java.util.Set;
 
+import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.util.EnhancedProperties;
 
 /**
@@ -86,13 +87,13 @@ public interface OsmReadingHooks {
 	/**
 	 * This is called whenever a node is added to a way.  A node is something with tags, not just a Coord.
 	 *
-	 * The way will not have been added via addWay() yet.  The node is the node that was read from the input file. 
+	 * The way will not have been added via addWay() yet.  The node is the node that
 	 *
 	 * @param way The incomplete way.
 	 * @param coordId The coordinate id of the node that is being added.
-	 * @param currentNodeInWay the node (never null)
+	 * @param co The coordinate.
 	 */
-	default void onNodeAddedToWay(Way way, long coordId, Node currentNodeInWay) {}
+	default void onCoordAddedToWay(Way way, long coordId, Coord co) {}
 
 	/**
 	 * Called after the file has been read.  Can be used to add more elements to the saver

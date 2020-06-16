@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.util.EnhancedProperties;
 
 /**
@@ -61,9 +62,9 @@ public class OsmReadingHooksChain implements OsmReadingHooks {
 	}
 
 	@Override
-	public void onNodeAddedToWay(Way way, long coordId, Node currentNodeInWay) {
+	public void onCoordAddedToWay(Way way, long coordId, Coord co) {
 		for (int i = 0; i < readingHooks.length; i++)
-			readingHooks[i].onNodeAddedToWay(way, coordId, currentNodeInWay);
+			readingHooks[i].onCoordAddedToWay(way, coordId, co);
 	}
 
 	@Override

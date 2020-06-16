@@ -43,6 +43,8 @@ public class HighwayHooks implements OsmReadingHooks {
 	private ElementSaver saver;
 	private boolean linkPOIsToWays;
 
+	private Node currentNodeInWay;
+
 	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		this.saver = saver;
@@ -55,6 +57,7 @@ public class HighwayHooks implements OsmReadingHooks {
 		}
 		
 		linkPOIsToWays = props.getProperty("link-pois-to-ways", false);
+		currentNodeInWay = null;
 
 		return true;
 	}
@@ -85,16 +88,15 @@ public class HighwayHooks implements OsmReadingHooks {
 	}
 
 	@Override
-	public void onNodeAddedToWay(Way way, long id, Node currentNodeInWay) {
+	public void onCoordAddedToWay(Way way, long id, Coord co) {
 		if (!linkPOIsToWays)
 			return;
-
-		Coord co = currentNodeInWay.getLocation();
-		
+			
+		currentNodeInWay = saver.getNode(id);
 		// if this Coord is also a POI, replace it with an
 		// equivalent CoordPOI that contains a reference to
 		// the POI's Node so we can access the POI's tags
-		if (!(co instanceof CoordPOI) ) {
+		if (!(co instanceof CoordPOI) && currentNodeInWay != null) {
 			// for now, only do this for nodes that have
 			// certain tags otherwise we will end up creating
 			// a CoordPOI for every node in the way

@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.util.EnhancedProperties;
 
@@ -30,6 +31,7 @@ import uk.me.parabola.util.EnhancedProperties;
 public class HousenumberHooks implements OsmReadingHooks {
 	private static final Logger log = Logger.getLogger(HousenumberHooks.class);
 	
+	private ElementSaver saver;
 	private final List<Node> nodes = new ArrayList<>();
 	private boolean clearNodes;
 	
@@ -40,6 +42,7 @@ public class HousenumberHooks implements OsmReadingHooks {
 	public static final short TKM_NODE_IDS = TagDict.getInstance().xlate("mkgmap:node-ids");
 	@Override
 	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
+		this.saver = saver;
 		if (!props.getProperty("addr-interpolation", true))
 			return false;
 		return (props.getProperty("housenumbers", false));
@@ -51,15 +54,16 @@ public class HousenumberHooks implements OsmReadingHooks {
 	}
 	
 	@Override
-	public void onNodeAddedToWay(Way way, long id, Node currentNodeInWay) {
+	public void onCoordAddedToWay(Way way, long id, Coord co) {
 		if (clearNodes){
 			nodes.clear();
 			clearNodes = false;
 		}
-		if (currentNodeInWay.getTag(TK_ADDR_HOUSENUMBER) != null) {
-			// this node might be part of a way that has the addr:interpolation tag
-			nodes.add(currentNodeInWay);
-		}
+		Node currentNodeInWay = saver.getNode(id);
+		if (currentNodeInWay == null || currentNodeInWay.getTag(TK_ADDR_HOUSENUMBER) == null)
+			return;
+		// this node might be part of a way that has the addr:interpolation tag
+		nodes.add(currentNodeInWay);
 	}
 
 	@Override
