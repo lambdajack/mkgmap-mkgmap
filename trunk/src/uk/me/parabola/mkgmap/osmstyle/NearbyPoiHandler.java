@@ -431,7 +431,7 @@ public class NearbyPoiHandler {
 		if (n != null) {
 			sb.append(" for element ");
 			if (FakeIdGenerator.isFakeId(n.getId())) {
-				sb.append("generated from ").append(n.getOriginalId());
+				sb.append("generated from ").append(n.getOrigElement()).append(' ').append(n.getOriginalId());
 			} else {
 				sb.append(n.toBrowseURL()).append(" at ").append(n.getLocation().toOSMURL());
 			}

@@ -443,7 +443,7 @@ public class SeaGenerator implements OsmReadingHooks {
 			 */
 			// create copy of way that has only the natural=coastline tag
 			Way shore = new Way(way.getOriginalId(), way.getPoints());
-			shore.setFakeId();
+			shore.markAsGeneratedFrom(way);
 			shore.addTag("natural", "coastline");
 			saver.addWay(shore);
 			
@@ -468,7 +468,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		if (way.hasIdenticalEndPoints()){
 			// add a copy of this way to be able to draw it as a shape
 			Way shapeWay = new Way(way.getOriginalId(), way.getPoints());
-			shapeWay.setFakeId();
+			shapeWay.markAsGeneratedFrom(way);
 			shapeWay.copyTags(way);
 			// change the tag so that only special rules looking for it are firing
 			shapeWay.deleteTag("natural"); 
@@ -673,7 +673,7 @@ public class SeaGenerator implements OsmReadingHooks {
 				for (Way w : seaPrecompWays) {
 					// set a new id to be sure that the precompiled ids do not
 					// interfere with the ids of this run
-					w.setFakeId();
+					w.markAsGeneratedFrom(w);
 
 					if ("land".equals(w.getTag("natural"))) {
 						landWays.add(w);
@@ -791,7 +791,7 @@ public class SeaGenerator implements OsmReadingHooks {
 			wm = w1;
 		} else {
 			wm = new Way(w1.getOriginalId(), w1.getPoints());
-			wm.setFakeId();
+			wm.markAsGeneratedFrom(w1);
 			beginMap.put(wm.getFirstPoint(), wm);
 		}
 		beginMap.remove(w2.getFirstPoint());
@@ -1001,7 +1001,7 @@ public class SeaGenerator implements OsmReadingHooks {
 				toBeRemoved.add(segment);
 				for (List<Coord> pts : clipped) {
 					Way shore = new Way(segment.getOriginalId(), pts);
-					shore.setFakeId();
+					shore.markAsGeneratedFrom(segment);
 					toBeAdded.add(shore);
 				}
 			}
@@ -1090,7 +1090,7 @@ public class SeaGenerator implements OsmReadingHooks {
 				wm = w1;
 			} else {
 				wm = new Way(w1.getOriginalId());
-				wm.setFakeId();
+				wm.markAsGeneratedFrom(w1);
 				shoreline.remove(w1);
 				shoreline.add(wm);
 				wm.getPoints().addAll(w1.getPoints());

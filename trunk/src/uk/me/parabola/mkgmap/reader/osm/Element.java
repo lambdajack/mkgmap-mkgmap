@@ -28,9 +28,14 @@ import uk.me.parabola.log.Logger;
 public abstract class Element {
 	private static final Logger log = Logger.getLogger(Element.class);
 	
+	private static final byte TYPE_NODE = 1;
+	private static final byte TYPE_WAY = 2;
+	private static final byte TYPE_RELATION = 3;
+	
 	private Tags tags;
 	private long id;
 	private long originalId;
+	private byte origType;
 
 	/**
 	 * returns a copy of the tags or a new instance if the element has no tags
@@ -215,10 +220,38 @@ public abstract class Element {
 		originalId = id;
 	}
 
-	public void setFakeId() {
+	/**
+	 * Mark this element as generated from another element. 
+	 * @param orig the original element (used to extract the type) 
+	 */
+	public void markAsGeneratedFrom(Element orig) {
 		id = FakeIdGenerator.makeFakeId();
+		origType = elementToType(orig);
 	}
 	
+	private static byte elementToType(Element orig) {
+		if (orig instanceof Node)
+			return TYPE_NODE;
+		if (orig instanceof Way)
+			return TYPE_WAY;
+		if (orig instanceof Relation)
+			return TYPE_RELATION;
+		throw new IllegalArgumentException("invalid type");
+	}
+
+	public String getOrigElement() {
+		switch (origType) {
+		case TYPE_NODE:
+			return "node";
+		case TYPE_WAY:
+			return "way";
+		case TYPE_RELATION:
+			return "relation";
+		default:
+			throw new IllegalArgumentException("invalid type");
+		}
+	}
+
 	public String toTagString() {
 		if (tags == null)
 			return "[]";
@@ -242,6 +275,7 @@ public abstract class Element {
 	protected void copyIds(Element other) {
 		id = other.id;
 		originalId = other.originalId;
+		origType = other.origType;
 	}
 
 	public String getName() {
@@ -313,6 +347,6 @@ public abstract class Element {
 	public String getBasicLogInformation() {
 		String className = getClass().getSimpleName();
 		return ("GeneralRelation".equals(className)) ? "Relation" : className 
-				+ (FakeIdGenerator.isFakeId(getId()) ? " generated from " : " ") + getOriginalId();
+				+ (FakeIdGenerator.isFakeId(getId()) ? " generated from " + getOrigElement(): "") + " " +  originalId;
 	}
 }

@@ -323,7 +323,7 @@ public class HousenumberIvl {
 		for (Coord co : interpolatedPoints) {
 			hn += usedStep;
 			Node generated = new Node(interpolationWay.getId(), co);
-			generated.setFakeId();
+			generated.markAsGeneratedFrom(interpolationWay);
 			generated.addTag(TKM_STREET, streetName);
 			String number = String.valueOf(hn);
 			generated.addTag(TKM_HOUSENUMBER, number);
@@ -545,7 +545,7 @@ public class HousenumberIvl {
 			else {
 				// create a Node instance 
 				Node toAdd = new Node(houseToAdd.getElement().getId(), houseToAdd.getLocation());
-				toAdd.setFakeId();
+				toAdd.markAsGeneratedFrom(houseToAdd.getElement());
 				toAdd.copyTags(houseToAdd.element);
 				HousenumberElem hnElem = new HousenumberElem(toAdd, houseToAdd.getCityInfo());
 				hnm = new HousenumberMatch(hnElem);

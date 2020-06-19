@@ -148,7 +148,7 @@ public class LocationHook implements OsmReadingHooks {
 				if (mpCenter != null && saver.getBoundingBox().contains(mpCenter)){
 					// create a fake node for which the bounds information is collected
 					Node mpNode = new Node(r.getOriginalId(), mpCenter);
-					mpNode.setFakeId();
+					mpNode.markAsGeneratedFrom(r);
 					processElem(mpNode);
 					// copy the bounds tags back to the multipolygon
 					for (String boundsTag : BoundaryQuadTree.mkgmapTagsArray) {

@@ -123,7 +123,7 @@ public final class CoastlineFileLoader {
 		for (CoastlineWay w : coastlines) {
 			if (w.getBbox().intersects(bbox)) {
 				Way x = new Way(w.getOriginalId(), w.getPoints());
-				x.setFakeId();
+				x.markAsGeneratedFrom(w);
 				x.addTag("natural", "coastline");
 				ways.add(x);
 			}

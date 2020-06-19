@@ -237,7 +237,7 @@ public class MultiPolygonCutter {
 		for (Area area : finishedAreas) {
 			Way w = singularAreaToWay(area, rel.getOriginalId());
 			if (w != null) {
-				w.setFakeId();
+				w.markAsGeneratedFrom(rel);
 				// make sure that equal coords are changed to identical coord instances
 				// this allows merging in the ShapeMerger
 				int n = w.getPoints().size();

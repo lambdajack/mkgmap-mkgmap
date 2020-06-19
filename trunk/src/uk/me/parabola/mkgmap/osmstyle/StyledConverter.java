@@ -825,7 +825,7 @@ public class StyledConverter implements OsmConverter {
 		while (pos < points.size()) {
 			int right = Math.min(points.size(), pos + max);
 			Way w = new Way(orig.getId(), points.subList(pos, right));
-			w.setFakeId();
+			w.markAsGeneratedFrom(orig);
 			clippedBorders.add(w);
 			pos += max - 1;
 			if (pos + 1 == points.size())

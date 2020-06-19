@@ -1070,7 +1070,7 @@ public class MultiPolygonRelation extends Relation {
 		// the simple line information should be used.
 		for (Way orgOuterWay : outerWaysForLineTagging) {
 			Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
-			lineTagWay.setFakeId();
+			lineTagWay.markAsGeneratedFrom(this);
 			lineTagWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
 			lineTagWay.addTag(TKM_MP_CREATED, "true");
 			if (mpAreaSizeStr != null) {
@@ -1806,7 +1806,7 @@ public class MultiPolygonRelation extends Relation {
 		// the simple line information should be used.
 		for (Way orgOuterWay : outerWaysForLineTagging) {
 			Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
-			lineTagWay.setFakeId();
+			lineTagWay.markAsGeneratedFrom(this);
 			lineTagWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
 			lineTagWay.addTag(TKM_MP_CREATED, "true");
 			for (Entry<String, String> tag : tags.entrySet()) {
@@ -1951,7 +1951,7 @@ public class MultiPolygonRelation extends Relation {
 
 		public JoinedWay(Way originalWay) {
 			super(originalWay.getOriginalId(), originalWay.getPoints());
-			setFakeId();
+			markAsGeneratedFrom(originalWay);
 			originalWays = new ArrayList<>();
 			addWay(originalWay);
 
