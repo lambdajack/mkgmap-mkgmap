@@ -284,6 +284,7 @@ some element ids are changed and some have a faked id > 4611686018427387904.
 
 |is_in(*tag*,*value*,*method*)   | x | x  |  |
 +true+ if the element is in polygon(s) having the specified *tag*=*value* according to the *method*, +false+ otherwise.
+*value* can be \'\*' which matches any polgon having *tag*.
 The methods available depend on the Style section:
 
 polygons:

@@ -67,9 +67,9 @@ then they are compiled first and then the gmapsupp is created.
 
 ;--gmapi
 : 	Create a directory in the "gmapi" format required by Mac applications.
-It can also be used for Windows programs; copy the complete directory tree into
-{user}\AppData\Roaming\Garmin\Maps or \ProgramData\Garmin\Maps
-and the map will be available in BaseCamp.
+It can also be used for Windows programs; copy the complete directory tree
+into {user}\AppData\Roaming\Garmin\Maps or \ProgramData\Garmin\Maps
+and the map will be available to Garmin PC programs.
 The directory name is --family-name with extension .gmap.
 
 ;-c filename
@@ -112,7 +112,7 @@ description for individual tiles from the mkgmap command line.
 Placing the mkgmap --description option after -c template.args ensures that the
 value is applied to gmapsupp.img.
 <p>
-Different GPS devices, BaseCamp and QLandkarte handle descriptions
+Different GPS devices and PC programs handle descriptions
 inconsistently. Some display the description when selecting maps or tiles,
 others use the family name.
 
@@ -200,7 +200,6 @@ rendered as 'Concorde'.
 You can search for road name Conc to find road names like 'Rue de la Concorde'.
 However, a search for 'Rue' will not list 'Rue de la Concorde' or 'Rue du Moulin'.
 It may list 'Rueben Brookins Road' if that is in the map.
-Only MapSource shows a corresponding hint.
 
 ::	Another effect is that the index is smaller.
 :	See comments in the example roadNameConfig.txt for further details.
@@ -328,8 +327,8 @@ number is 63240000.
 ;--overview-levels=level:resolution[,level:resolution...]
 :   Like levels, specifies additional levels that are to be written to the
 overview map. Counting of the levels should continue. Up to 8 additional
-levels may be specified, but the lowest usable resolution with MapSource
-seems to be 11. The hard coded default is empty.
+levels may be specified.
+The hard coded default is empty.
 :	See also option --overview-dem-dist.
 
 ;--remove-ovm-work-files
@@ -362,11 +361,11 @@ The intended use is to make a single style more flexible, e.g.
 you may want to use a slightly different set of rules for a map of
 a whole continent. The tags given will be prefixed with "mkgmap:option:".
 If no value is provided the default "true" is used.
-This option allows to use rules like
-mkgmap:option:light=true & landuse=farmland {remove landuse}
-Example: -- style-option=light;routing=car
-will add the tags mkgmap:option:light=true and mkgmap:option:routing=car
+: Example: --style-option=light;routing=car
+: will add the tags mkgmap:option:light=true and mkgmap:option:routing=car
 to each element before style processing happens.
+This can then be used in rules like:
+: landuse=farmland & mkgmap:option:light=true {delete landuse}
 
 ;--list-styles
 : 	List the available styles. If this option is preceded by a style-file
@@ -412,7 +411,7 @@ It is often just 1, which is the default.
 : 	The version of the product. Default value is 100 which means version 1.00.
 
 ;--series-name=name
-: 	This name will be displayed in BaseCamp in the map selection
+: 	This name will be displayed by Garmin PC programs in the map selection
 drop-down. The default is "OSM map".
 
 ;--area-name=name
@@ -923,7 +922,7 @@ suffix to allow separate processing of named and unnamed POIs.
 processed POI must be within for it to be considered to be nearby and
 hence trigger the action part of the rule.
 
-:	The third part of the rule is the action part and provides three options:
+:	The third part of the rule is the action part and provides two options:
 
 ::	delete-poi - the POIS are considered to be duplicates and the
 duplicate is deleted. This is the default.

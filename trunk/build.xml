@@ -174,7 +174,7 @@
 				<replaceregex pattern="^exported$" replace="" />
 			</tokenfilter></outputfilterchain></redirector>
 		</exec>
-		<condition property="svn.version.build" value="${svn.version.tmp}" else="unknown">
+		<condition property="svn.version.build" value="${svn.version.tmp}" else="none">
 			<and>
 				<isset property="svn.version.tmp" />
 				<equals arg1="${svnversion.result}" arg2="0" />
@@ -219,7 +219,7 @@
 
 	<target name="version-file" unless="have.version">
 		<property name="project.version" value="${build.timestamp}" />
-		<property name="svn.version.build" value="unknown"/>
+		<property name="svn.version.build" value="none"/>
 
 		<propertyfile file="${build.classes}/mkgmap-version.properties">
 			<entry key="svn.version" value="${svn.version.build}" />
