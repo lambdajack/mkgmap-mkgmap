@@ -6,7 +6,8 @@ you can get the different colour effects that are available.
 
 The file can be in written in almost any character-set that allows basic ascii characters and can have Strings for any language that can be encoded in that character-set.
 The mkgmap .txt TYP processor looks at the start of the file for a unicode BOM or a header line of the form:
-; -*- coding: charset -*-
+ ; -*- coding: charset -*-
+
 to determine the encoding, and then will convert those Strings that can be represented in the target .IMG code-page and ignore the ones that can't.
 
 It is safest to edit multi-lingual TYP files (eg. resources/mapnik.txt) with a good text editor;
@@ -111,7 +112,7 @@ You can use String1, String2 for compatibility, but just String will do for the 
 :If the language number isn't specified it defaults to 0x00 which is the generic language.
 This string is used if there isn't a definition for the currently selected language;
 If there isn't a default the device shows the first string in the list.
-The language codes are defined in the [https://wiki.openstreetmap.org/wiki/Mkgmap/help/typ_compile#Appendix Appendix].
+The language numbers are defined [https://wiki.openstreetmap.org/wiki/Mkgmap/help/typ_compile#Appendix here].
 
 ;FontStyle=xxx
 : xxx can be one of NoLabel, SmallFont, NormalFont, LargeFont.
@@ -305,7 +306,7 @@ the first two colours are completely solid (if the alpha value is omitted it def
 <p>
 An alternate notation is supported where the transparency value is appended to the line in the form "alpha=13", this is a transparency value that goes from 0 to 15, with 15 being completely transparent. As such it works the opposite way to the alpha value of the normal RGBa values in the previous example. The required conversions are made by mkgmap which ever one you use.
 
-* Image with up to 16 million different colours
+* Image with up to 16 million different colours.
 By setting the number of colours in the XPM to zero you can specify a
 different kind of image, where the colour for each pixel is specified
 separately.
