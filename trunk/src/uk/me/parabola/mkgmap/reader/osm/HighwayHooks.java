@@ -219,8 +219,9 @@ public class HighwayHooks implements OsmReadingHooks {
 						if (isServices) {
 							possibleRoads.add(motorway);  // save all possibilities
 						} else { // probably on 2+ roads, save possibilities to find the more major road (doesn't have to be motorway)
-							// uses an implicit call of Coord.equals()
-							if (motorway.getPoints().contains(((Node) e).getLocation()))
+							if (!(e instanceof Node))
+								log.warn("Motorway exit", exitName, "expected to be a Node", e);
+							else if (motorway.getPoints().contains(((Node) e).getLocation()))
 								possibleRoads.add(motorway);
 						}
 					}
