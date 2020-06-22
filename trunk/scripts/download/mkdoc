@@ -15,7 +15,7 @@ fi
 
 for f in *.txt
 do
-	mwtext -t text $f > ../dist/doc/$f
+	mwconv -t text $f > ../dist/doc/$f
 done
 
 # Use the actual options help file.
