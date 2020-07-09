@@ -225,7 +225,7 @@ public class StyledConverter implements OsmConverter {
 		admLevelNod3 = props.getProperty("add-boundary-nodes-at-admin-boundaries", 2);
 		addBoundaryNodesAtAdminBoundaries = routable && admLevelNod3 > 0;
 		keepBlanks = props.containsKey("keep-blanks");
-		forceEndNodesRoutingNodes = !props.getProperty("no-end-nodes-are-routing-nodes", false);
+		forceEndNodesRoutingNodes = !props.getProperty("no-force-end-nodes-routing-nodes", false);
 	}
 
 	/**
