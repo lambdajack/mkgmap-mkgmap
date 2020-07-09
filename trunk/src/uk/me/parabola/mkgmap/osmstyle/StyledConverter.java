@@ -225,7 +225,7 @@ public class StyledConverter implements OsmConverter {
 		admLevelNod3 = props.getProperty("add-boundary-nodes-at-admin-boundaries", 2);
 		addBoundaryNodesAtAdminBoundaries = routable && admLevelNod3 > 0;
 		keepBlanks = props.containsKey("keep-blanks");
-//		forceEndNodesRoutingNodes = !props.getProperty("no-force-end-nodes-routing-nodes", false);
+		forceEndNodesRoutingNodes = !props.getProperty("no-force-end-nodes-routing-nodes", false);
 	}
 
 	/**
@@ -1503,7 +1503,7 @@ public class StyledConverter implements OsmConverter {
 	private void addRoadAfterSplittingLoops(ConvertedWay cw) {
 		Way way = cw.getWay();
 		
-		if (routable && (forceEndNodesRoutingNodes /*|| wayRelMap.containsKey(way.getId())*/)) {
+		if (routable && (forceEndNodesRoutingNodes || wayRelMap.containsKey(way.getId()))) {
 			// make sure the way has nodes at each end
 			way.getPoints().get(0).incHighwayCount();
 			way.getPoints().get(way.getPoints().size() - 1).incHighwayCount();
