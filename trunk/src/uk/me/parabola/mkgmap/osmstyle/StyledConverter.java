@@ -151,6 +151,7 @@ public class StyledConverter implements OsmConverter {
 	private final boolean linkPOIsToWays;
 	private final boolean mergeRoads;
 	private final boolean routable;
+	private boolean forceEndNodesRoutingNodes; 
 	private final Tags styleOptionTags;
 	private static final String STYLE_OPTION_PREF = "mkgmap:option:";
 	private final PrefixSuffixFilter prefixSuffixFilter;
@@ -224,6 +225,7 @@ public class StyledConverter implements OsmConverter {
 		admLevelNod3 = props.getProperty("add-boundary-nodes-at-admin-boundaries", 2);
 		addBoundaryNodesAtAdminBoundaries = routable && admLevelNod3 > 0;
 		keepBlanks = props.containsKey("keep-blanks");
+		forceEndNodesRoutingNodes = !props.getProperty("no-end-nodes-are-routing-nodes", false);
 	}
 
 	/**
@@ -515,6 +517,7 @@ public class StyledConverter implements OsmConverter {
 
 	/** One type result for nodes to avoid recreating one for each node. */ 
 	private NodeTypeResult nodeTypeResult = new NodeTypeResult();
+	
 	
 	private class NodeTypeResult implements TypeResult {
 		private Node node;
@@ -1499,6 +1502,13 @@ public class StyledConverter implements OsmConverter {
 	 */
 	private void addRoadAfterSplittingLoops(ConvertedWay cw) {
 		Way way = cw.getWay();
+		
+		if (routable && forceEndNodesRoutingNodes) {
+			// make sure the way has nodes at each end
+			way.getPoints().get(0).incHighwayCount();
+			way.getPoints().get(way.getPoints().size() - 1).incHighwayCount();
+		}
+		
 		// check if the way is a loop or intersects with itself
 
 		boolean wayWasSplit = true; // aka rescan required
