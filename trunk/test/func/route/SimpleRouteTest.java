@@ -71,7 +71,7 @@ public class SimpleRouteTest extends Base {
 			case "NOD":
 				count++;
 				System.out.println("NOD size " + size);
-				assertEquals("NOD size", 146631, size);
+				assertEquals("NOD size", 170201, size);
 				break;
 			}
 		}
