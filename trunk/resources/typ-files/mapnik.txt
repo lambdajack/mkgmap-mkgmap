@@ -2317,7 +2317,7 @@ DayXpm="1 1 2 1"   Colormode=16
 ;1
 [end]
 [_point]
-type=0x021
+type=0x020
 subtype=0x00
 ;GRMN_TYPE: //
 String=Exit
@@ -2341,7 +2341,7 @@ DayXpm="8 4 2 1"   Colormode=16
 ;12345678
 [end]
 [_point]
-type=0x021
+type=0x023
 subtype=0x0f
 ;GRMN_TYPE: //
 String=Services

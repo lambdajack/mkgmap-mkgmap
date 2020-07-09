@@ -207,7 +207,7 @@ It may list 'Rueben Brookins Road' if that is in the map.
 ;--mdr7-excl=name[,name...]
 :	Specify words which should be omitted from the road index.
 It was added before option road-name-config and is probably no longer needed.
-:	Example usage: --x-mdr7-excl="Road, Street, Weg"
+:	Example usage: --mdr7-excl="Road, Street, Weg"
 
 ;--mdr7-del=name[,name...]
 :	Use this option if your style adds strings to the labels of roads which you
