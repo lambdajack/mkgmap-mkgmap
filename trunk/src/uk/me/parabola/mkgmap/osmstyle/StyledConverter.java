@@ -970,7 +970,7 @@ public class StyledConverter implements OsmConverter {
 			if ("left".equals(driveOn) && numDriveOnLeftRoads == 0 && numDriveOnRightRoads > 0)
 				log.warn("The drive-on-left flag is set but tile contains only drive-on-right roads");
 			if ("right".equals(driveOn) && numDriveOnRightRoads == 0 && numDriveOnLeftRoads > 0)
-				log.warn("The drive-on-left flag is NOT set used but tile contains only drive-on-left roads");
+				log.warn("The drive-on-left flag is NOT set but tile contains only drive-on-left roads");
 		}		
 		assert dol != null;
 		return dol;
