@@ -2118,7 +2118,7 @@ public class StyledConverter implements OsmConverter {
 		int replType = -1;
 		try {
 			replType = Integer.decode(replTypeString);
-			if (GType.isRoutableLineType(replType)) {
+			if (GType.isSpecialRoutableLineType(replType)) {
 				replType = -1;
 				log.error("type value in", tagKey, "should not be a routable type:" + replTypeString);
 			}

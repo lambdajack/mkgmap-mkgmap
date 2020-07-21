@@ -260,7 +260,7 @@ public class GType {
 	 * known to cause routing errors if used for non-routable lines. 
 	 */
 	public static boolean isSpecialRoutableLineType(int type){
-		return type >= 0x01 && type <= 0x13 || type == 0x16 || type == 0x1a || type == 0x1b;
+		return type >= 0x01 && type <= 0x13 || type == 0x16 || type == 0x1a || type == 0x1b || type >= 0x2c && type <= 0x2f;
 	}
 	
 	/**
