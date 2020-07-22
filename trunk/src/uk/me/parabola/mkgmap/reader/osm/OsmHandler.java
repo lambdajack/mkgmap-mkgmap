@@ -48,6 +48,7 @@ public abstract class OsmHandler {
 	private long firstNodeRef;
 	private long lastNodeRef;
 	private boolean missingNodeRef;
+	private boolean removeEmptyValue = true;
 
 	/**
 	 * Set a set of tags with values that are to be deleted on input.
@@ -101,7 +102,7 @@ public abstract class OsmHandler {
 	 * should be discarded.
 	 */
 	protected String keepTag(String key, String val) {
-		if (val.isEmpty())
+		if (removeEmptyValue && val.isEmpty())
 			return null;
 		if(deletedTags != null) {
 			Set<String> vals = deletedTags.get(key);
@@ -206,6 +207,14 @@ public abstract class OsmHandler {
 		this.removeFixme = b;
 	}
 
+	/**
+	 * Enable removal of tags / value pairs where value is empty.
+	 * @param b true: enable the filter
+	 */
+	public void setDeleteEmptyValueTag(boolean b) {
+		this.removeEmptyValue= b;
+	}
+
 	public boolean isIgnoreBounds() {
 		return ignoreBounds;
 	}
@@ -234,4 +243,5 @@ public abstract class OsmHandler {
 	 */
 	
 	public abstract void parse(InputStream is) throws FormatException; 
+	
 }

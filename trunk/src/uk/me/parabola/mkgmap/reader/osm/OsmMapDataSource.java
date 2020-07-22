@@ -220,6 +220,9 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 		if (getConfig().getProperty("ignore-fixme-values", false)) {
 			handler.setDeleteFixmeValues(true);
 		}
+		if (getConfig().getProperty("keep-empty-value-tags", false)) {
+			handler.setDeleteEmptyValueTag(false);
+		}
 	}
 	
 	protected void createElementSaver() {
