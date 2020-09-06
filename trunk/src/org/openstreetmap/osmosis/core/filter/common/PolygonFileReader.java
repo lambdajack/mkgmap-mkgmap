@@ -301,7 +301,10 @@ public class PolygonFileReader {
 		if (tokenCount < 2) {
 			throw new OsmosisRuntimeException("Could not find two coordinates on line (" + coordinateLine + ").");
 		}
-		
+		if (results[0] > 180 || results[0] < -180) 
+			throw new OsmosisRuntimeException("Invalid longitude " + results[0] + " on line (" + coordinateLine + ").");
+		if (results[1] > 90 || results[1] < -90) 
+			throw new OsmosisRuntimeException("Invalid latitude " + results[1] + " on line (" + coordinateLine + ").");
 		return results;
 	}
 

@@ -377,6 +377,7 @@ public class Java2DConverter {
 			return Java2DConverter.AreaDegreesToMapUnit(polygonInDegrees);
 		} catch (Exception e) {
 			log.error("cannot read polygon file", polygonFile);
+			log.error(e);
 		}
 		return null;
 	}
