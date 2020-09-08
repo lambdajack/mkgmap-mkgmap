@@ -36,6 +36,7 @@ import uk.me.parabola.imgfmt.app.lbl.Zip;
 import uk.me.parabola.imgfmt.app.trergn.Polyline;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.CityInfo;
+import uk.me.parabola.mkgmap.general.MapLine;
 import uk.me.parabola.mkgmap.general.ZipCodeInfo;
 
 /**
@@ -62,6 +63,7 @@ import uk.me.parabola.mkgmap.general.ZipCodeInfo;
 public class RoadDef {
 	private static final Logger log = Logger.getLogger(RoadDef.class);
 	public static final int MAX_NUMBER_NODES = 0x3ff; 
+	public static final int MAX_NUMBER_POLYLINES = 0x7f; 
 
 	public static final int NET_FLAG_NODINFO  = 0x40;
 	public static final int NET_FLAG_ADDRINFO = 0x10;
@@ -335,7 +337,8 @@ public class RoadDef {
 		for (int i = 0; i <= maxlevel; i++) {
 			List<RoadIndex> l = roadIndexes.get(i);
 			int b = (l == null) ? 0 : l.size();
-			assert b < 0x80 : "too many polylines at level " + i;
+			if (b > MAX_NUMBER_POLYLINES)
+				throw new MapFailedException("Too many polylines for road " + this + " at level " + i);
 			if (i == maxlevel)
 				b |= 0x80;
 			writer.put1u(b);

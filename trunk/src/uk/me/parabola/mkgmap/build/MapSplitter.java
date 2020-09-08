@@ -41,7 +41,7 @@ public class MapSplitter {
 	//  staying safely inside it however.
 	public static final int MAX_DIVISION_SIZE = 0x7fff;
 
-	// The maximum region size.  Note that the offset to the start of a section
+	// Not a real limit.  Note that the offset to the start of a section
 	// has to fit into 16 bits, the end of the last section could be beyond the
 	// 16 bit limit. Leave a little room for the region pointers
 	public static final int MAX_RGN_SIZE = 0xfff8;
@@ -140,9 +140,9 @@ public class MapSplitter {
 				String padding = depth + "                                                                      ";
 				log.info(padding.substring(0, (depth + 1) * 2) + 
 						 bounds.getWidth() + "x" + bounds.getHeight() +
-						 ", points = " + area.getNumPoints() + "/" + sizes[MapArea.POINT_KIND] +
-						 ", lines = " + area.getNumLines() + "/" + sizes[MapArea.LINE_KIND] +
-						 ", shapes = " + area.getNumShapes() + "/" + sizes[MapArea.SHAPE_KIND]);
+						 ", points = " + area.getNumPoints() + "/" + sizes[MapArea.POINT_KIND] + "/" + sizes[MapArea.XT_POINT_KIND] +
+						 ", lines = " + area.getNumLines() + "/" + sizes[MapArea.LINE_KIND] + "/" + sizes[MapArea.XT_LINE_KIND] +
+						 ", shapes = " + area.getNumShapes() + "/" + sizes[MapArea.SHAPE_KIND] + "/" + sizes[MapArea.XT_SHAPE_KIND]);
 			}
 
 			boolean wantSplit = false;
@@ -169,10 +169,14 @@ public class MapSplitter {
 
 			if (wantSplit || mustSplit) {
 				if (!area.canSplit()) {
-					if (mustSplit)
-						log.error("Single item predicted to exceed subdivision", area.getBounds().getCenter().toOSMURL());
-					else
+					if (!mustSplit) {
+						// a single object is never too big regarding the number of
+						// bytes as we don't have to write any offsets > 0
+						log.info("Single item predicted to exceed subdivision", area.getBounds().getCenter().toOSMURL());
+					} else {
 						log.info("Single item larger that WANTED_MAX_AREA_SIZE", area.getBounds().getCenter().toOSMURL());
+					}
+					
 				} else if (bounds.getMaxDimension() > (MIN_DIMENSION << shift)) {
 					log.debug("splitting area in half", area, mustSplit, wantSplit);
 					MapArea[] sublist;

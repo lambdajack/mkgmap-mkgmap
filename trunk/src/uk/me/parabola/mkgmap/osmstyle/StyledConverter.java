@@ -42,11 +42,13 @@ import uk.me.parabola.imgfmt.app.Exit;
 import uk.me.parabola.imgfmt.app.Label;
 import uk.me.parabola.imgfmt.app.net.AccessTagsAndBits;
 import uk.me.parabola.imgfmt.app.net.GeneralRouteRestriction;
+import uk.me.parabola.imgfmt.app.net.RoadDef;
 import uk.me.parabola.imgfmt.app.trergn.ExtTypeAttributes;
 import uk.me.parabola.imgfmt.app.trergn.MapObject;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.build.LocatorConfig;
 import uk.me.parabola.mkgmap.filters.LineSizeSplitterFilter;
+import uk.me.parabola.mkgmap.filters.LineSplitterFilter;
 import uk.me.parabola.mkgmap.general.AreaClipper;
 import uk.me.parabola.mkgmap.general.Clipper;
 import uk.me.parabola.mkgmap.general.LineAdder;
@@ -108,6 +110,10 @@ public class StyledConverter implements OsmConverter {
 
 	// limit arc lengths to what can be handled by RouteArc
 	private static final int MAX_ARC_LENGTH = 20450000; // (1 << 22) * 16 / 3.2808 ~ 20455030*/
+	
+	// limit number of points so that a single road doesn't have too many polylines 
+	private static final int MAX_ROAD_POINTS = (RoadDef.MAX_NUMBER_POLYLINES - 2) * LineSplitterFilter.MAX_POINTS_IN_LINE; 
+	
 
 	/** Number of routing nodes in way, possibly could be increased, not a hard limit in IMG format.
 	 * See also RoadDef.MAX_NUMBER_NODES. 
@@ -1723,7 +1729,13 @@ public class StyledConverter implements OsmConverter {
 				
 				wayBBox.addPoint(nextP);
 
-				if ((arcLength + d) > MAX_ARC_LENGTH) {
+				if (i >= MAX_ROAD_POINTS) {
+					trailingWay = splitWayAt(way, i);
+					// this will have truncated the current Way's
+					// points so the loop will now terminate
+					if (log.isInfoEnabled())
+						log.info("Splitting way", debugWayName, "at", points.get(i).toOSMURL(), "to limit the total number of points");
+				} else if ((arcLength + d) > MAX_ARC_LENGTH) {
 					if (i <= 0)
 						log.error("internal error: long arc segment was not split", debugWayName);
 					assert i > 0 : "long arc segment was not split";
