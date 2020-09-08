@@ -147,14 +147,11 @@ public class MapSplitter {
 
 			boolean wantSplit = false;
 			boolean mustSplit = false;
-			if (area.getNumLines() > MAX_NUM_LINES ||
-				area.getNumPoints() > MAX_NUM_POINTS ||
-				(sizes[MapArea.POINT_KIND] +
-				 sizes[MapArea.LINE_KIND] +
-				 sizes[MapArea.SHAPE_KIND]) > MAX_RGN_SIZE ||
-				sizes[MapArea.XT_POINT_KIND] > MAX_XT_POINTS_SIZE ||
-				sizes[MapArea.XT_LINE_KIND] > MAX_XT_LINES_SIZE ||
-				sizes[MapArea.XT_SHAPE_KIND] > MAX_XT_SHAPES_SIZE)
+			if (area.getNumLines() > MAX_NUM_LINES || area.getNumPoints() > MAX_NUM_POINTS
+					|| (sizes[MapArea.POINT_KIND] + sizes[MapArea.LINE_KIND]) > MAX_RGN_SIZE
+					|| sizes[MapArea.XT_POINT_KIND] > MAX_XT_POINTS_SIZE
+					|| sizes[MapArea.XT_LINE_KIND] > MAX_XT_LINES_SIZE
+					|| sizes[MapArea.XT_SHAPE_KIND] > MAX_XT_SHAPES_SIZE)
 				mustSplit = true;
 			else if (bounds.getMaxDimension() > (MIN_DIMENSION << shift)) {
 				int sumSize = 0;

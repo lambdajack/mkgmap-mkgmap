@@ -31,7 +31,6 @@ import uk.me.parabola.mkgmap.filters.LineSizeSplitterFilter;
 import uk.me.parabola.mkgmap.filters.LineSplitterFilter;
 import uk.me.parabola.mkgmap.filters.MapFilterChain;
 import uk.me.parabola.mkgmap.filters.PolygonSplitterFilter;
-import uk.me.parabola.mkgmap.filters.PolygonSubdivSizeSplitterFilter;
 import uk.me.parabola.mkgmap.filters.PredictFilterPoints;
 import uk.me.parabola.mkgmap.general.MapDataSource;
 import uk.me.parabola.mkgmap.general.MapElement;
@@ -130,25 +129,10 @@ public class MapArea implements MapDataSource {
 	 * @param resolution The current resolution of the layer.
 	 */
 	private void addPolygons(MapDataSource src, final int resolution) {
-		MapFilterChain chain = element -> addShape((MapShape) element);
-
-		PolygonSubdivSizeSplitterFilter filter = new PolygonSubdivSizeSplitterFilter();
-		FilterConfig config = new FilterConfig();
-		config.setResolution(resolution);
-		config.setBounds(bounds);
-		filter.init(config);
-
 		for (MapShape s : src.getShapes()) {
 			if (s.getMaxResolution() < resolution)
 				continue;
-			if (splitPolygonsIntoArea || this.bounds.isEmpty() || this.bounds.contains(s.getBounds()))
-				// if splitPolygonsIntoArea, don't want to have other splitting as well.
-				// PolygonSubdivSizeSplitterFilter is a bit drastic - filters by both size and number of points
-				// so use splitPolygonsIntoArea logic for this as well. This is fine as long as there
-				// aren't bits of the shape outside the initial area.
-				addShape(s);
-			else
-				filter.doFilter(s, chain);
+			addShape(s);
 		}
 	}
 
