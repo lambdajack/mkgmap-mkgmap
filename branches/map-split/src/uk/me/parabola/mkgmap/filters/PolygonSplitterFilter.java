@@ -16,8 +16,11 @@
  */
 package uk.me.parabola.mkgmap.filters;
 
+import uk.me.parabola.imgfmt.app.Area;
+import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.mkgmap.general.MapElement;
 import uk.me.parabola.mkgmap.general.MapShape;
+import uk.me.parabola.util.ShapeSplitter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,9 +30,40 @@ import java.util.List;
  *
  * @author Gerd Petermann
  */
-public class PolygonSplitterFilter extends PolygonSplitterBase implements MapFilter {
-
+public class PolygonSplitterFilter implements MapFilter {
 	public static final int MAX_POINT_IN_ELEMENT = 250;
+	private int shift;
+	
+	@Override
+	public void init(FilterConfig config) {
+		shift = config.getShift();
+	}
+	
+	/**
+	 * Split the given shape and place the resulting shapes in the outputs list.
+	 * @param shape The original shape (that is too big).
+	 * @param outputs The output list.
+	 */
+	private void split(MapShape shape, List<MapShape> outputs) {
+		int dividingLine = 0;
+		boolean isLongitude = false;
+		Area bounds = shape.getBounds();
+		if (bounds.getWidth() > bounds.getHeight()) {
+			isLongitude = true;
+			Area[] tmpAreas = bounds.split(2, 1, shift);
+			dividingLine = tmpAreas != null ? tmpAreas[0].getMaxLong() : (bounds.getMinLong() + bounds.getWidth() / 2);
+		} else {
+			Area[] tmpAreas = bounds.split(1, 2, shift);
+			dividingLine = tmpAreas != null ? tmpAreas[0].getMaxLat() : (bounds.getMinLat() + bounds.getHeight() / 2);
+		}
+		List<List<Coord>> subShapePoints = new ArrayList<>();
+		ShapeSplitter.splitShape(shape.getPoints(), dividingLine << Coord.DELTA_SHIFT, isLongitude, subShapePoints, subShapePoints, null);
+		for (List<Coord> subShape : subShapePoints) {
+			MapShape s = shape.copy();
+			s.setPoints(subShape);
+			outputs.add(s);
+		}
+	}
 
 	/**
 	 * This filter splits a polygon if any of the subsequent filters throws a
@@ -41,7 +75,6 @@ public class PolygonSplitterFilter extends PolygonSplitterBase implements MapFil
 	 */
 	@Override
 	public void doFilter(MapElement element, MapFilterChain next) {
-		assert element instanceof MapShape;
 		MapShape shape = (MapShape) element;
 
 		try {
