@@ -53,7 +53,6 @@ import uk.me.parabola.util.ShapeSplitter;
 public class MapArea implements MapDataSource {
 	private static final Logger log = Logger.getLogger(MapArea.class);
 
-	private static final int INITIAL_CAPACITY = 100;
 	private static final int MAX_RESOLUTION = 24;
 	private static final int LARGE_OBJECT_DIM = 8192;
 	
@@ -76,9 +75,9 @@ public class MapArea implements MapDataSource {
 	private int maxLon = Integer.MIN_VALUE;
 
 	// The contents of the area.
-	private final List<MapPoint> points = new ArrayList<>(INITIAL_CAPACITY);
-	private final List<MapLine> lines = new ArrayList<>(INITIAL_CAPACITY);
-	private final List<MapShape> shapes = new ArrayList<>(INITIAL_CAPACITY);
+	private final List<MapPoint> points = new ArrayList<>();
+	private final List<MapLine> lines = new ArrayList<>();
+	private final List<MapShape> shapes = new ArrayList<>();
 
 	// amount of space required for the contents
 	private final int[] sizes = new int[NUM_KINDS];
@@ -528,13 +527,13 @@ public class MapArea implements MapDataSource {
 	 */
 	private void addSize(MapElement el, int kind) {
 
-		int res = el.getMinResolution();
+		final int res = el.getMinResolution();
 		if (res > areaResolution || res > MAX_RESOLUTION)
 			return;
 		++splittableCount;
 
-		int numPoints;
-		int numElements;
+		final int numPoints;
+		final int numElements;
 
 		switch (kind) {
 		case POINT_KIND:
@@ -596,8 +595,8 @@ public class MapArea implements MapDataSource {
 	 */
 	private boolean canAddSize(MapElement el, int kind) {
 
-		int numPoints;
-		int numElements;
+		final int numPoints;
+		final int numElements;
 		int sumSize = 0;
 		for (int s : sizes)
 			sumSize += s;
