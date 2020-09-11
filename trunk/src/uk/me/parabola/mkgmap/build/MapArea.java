@@ -31,7 +31,6 @@ import uk.me.parabola.mkgmap.filters.LineSizeSplitterFilter;
 import uk.me.parabola.mkgmap.filters.LineSplitterFilter;
 import uk.me.parabola.mkgmap.filters.MapFilterChain;
 import uk.me.parabola.mkgmap.filters.PolygonSplitterFilter;
-import uk.me.parabola.mkgmap.filters.PolygonSubdivSizeSplitterFilter;
 import uk.me.parabola.mkgmap.filters.PredictFilterPoints;
 import uk.me.parabola.mkgmap.general.MapDataSource;
 import uk.me.parabola.mkgmap.general.MapElement;
@@ -54,7 +53,6 @@ import uk.me.parabola.util.ShapeSplitter;
 public class MapArea implements MapDataSource {
 	private static final Logger log = Logger.getLogger(MapArea.class);
 
-	private static final int INITIAL_CAPACITY = 100;
 	private static final int MAX_RESOLUTION = 24;
 	private static final int LARGE_OBJECT_DIM = 8192;
 	
@@ -77,9 +75,9 @@ public class MapArea implements MapDataSource {
 	private int maxLon = Integer.MIN_VALUE;
 
 	// The contents of the area.
-	private final List<MapPoint> points = new ArrayList<>(INITIAL_CAPACITY);
-	private final List<MapLine> lines = new ArrayList<>(INITIAL_CAPACITY);
-	private final List<MapShape> shapes = new ArrayList<>(INITIAL_CAPACITY);
+	private final List<MapPoint> points = new ArrayList<>();
+	private final List<MapLine> lines = new ArrayList<>();
+	private final List<MapShape> shapes = new ArrayList<>();
 
 	// amount of space required for the contents
 	private final int[] sizes = new int[NUM_KINDS];
@@ -130,25 +128,10 @@ public class MapArea implements MapDataSource {
 	 * @param resolution The current resolution of the layer.
 	 */
 	private void addPolygons(MapDataSource src, final int resolution) {
-		MapFilterChain chain = element -> addShape((MapShape) element);
-
-		PolygonSubdivSizeSplitterFilter filter = new PolygonSubdivSizeSplitterFilter();
-		FilterConfig config = new FilterConfig();
-		config.setResolution(resolution);
-		config.setBounds(bounds);
-		filter.init(config);
-
 		for (MapShape s : src.getShapes()) {
 			if (s.getMaxResolution() < resolution)
 				continue;
-			if (splitPolygonsIntoArea || this.bounds.isEmpty() || this.bounds.contains(s.getBounds()))
-				// if splitPolygonsIntoArea, don't want to have other splitting as well.
-				// PolygonSubdivSizeSplitterFilter is a bit drastic - filters by both size and number of points
-				// so use splitPolygonsIntoArea logic for this as well. This is fine as long as there
-				// aren't bits of the shape outside the initial area.
-				addShape(s);
-			else
-				filter.doFilter(s, chain);
+			addShape(s);
 		}
 	}
 
@@ -544,13 +527,13 @@ public class MapArea implements MapDataSource {
 	 */
 	private void addSize(MapElement el, int kind) {
 
-		int res = el.getMinResolution();
+		final int res = el.getMinResolution();
 		if (res > areaResolution || res > MAX_RESOLUTION)
 			return;
 		++splittableCount;
 
-		int numPoints;
-		int numElements;
+		final int numPoints;
+		final int numElements;
 
 		switch (kind) {
 		case POINT_KIND:
@@ -612,8 +595,8 @@ public class MapArea implements MapDataSource {
 	 */
 	private boolean canAddSize(MapElement el, int kind) {
 
-		int numPoints;
-		int numElements;
+		final int numPoints;
+		final int numElements;
 		int sumSize = 0;
 		for (int s : sizes)
 			sumSize += s;

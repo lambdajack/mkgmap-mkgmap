@@ -44,7 +44,7 @@ public class MapSplitter {
 	// Not a real limit.  Note that the offset to the start of a section
 	// has to fit into 16 bits, the end of the last section could be beyond the
 	// 16 bit limit. Leave a little room for the region pointers
-	public static final int MAX_RGN_SIZE = 0xfff8;
+	public static final int MAX_RGN_OFFSET_SIZE = 0xfff8;
 
 	// The maximum number of lines. NET points to lines in subdivision
 	// using bytes.
@@ -147,22 +147,19 @@ public class MapSplitter {
 
 			boolean wantSplit = false;
 			boolean mustSplit = false;
-			if (area.getNumLines() > MAX_NUM_LINES ||
-				area.getNumPoints() > MAX_NUM_POINTS ||
-				(sizes[MapArea.POINT_KIND] +
-				 sizes[MapArea.LINE_KIND] +
-				 sizes[MapArea.SHAPE_KIND]) > MAX_RGN_SIZE ||
-				sizes[MapArea.XT_POINT_KIND] > MAX_XT_POINTS_SIZE ||
-				sizes[MapArea.XT_LINE_KIND] > MAX_XT_LINES_SIZE ||
-				sizes[MapArea.XT_SHAPE_KIND] > MAX_XT_SHAPES_SIZE)
+			if (area.getNumLines() > MAX_NUM_LINES || area.getNumPoints() > MAX_NUM_POINTS
+					|| (sizes[MapArea.POINT_KIND] + sizes[MapArea.LINE_KIND]) > MAX_RGN_OFFSET_SIZE
+					|| sizes[MapArea.XT_POINT_KIND] > MAX_XT_POINTS_SIZE
+					|| sizes[MapArea.XT_LINE_KIND] > MAX_XT_LINES_SIZE
+					|| sizes[MapArea.XT_SHAPE_KIND] > MAX_XT_SHAPES_SIZE)
 				mustSplit = true;
 			else if (bounds.getMaxDimension() > (MIN_DIMENSION << shift)) {
 				int sumSize = 0;
 				for (int s : sizes)
 					sumSize += s;
 				if (sumSize > WANTED_MAX_AREA_SIZE) {
-					// area has more bytes than wanted, and large enough to split
-					log.debug("splitting area because data size is larger than wanted:", sumSize);
+					// area has more bytes than wanted, and is large enough to split
+					log.debug("splitting area because estimated data size is larger than wanted:", sumSize);
 					wantSplit = true;
 				}
 			}
@@ -170,13 +167,8 @@ public class MapSplitter {
 			if (wantSplit || mustSplit) {
 				if (!area.canSplit()) {
 					if (!mustSplit) {
-						// a single object is never too big regarding the number of
-						// bytes as we don't have to write any offsets > 0
-						log.info("Single item predicted to exceed subdivision", area.getBounds().getCenter().toOSMURL());
-					} else {
 						log.info("Single item larger that WANTED_MAX_AREA_SIZE", area.getBounds().getCenter().toOSMURL());
 					}
-					
 				} else if (bounds.getMaxDimension() > (MIN_DIMENSION << shift)) {
 					log.debug("splitting area in half", area, mustSplit, wantSplit);
 					MapArea[] sublist;
