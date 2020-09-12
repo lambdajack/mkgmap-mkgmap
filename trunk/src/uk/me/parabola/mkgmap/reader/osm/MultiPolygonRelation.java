@@ -36,6 +36,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
@@ -600,30 +601,47 @@ public class MultiPolygonRelation extends Relation {
 		ListIterator<JoinedWay> wayIter = wayList.listIterator();
 		while (wayIter.hasNext()) {
 			JoinedWay w = wayIter.next();
-			boolean remove = true;
-			// check all points
-			for (Coord c : w.getPoints()) {
-				if (tileBounds.contains(c)) {
-					// if one point is in the bounding box the way should not be removed
-					remove = false;
-					break;
-				}
-			}
-
-			// check if the polygon contains the complete bounding box
-			if (remove && w.getBounds().contains(tileArea.getBounds())) {
-				remove = false;
-			}
 			
-			if (remove) {
+			if (isFullyOutsideBBox(w)) {
 				if (log.isDebugEnabled()) {
-					log.debug("Remove way", w.getId(),
-						"because it is completely outside the bounding box.");
+					if (w.originalWays.size() == 1) {
+						log.debug(this.getId(), ": Ignoring way", w.originalWays.get(0).getId(),
+								"because it is completely outside the bounding box.");
+					} else {
+						log.debug(this.getId(), ": Ignoring joined ways",
+								w.originalWays.stream().map(way -> Long.toString(way.getId()))
+										.collect(Collectors.joining(",")),
+								"because they are completely outside the bounding box.");
+					}
 				}
 				wayIter.remove();
 			}
 		}
 	}
+
+	private boolean isFullyOutsideBBox(JoinedWay w) {
+		if (!w.getBounds().intersects(tileArea.getBounds())) {
+			return true;
+		}
+		
+		// check if the polygon bbox contains the complete tile bounds
+		if (w.getBounds().contains(tileArea.getBounds())) {
+			return false;
+		}
+		
+		// check if any point is inside tile bounds
+		if (w.getPoints().stream().anyMatch(tileBounds::contains))
+			return false;
+
+		// check if any line segment of the polygon crosses the tile bounds
+		for (int i = 0; i < w.getPoints().size() - 1; i++) {
+			if (lineCutsBbox(w.getPoints().get(i), w.getPoints().get(i + 1))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 
 	/**
 	 * Find all polygons that are not contained by any other polygon.
