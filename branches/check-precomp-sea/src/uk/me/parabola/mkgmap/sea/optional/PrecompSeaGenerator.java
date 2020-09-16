@@ -30,12 +30,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import uk.me.parabola.imgfmt.app.Coord;
-import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
-import uk.me.parabola.mkgmap.reader.osm.SeaGenerator;
-import uk.me.parabola.mkgmap.reader.osm.Way;
-import uk.me.parabola.util.Java2DConverter;
-
 import org.geotools.data.DataStore;
 import org.geotools.data.DataStoreFinder;
 import org.geotools.data.simple.SimpleFeatureCollection;
@@ -56,6 +50,12 @@ import org.opengis.referencing.operation.TransformException;
 
 import com.vividsolutions.jts.geom.Coordinate;
 import com.vividsolutions.jts.geom.Geometry;
+
+import uk.me.parabola.imgfmt.app.Coord;
+import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
+import uk.me.parabola.mkgmap.reader.osm.SeaGenerator;
+import uk.me.parabola.mkgmap.reader.osm.Way;
+import uk.me.parabola.util.Java2DConverter;
 
 /**
  * Converts a shapefile containing land polygons into mkgmap precompiled sea tiles.
@@ -415,6 +415,15 @@ public class PrecompSeaGenerator {
 		seaGenerator.runSeaGeneration();
 
 		System.out.println("Generation took "+(System.currentTimeMillis()-t1)+" ms");
+		try {
+			System.out.println("Preforming quick check against reference for index file.");
+			SeaGenerator.checkIndexAgainstRef(outputDir.getAbsolutePath());
+			System.out.println("Quick check against reference found no problems.");
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+			System.out.println("Please don't publish this data");
+			System.exit(-1);
+		}
 		
 	}
 }

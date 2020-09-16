@@ -13,9 +13,11 @@
 package uk.me.parabola.mkgmap.reader.osm;
 
 import java.awt.Rectangle;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -97,6 +99,9 @@ public class SeaGenerator implements OsmReadingHooks {
 	private static final int MAX_LAT = Utils.toMapUnit(90.0);
 	private static final int MIN_LON = Utils.toMapUnit(-180.0);
 	private static final int MAX_LON = Utils.toMapUnit(180.0);
+	private static final int INDEX_WIDTH = (getPrecompTileStart(MAX_LON) - getPrecompTileStart(MIN_LON)) / PRECOMP_RASTER;
+	private static final int INDEX_HEIGHT = (getPrecompTileStart(MAX_LAT) - getPrecompTileStart(MIN_LAT)) / PRECOMP_RASTER;
+	
 	private static final Pattern KEY_SPLITTER = Pattern.compile(Pattern.quote("_"));
 	private static final Pattern SEMICOLON_SPLITTER = Pattern.compile(Pattern.quote(";"));
 
@@ -121,9 +126,10 @@ public class SeaGenerator implements OsmReadingHooks {
 	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		this.saver = saver;
 		
+		boolean performCheck = props.getProperty("check-precomp-sea", true);
 		precompSea = props.getProperty("precomp-sea", null);
 		if (precompSea != null) {
-			initPrecompSeaIndex(precompSea);
+			initPrecompSeaIndex(precompSea, performCheck);
 		}
 		String gs = props.getProperty("generate-sea", null);
 		if (gs != null) {
@@ -149,6 +155,17 @@ public class SeaGenerator implements OsmReadingHooks {
 		}
 
 		return gs != null || precompSea != null;
+	}
+	
+	public static void checkIndexAgainstRef(String absolutePath) {
+		if (precompIndex.get() != null) {
+			precompIndex.remove();
+		}
+
+		initPrecompSeaIndex(absolutePath, true);
+		if (precompIndex.get() != null) {
+			precompIndex.remove();
+		}
 	}
 	
 	private void loadFloodblockerStyle() {
@@ -198,7 +215,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		}
 	}
 
-	private static void initPrecompSeaIndex(String precompSea) {
+	private static void initPrecompSeaIndex(String precompSea, boolean performCheck) {
 		if (precompIndex.get() != null) {
 			return;
 		}
@@ -249,6 +266,11 @@ public class SeaGenerator implements OsmReadingHooks {
 				log.error("Don't know how to read " + precompSeaDir);
 			}
 			if (precompData != null) {
+//				createIndexRef(precompData); // enable to create a new reference file in the current directory
+				if (performCheck) {
+					checkIndex(precompData);
+				}
+				
 				precompData.dirFile = precompSeaDir;
 				if (zipFile != null) {
 					precompData.precompZipFileInternalPath = internalPath;
@@ -300,13 +322,11 @@ public class SeaGenerator implements OsmReadingHooks {
      * @param fileStream already opened stream
      */
     private static PrecompData loadIndex(InputStream fileStream) throws IOException{
-		int indexWidth = (getPrecompTileStart(MAX_LON) - getPrecompTileStart(MIN_LON)) / PRECOMP_RASTER;
-		int indexHeight = (getPrecompTileStart(MAX_LAT) - getPrecompTileStart(MIN_LAT)) / PRECOMP_RASTER;
 		PrecompData pi = null;
 		LineNumberReader indexReader = new LineNumberReader(new InputStreamReader(fileStream));
 		String indexLine = null;
 
-		byte[][] indexGrid = new byte[indexWidth + 1][indexHeight + 1];
+		byte[][] indexGrid = new byte[INDEX_WIDTH + 1][INDEX_HEIGHT + 1];
 		boolean detectExt = true; 
 		String prefix = null;
 		String ext = null;
@@ -352,6 +372,55 @@ public class SeaGenerator implements OsmReadingHooks {
 		pi.precompSeaExt = ext;
 		return pi;
     }
+
+    /**
+     * Method to create the reference file that is used by checkIndex.
+     * @param pi the 
+     * @throws IOException
+     */
+	private static void createIndexRef(PrecompData pi) throws IOException {
+		try (FileWriter fw = new FileWriter("sea-check.txt", false)) {
+			for (int h = 1; h <= INDEX_HEIGHT; h++) {
+				for (int w = INDEX_WIDTH; w >= 1; w--) {
+					fw.write(pi.precompIndex[w][h]);
+				}
+				fw.write('\n');
+			}
+		}
+	}
+	
+	private static void checkIndex(PrecompData pi) throws IOException {
+		try (BufferedInputStream is = new BufferedInputStream(SeaGenerator.class.getResourceAsStream("/sea-check.txt"))) {
+			boolean allOK = true;
+			for (int h = 1; h <= INDEX_HEIGHT; h++) {
+				for (int w = INDEX_WIDTH; w >= 1; w--) {
+					int ref = is.read();
+					if (ref == -1)
+						throw new IOException("Failed to read sea-check.txt, mayby file is truncated?");
+
+					String err = null;
+					if (ref == 'l' && pi.precompIndex[w][h] == SEA_TILE) {
+						err = "land-only tile is flooded";
+					} else if (ref == 's' && pi.precompIndex[w][h] == LAND_TILE) {
+						err = "sea-only tile is now land";
+					}
+					if (err != null) {
+						allOK = false;
+						int minLat = -1 * (PRECOMP_RASTER * h - MAX_LAT);
+						int minLon = -1 * (PRECOMP_RASTER * w - MAX_LON);
+						Coord c = new Coord(minLat + PRECOMP_RASTER / 2, minLon + PRECOMP_RASTER / 2);
+						log.error("Precomp sea data seems to be wrong, " + err + " around " + c.toDegreeString()
+								+ ", index key is " + minLat + "_" + minLon);
+					}
+				}
+				is.read(); // skip new line character
+			}
+			if (!allOK) {
+				throw new ExitException("Precomp sea data seems to be wrong. Use --x-check-precomp-sea=false to disable this check and risk flodded areas.");
+			}
+				
+		}
+	}
 
 	/**
      * Retrieves the start value of the precompiled tile.
