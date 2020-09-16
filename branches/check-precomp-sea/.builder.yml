@@ -1,0 +1,60 @@
+
+settings:
+  language: [java, python]
+
+  build_envs:
+    java: [jdk8, openjdk8, openjdk11]
+
+build:
+    - shell:
+      - java -version
+      - ant -version
+        #
+        # Set the version and timestamp properties
+      - |
+          echo "svn.version: {{rev.revision}}" > resources/{{rev.project}}-version.properties
+          echo "build.timestamp: $(date -Iseconds)" >> resources/{{rev.project}}-version.properties
+
+    - when: rev.is_trunk
+      set_var:
+          dist_name: mkgmap-r{{rev.revision}}
+    - when: not rev.is_trunk
+      set_var:
+          dist_name: mkgmap-{{rev.branch}}-r{{rev.revision}}
+
+    # Create the source archives
+    - archive:
+        is_src: True
+        type: tar.gz
+        rename_dir: "{{dist_name}}"
+        name: "{{dist_name}}-src.tar.gz"
+
+    - archive:
+        is_src: True
+        type: zip
+        rename_dir: "{{dist_name}}"
+        name: "{{dist_name}}-src.zip"
+
+    - shell: ant -Dhave.version=1 dist
+
+    - shell: ant -Dhave.version=1 test
+      when: rev.is_trunk
+
+    - when: builder_java_version == 'jdk8'
+      block:
+        - shell:
+            - pip install mwconv mkgmap-pygments pygments-xslfo-formatter
+            - scripts/download/mkdoc {{rev.project}}
+
+        - archive:
+            dir: dist/mkgmap.jar
+            name: "{{dist_name}}.jar"
+
+        - archive:
+              dir: dist
+              type: [tar.gz, zip]
+              rename_dir: "{{dist_name}}"
+
+        - deploy:
+              type: mkgmap_deploy
+              build_ok: "{{builder|success}}"
