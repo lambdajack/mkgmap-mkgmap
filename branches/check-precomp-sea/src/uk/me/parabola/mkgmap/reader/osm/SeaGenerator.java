@@ -17,7 +17,6 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -34,6 +33,7 @@ import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
@@ -93,6 +93,7 @@ public class SeaGenerator implements OsmReadingHooks {
 	private static final byte MIXED_TILE = 'm';
 	
 	private static ThreadLocal<PrecompData> precompIndex = new ThreadLocal<>();
+	private static Map<String, Boolean> checkedPrecomp = new ConcurrentHashMap<>();
 	
 	// useful constants defining the min/max map units of the precompiled sea tiles
 	private static final int MIN_LAT = Utils.toMapUnit(-90.0);
@@ -126,10 +127,12 @@ public class SeaGenerator implements OsmReadingHooks {
 	public boolean init(ElementSaver saver, EnhancedProperties props, Style style) {
 		this.saver = saver;
 		
-		boolean performCheck = props.getProperty("check-precomp-sea", true);
+		boolean failOnIndexCheck = props.getProperty("check-precomp-sea", true);
 		precompSea = props.getProperty("precomp-sea", null);
 		if (precompSea != null) {
-			initPrecompSeaIndex(precompSea, performCheck);
+			synchronized (checkedPrecomp) {
+				initPrecompSeaIndex(precompSea, failOnIndexCheck);	
+			}
 		}
 		String gs = props.getProperty("generate-sea", null);
 		if (gs != null) {
@@ -215,7 +218,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		}
 	}
 
-	private static void initPrecompSeaIndex(String precompSea, boolean performCheck) {
+	private static void initPrecompSeaIndex(String precompSea, boolean failOnIndexCheck) {
 		if (precompIndex.get() != null) {
 			return;
 		}
@@ -267,8 +270,9 @@ public class SeaGenerator implements OsmReadingHooks {
 			}
 			if (precompData != null) {
 //				createIndexRef(precompData); // enable to create a new reference file in the current directory
-				if (performCheck) {
-					checkIndex(precompData);
+				if (!checkedPrecomp.containsKey(precompSea)) {
+					checkedPrecomp.put(precompSea, Boolean.TRUE);
+					checkIndex(precompData, failOnIndexCheck);
 				}
 				
 				precompData.dirFile = precompSeaDir;
@@ -375,23 +379,23 @@ public class SeaGenerator implements OsmReadingHooks {
 
     /**
      * Method to create the reference file that is used by checkIndex.
-     * @param pi the 
-     * @throws IOException
+     * @param pi the calculated index data 
+     * @throws IOException in case of I/O errors
      */
-	private static void createIndexRef(PrecompData pi) throws IOException {
-		try (FileWriter fw = new FileWriter("sea-check.txt", false)) {
-			for (int h = 1; h <= INDEX_HEIGHT; h++) {
-				for (int w = INDEX_WIDTH; w >= 1; w--) {
-					fw.write(pi.precompIndex[w][h]);
-				}
-				fw.write('\n');
-			}
-		}
-	}
+//	private static void createIndexRef(PrecompData pi) throws IOException {
+//		try (FileWriter fw = new FileWriter("sea-check.txt", false)) {
+//			for (int h = 1; h <= INDEX_HEIGHT; h++) {
+//				for (int w = INDEX_WIDTH; w >= 1; w--) {
+//					fw.write(pi.precompIndex[w][h]);
+//				}
+//				fw.write('\n');
+//			}
+//		}
+//	}
 	
-	private static void checkIndex(PrecompData pi) throws IOException {
+	private static void checkIndex(PrecompData pi, boolean failOnIndexCheck) throws IOException {
+		boolean hasError = false;
 		try (BufferedInputStream is = new BufferedInputStream(SeaGenerator.class.getResourceAsStream("/sea-check.txt"))) {
-			boolean allOK = true;
 			for (int h = 1; h <= INDEX_HEIGHT; h++) {
 				for (int w = INDEX_WIDTH; w >= 1; w--) {
 					int ref = is.read();
@@ -405,7 +409,7 @@ public class SeaGenerator implements OsmReadingHooks {
 						err = "sea-only tile is now land";
 					}
 					if (err != null) {
-						allOK = false;
+						hasError = true;
 						int minLat = -1 * (PRECOMP_RASTER * h - MAX_LAT);
 						int minLon = -1 * (PRECOMP_RASTER * w - MAX_LON);
 						Coord c = new Coord(minLat + PRECOMP_RASTER / 2, minLon + PRECOMP_RASTER / 2);
@@ -415,10 +419,9 @@ public class SeaGenerator implements OsmReadingHooks {
 				}
 				is.read(); // skip new line character
 			}
-			if (!allOK) {
-				throw new ExitException("Precomp sea data seems to be wrong. Use --x-check-precomp-sea=false to disable this check and risk flodded areas.");
-			}
-				
+		}
+		if (hasError && failOnIndexCheck) {
+			throw new ExitException("Precomp sea data seems to be wrong. Use option --x-check-precomp-sea=0 to continue risking bad sea data.");
 		}
 	}
 
