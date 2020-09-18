@@ -328,7 +328,10 @@ public class StyledConverter implements OsmConverter {
 			if (cw.isRoad()){
 				roads.add(cw);
 				numRoads++;
-				if (!cw.isFerry()) {
+				// ignore driving side for oneway roads, ferries and roads that
+				// don't allow motor vehicles
+				if (!cw.isOneway() && !cw.isFerry()
+						&& (cw.getAccess() & ~(AccessTagsAndBits.FOOT | AccessTagsAndBits.BIKE)) != 0) {
 					String countryIso = LocatorConfig.get().getCountryISOCode(way.getTag(TKM_COUNTRY));
 					if (countryIso != null) {
 						boolean drivingSideIsLeft = LocatorConfig.get().getDriveOnLeftFlag(countryIso);
