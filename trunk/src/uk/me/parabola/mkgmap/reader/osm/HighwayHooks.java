@@ -153,10 +153,7 @@ public class HighwayHooks implements OsmReadingHooks {
 
 			if (makeOppositeCycleways && !"cycleway".equals(highway)){
 				String onewayTag = way.getTag("oneway");
-				boolean oneway = way.tagIsLikeYes("oneway");
-				if (!oneway && onewayTag != null && ("-1".equals(onewayTag) || "reverse".equals(onewayTag)))
-					oneway = true;
-				if (oneway){
+				if (way.tagIsLikeYes("oneway") || "-1".equals(onewayTag)){
 					String cycleway = way.getTag("cycleway");
 					// we have a oneway street, check if it allows bicycles to travel in opposite direction
 					if ("no".equals(way.getTag("oneway:bicycle")) 

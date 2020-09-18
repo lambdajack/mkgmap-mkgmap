@@ -306,7 +306,7 @@ public class StyledConverter implements OsmConverter {
 			boolean wasReversed = false;
 			String oneWay = way.getTag(TK_ONEWAY);
 			if (oneWay != null){
-				if("-1".equals(oneWay) || "reverse".equals(oneWay)) {
+				if("-1".equals(oneWay)) {
 					// it's a oneway street in the reverse direction
 					// so reverse the order of the nodes and change
 					// the oneway tag to "yes"
