@@ -1061,3 +1061,5 @@ track, and where the original point is tagged as a mountain pass.
 
 Please note that if the point is part of several ways, you'll get duplicates 
 (you could use --nearby-poi-rules to solve this).
+
+====
