@@ -370,7 +370,9 @@ public class MDRFile extends ImgFile {
 		// The following do not have mdr1 subsections
 		//writeSection(writer, 8, mdr8);
 		writeSection(writer, 9, mdr9);
-		writeSection(writer, 12, mdr12);
+		if (!isMulti) {
+			writeSection(writer, 12, mdr12);
+		}
 		writeSection(writer, 13, mdr13);
 		writeSection(writer, 14, mdr14);
 		writeSection(writer, 15, mdr15);
