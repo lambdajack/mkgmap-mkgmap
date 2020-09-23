@@ -17,6 +17,9 @@
 package uk.me.parabola.imgfmt.app.trergn;
 
 import uk.me.parabola.imgfmt.Utils;
+
+import java.io.IOException;
+
 import uk.me.parabola.imgfmt.ReadFailedException;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.CommonHeader;
@@ -104,7 +107,9 @@ public class TREHeader extends CommonHeader {
 	 * @param reader The header is read from here.
 	 */
 	protected void readFileHeader(ImgFileReader reader) throws ReadFailedException {
-		assert reader.position() == COMMON_HEADER_LEN;
+		if (reader.position() != COMMON_HEADER_LEN) {
+			throw new ReadFailedException("Reader position not at expected header length", new IOException());
+		}
 		int maxLat = reader.get3s();
 		int maxLon = reader.get3s();
 		int minLat = reader.get3s();
