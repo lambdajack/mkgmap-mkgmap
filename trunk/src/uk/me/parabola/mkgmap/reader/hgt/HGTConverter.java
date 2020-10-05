@@ -130,12 +130,15 @@ public class HGTConverter {
 		rdr.prepRead();
 		if (detectedRes <= 0)
 			return 0; // assumed to be an area in the ocean
+		int resX = rdr.getResX();
+		int resY = rdr.getResY();
 		lastRow = row;
 
-		double scale  = detectedRes * FACTOR;
+		double scaleX  = resX * FACTOR;
+		double scaleY  = resY * FACTOR;
 		
-		double y1 = (lat32 - minLat32) * scale - row * detectedRes;
-		double x1 = (lon32 - minLon32) * scale - col * detectedRes;
+		double y1 = (lat32 - minLat32) * scaleY - row * resY;
+		double x1 = (lon32 - minLon32) * scaleX - col * resX;
 		int xLeft = (int) x1;
 		int yBottom = (int) y1;
 		double qx = x1 - xLeft;
@@ -183,6 +186,8 @@ public class HGTConverter {
 	 */
 	private boolean fillArray(HGTReader rdr, int row, int col, int xLeft, int yBottom) {
 		int detectedRes = rdr.getRes();
+		int resX = rdr.getResX();
+		int resY = rdr.getResY();
 		int minX = 0;
 		int minY = 0;
 		int maxX = 3;
@@ -195,7 +200,7 @@ public class HGTConverter {
 				return false;
 			minX = 1;
 			inside = false;
-		} else if (xLeft == detectedRes - 1) {
+		} else if (xLeft == resX - 1) {
 			if (col + 1 >= readers[0].length)
 				return false;
 			maxX = 2;
@@ -206,7 +211,7 @@ public class HGTConverter {
 				return false;
 			minY = 1;
 			inside = false;
-		} else if (yBottom == detectedRes - 1) {
+		} else if (yBottom == resY - 1) {
 			if (row + 1 >= readers.length)
 				return false;
 			maxY = 2;
@@ -228,18 +233,18 @@ public class HGTConverter {
 			return true;
 
 		// fill data from adjacent readers, down and up
-		if (xLeft > 0 && xLeft < detectedRes - 1) {
+		if (xLeft > 0 && xLeft < resX - 1) {
 			if (yBottom == 0) { // bottom edge
 				HGTReader rdrBB = prepReader(detectedRes, row - 1, col);
 				if (rdrBB == null)
 					return false;
 				for (int x = 0; x <= 3; x++) {
-					h = rdrBB.ele(xLeft + x - 1, detectedRes - 1);
+					h = rdrBB.ele(xLeft + x - 1, resY - 1);
 					if (h == HGTReader.UNDEF)
 						return false;
 					eleArray[x][0] = h;
 				}
-			} else if (yBottom == detectedRes - 1) { // top edge
+			} else if (yBottom == resY - 1) { // top edge
 				HGTReader rdrTT = prepReader(detectedRes, row + 1, col);
 				if (rdrTT == null)
 					return false;
@@ -253,18 +258,18 @@ public class HGTConverter {
 		}
 
 		// fill data from adjacent readers, left and right
-		if (yBottom > 0 && yBottom < detectedRes - 1) {
+		if (yBottom > 0 && yBottom < resY - 1) {
 			if (xLeft == 0) { // left edgge
 				HGTReader rdrLL = prepReader(detectedRes, row, col - 1);
 				if (rdrLL == null)
 					return false;
 				for (int y = 0; y <= 3; y++) {
-					h = rdrLL.ele(detectedRes - 1, yBottom + y - 1);
+					h = rdrLL.ele(resX - 1, yBottom + y - 1);
 					if (h == HGTReader.UNDEF)
 						return false;
 					eleArray[0][y] = h;
 				}
-			} else if (xLeft == detectedRes - 1) { // right edge
+			} else if (xLeft == resX - 1) { // right edge
 				HGTReader rdrRR = prepReader(detectedRes, row, col + 1);
 				if (rdrRR == null)
 					return false;
@@ -284,7 +289,7 @@ public class HGTConverter {
 				if (rdrLL == null)
 					return false;
 				for (int y = 1; y <= 3; y++) {
-					h = rdrLL.ele(detectedRes - 1, yBottom + y - 1);
+					h = rdrLL.ele(resX - 1, yBottom + y - 1);
 					if (h == HGTReader.UNDEF)
 						return false;
 					eleArray[0][y] = h;
@@ -294,7 +299,7 @@ public class HGTConverter {
 				if (rdrBB == null)
 					return false;
 				for (int x = 1; x <= 3; x++) {
-					h = rdrBB.ele(xLeft + x - 1, detectedRes - 1);
+					h = rdrBB.ele(xLeft + x - 1, resY - 1);
 					if (h == HGTReader.UNDEF)
 						return false;
 					eleArray[x][0] = h;
@@ -303,16 +308,16 @@ public class HGTConverter {
 				HGTReader rdrLB = prepReader(detectedRes, row - 1, col - 1);
 				if (rdrLB == null)
 					return false;
-				h = rdrLB.ele(detectedRes - 1, detectedRes - 1);
+				h = rdrLB.ele(resX - 1, resY - 1);
 				if (h == HGTReader.UNDEF)
 					return false;
 				eleArray[0][0] = h;
-			} else if (yBottom == detectedRes - 1) { // left top corner
+			} else if (yBottom == resY - 1) { // left top corner
 				HGTReader rdrLL = prepReader(detectedRes, row, col - 1);
 				if (rdrLL == null)
 					return false;
 				for (int y = 0; y <= 2; y++) {
-					h = rdrLL.ele(detectedRes - 1, yBottom + y - 1);
+					h = rdrLL.ele(resX - 1, yBottom + y - 1);
 					if (h == HGTReader.UNDEF)
 						return false;
 					eleArray[0][y] = h;
@@ -331,12 +336,12 @@ public class HGTConverter {
 				HGTReader rdrLT = prepReader(detectedRes, row + 1, col - 1);
 				if (rdrLT == null)
 					return false;
-				h = rdrLT.ele(detectedRes - 1, 1);
+				h = rdrLT.ele(resX - 1, 1);
 				if (h == HGTReader.UNDEF)
 					return false;
 				eleArray[0][3] = h;
 			}
-		} else if (xLeft == detectedRes - 1) {
+		} else if (xLeft == resX - 1) {
 			if (yBottom == 0) { // right bottom corner
 				HGTReader rdrRR = prepReader(detectedRes, row, col + 1);
 				if (rdrRR == null)
@@ -352,7 +357,7 @@ public class HGTConverter {
 				if (rdrBB == null)
 					return false;
 				for (int x = 0; x <= 2; x++) {
-					h = rdrBB.ele(xLeft + x - 1, detectedRes - 1);
+					h = rdrBB.ele(xLeft + x - 1, resY - 1);
 					if (h == HGTReader.UNDEF)
 						return false;
 					eleArray[x][0] = h;
@@ -361,11 +366,11 @@ public class HGTConverter {
 				HGTReader rdrRB = prepReader(detectedRes, row - 1, col + 1);
 				if (rdrRB == null)
 					return false;
-				h = rdrRB.ele(1, detectedRes - 1);
+				h = rdrRB.ele(1, resY - 1);
 				if (h == HGTReader.UNDEF)
 					return false;
 				eleArray[3][0] = h;
-			} else if (yBottom == detectedRes - 1) { // right top corner
+			} else if (yBottom == resY - 1) { // right top corner
 				HGTReader rdrRR = prepReader(detectedRes, row, col + 1);
 				if (rdrRR == null)
 					return false;
@@ -554,7 +559,7 @@ public class HGTConverter {
 		clearStat();
 		pointsDistanceLat = pointDist;
 		pointsDistanceLon = pointDist;
-		if (InterpolationMethod.AUTOMATIC.equals(interpolationMethod)) {
+		if (InterpolationMethod.AUTOMATIC == interpolationMethod) {
 			if (res > 0) {
 				int distHGTx3 = (1 << 29)/(45 / 3 * res);	// 3 * HGT points distance in DEM units
 				if (distHGTx3 + 20 > pointDist) {		// account for rounding of pointDist and distHGTx3
