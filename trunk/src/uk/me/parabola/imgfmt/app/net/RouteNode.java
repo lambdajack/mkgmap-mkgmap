@@ -74,6 +74,8 @@ public class RouteNode implements Comparable<RouteNode> {
 	
 	private byte nodeGroup = -1;
 
+	private boolean useCompactDirs = false;  // AngleChecker might change
+
 	public RouteNode(Coord coord) {
 		this.coord = (CoordNode) coord;
 		setBoundary(this.coord.getOnBoundary() || this.coord.getOnCountryBorder());
@@ -183,6 +185,20 @@ public class RouteNode implements Comparable<RouteNode> {
 	 * Writes a nod1 entry.
 	 */
 	public void write(ImgFileWriter writer) {
+//		boolean diagNodeArcs = false;
+//		if (log.isInfoEnabled()) {
+//			String areaName = null;
+//			if (isClose(51.182575, -1.388928, 0.002))
+//				areaName = "A303 lead off/on";
+//			else if (isClose(51.012253, -1.087559, 0.0008))
+//				areaName = "West Meon";
+//			else if (isClose(51.064075, -1.380348, 0.0001))
+//				areaName = "Woodmans";
+//			if (areaName != null) {
+//				diagNodeArcs = true;
+//				log.info("diagNodeArcs", areaName, this, "compactDirs", useCompactDirs, "nArcs", arcs.size(), "cl", nodeClass);
+//			}
+//		}
 		if(log.isDebugEnabled())
 			log.debug("writing node, first pass, nod1", coord.getId());
 		offsetNod1 = writer.position();
@@ -201,33 +217,28 @@ public class RouteNode implements Comparable<RouteNode> {
 		}
 
 		if (!arcs.isEmpty()) {
-			boolean useCompactDirs = true;
 			IntArrayList initialHeadings = new IntArrayList(arcs.size()+1);
 			RouteArc lastArc = null;
-			for (RouteArc arc: arcs){
-				if (lastArc == null || lastArc.getIndexA() != arc.getIndexA() || lastArc.isForward() != arc.isForward()){
-					int dir = RouteArc.directionFromDegrees(arc.getInitialHeading());
-					dir = (dir + 8) & 0xf0;
-					if (initialHeadings.contains(dir)){
-						useCompactDirs = false;
-						break;
-					}
-					initialHeadings.add(dir);
+			if (useCompactDirs) {
+				for (RouteArc arc: arcs) {
+					if (lastArc == null || lastArc.getIndexA() != arc.getIndexA() || lastArc.isForward() != arc.isForward())
+						initialHeadings.add(RouteArc.compactDirFromDegrees(arc.getInitialHeading()));
+					lastArc = arc;
 				}
-				lastArc = arc;
+				initialHeadings.add(0); // add dummy 0 so that we don't have to check for existence
+				lastArc = null;
 			}
-			initialHeadings.add(0); // add dummy 0 so that we don't have to check for existence
 			arcs.get(arcs.size() - 1).setLast();
-			lastArc = null;
-			
 			int index = 0;
 			for (RouteArc arc: arcs){
 				Byte compactedDir = null;
 				if (useCompactDirs && (lastArc == null || lastArc.getIndexA() != arc.getIndexA() || lastArc.isForward() != arc.isForward())){
 					if (index % 2 == 0)
-						compactedDir = (byte) ((initialHeadings.get(index) >> 4) | initialHeadings.getInt(index+1));
+						compactedDir = (byte) (initialHeadings.get(index) | (initialHeadings.getInt(index+1)<<4));
 					index++;
 				}
+//				if (diagNodeArcs)
+//					log.info(arc, arc.getIndexA(), arc.getInitialHeading(), RouteArc.compactDirFromDegrees(arc.getInitialHeading()), compactedDir, "cl", arc.getRoadDef().getRoadClass());
 				arc.write(writer, lastArc, useCompactDirs, compactedDir);
 				lastArc = arc;
 			}
@@ -330,7 +341,7 @@ public class RouteNode implements Comparable<RouteNode> {
 	}
 
 	public String toString() {
-		return String.valueOf(coord.getId());
+		return String.valueOf(coord.getId()) + "@" + coord.toOSMURL();
 	}
 
 	/*
@@ -680,8 +691,12 @@ public class RouteNode implements Comparable<RouteNode> {
 	 * always point to a higher road than the previous arc.
 	 * The length and direct bearing of the additional arc is measured 
 	 * from the target node of the preceding arc to the new target node.
-	 * The initial bearing doesn't really matter as it is not written
-	 * for indirect arcs.  
+	 *
+	 * Arcs for the same road/direction must be inserted directly after the
+	 * direct arc and this allows the optimisation of initial bearing not being
+	 * written. Note that this routine is called after AngleChecker.fixSharpAngles
+	 * so the bearings will be consistent anyway.
+	 *
 	 * @param road
 	 */
 	public void addArcsToMajorRoads(RoadDef road){
@@ -888,4 +903,24 @@ public class RouteNode implements Comparable<RouteNode> {
 			}
 		}
 	}
+
+
+	public void setUseCompactDirs(boolean newValue) {
+		useCompactDirs = newValue;
+	}
+
+	public boolean getUseCompactDirs() {
+		return useCompactDirs;
+	}
+
+//	/**
+//	 * simple-minded quick test for enabling RouteNode diagnostic for an area of interest.
+//	 * leeway is in degrees
+//	 */
+//	private boolean isClose(double latitude, double longitude, double leeway) {
+//		double nodeLat = coord.getLatDegrees();
+//		double nodeLon = coord.getLonDegrees();
+//		return nodeLat >= latitude  - leeway && nodeLat <= latitude  + leeway &&
+//			   nodeLon >= longitude - leeway && nodeLon <= longitude + leeway;
+//	}
 }
