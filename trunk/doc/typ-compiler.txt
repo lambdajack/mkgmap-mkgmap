@@ -19,7 +19,7 @@ and might change the character representations of the Strings to those in a diff
 set/encoding.
 Also they make assumptions about the chars used to represent colours in icons and might change them.
 
-These produce file formats that differ from each other and have variations to the specification that is presented here.  These variations will be supported as they are discovered as long as they do not conflict with each other, but are not listed here for clarity. In particular the files produced by [http://www.pinns.co.uk/osm/ostyp.html TYPWiz] and [http://opheliat.free.fr/michel40/ TYPViewer] are supported.
+These produce file formats that differ from each other and have variations to the specification that is presented here.  These variations will be supported as they are discovered as long as they do not conflict with each other, but are not listed here for clarity. In particular the files produced by [http://www.pinns.co.uk/osm/ostyp.html TYPWiz] and [https://sites.google.com/site/sherco40/ TYPViewer] are supported.
 
 == The [_id] section ==
 
