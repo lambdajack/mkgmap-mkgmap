@@ -204,7 +204,7 @@ public class RoadNetwork {
 		double reverseDirectBearing = 0;
 		if (directLength > 0){
 			// bearing on rhumb line is a constant, so we can simply reverse
-			reverseDirectBearing += 180; // RouteArc will normalise
+			reverseDirectBearing = forwardDirectBearing + 180; // RouteArc will normalise
 		}
 		RouteArc reverseArc = new RouteArc(roadDef,
 						   node2, node1,
