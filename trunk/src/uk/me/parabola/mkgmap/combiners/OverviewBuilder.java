@@ -82,7 +82,8 @@ public class OverviewBuilder implements Combiner {
 		if (hgtPath != null && demDist != null && !"0".equals(demDist.trim())) {
 			demProps = new EnhancedProperties(args.getProperties());
 			demProps.setProperty("dem-dists", demDist);
-		}				
+			demProps.setProperty("order-by-decreasing-area", "no");
+		}
 	}
 
 	public void onMapEnd(FileInfo finfo) {
