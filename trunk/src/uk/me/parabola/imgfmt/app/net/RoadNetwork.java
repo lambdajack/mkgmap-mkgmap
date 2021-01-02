@@ -240,22 +240,26 @@ public class RoadNetwork {
 			return;
 		assert centers.isEmpty() : "already subdivided into centers";
 
-		// sort nodes by NodeGroup 
 		List<RouteNode> nodeList = new ArrayList<>(nodes.values());
 		nodes.clear(); // return to GC
-		for (int group = 0; group <= 4; group++){
-			NOD1Part nod1 = new NOD1Part();
-			int n = 0;
+
+		nodeList.forEach(this::performChecks);
+
+		// first add all nodes without arcs (they always come first in Garmin maps)
+		NOD1Part nod1 = new NOD1Part();
+		nodeList.stream().filter(node -> node.getArcs().isEmpty()).forEach(nod1::addNode);
+		centers.addAll(nod1.subdivide());
+		nodeList.removeIf(node -> node.getArcs().isEmpty());
+
+		// group remaining nodes by NodeGroup
+		for (int group = 0; group <= 4; group++) {
+			nod1 = new NOD1Part();
 			for (RouteNode node : nodeList) {
 				if (node.getGroup() == group) {
-					performChecks(node);
-
 					nod1.addNode(node);
-					n++;
 				}
 			}
-			if (n > 0)
-				centers.addAll(nod1.subdivide());
+			centers.addAll(nod1.subdivide());
 		}
 	}
 

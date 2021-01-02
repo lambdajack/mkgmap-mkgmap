@@ -208,6 +208,10 @@ public class RouteNode implements Comparable<RouteNode> {
 
 		writer.put1u(0);  // will be overwritten later
 		flags |= (nodeClass & MAX_DEST_CLASS_MASK); // max. road class of any outgoing road
+		if (flags == 0) {
+			// avoids possible case that low flag and flags are both 0 when node has no arcs
+			flags |= F_LARGE_OFFSETS; 
+		}
 		writer.put1u(flags);
 
 		if (haveLargeOffsets()) {

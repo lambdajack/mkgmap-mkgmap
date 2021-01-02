@@ -266,7 +266,9 @@ public class NOD1Part {
 		List<RouteCenter> centers = new LinkedList<>();
 
 		if (satisfiesConstraints()) {
-			centers.add(this.toRouteCenter());
+			if (nodesSize > 0) {
+				centers.add(this.toRouteCenter());
+			}
 			return centers;
 		}
 
