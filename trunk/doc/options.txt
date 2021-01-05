@@ -165,7 +165,7 @@ tags using the style file:
   mkgmap:street
   mkgmap:housenumber
   mkgmap:phone
-  (mkgmap:is_in - used by location-autofill=is_in)
+  (mkgmap:is_in - used by --location-autofill=is_in)
 </pre>
 : If the index is created from previously compiled .img files, then the
 same code page and sorting options (e.g. --code-page, --latin1) must
@@ -206,7 +206,7 @@ It may list 'Rueben Brookins Road' if that is in the map.
 
 ;--mdr7-excl=name[,name...]
 :	Specify words which should be omitted from the road index.
-It was added before option road-name-config and is probably no longer needed.
+It was developed before option --road-name-config and is probably no longer needed.
 :	Example usage: --mdr7-excl="Road, Street, Weg"
 
 ;--mdr7-del=name[,name...]
@@ -277,7 +277,7 @@ This directory can be used as --bounds parameter with mkgmap.
 ;--location-autofill=[option1,[option2]]
 : 	Controls how the address fields for country, region, city and zip info
 are gathered automatically if the fields are not set by using the special
-mkgmap address tags (e.g. mkgmap:city - see option index).
+mkgmap address tags (e.g. mkgmap:city - see option --index).
 Warning: automatic assignment of address fields is somehow a best guess.
 :;is_in
 ::     The is_in tag is analysed for country and region information.
@@ -332,11 +332,11 @@ The hard coded default is empty.
 :	See also option --overview-dem-dist.
 
 ;--remove-ovm-work-files
-:   If overview-levels is used, mkgmap creates one additional file
+:   If --overview-levels is used, mkgmap creates one additional file
 with the prefix ovm_ for each map (*.img) file.
 These files are used to create the overview map.
 With option --remove-ovm-work-files=true the files are removed
-after the overview map was created. The default is to keep the files.
+after the overview map is created. The default is to keep the files.
 
 === Style options ===
 
@@ -368,13 +368,13 @@ This can then be used in rules like:
 : landuse=farmland & mkgmap:option:light=true {delete landuse}
 
 ;--list-styles
-: 	List the available styles. If this option is preceded by a style-file
-option then it lists the styles available within that file.
+: 	List the available styles. If this option is preceded by a --style-file
+option then it lists the styles available within that file or folder.
 
 ;--check-styles
 : 	Perform some checks on the available styles. If this option is
-preceded by a style-file option then it checks the styles
-available within that file. If it is also preceded by the style
+preceded by a --style-file option then it checks the styles
+available within that file. If it is also preceded by the --style
 option it will only check that style.
 
 ;--levels=level:resolution[,level:resolution...]
@@ -608,6 +608,15 @@ and that no more than one connecting highway joins at each node.
 : 	Check that roundabout flare roads point in the correct
 direction, are one-way and don't extend too far.
 
+;--max-flare-length-ratio=NUM
+: 	When checking flare roads, ignore roads whose length is
+greater than NUM (an integer) times the distance between the
+nodes on the roundabout that the flare roads connect to. Using
+this option with a value of at least 5 will cut down the
+number of legitimate roads that are flagged as flare road
+problems. Default value is 0 (disabled) because it's not a
+completely reliable heuristic.
+
 ;--check-routing-island-len=INTEGER
 : 	Routing islands are small road networks which are not connected to other
 roads. A typical case is a footway that is not connected to the main road
@@ -626,15 +635,6 @@ country border the island is ignored, as it may be connected to other roads in
 a different tile.
 :	See also option --add-boundary-nodes-at-admin-boundaries.
 : This option seems to cause routing problems in BaseCamp.
-
-;--max-flare-length-ratio=NUM
-: 	When checking flare roads, ignore roads whose length is
-greater than NUM (an integer) times the distance between the
-nodes on the roundabout that the flare roads connect to. Using
-this option with a value of at least 5 will cut down the
-number of legitimate roads that are flagged as flare road
-problems. Default value is 0 (disabled) because it's not a
-completely reliable heuristic.
 
 ;--ignore-turn-restrictions
 : 	When reading OSM files, ignore any "restriction" relations.
@@ -718,14 +718,14 @@ Default: entrance=main;entrance=yes;building=entrance
 ;--precomp-sea=directory|zipfile
 :     Defines the directory or a zip file that contains precompiled sea tiles.
 Sea files in a zip file must be located in the zip file's root directory or in
-a sub directory sea. When this option is defined all natural=coastline tags
-from the input OSM tiles are removed and the precompiled data is used instead.
+a sub directory sea. When this option is defined, natural=coastline tags
+from the input OSM tiles are ignored and the precompiled data is used instead.
 This option can be combined with the generate-sea options multipolygon, polygons
-and land-tag. The coastlinefile option is ignored if precomp-sea is set.
+and land-tag. The --coastlinefile option is ignored if --precomp-sea is set.
 
 ;--coastlinefile=filename[,filename...]
 : 	Defines a comma separated list of files that contain coastline
-data. The coastline data from the input files is removed if
+data. The coastline data from the input files is ignored if
 this option is set. Files must have OSM or PBF file format.	
 
 ;--generate-sea[=ValueList]
