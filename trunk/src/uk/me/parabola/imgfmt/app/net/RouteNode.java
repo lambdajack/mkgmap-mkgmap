@@ -917,6 +917,10 @@ public class RouteNode implements Comparable<RouteNode> {
 		return useCompactDirs;
 	}
 
+	public void setRoadClass(int roadClass) {
+		nodeClass = (byte) roadClass;
+	}
+
 //	/**
 //	 * simple-minded quick test for enabling RouteNode diagnostic for an area of interest.
 //	 * leeway is in degrees

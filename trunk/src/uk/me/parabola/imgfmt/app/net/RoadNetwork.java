@@ -285,6 +285,15 @@ public class RoadNetwork {
 			
 			angleChecker.check(nodes);
 			addArcsToMajorRoads();
+			
+			// set node-class for nodes with no arcs to the highest class of a road referring to that node
+			for (RoadDef rd : roadDefs) {
+				if (rd.getNode().getArcs().isEmpty()) {
+					rd.getNode().setRoadClass(Math.max(rd.getRoadClass(),rd.getNode().getNodeClass()));
+
+				}
+			}
+			
 			splitCenters();
 		}
 		return centers;
