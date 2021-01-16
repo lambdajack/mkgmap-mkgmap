@@ -296,7 +296,7 @@ public class HousenumberIvl {
 			if (source.getRoad() != dest.getRoad())
 				log.info("moving",streetName,dest.getSign(),dest.toBrowseURL(),"from road",dest.getRoad(),"to road",source.getRoad());
 			else 
-				log.info("moving",streetName,dest.getSign(),dest.toBrowseURL(),"from segment",dest.getSegment(),"to ",source.getSegment(),"in road",source.getRoad());
+				log.info("moving",streetName,dest.getSign(),dest.toBrowseURL(),"from segment",dest.getSegment(),"to", source.getSegment(),"in road",source.getRoad());
 		}
 		dest.setRoad(source.getRoad());
 		dest.setSegment(source.getSegment());

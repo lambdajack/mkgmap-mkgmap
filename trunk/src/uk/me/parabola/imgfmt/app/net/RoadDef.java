@@ -36,8 +36,8 @@ import uk.me.parabola.imgfmt.app.lbl.Zip;
 import uk.me.parabola.imgfmt.app.trergn.Polyline;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.CityInfo;
-import uk.me.parabola.mkgmap.general.MapLine;
 import uk.me.parabola.mkgmap.general.ZipCodeInfo;
+import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
 
 /**
  * A road definition.  This ties together all segments of a single road
@@ -186,8 +186,11 @@ public class RoadDef {
 
 	// for diagnostic purposes
 	public String toString() {
+		if (FakeIdGenerator.isFakeId(id))
+			return "(generated way)";
+
 		// assumes id is an OSM id
-		return "(" + "http://www.openstreetmap.org/browse/way/" + id + ")";
+		return "(" + "http://www.openstreetmap.org/way/" + id + ")";
 	}
 
 	public String getName() {
@@ -201,7 +204,6 @@ public class RoadDef {
 	public long getId() {
 		return id;
 	}
-
 
 	/**
 	 * This is for writing to NET1.

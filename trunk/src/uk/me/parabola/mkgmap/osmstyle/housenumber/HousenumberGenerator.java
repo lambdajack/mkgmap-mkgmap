@@ -1303,7 +1303,7 @@ public class HousenumberGenerator {
 			}
 			if (markFarDup) {
 				if (log.isDebugEnabled())
-					log.debug("keeping duplicate numbers assigned to different roads in cluster ", streetName, house1,house2);
+					log.debug("keeping duplicate numbers assigned to different roads in cluster", streetName, house1, house2);
 				house1.setFarDuplicate(true);
 				house2.setFarDuplicate(true);
 				continue;
@@ -1331,7 +1331,7 @@ public class HousenumberGenerator {
 				}
 			} else {
 				if (log.isDebugEnabled())
-					log.debug("keeping duplicate numbers assigned to different roads in cluster ", streetName, house1,house2);
+					log.debug("keeping duplicate numbers assigned to different roads in cluster", streetName, house1, house2);
 				house1.setFarDuplicate(true);
 				house2.setFarDuplicate(true);
 			}

@@ -114,7 +114,7 @@ public class LinePreparer {
 		}
 		if (xBase != xBestBase || yBestBase != yBase && log.isInfoEnabled()) {
 			if (bsSimple.getLength() > bsBest.getLength())
-				log.info("optimizer reduced bit stream byte length from",bsSimple.getLength(),"->",bsBest.getLength(),"(" + (bsSimple.getLength()-bsBest.getLength()), " byte(s)) for",polyline.getClass().getSimpleName(),"with",polyline.getPoints().size(),"points");
+				log.info("optimizer reduced bit stream byte length from",bsSimple.getLength(),"->",bsBest.getLength(),"(" + (bsSimple.getLength()-bsBest.getLength()), "byte(s)) for",polyline.getClass().getSimpleName(),"with",polyline.getPoints().size(),"points");
 			else 
 				log.info("optimizer only reduced bit stream bit length from",bsSimple.getBitPosition(),"->",bsBest.getBitPosition(),"bits for",polyline.getClass().getSimpleName(),"with",polyline.getPoints().size(),"points, using original bit stream");
 		}

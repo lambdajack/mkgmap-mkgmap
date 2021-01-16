@@ -832,7 +832,7 @@ public class BoundaryQuadTree {
 
 			long dt = System.currentTimeMillis()-t1;
 			if (dt  > 1000){
-				log.info(bboxKey, " : makeDistinct required long time:", dt, "ms");
+				log.info(bboxKey, ": makeDistinct required long time:", dt, "ms");
 			}
 			if (DEBUG)
 				printNodes("end", treePath);

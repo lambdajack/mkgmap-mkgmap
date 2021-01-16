@@ -127,7 +127,7 @@ public class MultiPolygonRelation extends Relation {
 				log.debug(" ", role, el.toBrowseURL(), el.toTagString());
 			}
 			if (roleMap.containsKey(el.getId()) )
-				log.warn("repeated member with id ", el.getId(), "in multipolygon relation",this.getId(),"is ignored");
+				log.warn("repeated member with id", el.getId(), "in multipolygon relation", this.getId(), "is ignored");
 			else {
 				addElement(role, el);
 				roleMap.put(el.getId(), role);
@@ -1794,14 +1794,14 @@ public class MultiPolygonRelation extends Relation {
 		// => log the start and end points
 		
 		for (Way orgWay : fakeWay.getOriginalWays()) {
-			log.log(logLevel, " Way",orgWay.getId(),"is composed of other artificial ways. Details:");
-			log.log(logLevel, "  Start:",orgWay.getFirstPoint().toOSMURL());
+			log.log(logLevel, "Way", orgWay.getId(), "is composed of other artificial ways. Details:");
+			log.log(logLevel, " Start:", orgWay.getFirstPoint().toOSMURL());
 			if (orgWay.hasEqualEndPoints()) {
 				// the way is closed so start and end are equal - log the point in the middle of the way
 				int mid = orgWay.getPoints().size()/2;
-				log.log(logLevel, "  Mid:  ",orgWay.getPoints().get(mid).toOSMURL());
+				log.log(logLevel, " Mid:  ", orgWay.getPoints().get(mid).toOSMURL());
 			} else {
-				log.log(logLevel, "  End:  ",orgWay.getLastPoint().toOSMURL());
+				log.log(logLevel, " End:  ", orgWay.getLastPoint().toOSMURL());
 			}
 		}		
 	}

@@ -502,7 +502,8 @@ public class RoadNetwork {
 		}
 		List<RouteArc> fromArcs = fn.getDirectArcsTo(firstViaNode, grr.getFromWayId()); 
 		if (fromArcs.isEmpty()){
-			log.error(sourceDesc, "can't locate arc from 'from' node ",fromId,"to 'via' node",firstViaId,"on way",grr.getFromWayId());
+			log.error(sourceDesc, "can't locate arc from 'from' node", fromId, "to 'via' node", firstViaId, "on way",
+					grr.getFromWayId());
 			return 0;
 		}
 		
@@ -564,7 +565,8 @@ public class RoadNetwork {
 			toArcs = angleMap.get(bestAngle);
 		}
 		if (toArcs.isEmpty()){
-			log.error(sourceDesc, "can't locate arc from 'via' node ",lastViaId,"to 'to' node",toId,"on way",grr.getToWayId());
+			log.error(sourceDesc, "can't locate arc from 'via' node", lastViaId, "to 'to' node", toId, "on way",
+					grr.getToWayId());
 			return 0;
 		}
 		
@@ -691,7 +693,7 @@ public class RoadNetwork {
 
 		// double check
 		if (indexes[0] != arcLists.get(0).size())
-			log.error(sourceDesc, " failed to generate all possible paths");
+			log.error(sourceDesc, "failed to generate all possible paths");
 		log.info(sourceDesc, "added",added,"route restriction(s) to img file");
 		return added;
 	}

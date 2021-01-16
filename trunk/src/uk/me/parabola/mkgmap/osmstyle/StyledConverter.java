@@ -953,7 +953,7 @@ public class StyledConverter implements OsmConverter {
 		log.info("Found", numRoads, "roads",
 				numDriveOnLeftRoads, "in drive-on-left country,",
 				numDriveOnRightRoads, "in drive-on-right country, and",
-				numDriveOnSideUnknown, " with unknown country");
+				numDriveOnSideUnknown, "with unknown country");
 		if (numDriveOnLeftRoads> 0 &&  numDriveOnRightRoads > 0)
 			log.error("Attention: Tile contains both drive-on-left (" + numDriveOnLeftRoads + 
 					") and drive-on-right roads (" + numDriveOnRightRoads + ")");

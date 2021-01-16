@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.filters.ShapeMergeFilter;
@@ -170,21 +169,29 @@ public class Way extends Element {
 
 	/**
 	 * A simple representation of this way.
-	 * @return A string with the name and start point
+	 * @return A string with the name, start point and end point
 	 */
 	public String toString() {
+		StringBuilder sb = new StringBuilder(super.toString());
+		if (getName() != null) {
+			sb.append(' ');
+			sb.append(getName());
+		}
 		if (points.isEmpty())
-			return "Way: empty";
-
-		Coord coord = points.get(0);
-		StringBuilder sb = new StringBuilder();
-		sb.append("WAY: ").append(getId()).append(" ");
-		sb.append(getName());
-		sb.append('(');
-		sb.append(Utils.toDegrees(coord.getLatitude()));
-		sb.append('/');
-		sb.append(Utils.toDegrees(coord.getLongitude()));
-		sb.append(')');
+			sb.append(" empty");
+		else {
+			Coord coord = getFirstPoint();
+			if (hasEqualEndPoints()) {
+				sb.append(" starting and ending at ");
+				sb.append(coord.toDegreeString());
+			}
+			else {
+				sb.append(" starting at ");
+				sb.append(coord.toDegreeString());
+				sb.append(" and ending at ");
+				sb.append(getLastPoint().toDegreeString());
+			}
+		}
 		sb.append(' ');
 		sb.append(toTagString());
 		return sb.toString();

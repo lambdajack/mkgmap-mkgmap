@@ -99,7 +99,7 @@ public class HGTList {
 					continue;
 				Matcher m = hgtPattern.matcher(strLine);
 				if (!m.matches()) {
-					log.error("don't know how to handle ", strLine);
+					log.error("don't know how to handle", strLine);
 					continue;
 				}
 				try {

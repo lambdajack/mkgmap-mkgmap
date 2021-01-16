@@ -422,7 +422,7 @@ public class WrongAngleFixer {
 					Coord p = points.get(i);
 					if (p.isToRemove()) {
 						if (pass >= maxPass - 1) {
-							log.warn("removed point in last pass. Way", way.getBasicLogInformation(), p.toDegreeString());
+							log.warn("removed point in last pass.", way.getBasicLogInformation(), p.toDegreeString());
 						}
 						points.remove(i);
 						anotherPassRequired = true;
@@ -446,7 +446,7 @@ public class WrongAngleFixer {
 					}
 					p = replacement;
 					if (pass >= maxPass - 1) {
-						log.warn("changed point in last pass. Way", way.getBasicLogInformation(), p.toDegreeString());
+						log.warn("changed point in last pass.", way.getBasicLogInformation(), p.toDegreeString());
 					}
 					// replace point in way
 					points.set(i, p);
@@ -497,7 +497,7 @@ public class WrongAngleFixer {
 				if (log.isInfoEnabled())
 					log.info("  Way " + way.getTag("name") + " (" + way.toBrowseURL() + ") has less than 2 points - deleting it");
 				if (!cw.isRoad() && !waysThatMapToOnePoint.contains(way.getId())) {
-					log.warn("non-routable way ", way.getId(), "was removed");
+					log.warn("non-routable way", way.getId(), "was removed");
 				}
 				
 				if (cw.isRoad())
@@ -685,8 +685,8 @@ public class WrongAngleFixer {
 					continue;
 				}
 				if (log.isDebugEnabled()) {
-					log.debug("removing obsolete point on almost straight segment in way ", way.toBrowseURL(), "at",
-							cm.toOSMURL());
+					log.debug("removing obsolete point on almost straight segment in", way.getBasicLogInformation(), "at",
+							cm.toDegreeString());
 				}
 				if (DEBUG_PATH != null) {
 					obsoletePoints.add(cm);

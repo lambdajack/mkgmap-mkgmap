@@ -789,7 +789,7 @@ public class MapBuilder implements Configurable {
 					Subdivision parent = srcDivPair.getSubdiv();
 					Subdivision div = makeSubdivision(map, parent, area, zoom);
 					if (log.isDebugEnabled())
-						log.debug("ADD parent-subdiv", parent, srcDivPair.getSource(), ", z=", zoom, " new=", div);
+						log.debug("ADD parent-subdiv", parent, srcDivPair.getSource(), ", z=", zoom, "new=", div);
 					nextList.add(new SourceSubdiv(area, div));
 				}
 				if (!nextList.isEmpty()) {

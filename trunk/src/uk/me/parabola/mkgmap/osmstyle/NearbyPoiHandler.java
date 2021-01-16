@@ -37,7 +37,6 @@ import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.MapPoint;
-import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
 import uk.me.parabola.mkgmap.reader.osm.GType;
 import uk.me.parabola.mkgmap.reader.osm.Node;
 import uk.me.parabola.util.EnhancedProperties;
@@ -401,7 +400,7 @@ public class NearbyPoiHandler {
 		for (MapPoint mp : biggestCloud) {
 			if (mp != bestPoint) {
 				double dist = mp.getLocation().getDisplayedCoord().distance(bestPoint.getLocation().getDisplayedCoord());
-				log.info(String.format("Removed nearby (<= %d m)", (long) Math.ceil(dist)), getLogInfo(mp));
+				log.info(String.format("Removed", getLogInfo(mp), "nearby (<= %d m)", (long) Math.ceil(dist)), getLogInfo(bestPoint));
 			}
 		}
 	}
@@ -429,12 +428,8 @@ public class NearbyPoiHandler {
 		sb.append('"');
 		Node n = data.get(mp);
 		if (n != null) {
-			sb.append(" for element ");
-			if (FakeIdGenerator.isFakeId(n.getId())) {
-				sb.append("generated from ").append(n.getOrigElement()).append(' ').append(n.getOriginalId());
-			} else {
-				sb.append(n.toBrowseURL()).append(" at ").append(n.getLocation().toOSMURL());
-			}
+			sb.append(" for ");
+			sb.append(n.toString());
 		}
 		return sb.toString();
 	}
