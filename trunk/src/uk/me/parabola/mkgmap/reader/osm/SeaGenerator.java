@@ -987,8 +987,6 @@ public class SeaGenerator implements OsmReadingHooks {
 
 	/**
 	 * Clip the shoreline ways to the bounding box of the map.
-	 * @param shoreline All the the ways making up the coast.
-	 * @param bounds The map bounds.
 	 */
 	private void clipShorlineSegments() {
 		List<Way> toBeRemoved = new ArrayList<>();
