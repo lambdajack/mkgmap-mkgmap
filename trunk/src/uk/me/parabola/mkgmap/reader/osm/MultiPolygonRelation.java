@@ -395,8 +395,8 @@ public class MultiPolygonRelation extends Relation {
 				continue;
 			}
 			
-			Line2D closingLine = new Line2D.Float(p1.getLongitude(), p1
-					.getLatitude(), p2.getLongitude(), p2.getLatitude());
+			Line2D closingLine = new Line2D.Double(p1.getHighPrecLon(), 
+					p1.getHighPrecLat(), p2.getHighPrecLon(), p2.getHighPrecLat());
 
 			boolean intersects = false;
 			Coord lastPoint = null;
@@ -404,8 +404,8 @@ public class MultiPolygonRelation extends Relation {
 			// the closing line can intersect only in one point or complete.
 			// Both isn't interesting for this check
 			for (Coord thisPoint : way.getPoints().subList(1, way.getPoints().size() - 1)) {
-				if (lastPoint != null && closingLine.intersectsLine(lastPoint.getLongitude(), lastPoint.getLatitude(),
-						thisPoint.getLongitude(), thisPoint.getLatitude())) {
+				if (lastPoint != null && closingLine.intersectsLine(lastPoint.getHighPrecLon(), lastPoint.getHighPrecLat(),
+						thisPoint.getHighPrecLon(), thisPoint.getHighPrecLat())) {
 					intersects = true;
 					break;
 				}
