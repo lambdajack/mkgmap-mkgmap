@@ -74,7 +74,6 @@ import uk.me.parabola.imgfmt.app.trergn.Zoom;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.CommandArgs;
 import uk.me.parabola.mkgmap.Version;
-import uk.me.parabola.mkgmap.combiners.OverviewBuilder;
 import uk.me.parabola.mkgmap.filters.BaseFilter;
 import uk.me.parabola.mkgmap.filters.DouglasPeuckerFilter;
 import uk.me.parabola.mkgmap.filters.FilterConfig;
@@ -127,6 +126,9 @@ public class MapBuilder implements Configurable {
 	
 	private static final int MIN_SIZE_LINE = 1;
 
+	private final boolean isOverviewComponent;
+	private final boolean isOverviewCombined;
+
 	private final java.util.Map<MapPoint,POIRecord> poimap = new HashMap<>();
 	private final java.util.Map<MapPoint,City> cityMap = new HashMap<>();
 	private List<String> mapInfo = new ArrayList<>();
@@ -175,10 +177,20 @@ public class MapBuilder implements Configurable {
 	private HGTConverter.InterpolationMethod demInterpolationMethod;
 	
 
-	public MapBuilder() {
+	/**
+	 * Construct a new MapBuilder.
+	 * 
+	 * @param overviewComponent set to {@code true} if the map is a work file that
+	 *                          is later used as input for the OverviewBuilder
+	 * @param overviewCombined  set to {@code true} if the map is the combined
+	 *                          overview map
+	 */
+	public MapBuilder(boolean overviewComponent, boolean overviewCombined) {
 		regionName = null;
 		locationAutofill = Collections.emptySet();
 		locator = new Locator();
+		this.isOverviewComponent = overviewComponent;
+		this.isOverviewCombined = overviewCombined;
 	}
 
 	public void config(EnhancedProperties props) {
@@ -218,7 +230,7 @@ public class MapBuilder implements Configurable {
 			driveOnLeft = false;
 		orderByDecreasingArea = props.getProperty("order-by-decreasing-area", false);
 		pathsToHGT = props.getProperty("dem", null);
-		demDists = parseDemDists(props.getProperty("dem-dists", "-1"));
+		String demDistStr = props.getProperty("dem-dists", "-1");
 		demOutsidePolygonHeight = (short) props.getProperty("dem-outside-polygon", HGTReader.UNDEF);
 		String demPolygonFile = props.getProperty("dem-poly", null);
 		if (demPolygonFile != null) {
@@ -239,6 +251,18 @@ public class MapBuilder implements Configurable {
 			throw new IllegalArgumentException("invalid argument for option dem-interpolation: '" + ipm + 
 					"' supported are 'bilinear', 'bicubic', or 'auto'");
 		}
+
+		if (isOverviewCombined) { // some alternate options, some invalid etc
+			demDistStr = props.getProperty("overview-dem-dist", "-1");
+			mergeLines = true;
+			if (orderByDecreasingArea) {
+				orderByDecreasingArea = false;
+				mergeShapes = false;  // shape order in ovm_ imgs must be preserved to have the effect of above 
+			} else {
+				mergeShapes = true;
+			}
+		}
+		demDists = parseDemDists(demDistStr);
 	}
 
 	private static List<Integer> parseDemDists(String demDists) {
@@ -339,7 +363,7 @@ public class MapBuilder implements Configurable {
 					demArea = demPolygon;
 				}
 			} 
-			if (demArea == null && src instanceof OverviewMapDataSource) {
+			if (demArea == null && isOverviewCombined) {
 				Path2D demPoly = ((OverviewMapDataSource) src).getTileAreaPath();
 				if (demPoly != null) {
 					demArea = new java.awt.geom.Area(demPoly);
@@ -732,12 +756,11 @@ public class MapBuilder implements Configurable {
 		// The top level has to cover the whole map without subdividing, so
 		// do a special check to make sure.
 		LevelInfo[] levels = null;
-		if (src instanceof OverviewMapDataSource) {
-			mergeLines = true;
-			prepShapesForMerge(src.getShapes());
-			mergeShapes = true;
+		if (isOverviewCombined) {
+			if (mergeShapes)
+				prepShapesForMerge(src.getShapes());
 			levels = src.mapLevels();
-		} else if (OverviewBuilder.isOverviewImg(map.getFilename())) {
+		} else if (isOverviewComponent) {
 			levels = src.overviewMapLevels();
 		} else {
 			levels = src.mapLevels();
@@ -967,7 +990,7 @@ public class MapBuilder implements Configurable {
 	private void processInfo(Map map, LoadableMapDataSource src) {
 		// The bounds of the map.
 		map.setBounds(src.getBounds());
-		if (!(src instanceof OverviewMapDataSource))
+		if (!isOverviewCombined)
 			poiDisplayFlags |= TREHeader.POI_FLAG_DETAIL;
 			
 		poiDisplayFlags |= src.getPoiDispFlag();

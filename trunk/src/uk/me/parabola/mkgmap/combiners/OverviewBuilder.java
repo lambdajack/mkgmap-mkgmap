@@ -65,8 +65,9 @@ public class OverviewBuilder implements Combiner {
 	private LevelInfo[] wantedLevels;
 	private Area bounds;
 	private boolean hasBackground;
-	private EnhancedProperties demProps = new EnhancedProperties();
-	
+	private EnhancedProperties overviewProps = new EnhancedProperties();
+	private int maxRes = 16; // we can write a 0x4a polygon for planet in res 16.
+
 	public OverviewBuilder() {
 		this.overviewSource = new OverviewMapDataSource();
 	}
@@ -77,13 +78,7 @@ public class OverviewBuilder implements Combiner {
 		overviewMapnumber = args.get("overview-mapnumber", "63240000");
 		
 		outputDir = args.getOutputDir();
-		String demDist = args.getProperties().getProperty("overview-dem-dist");
-		String hgtPath = args.getProperties().getProperty("dem");
-		if (hgtPath != null && demDist != null && !"0".equals(demDist.trim())) {
-			demProps = new EnhancedProperties(args.getProperties());
-			demProps.setProperty("dem-dists", demDist);
-			demProps.setProperty("order-by-decreasing-area", "no");
-		}
+		overviewProps = new EnhancedProperties(args.getProperties());
 	}
 
 	public void onMapEnd(FileInfo finfo) {
@@ -99,7 +94,12 @@ public class OverviewBuilder implements Combiner {
 
 	public void onFinish() {
 		if (!hasBackground) {
+			List<MapShape> shapes = overviewSource.getShapes();
+			int inx = shapes.size();
 			overviewSource.addBackground();
+			// for --order-by-decreasing-area, need the background to be first:
+			if (shapes.size() > inx) // something was added
+				shapes.add(0, shapes.remove(inx));
 		}
 		calcLevels();
 		writeOverviewMap();
@@ -113,31 +113,6 @@ public class OverviewBuilder implements Combiner {
 	}
 
 	private void calcLevels() {
-		int maxRes = 16; // we can write a 0x4a polygon for planet in res 16
-		if (wantedLevels != null)
-			maxRes = wantedLevels[wantedLevels.length-1].getBits();
-		int maxSize = 0xffff << (24 - maxRes);
-		for (MapShape s : overviewSource.getShapes()){
-			if (s.getType() != 0x4a)
-				continue;
-			int maxDimPoly = s.getBounds().getMaxDimension();
-			if (maxDimPoly > maxSize){
-				int oldMaxRes = maxRes; 
-				while (maxDimPoly > maxSize){
-					maxRes--;
-					maxSize = 0xffff << (24 - maxRes);
-				}
-				final String[] name = s.getName().split("\u001d");
-				final String msg = "Tile selection (0x4a) polygon for";
-				final String msg2;
-				if (name.length == 2)
-					msg2 = "tile " + name[1].trim();
-				else 
-					msg2 = s.getBounds().toString(); 
-				log.error(msg, msg2, "cannot be written in level 0 resolution", oldMaxRes + ", using", maxRes, "instead");
-				
-			}
-		}
 		if (wantedLevels == null)
 			setRes(maxRes);
 		else {
@@ -160,6 +135,32 @@ public class OverviewBuilder implements Combiner {
 		}
 	}
 
+ 	/**
+	 * Adjust {@code maxRes} value.
+	 * @param detailTileBounds tile bounds (of ovm_ file)
+	 * @param tileName tile name
+	 */
+	private int checkFixRes(Area detailTileBounds, String tileName) {
+		int newMaxRes = maxRes;
+		int maxSize = 0xffff << (24 - newMaxRes);
+		int maxDimPoly = detailTileBounds.getMaxDimension();
+		if (maxDimPoly > maxSize) {
+			int oldMaxRes = newMaxRes;
+			while (maxDimPoly > maxSize) {
+				newMaxRes--;
+				maxSize = 0xffff << (24 - newMaxRes);
+			}
+			final String msg = "Tile selection (0x4a) polygon for";
+			final String msg2;
+			if (tileName != null)
+				msg2 = "tile " + tileName;
+			else
+				msg2 = detailTileBounds.toString();
+			log.error(msg, msg2, "cannot be written in level 0 resolution", oldMaxRes + ", using", newMaxRes, "instead");
+		}
+		return newMaxRes;
+	}
+
 	/**
 	 * Write out the overview map.
 	 */
@@ -167,7 +168,7 @@ public class OverviewBuilder implements Combiner {
 		if (overviewSource.mapLevels() == null)
 			return;
 		
-		MapBuilder mb = new MapBuilder();
+		MapBuilder mb = new MapBuilder(false, true);
 		mb.setEnableLineCleanFilters(false);
 
 		FileSystemParam params = new FileSystemParam();
@@ -181,12 +182,10 @@ public class OverviewBuilder implements Combiner {
 				codepage = 0; // should not happen
 			}
 			Sort sort = SrtTextReader.sortForCodepage(codepage);
-			Map map = Map.createMap(overviewMapname, outputDir, params, overviewMapnumber, sort);
-			if (!demProps.isEmpty()) {
-				map.config(demProps);
-				mb.config(demProps);
-			}
-			
+			Map map = Map.createMap(overviewMapname, outputDir, params, overviewMapnumber, sort, true);
+			map.config(overviewProps);
+			mb.config(overviewProps);
+
 			if (encodingType != null){
 				map.getLblFile().setEncoder(encodingType, codepage);
 			}
@@ -205,8 +204,6 @@ public class OverviewBuilder implements Combiner {
 	 * @param finfo Information about an individual map.
 	 */
 	private void readFileIntoOverview(FileInfo finfo) throws FileNotFoundException {
-		addMapCoverageArea(finfo);
-
 		MapReader mapReader = null;
 		String filename = finfo.getFilename();
 		if (codepage == null){
@@ -216,7 +213,7 @@ public class OverviewBuilder implements Combiner {
 			System.err.println("WARNING: input file " + filename + " has different code page " + finfo.getCodePage());
 		}
 
-		try{
+		try {
 			mapReader = new MapReader(filename);
 
 			if (encodingType == null){
@@ -262,7 +259,9 @@ public class OverviewBuilder implements Combiner {
 					mapLevels[0] = new LevelInfo(levels[1].getLevel(), levels[1].getResolution());
 				}
 				wantedLevels = mapLevels;
+				maxRes = wantedLevels[wantedLevels.length-1].getBits();
 			}
+			addMapCoverageArea(finfo);
 			if (isOverviewImg(filename)){
 				readPoints(mapReader);
 				readLines(mapReader);
@@ -277,12 +276,11 @@ public class OverviewBuilder implements Combiner {
 
 	/**
 	 * Read the points from the .img file and add them to the overview map.
-	 * We read from the least detailed level (apart from the empty one).
 	 *
 	 * @param mapReader Map reader on the detailed .img file.
 	 */
 	private void readPoints(MapReader mapReader) {
-		Area bounds = overviewSource.getBounds();
+		Area sourceBounds = overviewSource.getBounds();
 		Zoom[] levels = mapReader.getLevels();
 		for (int l = 1; l < levels.length; l++){
 			int min = levels[l].getLevel();
@@ -291,7 +289,7 @@ public class OverviewBuilder implements Combiner {
 			for (Point point: pointList) {
 				if (log.isDebugEnabled())
 					log.debug("got point", point);
-				if (!bounds.contains(point.getLocation())){
+				if (!sourceBounds.contains(point.getLocation())){
 					if (log.isDebugEnabled())
 						log.debug(point, "dropped, is outside of tile boundary");
 					continue;
@@ -312,7 +310,6 @@ public class OverviewBuilder implements Combiner {
 
 	/**
 	 * Read the lines from the .img file and add them to the overview map.
-	 * We read from the least detailed level (apart from the empty one).
 	 *
 	 * @param mapReader Map reader on the detailed .img file.
 	 */
@@ -348,7 +345,6 @@ public class OverviewBuilder implements Combiner {
 
 	/**
 	 * Read the polygons from the .img file and add them to the overview map.
-	 * We read from the least detailed level (apart from the empty one).
 	 *
 	 * @param mapReader Map reader on the detailed .img file.
 	 */
@@ -389,15 +385,16 @@ public class OverviewBuilder implements Combiner {
 	 * Add an area that shows the area covered by a detailed map.  This can
 	 * be an arbitary shape, although at the current time we only support
 	 * rectangles.
+	 * Also build up full overview path (not ness. rectangle) for DEM
+	 * and check/decrease resolution if necessary
 	 *
 	 * @param finfo Information about a detail map.
 	 */
 	private void addMapCoverageArea(FileInfo finfo) {
-		Area bounds = finfo.getBounds();
-		List<Coord> points = bounds.toCoords();
-		for (Coord co: points){
-			overviewSource.addToBounds(co);
-		}
+		List<Coord> points = finfo.getBounds().toCoords();
+		points.forEach(overviewSource::addToBounds);
+		overviewSource.addToTileAreaPath(points);
+		maxRes = checkFixRes(bounds, finfo.getMapname());
 		// Create the tile coverage rectangle
 		MapShape bg = new MapShape();
 		bg.setType(0x4a);
@@ -438,7 +435,7 @@ public class OverviewBuilder implements Combiner {
 		String fname = new File(name).getName();
 		if (fname.startsWith(OVERVIEW_PREFIX))
 			return fname.substring(OVERVIEW_PREFIX.length());
-		else return name;
+		return name;
 	}
 	
 	private static List<String> creMsgList(List<String[]> msgs){

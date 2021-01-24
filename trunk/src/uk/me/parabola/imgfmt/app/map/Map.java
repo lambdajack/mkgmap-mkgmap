@@ -70,6 +70,7 @@ public class Map implements InternalFiles, Configurable {
 	private NETFile netFile;
 	private NODFile nodFile;
 	private DEMFile demFile;
+	private boolean isOverviewCombined;
 
 	// Use createMap() or loadMap() instead of creating a map directly.
 	private Map() {
@@ -89,7 +90,7 @@ public class Map implements InternalFiles, Configurable {
 	 * @throws FileNotWritableException If the file cannot
 	 * be opened for write.
 	 */
-	public static Map createMap(String mapname, String outputdir, FileSystemParam params, String mapnumber, Sort sort)
+	public static Map createMap(String mapname, String outputdir, FileSystemParam params, String mapnumber, Sort sort, boolean overviewCombined)
 			throws FileExistsException, FileNotWritableException
 	{
 		Map m = new Map();
@@ -103,6 +104,7 @@ public class Map implements InternalFiles, Configurable {
 		m.rgnFile = new RGNFile(m.fileSystem.create(mapnumber + ".RGN"));
 		m.treFile = new TREFile(m.fileSystem.create(mapnumber + ".TRE"));
 		m.lblFile = new LBLFile(m.fileSystem.create(mapnumber + ".LBL"), sort);
+		m.isOverviewCombined = overviewCombined;
 
 		int mapid;
 		try {
@@ -118,8 +120,9 @@ public class Map implements InternalFiles, Configurable {
 	}
 
 	public void config(EnhancedProperties props) {
+		boolean isOverviewComponent = OverviewBuilder.isOverviewImg(mapName);
 		// we don't want routing info in the overview map (for now)
-		if (!OverviewBuilder.isOverviewImg(mapName)){
+		if (!isOverviewComponent && !isOverviewCombined) {
 			try {
 				if (props.containsKey("route") || props.containsKey("net") || props.containsKey("housenumbers")) {
 					addNet();
@@ -130,6 +133,11 @@ public class Map implements InternalFiles, Configurable {
 			} catch (FileExistsException e) {
 				log.warn("Could not add NET and/or NOD sections");
 			}
+			// this sets things like draw-priority/transparent/custom
+			// and not relevant to overview maps
+			treFile.config(props);
+		}
+		if (!isOverviewComponent) { // allow dem on final overview but not in the ovm_
 			if (props.containsKey("dem")) {
 				try {
 					addDem();
@@ -138,7 +146,6 @@ public class Map implements InternalFiles, Configurable {
 				}
 			}
 		}
-		treFile.config(props);
 	}
 
 	private void addNet() throws FileExistsException {

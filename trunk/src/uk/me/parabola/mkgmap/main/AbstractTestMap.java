@@ -55,7 +55,7 @@ public abstract class AbstractTestMap {
 
 		Map map;
 		try {
-			map = Map.createMap("32860003", ".", params, "32860003", SrtTextReader.sortForCodepage(1252));
+			map = Map.createMap("32860003", ".", params, "32860003", SrtTextReader.sortForCodepage(1252), false);
 		} catch (FileExistsException e) {
 			throw new ExitException("File exists already", e);
 		} catch (FileNotWritableException e) {
