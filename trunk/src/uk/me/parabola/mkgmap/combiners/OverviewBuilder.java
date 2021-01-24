@@ -391,7 +391,8 @@ public class OverviewBuilder implements Combiner {
 	 * @param finfo Information about a detail map.
 	 */
 	private void addMapCoverageArea(FileInfo finfo) {
-		List<Coord> points = finfo.getBounds().toCoords();
+		Area bounds = finfo.getBounds();
+		List<Coord> points = bounds.toCoords();
 		points.forEach(overviewSource::addToBounds);
 		overviewSource.addToTileAreaPath(points);
 		maxRes = checkFixRes(bounds, finfo.getMapname());
