@@ -137,7 +137,8 @@ public class Map implements InternalFiles, Configurable {
 			// and not relevant to overview maps
 			treFile.config(props);
 		}
-		if (!isOverviewComponent) { // allow dem on final overview but not in the ovm_
+		if (!isOverviewComponent && (!isOverviewCombined || props.containsKey("overview-dem-dist"))) {
+			// allow dem on detail tiles but not final overview unless has own option. Never in the ovm_
 			if (props.containsKey("dem")) {
 				try {
 					addDem();
