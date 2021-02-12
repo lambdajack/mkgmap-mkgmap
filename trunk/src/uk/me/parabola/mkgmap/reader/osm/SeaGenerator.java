@@ -70,6 +70,7 @@ public class SeaGenerator implements OsmReadingHooks {
 	private double fbRatio = 0.5d;
 	private int fbThreshold = 20;
 	private boolean fbDebug;
+	private boolean checkCoastline = false;
 
 	private ElementSaver saver;
 
@@ -187,6 +188,8 @@ public class SeaGenerator implements OsmReadingHooks {
 					fbThreshold = (int) Double.parseDouble(option.substring("fbthres=".length()));
 				} else if ("fbdebug".equals(option)) {
 					fbDebug = true;
+				} else if ("check".equals(option)) {
+					checkCoastline = true;
 				} else {
 					printOptionHelpMsg(forPrecompSea, option);
 				}
@@ -286,6 +289,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		System.err.println("  land-tag=TAG=VAL    tag to use for land polygons (default natural=land)");
 		if (forPrecompSea)
 			return;
+
 		System.err.println("  no-sea-sectors      disable use of \"sea sectors\"");
 		System.err.println("  extend-sea-sectors  extend coastline to reach border");
 		System.err.println("  close-gaps=NUM      close gaps in coastline that are less than this distance (metres)");
@@ -293,8 +297,9 @@ public class SeaGenerator implements OsmReadingHooks {
 		System.err.println("  fbgap=NUM           points closer to the coastline are ignored for flood blocking (default 40)");
 		System.err.println("  fbthres=NUM         min points contained in a polygon to be flood blocked (default 20)");
 		System.err.println("  fbratio=NUM         min ratio (points/area size) for flood blocking (default 0.5)");
+		System.err.println("  check               check for sea polygons within sea and land within land");
 	}
-	
+
     /**
      * Read the index from stream and populate the index grid. 
      * @param fileStream already opened stream
@@ -586,7 +591,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		List<Way> seaWays = new ArrayList<>();
 		
 		// get the index with assignment key => sea/land/tilename
-		distinctTilesOnly = loadLandAndSee(landWays, seaWays);
+		distinctTilesOnly = loadLandAndSea(landWays, seaWays);
  		
 		if (generateSeaUsingMP || distinctTilesOnly) {
 			// when using multipolygons use the data directly from the precomp files 
@@ -602,9 +607,9 @@ public class SeaGenerator implements OsmReadingHooks {
 		}
 		
 		// check if the land tags need to be changed
-		boolean changeLadTag = landTag != null && ("natural".equals(landTag[0]) && !"land".equals(landTag[1]));
+		boolean changeLandTag = landTag != null && ("natural".equals(landTag[0]) && !"land".equals(landTag[1]));
 		for (Way w : landWays) {
-			if (changeLadTag) {
+			if (changeLandTag) {
 				w.deleteTag("natural");
 				w.addTag(landTag[0], landTag[1]);
 			}
@@ -613,7 +618,7 @@ public class SeaGenerator implements OsmReadingHooks {
 	}
 
 	 
-	private boolean loadLandAndSee(List<Way> landWays, List<Way> seaWays) {
+	private boolean loadLandAndSea(List<Way> landWays, List<Way> seaWays) {
 		boolean distinctTilesOnly = true;
 		List<java.awt.geom.Area> seaOnlyAreas = new ArrayList<>();
 		List<java.awt.geom.Area> landOnlyAreas = new ArrayList<>();
@@ -760,7 +765,7 @@ public class SeaGenerator implements OsmReadingHooks {
 			} else if (w.getPoints().size() > 1){
 				beginMap.put(w.getFirstPoint(), w);
 			} else {
-				log.info("Discarding coastline way", w.getId(), "because it consists of less than 2 points");
+				log.info("Discarding coastline", w.getBasicLogInformation(), "because it consists of less than 2 points");
 			}
 		}
 		segments.clear();
@@ -785,7 +790,7 @@ public class SeaGenerator implements OsmReadingHooks {
 
 	// merge the ways and maintain maps and list
 	private static void merge(Map<Coord, Way> beginMap, List<Way> joined, Way w1, Way w2) {
-		log.info("merging: ", beginMap.size(), w1.getId(), w2.getId());
+		log.info("merging:", beginMap.size(), w1.getBasicLogInformation(), "with", w2.getBasicLogInformation());
 		Way wm;
 		if (FakeIdGenerator.isFakeId(w1.getId())) {
 			wm = w1;
@@ -831,7 +836,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		}
 		
 		// clip all shoreline segments
-		clipShorlineSegments();
+		clipShorelineSegments();
 
 		if(shoreline.isEmpty()) {
 			// No sea required
@@ -877,18 +882,18 @@ public class SeaGenerator implements OsmReadingHooks {
 
 			createLandPolygons(hitMap);
 			processIslands(seaRelation);
-			processAntiIslands(true);
+			checkIslands(true);
 
 			Way sea = createSeaWay(true);
 
-			log.info("sea: ", sea);
+			log.info("sea:", sea);
 			saver.addWay(sea);
 			if(seaRelation != null)
 				seaRelation.addElement("outer", sea);
 		} else {
 			// background is land
 			createSeaPolygons(hitMap);
-			processAntiIslands(false);
+			checkIslands(false);
 			
 			// generate a land polygon so that the tile's
 			// background colour will match the land colour on the
@@ -931,26 +936,63 @@ public class SeaGenerator implements OsmReadingHooks {
 	}
 
 	/**
-	 * These are bits of sea have been generated as polygons.
-	 * if the tile is also sea based, then check that surrounded by an island
-	 * @param seaRelation if set, add as inner
+	 * Check whether land is enclosed in land or sea within sea.
 	 * @param seaBased true if the tile is also sea with land [multi-]polygons
 	 */
-	private void processAntiIslands(boolean seaBased) {
+	private void checkIslands(boolean seaBased) {
+		if (!checkCoastline)
+			return;
+		
 		for (Way ai : antiIslands) {
-			if (seaBased) {
-				boolean containedByLand = false;
-				for (Way i : islands) {
-					if (i.containsPointsOf(ai)) {
-						containedByLand = true;
-						break;
-					}
-				}
-				if (!containedByLand) {
-					// found an anti-island that is not contained by land
-					log.warn("inner sea", ai , "is surrounded by water");
+			Way containingLand = null;
+			Way containingSea = null;
+			for (Way i : islands) {
+				if (i.containsPointsOf(ai) && ((containingLand == null) || (containingLand.containsPointsOf(i))))
+					containingLand = i;
+			}
+			for (Way ai2 : antiIslands) {
+				if ((ai2 != ai) && ai2.containsPointsOf(ai) && ((containingSea == null) || containingSea.containsPointsOf(ai2)))
+					containingSea = ai2;
+			}
+			if ((containingSea != null) && (containingLand != null)) {
+				if (containingSea.containsPointsOf(containingLand))
+					containingSea = null;
+				else if (containingLand.containsPointsOf(containingSea))
+					containingLand = null;
+				else {
+					log.warn("inner sea", ai, "is surrounded by both water", containingSea, "and land", containingLand);
+					containingSea = null;
+					containingLand = null;
 				}
 			}
+			if ((containingLand == null) && (seaBased || (containingSea != null)))
+				log.error("inner sea", ai, "is surrounded by water", containingSea == null ? "" : containingSea);
+		}
+		
+		for (Way i : islands) {
+			Way containingLand = null;
+			Way containingSea = null;
+			for (Way ai : antiIslands) {
+				if (ai.containsPointsOf(i) && ((containingSea == null) || containingSea.containsPointsOf(ai)))
+					containingSea = ai;
+			}
+			for (Way i2 : islands) {
+				if ((i2 != i) && i2.containsPointsOf(i) && ((containingLand == null) || (containingLand.containsPointsOf(i2))))
+					containingLand = i2;
+			}
+			if ((containingSea != null) && (containingLand != null)) {
+				if (containingSea.containsPointsOf(containingLand))
+					containingSea = null;
+				else if (containingLand.containsPointsOf(containingSea))
+					containingLand = null;
+				else {
+					log.warn("island", i, "is surrounded by both water", containingSea, "and land", containingLand);
+					containingSea = null;
+					containingLand = null;
+				}
+			}
+			if ((containingSea == null) && (containingLand != null))
+				log.error("island", i, "is surrounded by land", containingLand);
 		}
 	}
 
@@ -988,7 +1030,7 @@ public class SeaGenerator implements OsmReadingHooks {
 	/**
 	 * Clip the shoreline ways to the bounding box of the map.
 	 */
-	private void clipShorlineSegments() {
+	private void clipShorelineSegments() {
 		List<Way> toBeRemoved = new ArrayList<>();
 		List<Way> toBeAdded = new ArrayList<>();
 		for (Way segment : shoreline) {
@@ -1110,7 +1152,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		if (Way.clockwise(w.getPoints()))
 			addAsSea(w);
 		else
-		    	addAsLand(w);
+			addAsLand(w);
 	}
 
 	private void addAsSea(Way w) {
@@ -1136,9 +1178,10 @@ public class SeaGenerator implements OsmReadingHooks {
 	private void createLandPolygons(NavigableMap<Double, Way> hitMap) {
 		NavigableSet<Double> hits = hitMap.navigableKeySet();
 		while (!hits.isEmpty()) {
-			Way w = new Way(FakeIdGenerator.makeFakeId());
 			Double hFirst = hits.first();
 			Double hStart = hFirst, hEnd;
+			Way w = new Way(hitMap.get(hFirst).getOriginalId());
+			w.markAsGeneratedFrom(hitMap.get(hFirst));
 			boolean finished = false;
 			do {
 				Way segment = hitMap.get(hStart);
@@ -1174,9 +1217,10 @@ public class SeaGenerator implements OsmReadingHooks {
 	private void createSeaPolygons(NavigableMap<Double, Way> hitMap) {
 		NavigableSet<Double> hits = hitMap.navigableKeySet();
 		while (!hits.isEmpty()) {
-			Way w = new Way(FakeIdGenerator.makeFakeId());
 			Double hFirst = hits.last();
 			Double hStart = hFirst, hEnd;
+			Way w = new Way(hitMap.get(hFirst).getOriginalId());
+			w.markAsGeneratedFrom(hitMap.get(hFirst));
 			boolean finished = false;
 			do {
 				Way segment = hitMap.get(hStart);
@@ -1245,7 +1289,7 @@ public class SeaGenerator implements OsmReadingHooks {
 			Double hEnd = getEdgeHit(tileBounds, pEnd);
 			if (hStart != null && hEnd != null) {
 				// nice case: both ends touch the boundary 
-				log.debug("hits: ", hStart, hEnd);
+				log.debug("hits:", hStart, hEnd);
 				hitMap.put(hStart, w);
 				hitMap.put(hEnd, null); // put this for verifyHits which then deletes it
 			} else {
@@ -1268,7 +1312,8 @@ public class SeaGenerator implements OsmReadingHooks {
 				 */
 				List<Coord> points = w.getPoints();
 				if (allowSeaSectors) {
-					Way seaOrLand = new Way(FakeIdGenerator.makeFakeId());
+					Way seaOrLand = new Way(w.getOriginalId());
+					seaOrLand.markAsGeneratedFrom(w);
 					seaOrLand.getPoints().addAll(points);
 					int startLat = pStart.getHighPrecLat();
 					int startLon = pStart.getHighPrecLon();
@@ -1291,7 +1336,7 @@ public class SeaGenerator implements OsmReadingHooks {
 					}
 					seaOrLand.addPoint(Coord.makeHighPrecCoord(cornerLat, cornerLon));
 					seaOrLand.addPoint(pStart);
-					log.info("seaSector: ", generateSeaBackground, startLatIsCorner, Way.clockwise(seaOrLand.getPoints()), seaOrLand);
+					log.info("seaSector:", generateSeaBackground, startLatIsCorner, Way.clockwise(seaOrLand.getPoints()), seaOrLand.getBasicLogInformation());
 				} else if (extendSeaSectors) {
 					// join to nearest tile border
 					if (null == hStart) {
@@ -1302,7 +1347,7 @@ public class SeaGenerator implements OsmReadingHooks {
 						hEnd = getNextEdgeHit(tileBounds, pEnd);
 						w.getPoints().add(getPoint(tileBounds, hEnd));
 					}
-					log.debug("hits (second try): ", hStart, hEnd);
+					log.debug("hits (second try):", hStart, hEnd);
 					hitMap.put(hStart, w);
 					hitMap.put(hEnd, null); // put this for verifyHits which then deletes it
 				} else {
@@ -1328,6 +1373,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		NavigableSet<Double> hits = hitMap.navigableKeySet();
 		Iterator<Double> iter = hits.iterator();
 		int lastStatus = 0, thisStatus;
+		Double lastHit = 0.0;
 		while (iter.hasNext()) {
 			Double aHit = iter.next();
 			Way segment = hitMap.get(aHit);
@@ -1339,14 +1385,15 @@ public class SeaGenerator implements OsmReadingHooks {
 				thisStatus = +1;
 			}
 			if (thisStatus == lastStatus)
-				log.error("Adjacent coastlines hit tile edge in same direction", aHit, segment);
+				log.error("Adjacent coastlines hit tile edge in same direction at", getPoint(tileBounds, lastHit).toDegreeString(), "and", getPoint(tileBounds, aHit).toDegreeString(), segment);
 			lastStatus = thisStatus;
+			lastHit = aHit;
 		}
 	}
 
 	// create the point where the shoreline hits the sea bounds
 	private static Coord getPoint(Area a, double edgePos) {
-		log.info("getPoint: ", a, edgePos);
+		log.info("getPoint:", a, edgePos);
 		int aMinLongHP = a.getMinLong() << Coord.DELTA_SHIFT;
 		int aMaxLongHP = a.getMaxLong() << Coord.DELTA_SHIFT;
 		int aMinLatHP = a.getMinLat() << Coord.DELTA_SHIFT;

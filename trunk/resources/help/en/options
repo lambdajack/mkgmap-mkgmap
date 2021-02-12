@@ -754,6 +754,9 @@ filename
     fbdebug
         switches on the debugging of the flood blocker generates GPX files for
         each polygon checked by the flood blocker
+    check
+        check whether the coastline data contains sea within sea or land within
+        land
 
 --make-poi-index
     Generate a POI index in each map tile. Probably not used by modern devices,
