@@ -194,8 +194,8 @@ filename
         - On the PC, when zooming out, the name 'Rue de la Concorde' is only
         rendered as 'Concorde'.
         - The index for road names only contains the important part of the
-        name. You can search for road name Conc to find road names like 'Rue de
-        la Concorde'. However, a search for 'Rue' will not list 'Rue de la
+        name. You can search for road name 'Conc' to find road names like 'Rue
+        de la Concorde'. However, a search for 'Rue' will not list 'Rue de la
         Concorde' or 'Rue du Moulin'. It may list 'Rueben Brookins Road' if
         that is in the map.
 
@@ -527,6 +527,85 @@ filename
     resolution used for the single tiles, good compromises are somewhere
     between 55000 and 276160.
 
+=== Sea Processing options ===
+
+If your map contains sea areas then you will need to use --generate-sea to
+generate the sea areas from the OSM files or --precomp-sea to use separate
+precompiled sea tiles.
+
+--generate-sea[=VALUE[,...]]
+    Generate sea polygons. When this option is specified, the sea is generated
+    using a multipolygon unless the polygons value is specified. The coastline
+    data can be read from the input OSM files, separate files containing
+    coastline data if --coastlinefile is specified or precompiled sea data if
+    --precomp-sea is specified. The VALUEs are as follows:
+    multipolygon
+        generate the sea using a multipolygon. This is the default value.
+    polygons | no-mp
+        don't generate the sea using a multipolygon - instead, generate a
+        background sea polygon plus individual land polygons (see land-tag
+        value).
+    land-tag=TAG=VAL
+        tag to use for land polygons (default natural=land) created by the
+        polygons option. For these to be visible in the Garmin map, a suitable
+        land polygon type must be defined in the TYP file (suggested type is
+        0x010100 or 0x54), the polygon must have a higher drawing level than
+        the sea polygon type and the style file must link TAG=VAL to the land
+        polygon type defined in the TYP file.
+    no-sea-sectors
+        disable the generation of "sea sectors" when the coastline fails to
+        reach the tile's boundary. Under some conditions land sectors are
+        generated instead and these use land-tag.
+    extend-sea-sectors
+        Adds a point so coastline reaches the nearest tile boundary. This
+        implies no-sea-sectors.
+    close-gaps=NUM
+        close gaps in coastline that are less than this distance (metres)
+    floodblocker
+        enable the flood blocker that prevents a flooding of land by checking
+        if the sea polygons contain streets (works only with multipolygon
+        processing)
+    fbgap=NUM
+        flood blocker gap in metre (default 40) points that are closer to the
+        sea polygon do not block
+    fbthres=NUM
+        at least so many highway points must be contained in a sea polygon so
+        that it may be removed by the flood blocker (default 20)
+    fbratio=NUM
+        only sea polygons with a higher ratio (highway points x 100000 /
+        polygon size) are removed (default 0.5)
+    fbdebug
+        switches on the debugging of the flood blocker generates GPX files for
+        each polygon checked by the flood blocker
+    check
+        check whether the coastline data contains sea within sea or land within
+        land
+
+--coastlinefile=filename[,filename...]
+    Defines a comma separated list of OSM or PBF format files that contain
+    coastline data to be used instead of extracting the data from the input
+    files. If you specify --coastlinefile you must also specify --generate-sea.
+
+--precomp-sea=directory|zipfile
+    Defines the directory or a zip file that contains precompiled sea data. Sea
+    data in a zip file must be located in the zip file's root directory or in a
+    sub directory named sea. When this option is defined, natural=coastline
+    tags from the input OSM files are ignored, the --coastlinefile option is
+    ignored and the precompiled data is used instead. You can use the
+    multipolygon, polygon and land-tag values of the --generate-sea option in
+    conjunction with --precomp-sea to control the way the sea is built, but the
+    other --generate-sea values are not available. If --generate-sea is not
+    specified, the --precomp-sea option sets --generate-sea=multipolygon.
+
+You can download procompiled sea data for the whole world from the mkgmap
+download page at http://www.mkgmap.org.uk/download/mkgmap.html
+
+If you want to build your own precompiled sea data, you will need to build a
+copy of mkgmap from the source, with the optional PrecompSeaGenerator source
+included. This generator uses ESRI shapefiles as its source data. It is not
+included in the standard mkgmap build due to its dependencies on external
+libraries.
+
 === Miscellaneous options ===
 
 --max-jobs[=integer]
@@ -663,25 +742,26 @@ filename
     --dead-ends=fixme,FIXME.
 
 --add-pois-to-lines[=all|start|end|mid|other]
-    Generate POIs for lines. The option expects a comma separated list that
-    specifies the positions for which are POI should be generated. The default
-    is to create all possible POI. For each line (must not be closed) POIs are
-    created at several points of the line. Each POI is tagged with the same
-    tags like the line and additional tags added by mkgmap:
-    mkgmap:line2poi=true and tag mkgmap:line2poitype having the following
-    values:
+    Generate nodes that may be used by the points file to produce POIs at
+    various positions of non-closed lines. The option expects a comma separated
+    list that specifies the positions at which a node should be generated. The
+    default is all. If the inner or all values are used, a lot of points are
+    likely to be generated and these are likely to need filtering in the points
+    file. Each node is tagged with the same tags as the line plus mkgmap
+    generated tags mkgmap:line2poi=true and mkgmap:line2poitype with one of the
+    following values:
     * start - The first point of the line
     * end - The last point of the line
     * inner - Each point of the line except the first and the last
-    * mid - The middle point
+    * mid - An extra point added by mkgmap at the middle of the line
 
 --add-pois-to-areas
-    Generate a POI for each polygon and multipolygon. The POIs are created
-    after the relation style but before the other styles are applied. Each POI
-    is tagged with the same tags of the area/multipolygon. Additionally the tag
-    mkgmap:area2poi=true is set so that it is possible to use that information
-    in the points style file. Artificial polygons created by multipolyon
-    processing are not used. The POIs are created at the following positions:
+    For each polygon and multipolygon, generate a node that may be used by the
+    points file to produce a POI. The nodes are created after the relation
+    style but before the other styles are applied. Each node is tagged with the
+    same tags of the area/multipolygon, plus mkgmap generated tag
+    mkgmap:area2poi=true. Artificial polygons created by multipolyon processing
+    are not used. The nodes are created at the following positions:
     polygons: the first rule that applies of:
         * the first node tagged with a tag defined by the
         --pois-to-areas-placement option
@@ -691,72 +771,14 @@ filename
         * the centre point of the biggest area
 
 --pois-to-areas-placement=tag=value[;tag=value...]
-    A POI is placed at the first node of the polygon tagged with the first
+    A node is placed at the first node of the polygon tagged with the first
     tag/value pair. If none of the nodes are tagged with the first tag-value
     pair the first node tagged with the second tag-value pair is used and so
-    on. If none of the tag-value pairs matches or the taglist is empty, the
-    centre of the polygon is used. It is possible to define wildcards for tag
-    values like entrance=*.
+    on. If none of the tag-value pairs matches or no tag-value pairs are
+    supplied, the centre of the polygon is used. It is possible to define
+    wildcards for tag values like entrance=*.
 
      Default: entrance=main;entrance=yes;building=entrance
-
---precomp-sea=directory|zipfile
-    Defines the directory or a zip file that contains precompiled sea tiles.
-    Sea files in a zip file must be located in the zip file's root directory or
-    in a sub directory sea. When this option is defined, natural=coastline tags
-    from the input OSM tiles are ignored and the precompiled data is used
-    instead. This option can be combined with the generate-sea options
-    multipolygon, polygons and land-tag. The --coastlinefile option is ignored
-    if --precomp-sea is set.
-
---coastlinefile=filename[,filename...]
-    Defines a comma separated list of files that contain coastline data. The
-    coastline data from the input files is ignored if this option is set. Files
-    must have OSM or PBF file format.
-
---generate-sea[=ValueList]
-    Generate sea polygons. ValueList is a comma separated list of values:
-    multipolygon
-        generate the sea using a multipolygon (the default behaviour so this
-        really doesn't need to be specified).
-    polygons | no-mp
-        don't generate the sea using a multipolygon - instead, generate a
-        background sea polygon plus individual land polygons with land-tag (see
-        following).
-    no-sea-sectors
-        disable the generation of "sea sectors" when the coastline fails to
-        reach the tile's boundary. Under some conditions land sectors are
-        generated instead and these use land-tag.
-    extend-sea-sectors
-        Adds a point so coastline reaches the nearest tile boundary. This
-        implies no-sea-sectors.
-    land-tag=TAG=VAL
-        tag to use for land polygons (default natural=land). If not using
-        "multipolygon" or land sectors are being generated, then a suitable
-        land polygon type needs to be defined in the style file (suggested type
-        is 0x010100 or 0x54) and the polygon must be defined in the TYP file as
-        having a higher drawing level than the sea polygon type.
-    close-gaps=NUM
-        close gaps in coastline that are less than this distance (metres)
-    floodblocker
-        enable the flood blocker that prevents a flooding of land by checking
-        if the sea polygons contain streets (works only with multipolygon
-        processing)
-    fbgap=NUM
-        flood blocker gap in metre (default 40) points that are closer to the
-        sea polygon do not block
-    fbthres=NUM
-        at least so many highway points must be contained in a sea polygon so
-        that it may be removed by the flood blocker (default 20)
-    fbratio=NUM
-        only sea polygons with a higher ratio (highway points x 100000 /
-        polygon size) are removed (default 0.5)
-    fbdebug
-        switches on the debugging of the flood blocker generates GPX files for
-        each polygon checked by the flood blocker
-    check
-        check whether the coastline data contains sea within sea or land within
-        land
 
 --make-poi-index
     Generate a POI index in each map tile. Probably not used by modern devices,
