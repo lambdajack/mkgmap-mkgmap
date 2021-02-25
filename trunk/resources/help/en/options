@@ -606,6 +606,174 @@ included. This generator uses ESRI shapefiles as its source data. It is not
 included in the standard mkgmap build due to its dependencies on external
 libraries.
 
+=== Diagnostic options ===
+
+--check-roundabouts
+    Check that roundabouts have the expected direction (clockwise when vehicles
+    drive on the left). Roundabouts that are complete loops and have the wrong
+    direction are reversed. Also checks that the roundabouts do not fork or
+    overlap other roundabouts and that no more than one connecting highway
+    joins at each node.
+
+--check-roundabout-flares
+    Check that roundabout flare roads point in the correct direction, are
+    one-way and don't extend too far.
+
+--max-flare-length-ratio=NUM
+    When checking flare roads, ignore roads whose length is greater than NUM
+    (an integer) times the distance between the nodes on the roundabout that
+    the flare roads connect to. Using this option with a value of at least 5
+    will cut down the number of legitimate roads that are flagged as flare road
+    problems. Default value is 0 (disabled) because it's not a completely
+    reliable heuristic.
+
+--check-routing-island-len=INTEGER
+    Routing islands are small road networks which are not connected to other
+    roads. A typical case is a footway that is not connected to the main road
+    network, or a small set of ways on the inner courtyard of a large building.
+    These islands can cause problems if you try to calculate a route and the
+    GPS selects a point on the island as a start or end. It will fail to
+    calculate the route even if a major road is only a few steps away. If this
+    option is specified, then mkgmap will detect these islands. If the value is
+    set to zero, mkgmap will simply report the islands (you will need to set
+    uk.me.parabola.imgfmt.app.net.RoadNetwork.level=INFO to activate logging of
+    the message). If the value is greater than zero, mkgmap will mark islands
+    with a total length less than the specified value in metres as not
+    routable. Reasonable values are 500 or higher. The default is for the check
+    to not take place. If any of the roads forming the island touches a tile
+    boundary or a country border the island is ignored, as it may be connected
+    to other roads in a different tile.
+    See also option --add-boundary-nodes-at-admin-boundaries.
+    This option seems to cause routing problems in BaseCamp.
+
+--report-similar-arcs
+    Issue a warning when more than one arc connects two nodes and the ways that
+    the arcs are derived from contain identical points. It doesn't make sense
+    to use this option at the same time as using the cycleway creating options.
+
+--report-dead-ends=LEVEL
+    Set the dead end road warning level. The value of LEVEL (which defaults to
+    1 if this option is not specified) determines those roads to report:
+    * 0 = none
+    * 1 = report on connected one-way roads that go nowhere
+    * 2 = also report on individual one-way roads that go nowhere.
+
+--dead-ends[=key[=value]][,key[=value]...]
+    Specify a list of keys and optional values that should be considered to be
+    valid dead ends when found on the node at the end of a way. Ways with nodes
+    matching any of the items in the list will not be reported as dead ends. If
+    no value or * is specified for value then presence of the key alone will
+    cause the dead end check to be skipped. The default is
+    --dead-ends=fixme,FIXME.
+
+=== POI options ===
+
+--add-pois-to-lines[=all|start|end|mid|other]
+    Generate nodes that may be used by the points file to produce POIs at
+    various positions of non-closed lines. The option expects a comma separated
+    list that specifies the positions at which a node should be generated. The
+    default is all. If the inner or all values are used, a lot of points are
+    likely to be generated and these are likely to need filtering in the points
+    file. Each node is tagged with the same tags as the line plus mkgmap
+    generated tags mkgmap:line2poi=true and mkgmap:line2poitype with one of the
+    following values:
+    * start - The first point of the line
+    * end - The last point of the line
+    * inner - Each point of the line except the first and the last
+    * mid - An extra point added by mkgmap at the middle of the line
+
+--add-pois-to-areas
+    For each polygon and multipolygon, generate a node that may be used by the
+    points file to produce a POI. The nodes are created after the relation
+    style but before the other styles are applied. Each node is tagged with the
+    same tags of the area/multipolygon, plus mkgmap generated tag
+    mkgmap:area2poi=true. Artificial polygons created by multipolyon processing
+    are not used. The nodes are created at the following positions:
+    polygons: the first rule that applies of:
+        * the first node tagged with a tag defined by the
+        --pois-to-areas-placement option
+        * the centre point
+    multipolygons: the first rule that applies of:
+        * the node with role=label
+        * the centre point of the biggest area
+
+--pois-to-areas-placement=tag=value[;tag=value...]
+    A node is placed at the first node of the polygon tagged with the first
+    tag/value pair. If none of the nodes are tagged with the first tag-value
+    pair the first node tagged with the second tag-value pair is used and so
+    on. If none of the tag-value pairs matches or no tag-value pairs are
+    supplied, the centre of the polygon is used. It is possible to define
+    wildcards for tag values like entrance=*.
+
+     Default: entrance=main;entrance=yes;building=entrance
+
+--make-poi-index
+    Generate a POI index in each map tile. Probably not used by modern devices,
+    but still supported.
+
+--poi-address
+    Enable address / phone information to POIs. Address info is read according
+    to the "Karlsruhe" tagging schema. Automatic filling of missing information
+    could be enabled using the --location-autofill option. Default is enabled,
+    use --no-poi-address to disable.
+
+--nearby-poi-rules=type[-type][/all|named|unnamed]:distance[:delete-poi|delete-name][,...]
+    Defines a set of rules to follow when a POI is near to another of the same
+    type and label. Each rule consists of three parts separated by colons. The
+    first two parts must be provided; the last part can be defaulted.
+
+    The first part of the rule is a Garmin POI type code or range of type
+    codes, with an optional suffix; it determines when the rule is triggered. A
+    type code may be specified in decimal or hexadecimal (e.g. 0x2c0b). A rule
+    is triggered when processing a POI if the type code of the POI matches the
+    rule type or falls within the range of type codes, providing there is also
+    a match in the POI name and the first part suffix. If the suffix is '/all'
+    (the default) then the match is only made on the type. If the suffix is
+    '/named' then the rule is only triggered if the POI has a name. If the
+    suffix is '/unnamed' then the rule is only triggered if the POI has no
+    name. A wildcard of an asterisk character may be used to match any type
+    code. The wildcard may also be combined with a suffix to allow separate
+    processing of named and unnamed POIs.
+
+    The second part of the rule is the distance in metres which an already
+    processed POI must be within for it to be considered to be nearby and hence
+    trigger the action part of the rule.
+
+    The third part of the rule is the action part and provides two options:
+
+        delete-poi - the POIS are considered to be duplicates and the duplicate
+        is deleted. This is the default.
+        delete-name - the POIS are not duplicates, but only a single name needs
+        to be displayed.
+
+    Wildcard rules are only applied if no other rule is applicable.
+
+    For example:
+    --nearby-poi-rules=*/named:10,*/unnamed:25,0x2f17-0x2f1f:30
+
+    This has the following effect:
+    If no other rule applies, a POI with the same name and type and within 10m
+    of one already processed will be deleted.
+    If no other rule applies, a POI having no name and of the same type and
+    within 25m of one already processed will be deleted.
+    A POI of any type between 0x2f17 and 0x2f1f that is within 30m of another
+    POI with the same type will be deleted.
+
+    If you have a lot of rules, the --nearby-poi-rules-config option is likely
+    to be easier to use.
+
+    Note: a POI that matches another in type, name and exact location is always
+    considered a duplicate and deleted.
+
+--nearby-poi-rules-config=filename
+    Allows you to specify the nearby POI rules as described in the
+    --nearby-poi-rules option in a configuration file. The format of the rules
+    is the same as in --nearby-poi-rules, except that each rule is specified on
+    a separate line, rather than separated by commas. This format makes it
+    easier to view and maintain the rules when you have a lot of them. If you
+    just have one or two rules, it is simpler to use the --nearby-poi-rules
+    option.
+
 === Miscellaneous options ===
 
 --max-jobs[=integer]
@@ -662,44 +830,6 @@ libraries.
     the rest. Use the --bounds option to make sure that the detection finds the
     correct country.
 
---check-roundabouts
-    Check that roundabouts have the expected direction (clockwise when vehicles
-    drive on the left). Roundabouts that are complete loops and have the wrong
-    direction are reversed. Also checks that the roundabouts do not fork or
-    overlap other roundabouts and that no more than one connecting highway
-    joins at each node.
-
---check-roundabout-flares
-    Check that roundabout flare roads point in the correct direction, are
-    one-way and don't extend too far.
-
---max-flare-length-ratio=NUM
-    When checking flare roads, ignore roads whose length is greater than NUM
-    (an integer) times the distance between the nodes on the roundabout that
-    the flare roads connect to. Using this option with a value of at least 5
-    will cut down the number of legitimate roads that are flagged as flare road
-    problems. Default value is 0 (disabled) because it's not a completely
-    reliable heuristic.
-
---check-routing-island-len=INTEGER
-    Routing islands are small road networks which are not connected to other
-    roads. A typical case is a footway that is not connected to the main road
-    network, or a small set of ways on the inner courtyard of a large building.
-    These islands can cause problems if you try to calculate a route and the
-    GPS selects a point on the island as a start or end. It will fail to
-    calculate the route even if a major road is only a few steps away. If this
-    option is specified, then mkgmap will detect these islands. If the value is
-    set to zero, mkgmap will simply report the islands (you will need to set
-    uk.me.parabola.imgfmt.app.net.RoadNetwork.level=INFO to activate logging of
-    the message). If the value is greater than zero, mkgmap will mark islands
-    with a total length less than the specified value in metres as not
-    routable. Reasonable values are 500 or higher. The default is for the check
-    to not take place. If any of the roads forming the island touches a tile
-    boundary or a country border the island is ignored, as it may be connected
-    to other roads in a different tile.
-    See also option --add-boundary-nodes-at-admin-boundaries.
-    This option seems to cause routing problems in BaseCamp.
-
 --ignore-turn-restrictions
     When reading OSM files, ignore any "restriction" relations.
 
@@ -720,69 +850,6 @@ libraries.
     for other cyclists. This allows the optimisation of sharp angles at
     junctions of those roads. Don't use with the default style as that is a
     general style!
-
---report-similar-arcs
-    Issue a warning when more than one arc connects two nodes and the ways that
-    the arcs are derived from contain identical points. It doesn't make sense
-    to use this option at the same time as using the cycleway creating options.
-
---report-dead-ends=LEVEL
-    Set the dead end road warning level. The value of LEVEL (which defaults to
-    1 if this option is not specified) determines those roads to report:
-    * 0 = none
-    * 1 = report on connected one-way roads that go nowhere
-    * 2 = also report on individual one-way roads that go nowhere.
-
---dead-ends[=key[=value]][,key[=value]...]
-    Specify a list of keys and optional values that should be considered to be
-    valid dead ends when found on the node at the end of a way. Ways with nodes
-    matching any of the items in the list will not be reported as dead ends. If
-    no value or * is specified for value then presence of the key alone will
-    cause the dead end check to be skipped. The default is
-    --dead-ends=fixme,FIXME.
-
---add-pois-to-lines[=all|start|end|mid|other]
-    Generate nodes that may be used by the points file to produce POIs at
-    various positions of non-closed lines. The option expects a comma separated
-    list that specifies the positions at which a node should be generated. The
-    default is all. If the inner or all values are used, a lot of points are
-    likely to be generated and these are likely to need filtering in the points
-    file. Each node is tagged with the same tags as the line plus mkgmap
-    generated tags mkgmap:line2poi=true and mkgmap:line2poitype with one of the
-    following values:
-    * start - The first point of the line
-    * end - The last point of the line
-    * inner - Each point of the line except the first and the last
-    * mid - An extra point added by mkgmap at the middle of the line
-
---add-pois-to-areas
-    For each polygon and multipolygon, generate a node that may be used by the
-    points file to produce a POI. The nodes are created after the relation
-    style but before the other styles are applied. Each node is tagged with the
-    same tags of the area/multipolygon, plus mkgmap generated tag
-    mkgmap:area2poi=true. Artificial polygons created by multipolyon processing
-    are not used. The nodes are created at the following positions:
-    polygons: the first rule that applies of:
-        * the first node tagged with a tag defined by the
-        --pois-to-areas-placement option
-        * the centre point
-    multipolygons: the first rule that applies of:
-        * the node with role=label
-        * the centre point of the biggest area
-
---pois-to-areas-placement=tag=value[;tag=value...]
-    A node is placed at the first node of the polygon tagged with the first
-    tag/value pair. If none of the nodes are tagged with the first tag-value
-    pair the first node tagged with the second tag-value pair is used and so
-    on. If none of the tag-value pairs matches or no tag-value pairs are
-    supplied, the centre of the polygon is used. It is possible to define
-    wildcards for tag values like entrance=*.
-
-     Default: entrance=main;entrance=yes;building=entrance
-
---make-poi-index
-    Generate a POI index in each map tile. Probably not used by modern devices,
-    but still supported.
 
 --nsis
     Write a .nsi file that can be used with the Nullsoft Scriptable Install
@@ -889,12 +956,6 @@ libraries.
     already installed on the PC and therefore there is no need to read it from
     the device.
 
---poi-address
-    Enable address / phone information to POIs. Address info is read according
-    to the "Karlsruhe" tagging schema. Automatic filling of missing information
-    could be enabled using the --location-autofill option. Default is enabled,
-    use --no-poi-address to disable.
-
 --verbose
     Makes some operations more verbose. Mostly used with --list-styles.
 
@@ -903,63 +964,6 @@ libraries.
     features are rendered over larger ones (assuming the draw order is equal).
     The tag mkgmap:drawLevel can be used to override the natural area of a
     polygon, so forcing changes to the rendering order.
-
---nearby-poi-rules=type[-type][/all|named|unnamed]:distance[:delete-poi|delete-name][,...]
-    Defines a set of rules to follow when a POI is near to another of the same
-    type and label. Each rule consists of three parts separated by colons. The
-    first two parts must be provided; the last part can be defaulted.
-
-    The first part of the rule is a Garmin POI type code or range of type
-    codes, with an optional suffix; it determines when the rule is triggered. A
-    type code may be specified in decimal or hexadecimal (e.g. 0x2c0b). A rule
-    is triggered when processing a POI if the type code of the POI matches the
-    rule type or falls within the range of type codes, providing there is also
-    a match in the POI name and the first part suffix. If the suffix is '/all'
-    (the default) then the match is only made on the type. If the suffix is
-    '/named' then the rule is only triggered if the POI has a name. If the
-    suffix is '/unnamed' then the rule is only triggered if the POI has no
-    name. A wildcard of an asterisk character may be used to match any type
-    code. The wildcard may also be combined with a suffix to allow separate
-    processing of named and unnamed POIs.
-
-    The second part of the rule is the distance in metres which an already
-    processed POI must be within for it to be considered to be nearby and hence
-    trigger the action part of the rule.
-
-    The third part of the rule is the action part and provides two options:
-
-        delete-poi - the POIS are considered to be duplicates and the duplicate
-        is deleted. This is the default.
-        delete-name - the POIS are not duplicates, but only a single name needs
-        to be displayed.
-
-    Wildcard rules are only applied if no other rule is applicable.
-
-    For example:
-    --nearby-poi-rules=*/named:10,*/unnamed:25,0x2f17-0x2f1f:30
-
-    This has the following effect:
-    If no other rule applies, a POI with the same name and type and within 10m
-    of one already processed will be deleted.
-    If no other rule applies, a POI having no name and of the same type and
-    within 25m of one already processed will be deleted.
-    A POI of any type between 0x2f17 and 0x2f1f that is within 30m of another
-    POI with the same type will be deleted.
-
-    If you have a lot of rules, the --nearby-poi-rules-config option is likely
-    to be easier to use.
-
-    Note: a POI that matches another in type, name and exact location is always
-    considered a duplicate and deleted.
-
---nearby-poi-rules-config=filename
-    Allows you to specify the nearby POI rules as described in the
-    --nearby-poi-rules option in a configuration file. The format of the rules
-    is the same as in --nearby-poi-rules, except that each rule is specified on
-    a separate line, rather than separated by commas. This format makes it
-    easier to view and maintain the rules when you have a lot of them. If you
-    just have one or two rules, it is simpler to use the --nearby-poi-rules
-    option.
 
 === Deprecated and Obsolete Options ===
 
