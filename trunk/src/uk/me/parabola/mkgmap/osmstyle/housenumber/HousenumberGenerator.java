@@ -638,7 +638,7 @@ public class HousenumberGenerator {
 			while (iter.hasNext()) {
 				HousenumberRoad hnr = iter.next();
 				
-				List<HousenumberMatch> lostHouses = hnr.checkStreetName(road2HousenumberRoadMap, nodeId2RoadLists);
+				List<HousenumberMatch> lostHouses = hnr.checkStreetName(nodeId2RoadLists);
 				for (HousenumberMatch house : lostHouses) {
 					MapRoad r = house.getRoad();
 					if (r != null) {
@@ -1181,7 +1181,7 @@ public class HousenumberGenerator {
 				if (house.getRoad() != null && !house.isIgnored()) {
 					HousenumberRoad hnr = road2HousenumberRoadMap.get(house.getRoad());
 					if (hnr == null) {
-						log.error("internal error: found no housenumber road for interpolated house",house.toBrowseURL());
+						log.error("internal error: found no housenumber road for interpolated house number", house.getHousenumber(),house.toBrowseURL());
 						continue;
 					}
 					hnr.addHouse(house);
