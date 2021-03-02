@@ -891,17 +891,14 @@ public class HousenumberGenerator {
 				MapRoad[] uncheckedRoads = new MapRoad[houses.length];
 				for (int i = 0 ; i < houses.length; i++)
 					uncheckedRoads[i] = houses[i].getRoad();
-				isOK = info.checkRoads();
+				info.checkRoads();
 				// check if houses are assigned to different roads now
 				houses = info.getHouseNodes();
 				for (int i = 0 ; i < houses.length; i++) {
 					if (houses[i].getRoad() != uncheckedRoads[i]) {
 						initialHousesForRoads.removeMapping(uncheckedRoads[i], houses[i]);
-						if (!houses[i].isIgnored())
+						if (!houses[i].isIgnored()) {
 							initialHousesForRoads.add(houses[i].getRoad(), houses[i]);
-						else {
-							if (!isOK)
-								log.info("housenumber is assigned to different road after checking addr:interpolation way which turned out to be invalid",houses[i],info );
 						}
 					}
 				}
@@ -1157,8 +1154,7 @@ public class HousenumberGenerator {
 				if (dupCount > 0) {
 					log.warn("addr:interpolation way",streetName,hivl,"is ignored, it produces",dupCount,"duplicate number(s) too far from existing nodes");
 					badIvls.add(hivl);
-				}
-				else {
+				} else {
 					housesToAdd.put(hivl, interpolatedHouses);
 					for (HousenumberMatch hnm : interpolatedHouses)
 						interpolatedNumbers.put(hnm.getHousenumber(), hnm);
