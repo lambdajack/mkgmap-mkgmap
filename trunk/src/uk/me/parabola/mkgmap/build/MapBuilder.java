@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.MapFailedException;
+import uk.me.parabola.imgfmt.MapTooBigException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
@@ -374,9 +375,10 @@ public class MapBuilder implements Configurable {
 			long t2 = System.currentTimeMillis();
 			log.info("DEM file calculation for", map.getFilename(), "took", (t2 - t1), "ms");
 			demFile.write();
+		} catch (MapTooBigException e) {
+			throw new MapTooBigException(e.getMaxAllowedSize(), "The DEM section of the map or tile is too big.", "Try increasing the DEM distance."); 
 		} catch (MapFailedException e) {
-			log.error("exception while creating DEM file", e.getMessage());
-			throw new MapFailedException("DEM"); 
+			throw new MapFailedException("Error creating DEM File. " + e.getMessage()); 
 		}
 	}
 
@@ -501,7 +503,7 @@ public class MapBuilder implements Configurable {
 		}
 
 	}
-	
+
 	private void processRoads(Map map, MapDataSource src) {
 		LBLFile lbl = map.getLblFile();
 		MapPoint searchPoint = new MapPoint();

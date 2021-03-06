@@ -149,11 +149,8 @@ public class Main implements ArgumentProcessor {
 				System.err.println("Try using the mkgmap --max-jobs option with a value less than " + mm.maxJobs  + " to reduce the memory requirement, or use the Java -Xmx option to increase the available heap memory.");
 			else
 				System.err.println("Try using the Java -Xmx option to increase the available heap memory.");
-		} catch (MapFailedException e) {
+		} catch (MapFailedException | ExitException e) {
 			// one of the combiners failed
-			e.printStackTrace();
-			++numExitExceptions;
-		} catch (ExitException e) {
 			++numExitExceptions;
 			String message = e.getMessage();
 			Throwable cause = e.getCause();
@@ -565,11 +562,12 @@ public class Main implements ArgumentProcessor {
 				} catch (MapFailedException mfe) {
 					numMapFailedExceptions++;
 					setProgramRC(-1);
-				} catch (Throwable t) {
-					t.printStackTrace();
 					if (!args.getProperties().getProperty("keep-going", false)) {
 						throw new ExitException("Exiting - if you want to carry on regardless, use the --keep-going option");
 					}
+				} catch (Exception e) {
+					e.printStackTrace();
+					throw new ExitException("Exiting due to unexpected error");
 				}
 			}
 		}

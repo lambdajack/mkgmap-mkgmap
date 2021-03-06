@@ -59,7 +59,7 @@ public class NODFile extends ImgFile {
 	public NODFile(ImgChannel chan, boolean write) {
 		setHeader(nodHeader);
 		if (write) {
-			setWriter(new BufferedImgFileWriter(chan));
+			setWriter(new BufferedImgFileWriter(chan, "NOD"));
 			position(NODHeader.HEADER_LEN);
 		} else {
 			setReader(new BufferedImgFileReader(chan));

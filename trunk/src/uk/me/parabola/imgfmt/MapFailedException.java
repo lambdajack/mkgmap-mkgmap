@@ -12,8 +12,6 @@
  */
 package uk.me.parabola.imgfmt;
 
-import uk.me.parabola.log.Logger;
-
 /**
  * Used for cases where the current map has failed to compile, but the error
  * is expected to be specific to the map (eg it is too big etc).  When this
@@ -26,10 +24,10 @@ import uk.me.parabola.log.Logger;
  * @author Steve Ratcliffe
  */
 public class MapFailedException extends RuntimeException {
-	private static final Logger log = Logger.getLogger(MapFailedException.class);
 
 	/**
-	 * Constructs a new runtime exception with the specified detail message.
+	 * Constructs a new runtime exception with the calling method name
+	 * appended to the detail message.
 	 * The cause is not initialized, and may subsequently be initialized by a
 	 * call to {@link #initCause}.
 	 *
@@ -37,13 +35,13 @@ public class MapFailedException extends RuntimeException {
 	 *                later retrieval by the {@link #getMessage()} method.
 	 */
 	public MapFailedException(String message) {
-		super(message);
-		log(message);
+		super(buildMessage(message));
 	}
 
 	/**
-	 * Constructs a new runtime exception with the specified detail message and
-	 * cause.  <p>Note that the detail message associated with
+	 * Constructs a new runtime exception with the calling method name
+	 * appended to the detail message and includes the cause.
+	 * <p>Note that the detail message associated with
 	 * <code>cause</code> is <i>not</i> automatically incorporated in
 	 * this runtime exception's detail message.
 	 *
@@ -53,23 +51,32 @@ public class MapFailedException extends RuntimeException {
 	 *                {@link #getCause()} method).  (A <tt>null</tt> value is
 	 *                permitted, and indicates that the cause is nonexistent or
 	 *                unknown.)
-	 * @since 1.4
 	 */
 	public MapFailedException(String message, Throwable cause) {
-		super(message, cause);
-		log(message);
+		super(buildMessage(message), cause);
 	}
 	
-	private static void log(String message){
+	/**
+	 * Constructs a new runtime exception without appending the calling method
+	 * name to the detail message. The calling method can be appended by the
+	 * derived class if required.
+	 */
+	protected MapFailedException(String message, boolean ignored) {
+		super(message);
+	}
+
+	/**
+	 * Appends the calling method name to the supplied message.
+	 */
+	protected static String buildMessage(String message) {
 		String thrownBy = "";
 		try{
 			StackTraceElement[] stackTraceElements = Thread.currentThread().getStackTrace();
 			int callerPosInStack = 3; 
 			String[] caller = stackTraceElements[callerPosInStack].getClassName().split("\\.");
-			thrownBy = "(thrown in " + caller[caller.length-1]+ "." +stackTraceElements[callerPosInStack].getMethodName() + "()) ";
+			thrownBy = " (thrown in " + caller[caller.length-1]+ "." +stackTraceElements[callerPosInStack].getMethodName() + "())";
 		} catch(Exception e){
-			log.info(e);
 		}
-		log.error(thrownBy + message);
+		return message + thrownBy;
 	}
 }

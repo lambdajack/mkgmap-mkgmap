@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import uk.me.parabola.imgfmt.MapFailedException;
+import uk.me.parabola.imgfmt.MapTooBigException;
 import uk.me.parabola.imgfmt.Sized;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.imgfmt.sys.FileLink;
@@ -41,6 +41,7 @@ public class BufferedImgFileWriter implements ImgFileWriter, Sized {
 	private static final int GUARD_SIZE = KBYTE;
 
 	private final ImgChannel chan;
+	private final String subfile;
 
 	private ByteBuffer buf = ByteBuffer.allocate(INIT_SIZE);
 	private int bufferSize = INIT_SIZE;
@@ -55,8 +56,9 @@ public class BufferedImgFileWriter implements ImgFileWriter, Sized {
 	// The maximum allowed file size.
 	private long maxAllowedSize = 0xffffff;
 
-	public BufferedImgFileWriter(ImgChannel chan) {
+	public BufferedImgFileWriter(ImgChannel chan, String subfile) {
 		this.chan = chan;
+		this.subfile = subfile;
 		buf.order(ByteOrder.LITTLE_ENDIAN);
 		if (chan instanceof FileLink) {
 			((FileLink) chan).link(this, this);
@@ -270,11 +272,9 @@ public class BufferedImgFileWriter implements ImgFileWriter, Sized {
 			while(needed > (bufferSize - GUARD_SIZE))
 				bufferSize += GROW_SIZE;
 			if (bufferSize > maxAllowedSize) {
-				// Previous message was confusing people, although it is difficult to come
-				// up with something that is strictly true in all situations.
-				throw new MapFailedException(
-						"There is not enough room in a single garmin map for all the input data." +
-								" The .osm file should be split into smaller pieces first.");
+				throw new MapTooBigException(maxAllowedSize,
+						"The " + subfile + " section of the map or tile is too big.",
+						"Try splitting the map into smaller tiles or reducing the amount of information included in the map.");
 			}
 			ByteBuffer newb = ByteBuffer.allocate(bufferSize);
 			newb.order(ByteOrder.LITTLE_ENDIAN);

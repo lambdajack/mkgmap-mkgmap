@@ -22,6 +22,7 @@ import uk.me.parabola.imgfmt.FileExistsException;
 import uk.me.parabola.imgfmt.FileNotWritableException;
 import uk.me.parabola.imgfmt.FileSystemParam;
 import uk.me.parabola.imgfmt.MapFailedException;
+import uk.me.parabola.imgfmt.MapTooBigException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
@@ -195,6 +196,10 @@ public class OverviewBuilder implements Combiner {
 			throw new ExitException("Could not create overview map", e);
 		} catch (FileNotWritableException e) {
 			throw new ExitException("Could not write to overview map", e);
+		} catch (MapTooBigException e) {
+			throw new MapTooBigException(e.getMaxAllowedSize(),
+					"The overview map is too big.",
+					"Try reducing the highest overview resolution or reducing the amount of information included in the overview.");
 		}
 	}
 

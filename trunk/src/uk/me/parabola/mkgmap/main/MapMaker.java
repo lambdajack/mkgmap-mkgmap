@@ -120,9 +120,15 @@ public class MapMaker implements MapProcessor {
 			map.close();
 			return outName;
 		} catch (FileExistsException e) {
+			log.error("File exists already");
 			throw new MapFailedException("File exists already", e);
 		} catch (FileNotWritableException e) {
+			log.error("Could not create or write to file");
 			throw new MapFailedException("Could not create or write to file", e);
+		}
+		catch (MapFailedException e) {
+			log.error(e.getMessage()); // make sure the filename is logged
+			throw e;
 		}
 	}
 

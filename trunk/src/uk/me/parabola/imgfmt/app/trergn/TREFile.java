@@ -64,7 +64,7 @@ public class TREFile extends ImgFile implements Configurable {
 
 	public TREFile(ImgChannel chan) {
 		setHeader(header);
-		setWriter(new BufferedImgFileWriter(chan));
+		setWriter(new BufferedImgFileWriter(chan, "TRE"));
 
 		// Position at the start of the writable area.
 		position(header.getHeaderLength());

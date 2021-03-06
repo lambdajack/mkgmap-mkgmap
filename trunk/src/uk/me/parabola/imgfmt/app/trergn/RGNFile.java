@@ -57,7 +57,7 @@ public class RGNFile extends ImgFile {
 	public RGNFile(ImgChannel chan) {
 		setHeader(header);
 
-		setWriter(new BufferedImgFileWriter(chan));
+		setWriter(new BufferedImgFileWriter(chan, "RGN"));
 
 		// Position at the start of the writable area.
 		position(HEADER_LEN);
