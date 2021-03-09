@@ -1301,7 +1301,7 @@ public class MultiPolygonRelation extends Relation {
 			String tagName = tagEntry.getKey();
 			// all tags are style relevant
 			// except: type (for relations), mkgmap:* 
-			boolean isStyleRelevant = !(element instanceof Relation && "typ".equals(tagName))
+			boolean isStyleRelevant = !(element instanceof Relation && "type".equals(tagName))
 					&& !tagName.startsWith("mkgmap:");
 			if (isStyleRelevant) {
 				return true;
