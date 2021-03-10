@@ -241,8 +241,8 @@ public class CommandArgsReader {
 		});
 		try {
 			opts.readOptionFile(filename);
-		} catch (IOException e) {
-			throw new ExitException("Failed to read option file", e);
+		} catch (Exception e) {
+			throw new ExitException("Failed to read option file.", e);
 		}
 	}
 
