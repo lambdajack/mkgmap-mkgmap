@@ -114,7 +114,6 @@ public class MultiPolygonRelation extends Relation {
 
 		setId(other.getId());
 		copyTags(other);
-		this.setTagsIncomplete(other.getTagsIncomplete());
 
 		if (log.isDebugEnabled()) {
 			log.debug("Construct multipolygon", toBrowseURL(), toTagString());
@@ -764,14 +763,13 @@ public class MultiPolygonRelation extends Relation {
 	public void processElements() {
 		log.info("Processing multipolygon", toBrowseURL());
 		
-		List<Way> allWays = getSourceWays();
-		
 		// check if it makes sense to process the mp 
-		if (!isMpProcessable(allWays)) {
+		if (!hasStyleRelevantTags(this)) {
 			log.info("Do not process multipolygon", getId(), "because it has no style relevant tags.");
 			return;
 		}
-
+		
+		List<Way> allWays = getSourceWays();
 		
 		// join all single ways to polygons, try to close ways and remove non closed ways 
 		polygons = joinWays(allWays);
@@ -978,7 +976,7 @@ public class MultiPolygonRelation extends Relation {
 				
 				if (!singularOuterPolygons.isEmpty()) {
 					// handle the tagging 
-					if (currentPolygon.outer && hasStyleRelevantTags(this)) {
+					if (currentPolygon.outer) {
 						// use the tags of the multipolygon
 						for (Way p : singularOuterPolygons) {
 							// overwrite all tags
@@ -1070,13 +1068,6 @@ public class MultiPolygonRelation extends Relation {
 			}
 		}
 
-		if (!hasStyleRelevantTags(this)) {
-			// add tags to the multipolygon that are taken from the outer ways
-			// they may be required by some hooks (e.g. Area2POIHook)
-			for (Entry<String, String> tags : outerTags.entrySet()) {
-				addTag(tags.getKey(), tags.getValue());
-			}
-		}
 		String mpAreaSizeStr = null;
 		if (isAreaSizeCalculated()) {
 			// calculate tag value for mkgmap:cache_area_size only once
@@ -1100,7 +1091,7 @@ public class MultiPolygonRelation extends Relation {
 				
 				// remove the tag from the original way if it has the same value
 				if (tag.getValue().equals(orgOuterWay.getTag(tag.getKey()))) {
-					removeTagsInOrgWays(orgOuterWay, tag.getKey());
+					markTagsForRemovalInOrgWays(orgOuterWay, tag.getKey());
 				}
 			}
 	
@@ -1293,10 +1284,6 @@ public class MultiPolygonRelation extends Relation {
 	 * @return <code>true</code> has style relevant tags
 	 */
 	protected boolean hasStyleRelevantTags(Element element) {
-		if (element instanceof MultiPolygonRelation && ((MultiPolygonRelation) element).getTagsIncomplete()) {
-			return true;
-		}
-		
 		for (Map.Entry<String, String> tagEntry : element.getTagEntryIterator()) {
 			String tagName = tagEntry.getKey();
 			// all tags are style relevant
@@ -1310,29 +1297,6 @@ public class MultiPolygonRelation extends Relation {
 		return false;
 	}
 	
-	/**
-	 * Checks if this mp should be processed or if it is needless to process it
-	 * because there is no result.
-	 * @param ways the list of ways of the mp
-	 * @return <code>true</code> the mp processing will have a result; 
-	 * 		   <code>false</code> the mp processing will fail 
-	 */
-	private boolean isMpProcessable(Collection<Way> ways) {
-		// Check if the multipolygon itself or the member ways have a
-		// tag. If not it does not make sense to process the mp because 
-		// the output will not change anything
-		if (hasStyleRelevantTags(this)) {
-			return true;
-		}
-
-		for (Way w : ways) {
-			if (hasStyleRelevantTags(w)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
 	/**
 	 * Creates a matrix which polygon contains which polygon. A polygon does not
 	 * contain itself.
@@ -1808,13 +1772,9 @@ public class MultiPolygonRelation extends Relation {
 
 	protected void tagOuterWays() {
 		Map<String, String> tags;
-		if (hasStyleRelevantTags(this)) {
-			tags = new HashMap<>();
-			for (Entry<String, String> relTag : getTagEntryIterator()) {
-				tags.put(relTag.getKey(), relTag.getValue());
-			}
-		} else {
-			tags = JoinedWay.getMergedTags(outerWaysForLineTagging);
+		tags = new HashMap<>();
+		for (Entry<String, String> relTag : getTagEntryIterator()) {
+			tags.put(relTag.getKey(), relTag.getValue());
 		}
 		
 		
@@ -1832,7 +1792,7 @@ public class MultiPolygonRelation extends Relation {
 				
 				// remove the tag from the original way if it has the same value
 				if (tag.getValue().equals(orgOuterWay.getTag(tag.getKey()))) {
-					removeTagsInOrgWays(orgOuterWay, tag.getKey());
+					markTagsForRemovalInOrgWays(orgOuterWay, tag.getKey());
 				}
 			}
 			
@@ -1880,27 +1840,33 @@ public class MultiPolygonRelation extends Relation {
 				if (log.isDebugEnabled()) {
 					log.debug("Will remove", tagname + "=" + w.getTag(tagname), "from way", w.getId(), w.toTagString());
 				}
-				removeTagsInOrgWays(w, tagname);
+				markTagsForRemovalInOrgWays(w, tagname);
 			}
 		}
 	}
 	
-	protected void removeTagsInOrgWays(Way way, String tag) {
-		if (tag == null || tag.isEmpty()) {
+	/**
+	 * Add given tag key to the special tag which contains the list of tag keys which are to be removed in  
+	 * MultiPolygonFinishHook. 
+	 * @param way the way
+	 * @param tagKey the tag key
+	 */
+	protected void markTagsForRemovalInOrgWays(Way way, String tagKey) {
+		if (tagKey == null || tagKey.isEmpty()) {
 			return;
 		}
 		String tagsToRemove = way.getTag(ElementSaver.TKM_REMOVETAGS);
 		
 		if (tagsToRemove == null) {
-			tagsToRemove = tag;
-		} else if (tag.equals(tagsToRemove)) {
+			tagsToRemove = tagKey;
+		} else if (tagKey.equals(tagsToRemove)) {
 			return;
 		} else {
 			String[] keys = tagsToRemove.split(";");
-			if (Arrays.asList(keys).contains(tag)) {
+			if (Arrays.asList(keys).contains(tagKey)) {
 				return;
 			}
-			tagsToRemove += ";" + tag;
+			tagsToRemove += ";" + tagKey;
 		} 
 		way.addTag(ElementSaver.TKM_REMOVETAGS, tagsToRemove);
 	}
@@ -2125,9 +2091,7 @@ public class MultiPolygonRelation extends Relation {
 			removeAllTags();
 			
 			Map<String, String> mergedTags = getMergedTags(getOriginalWays());
-			for (Entry<String, String> tag : mergedTags.entrySet()) {
-				addTag(tag.getKey(), tag.getValue());
-			}
+			mergedTags.forEach(this::addTag);
 		}
 
 		public List<Way> getOriginalWays() {

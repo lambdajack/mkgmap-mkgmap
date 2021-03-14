@@ -295,7 +295,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 				
 				// remove the tag from the original way if it has the same value
 				if (tag.getValue().equals(orgOuterWay.getTag(tag.getKey()))) {
-					removeTagsInOrgWays(orgOuterWay, tag.getKey());
+					markTagsForRemovalInOrgWays(orgOuterWay, tag.getKey());
 				}
 			}
 			

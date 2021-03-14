@@ -289,13 +289,11 @@ public class O5mBinHandler extends OsmHandler{
 			if (el != null) // ignore non existing ways caused by splitting files
 				rel.addElement(role, el);
 		}
-		boolean tagsIncomplete = readTags(rel);
-		rel.setTagsIncomplete(tagsIncomplete);
+		readTags(rel);
 		saver.addRelation(rel);
 	}
 	
-	private boolean readTags(Element elem) {
-		boolean tagsIncomplete = false;
+	private void readTags(Element elem) {
 		while (bytesToRead > 0) {
 			readStringPair();
 			String key = stringPair[0];
@@ -306,13 +304,11 @@ public class O5mBinHandler extends OsmHandler{
 				key = "type";
 			else
 				key = keepTag(key, val);
-			if (key != null)
+			if (key != null) {
 				elem.addTagFromRawOSM(key, val);
-			else
-				tagsIncomplete = true;
+			}
 		}
 		assert bytesToRead == 0;
-		return tagsIncomplete;
 	}
 
 	/**

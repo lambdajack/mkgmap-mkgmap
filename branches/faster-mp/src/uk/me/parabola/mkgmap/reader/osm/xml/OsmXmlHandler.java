@@ -302,9 +302,7 @@ public class OsmXmlHandler extends OsmHandler {
 					key = "type";
 				else
 					key = keepTag(key, val);
-				if (key == null) {
-					currentRelation.setTagsIncomplete(true);
-				} else {
+				if (key != null) {
 					currentRelation.addTagFromRawOSM(key, val);
 				}
 			}
