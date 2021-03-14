@@ -112,29 +112,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 		unfinishedPolygons = new BitSet(polygons.size());
 		unfinishedPolygons.set(0, polygons.size());
 
-		// create bitsets which polygons belong to the outer and to the inner role
-		innerPolygons = new BitSet();
-		taggedInnerPolygons = new BitSet();
-		outerPolygons = new BitSet();
-		taggedOuterPolygons = new BitSet();
-		
-		int wi = 0;
-		for (Way w : polygons) {
-			String role = getRole(w);
-			if ("inner".equals(role)) {
-				innerPolygons.set(wi);
-				taggedInnerPolygons.set(wi);
-			} else if ("outer".equals(role)) {
-				outerPolygons.set(wi);
-				taggedOuterPolygons.set(wi);
-			} else {
-				// unknown role => it could be both
-				innerPolygons.set(wi);
-				outerPolygons.set(wi);
-			}
-			wi++;
-		}
-
+		analyseRelationRoles();
 		if (outerPolygons.isEmpty()) {
 			log.warn("Multipolygon", toBrowseURL(),
 				"does not contain any way tagged with role=outer or empty role.");

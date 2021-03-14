@@ -812,31 +812,8 @@ public class MultiPolygonRelation extends Relation {
 		unfinishedPolygons = new BitSet(polygons.size());
 		unfinishedPolygons.set(0, polygons.size());
 
-		// create bitsets which polygons belong to the outer and to the inner role
-		innerPolygons = new BitSet();
-		taggedInnerPolygons = new BitSet();
-		outerPolygons = new BitSet();
-		taggedOuterPolygons = new BitSet();
+		analyseRelationRoles();
 		
-		int wi = 0;
-		for (Way w : polygons) {
-			w.setFullArea(w.getFullArea()); // trigger setting area before start cutting...
-			// do like this to disguise function with side effects
-			String role = getRole(w);
-			if ("inner".equals(role)) {
-				innerPolygons.set(wi);
-				taggedInnerPolygons.set(wi);
-			} else if ("outer".equals(role)) {
-				outerPolygons.set(wi);
-				taggedOuterPolygons.set(wi);
-			} else {
-				// unknown role => it could be both
-				innerPolygons.set(wi);
-				outerPolygons.set(wi);
-			}
-			wi++;
-		}
-
 		if (outerPolygons.isEmpty()) {
 			log.warn("Multipolygon", toBrowseURL(),
 				"does not contain any way tagged with role=outer or empty role.");
@@ -1104,6 +1081,36 @@ public class MultiPolygonRelation extends Relation {
 		cleanup();
 	}
 	
+	/**
+	 * Analyse roles in ways and fill corresponding sets.
+	 */
+	protected void analyseRelationRoles() {
+		// create bitsets which polygons belong to the outer and to the inner role
+		innerPolygons = new BitSet();
+		taggedInnerPolygons = new BitSet();
+		outerPolygons = new BitSet();
+		taggedOuterPolygons = new BitSet();
+		
+		int wi = 0;
+		for (Way w : polygons) {
+			w.setFullArea(w.getFullArea()); // trigger setting area before start cutting...
+			// do like this to disguise function with side effects
+			String role = getRole(w);
+			if ("inner".equals(role)) {
+				innerPolygons.set(wi);
+				taggedInnerPolygons.set(wi);
+			} else if ("outer".equals(role)) {
+				outerPolygons.set(wi);
+				taggedOuterPolygons.set(wi);
+			} else {
+				// unknown role => it could be both
+				innerPolygons.set(wi);
+				outerPolygons.set(wi);
+			}
+			wi++;
+		}
+	}
+
 	protected double getMaxCloseDist() {
 		return -1; // 
 	}
