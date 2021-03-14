@@ -984,7 +984,7 @@ public class MultiPolygonRelation extends Relation {
 							p.deleteTag("type");
 						}
 						// remove the multipolygon tags in the original ways of the current polygon
-						removeTagsInOrgWays(this, currentPolygon.polygon);
+						markTagsForRemovalInOrgWays(this, currentPolygon.polygon);
 					} else {
 						// use the tags of the original ways
 						currentPolygon.polygon.mergeTagsFromOrgWays();
@@ -993,7 +993,7 @@ public class MultiPolygonRelation extends Relation {
 							p.copyTags(currentPolygon.polygon);
 						}
 						// remove the current polygon tags in its original ways
-						removeTagsInOrgWays(currentPolygon.polygon, currentPolygon.polygon);
+						markTagsForRemovalInOrgWays(currentPolygon.polygon, currentPolygon.polygon);
 					}
 				
 					if (currentPolygon.outer && outmostPolygonProcessing) {
@@ -1812,9 +1812,9 @@ public class MultiPolygonRelation extends Relation {
 	 * @param way
 	 *            a joined way
 	 */
-	private void removeTagsInOrgWays(Element tagElement, JoinedWay way) {
+	private void markTagsForRemovalInOrgWays(Element tagElement, JoinedWay way) {
 		for (Entry<String, String> tag : tagElement.getTagEntryIterator()) {
-			removeTagInOrgWays(way, tag.getKey(), tag.getValue());
+			markTagForRemovalInOrgWays(way, tag.getKey(), tag.getValue());
 		}
 	}
 
@@ -1828,11 +1828,11 @@ public class MultiPolygonRelation extends Relation {
 	 * @param tagvalue
 	 *            the value of the tag to be removed
 	 */
-	private void removeTagInOrgWays(JoinedWay way, String tagname, String tagvalue) {
+	private void markTagForRemovalInOrgWays(JoinedWay way, String tagname, String tagvalue) {
 		for (Way w : way.getOriginalWays()) {
 			if (w instanceof JoinedWay) {
 				// remove the tags recursively
-				removeTagInOrgWays((JoinedWay) w, tagname, tagvalue);
+				markTagForRemovalInOrgWays((JoinedWay) w, tagname, tagvalue);
 				continue;
 			}
 
