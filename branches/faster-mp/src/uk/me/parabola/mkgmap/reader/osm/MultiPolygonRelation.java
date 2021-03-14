@@ -55,7 +55,10 @@ public class MultiPolygonRelation extends Relation {
 	public static final String STYLE_FILTER_TAG = "mkgmap:stylefilter";
 	public static final String STYLE_FILTER_LINE = "polyline";
 	public static final String STYLE_FILTER_POLYGON = "polygon";
-	
+
+	/** if true, run complex intersection tests */
+	private final boolean doComplexGeometryTest; 
+
 	/** A tag that is set with value true on each polygon that is created by the mp processing. */
 	public static final short TKM_MP_CREATED = TagDict.getInstance().xlate("mkgmap:mp_created");
 	private static final short TKM_MP_ROLE = TagDict.getInstance().xlate("mkgmap:mp_role");
@@ -107,6 +110,7 @@ public class MultiPolygonRelation extends Relation {
 	 */
 	public MultiPolygonRelation(Relation other, Map<Long, Way> wayMap,
 			uk.me.parabola.imgfmt.app.Area bbox) {
+		this.doComplexGeometryTest = true;
 		this.tileWayMap = wayMap;
 		this.tileBounds = bbox;
 		// create an Area for the bbox to clip the polygons
@@ -1463,8 +1467,7 @@ public class MultiPolygonRelation extends Relation {
 		boolean allOnLine = true;
 		for (Coord px : polygon2.getPoints()) {
 			if (polygon1.getPolygon().contains(px.getHighPrecLon(), px.getHighPrecLat())){
-				// there's one point that is in polygon1 and in the bounding
-				// box => polygon1 may contain polygon2
+				// there's one point that is in polygon1 ==> polygon1 may contain polygon2
 				onePointContained = true;
 				if (!locatedOnLine(px, polygon1.getWay().getPoints())) {
 					allOnLine = false;
@@ -1510,6 +1513,17 @@ public class MultiPolygonRelation extends Relation {
 			return false;
 		}
 		
+		boolean hasIntersection = doComplexGeometryTest && doIntersectionTest(polygon1, polygon2);
+		return !hasIntersection;
+	}
+
+	/**
+	 * Complex, rather slow test to find rings which overlap. May change map intersectingPolygons.
+	 * @param polygon1 first polygon 
+	 * @param polygon2 second polygon
+	 * @return true if an intersection is found, else false
+	 */
+	private boolean doIntersectionTest(WayAndLazyPolygon polygon1, JoinedWay polygon2) {
 		Iterator<Coord> it1 = polygon1.getWay().getPoints().iterator();
 		Coord p11 = it1.next();
 
@@ -1593,7 +1607,7 @@ public class MultiPolygonRelation extends Relation {
 						// the mp handling
 						intersectingPolygons.add(polygon1.getWay());
 						intersectingPolygons.add(polygon2);
-						return false;
+						return true;
 					}
 				}
 
@@ -1601,10 +1615,7 @@ public class MultiPolygonRelation extends Relation {
 				prevLatField = latField;
 			}
 		}
-
-		// don't have any intersection
-		// => polygon1 contains polygon2
-		return true;
+		return false;
 	}
 
 	/**
