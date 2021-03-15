@@ -62,6 +62,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 	 * Process the ways in this relation. Joins way with the role "outer" Adds
 	 * ways with the role "inner" to the way with the role "outer"
 	 */
+	@Override
 	public void processElements() {
 		log.info("Processing multipolygon", toBrowseURL());
 	
@@ -91,11 +92,9 @@ public class BoundaryRelation extends MultiPolygonRelation {
 		if (polygons.isEmpty()) {
 			// do nothing
 			if (log.isInfoEnabled()) {
-				if (hasPolygons)
-					log.info("Multipolygon", toBrowseURL(),
-							"is completely outside the bounding box. It is not processed.");
-				else
-					log.info("Multipolygon " + toBrowseURL() + " does not contain a closed polygon.");
+				log.info("Multipolygon", toBrowseURL(),
+						hasPolygons ? "is completely outside the bounding box. It is not processed."
+								: "does not contain a closed polygon.");
 			}
 			tagOuterWays();
 			cleanup();
@@ -124,7 +123,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 		BitSet nestedOuterPolygons = new BitSet();
 		BitSet nestedInnerPolygons = new BitSet();
 
-		BitSet outmostPolygons ;
+		BitSet outmostPolygons;
 		BitSet outmostInnerPolygons = new BitSet();
 		boolean outmostInnerFound;
 		do {
@@ -208,8 +207,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 				}
 			} while (!holesOk);
 
-			ArrayList<PolygonStatus> holes = getPolygonStatus(holeIndexes, 
-				(currentPolygon.outer ? "inner" : "outer"));
+			ArrayList<PolygonStatus> holes = getPolygonStatus(holeIndexes, (currentPolygon.outer ? "inner" : "outer"));
 
 			// these polygons must all be checked for holes
 			polygonWorkingQueue.addAll(holes);
@@ -250,7 +248,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 		if (hasStyleRelevantTags(this)) {
 			outerTags.clear();
 			for (Entry<String,String> mpTags : getTagEntryIterator()) {
-				if ("type".equals(mpTags.getKey())==false) {
+				if (!"type".equals(mpTags.getKey())) {
 					outerTags.put(mpTags.getKey(), mpTags.getValue());
 				}
 			}
@@ -286,6 +284,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 		cleanup();
 	}
 
+	@Override
 	protected boolean connectUnclosedWays(List<JoinedWay> allWays) {
 		List<JoinedWay> unclosed = new ArrayList<>();
 
