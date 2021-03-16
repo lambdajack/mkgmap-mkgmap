@@ -101,7 +101,7 @@ public class Logger {
 
 	/**
 	 * The default setup, which is basically not to do any logging apart from
-	 * showing warnings and errors (and I may remove that).
+	 * showing errors.
 	 */
 	private static void staticSetup() {
 		// Static setup.
@@ -114,10 +114,10 @@ public class Logger {
 		f.setShowTime(false);
 
 		handler.setFormatter(f);
-		handler.setLevel(Level.SEVERE);
+		handler.setLevel(Level.FINE);
 
 		l.addHandler(handler);
-		l.setLevel(Level.WARNING);
+		l.setLevel(Level.SEVERE);
 	}
 
 	public boolean isLoggable(Level level) {
