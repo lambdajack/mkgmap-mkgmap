@@ -1134,7 +1134,7 @@ public class MultiPolygonRelation extends Relation {
 		}
 
 		for (Way w : mpPolygons.values()) {
-			w.deleteTag("mkgmap:mp_role");
+			w.deleteTag(TKM_MP_ROLE);
 		}
 		// copy all polygons created by the multipolygon algorithm to the global way map
 		tileWayMap.putAll(mpPolygons);
@@ -1328,8 +1328,7 @@ public class MultiPolygonRelation extends Relation {
 
 		// use this matrix to check which matrix element has been
 		// calculated
-		ArrayList<BitSet> finishedMatrix = new ArrayList<>(polygonList
-				.size());
+		ArrayList<BitSet> finishedMatrix = new ArrayList<>(polygonList.size());
 
 		for (int i = 0; i < polygonList.size(); i++) {
 			BitSet matrixRow = new BitSet();
@@ -1337,7 +1336,7 @@ public class MultiPolygonRelation extends Relation {
 			matrixRow.set(i);
 			finishedMatrix.add(matrixRow);
 		}
-
+		
 		for (int rowIndex = 0; rowIndex < polygonList.size(); rowIndex++) {
 			JoinedWay potentialOuterPolygon = polygonList.get(rowIndex);
 			BitSet containsColumns = containsMatrix.get(rowIndex);
@@ -1354,11 +1353,8 @@ public class MultiPolygonRelation extends Relation {
 
 				JoinedWay innerPolygon = polygonList.get(colIndex);
 
-				if (potentialOuterPolygon.getBounds().intersects(
-						innerPolygon.getBounds()))
-				{
-					boolean contains = contains(lazyPotOuterPolygon, innerPolygon);
-					
+				if (potentialOuterPolygon.getBounds().intersects(innerPolygon.getBounds())) {
+					boolean contains = calcContains(lazyPotOuterPolygon, innerPolygon);
 					if (contains) {
 						containsColumns.set(colIndex);
 
@@ -1448,7 +1444,7 @@ public class MultiPolygonRelation extends Relation {
 	 *            a 2nd closed way
 	 * @return true if polygon1 contains polygon2
 	 */
-	private boolean contains(WayAndLazyPolygon polygon1, JoinedWay polygon2) {
+	private boolean calcContains(WayAndLazyPolygon polygon1, JoinedWay polygon2) {
 		if (!polygon1.getWay().hasIdenticalEndPoints()) {
 			return false;
 		}
@@ -1466,7 +1462,7 @@ public class MultiPolygonRelation extends Relation {
 		boolean onePointContained = false;
 		boolean allOnLine = true;
 		for (Coord px : polygon2.getPoints()) {
-			if (polygon1.getPolygon().contains(px.getHighPrecLon(), px.getHighPrecLat())){
+			if (polygon1.getPolygon().contains(px.getHighPrecLon(), px.getHighPrecLat())) {
 				// there's one point that is in polygon1 ==> polygon1 may contain polygon2
 				onePointContained = true;
 				if (!locatedOnLine(px, polygon1.getWay().getPoints())) {
@@ -1532,8 +1528,8 @@ public class MultiPolygonRelation extends Relation {
 			p11 = it1.next();
 
 			if (!polygon2.linePossiblyIntersectsWay(p11, p12)) {
-				// don't check it - this segment of the outer polygon
-				// definitely does not intersect the way
+				// don't check it - this segment of the first polygon
+				// definitely does not intersect the 2nd
 				continue;
 			}
 
@@ -1624,8 +1620,10 @@ public class MultiPolygonRelation extends Relation {
 	 * @param points a list of points; all consecutive points are handled as lines
 	 * @return true if p is located on one line given by points
 	 */
-	private static boolean locatedOnLine(Coord p, List<Coord> points) {
+	private static boolean locatedOnLine(final Coord p, List<Coord> points) {
 		Coord cp1 = null;
+		final int pLon = p.getHighPrecLon();
+		final int pLat = p.getHighPrecLat();
 		for (Coord cp2 : points) {
 			if (p.highPrecEquals(cp2)) { 
 				return true;
@@ -1633,16 +1631,16 @@ public class MultiPolygonRelation extends Relation {
 
 			try {
 				if (cp1 == null // first init
-						|| p.getHighPrecLon() < Math.min(cp1.getHighPrecLon(), cp2.getHighPrecLon())
-						|| p.getHighPrecLon() > Math.max(cp1.getHighPrecLon(), cp2.getHighPrecLon())
-						|| p.getHighPrecLat() < Math.min(cp1.getHighPrecLat(), cp2.getHighPrecLat())
-						|| p.getHighPrecLat() > Math.max(cp1.getHighPrecLat(), cp2.getHighPrecLat())) {
+						|| pLon < Math.min(cp1.getHighPrecLon(), cp2.getHighPrecLon())
+						|| pLon  > Math.max(cp1.getHighPrecLon(), cp2.getHighPrecLon())
+						|| pLat < Math.min(cp1.getHighPrecLat(), cp2.getHighPrecLat())
+						|| pLat > Math.max(cp1.getHighPrecLat(), cp2.getHighPrecLat())) {
 					continue;
 				}
 
 				double dist = Line2D.ptSegDistSq(cp1.getHighPrecLon(), cp1.getHighPrecLat(),
 						cp2.getHighPrecLon(), cp2.getHighPrecLat(),
-						p.getHighPrecLon(), p.getHighPrecLat());
+						pLon, pLat);
 
 				if (dist <= OVERLAP_TOLERANCE_DISTANCE) {
 					log.debug("Point", p, "is located on line between", cp1, "and",
