@@ -675,8 +675,7 @@ public class MultiPolygonRelation extends Relation {
 
 		// go through all candidates and check if they are contained by any
 		// other candidate
-		for (int candidateIndex = candidates.nextSetBit(0); candidateIndex >= 0; candidateIndex = candidates
-				.nextSetBit(candidateIndex + 1)) {
+		candidates.stream().forEach(candidateIndex -> {
 			// check if the candidateIndex polygon is not contained by any
 			// other candidate polygon
 			boolean isOutmost = true;
@@ -694,7 +693,7 @@ public class MultiPolygonRelation extends Relation {
 				// put it to the bitset
 				outmostPolygons.set(candidateIndex);
 			}
-		}
+		});
 
 		return outmostPolygons;
 	}
@@ -702,8 +701,7 @@ public class MultiPolygonRelation extends Relation {
 	protected ArrayList<PolygonStatus> getPolygonStatus(BitSet outmostPolygons,
 			String defaultRole) {
 		ArrayList<PolygonStatus> polygonStatusList = new ArrayList<>();
-		for (int polyIndex = outmostPolygons.nextSetBit(0); polyIndex >= 0; polyIndex = outmostPolygons
-				.nextSetBit(polyIndex + 1)) {
+		outmostPolygons.stream().forEach(polyIndex -> {
 			// polyIndex is the polygon that is not contained by any other
 			// polygon
 			JoinedWay polygon = polygons.get(polyIndex);
@@ -713,7 +711,7 @@ public class MultiPolygonRelation extends Relation {
 				role = defaultRole;
 			} 
 			polygonStatusList.add(new PolygonStatus("outer".equals(role), polyIndex, polygon));
-		}
+		});
 		// sort by role and then by number of points, this improves performance
 		// in the routines which add the polygons to areas
 		if (polygonStatusList.size() > 2) {
@@ -1194,34 +1192,31 @@ public class MultiPolygonRelation extends Relation {
 	private void runNestedOuterPolygonCheck(BitSet nestedOuterPolygons) {
 		// just print out warnings
 		// the check has been done before
-		for (int wiIndex = nestedOuterPolygons.nextSetBit(0); wiIndex >= 0; wiIndex = nestedOuterPolygons
-				.nextSetBit(wiIndex + 1)) {
-			JoinedWay outerWay = polygons.get(wiIndex);
+		nestedOuterPolygons.stream().forEach(idx ->  {
+			JoinedWay outerWay = polygons.get(idx);
 			log.warn("Polygon",	outerWay, "carries role outer but lies inside an outer polygon. Potentially its role should be inner.");
 			logFakeWayDetails(Level.WARNING, outerWay);
-		}
+		});
 	}
 	
 	private void runNestedInnerPolygonCheck(BitSet nestedInnerPolygons) {
 		// just print out warnings
 		// the check has been done before
-		for (int wiIndex = nestedInnerPolygons.nextSetBit(0); wiIndex >= 0; wiIndex = nestedInnerPolygons
-				.nextSetBit(wiIndex + 1)) {
-			JoinedWay innerWay = polygons.get(wiIndex);
+		nestedInnerPolygons.stream().forEach(idx -> {
+			JoinedWay innerWay = polygons.get(idx);
 			log.warn("Polygon",	innerWay, "carries role", getRole(innerWay), "but lies inside an inner polygon. Potentially its role should be outer.");
 			logFakeWayDetails(Level.WARNING, innerWay);
-		}
+		});
 	}	
 	
 	private void runOutmostInnerPolygonCheck(BitSet outmostInnerPolygons) {
 		// just print out warnings
 		// the check has been done before
-		for (int wiIndex = outmostInnerPolygons.nextSetBit(0); wiIndex >= 0; wiIndex = outmostInnerPolygons
-				.nextSetBit(wiIndex + 1)) {
-			JoinedWay innerWay = polygons.get(wiIndex);
+		outmostInnerPolygons.stream().forEach(idx -> {
+			JoinedWay innerWay = polygons.get(idx);
 			log.warn("Polygon",	innerWay, "carries role", getRole(innerWay), "but is not inside any other polygon. Potentially it does not belong to this multipolygon.");
 			logFakeWayDetails(Level.WARNING, innerWay);
-		}
+		});
 	}
 
 	private void runWrongInnerPolygonCheck(BitSet unfinishedPolygons, BitSet innerPolygons) {
@@ -1236,8 +1231,7 @@ public class MultiPolygonRelation extends Relation {
 		if (!wrongInnerPolygons.isEmpty()) {
 			// we have an inner polygon that is not contained by any outer polygon
 			// check if
-			for (int wiIndex = wrongInnerPolygons.nextSetBit(0); wiIndex >= 0; wiIndex = wrongInnerPolygons
-					.nextSetBit(wiIndex + 1)) {
+			wrongInnerPolygons.stream().forEach(wiIndex -> {
 				BitSet containedPolygons = new BitSet();
 				containedPolygons.or(unfinishedPolygons);
 				containedPolygons.and(containsMatrix.get(wiIndex));
@@ -1251,19 +1245,17 @@ public class MultiPolygonRelation extends Relation {
 					log.warn("Polygon",	innerWay, "carries role", getRole(innerWay),
 						"but is not inside any outer polygon. Potentially the roles are interchanged with the following",
 						(containedPolygons.cardinality() > 1 ? "ways" : "way"), ".");
-
-					for (int wrIndex = containedPolygons.nextSetBit(0); wrIndex >= 0; wrIndex = containedPolygons
-							.nextSetBit(wrIndex + 1)) {
+					containedPolygons.stream().forEach(wrIndex -> {
 						logWayURLs(Level.WARNING, "-", polygons.get(wrIndex));
 						unfinishedPolygons.set(wrIndex);
 						wrongInnerPolygons.set(wrIndex);
-					}
+					});
 					logFakeWayDetails(Level.WARNING, innerWay);
 				}
 
 				unfinishedPolygons.clear(wiIndex);
 				wrongInnerPolygons.clear(wiIndex);
-			}
+			});
 		}
 	}
 
@@ -1705,15 +1697,7 @@ public class MultiPolygonRelation extends Relation {
 	}
 
 	private List<JoinedWay> getWaysFromPolygonList(BitSet selection) {
-		if (selection.isEmpty()) {
-			return Collections.emptyList();
-		}
-		List<JoinedWay> wayList = new ArrayList<>(selection
-				.cardinality());
-		for (int i = selection.nextSetBit(0); i >= 0; i = selection.nextSetBit(i + 1)) {
-			wayList.add(polygons.get(i));
-		}
-		return wayList;
+		return selection.stream().mapToObj(polygons::get).collect(Collectors.toList());
 	}
 
 	private static void logWayURLs(Level level, String preMsg, Way way) {
