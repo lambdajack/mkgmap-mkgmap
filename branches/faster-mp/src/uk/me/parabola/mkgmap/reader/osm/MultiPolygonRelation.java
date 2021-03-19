@@ -1492,10 +1492,11 @@ public class MultiPolygonRelation extends Relation {
 			
 			for (Coord px : middlePoints2) {
 				if (polygon1.getPolygon().contains(px.getHighPrecLon(), px.getHighPrecLat())){
-					// there's one point that is in polygon1 and in the bounding
-					// box => polygon1 may contain polygon2
-					onePointContained = true;
-					break;
+					// there's one point that is in polygon1 => polygon1 may contain polygon2
+					if (!locatedOnLine(px, polygon1.getWay().getPoints())) {
+						onePointContained = true;
+						break;
+					}
 				} else if (tileBounds.contains(px) && !locatedOnLine(px, polygon1.getWay().getPoints())) {
 					// there's one point that is not in polygon1 but inside the
 					// bounding box => polygon1 does not contain polygon2
