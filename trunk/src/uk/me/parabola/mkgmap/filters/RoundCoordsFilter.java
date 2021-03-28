@@ -31,8 +31,8 @@ public class RoundCoordsFilter implements MapFilter {
 	@Override
 	public void init(FilterConfig config) {
 		shift = config.getShift();
-		keepNodes = config.getLevel() == 0 && config.hasNet();
 		level = config.getLevel();
+		keepNodes = level == 0 && config.hasNet();
 	}
 
 	/**
@@ -41,12 +41,11 @@ public class RoundCoordsFilter implements MapFilter {
 	 */
 	@Override
 	public void doFilter(MapElement element, MapFilterChain next) {
-		MapLine line = (MapLine) element;
-		if(shift == 0) {
+		if (shift == 0) {
 			// do nothing
-			next.doFilter(line);
-		}
-		else {
+			next.doFilter(element);
+		} else {
+			MapLine line = (MapLine) element;
 			int half = 1 << (shift - 1);	// 0.5 shifted
 			int mask = ~((1 << shift) - 1); // to remove fraction bits
 			
@@ -64,9 +63,9 @@ public class RoundCoordsFilter implements MapFilter {
 				int lon = (p.getLongitude() + half) & mask;
 				Coord newP;
 				
-				if(p instanceof CoordNode && keepNodes)
+				if (p instanceof CoordNode && keepNodes) {
 					newP = new CoordNode(lat, lon, p.getId(), p.getOnBoundary(), p.getOnCountryBorder());
-				else {
+				} else {
 					newP = new Coord(lat, lon);
 					newP.preserved(p.preserved());
 					newP.setNumberNode(hasNumbers && p.isNumberNode());
@@ -75,7 +74,7 @@ public class RoundCoordsFilter implements MapFilter {
 				// only add the new point if it has different
 				// coordinates to the last point or if it's a
 				// special node
-				if (lastP == null || !lastP.equals(newP) || newP.getId() > 0|| (hasNumbers && newP.isNumberNode())) {
+				if (lastP == null || !lastP.equals(newP) || newP.getId() > 0 || (hasNumbers && newP.isNumberNode())) {
 					newPoints.add(newP);
 					lastP = newP;
 				} else if (newP.preserved()) {
@@ -87,7 +86,7 @@ public class RoundCoordsFilter implements MapFilter {
 					lastP.preserved(true);
 				}
 			}
-			if(newPoints.size() > 1) {
+			if (newPoints.size() > 1) {
 				MapLine newLine = line.copy();
 				newLine.setPoints(newPoints);
 				next.doFilter(newLine);
