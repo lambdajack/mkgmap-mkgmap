@@ -30,8 +30,6 @@ import uk.me.parabola.mkgmap.general.MapShape;
 public class RemoveObsoletePointsFilter implements MapFilter {
 	private static final Logger log = Logger.getLogger(RemoveObsoletePointsFilter.class);
 	
-	final Coord[] areaTest = new Coord[3];
-
 	private boolean checkPreserved;
 	
 	@Override
@@ -48,8 +46,8 @@ public class RemoveObsoletePointsFilter implements MapFilter {
 		MapLine line = (MapLine) element;
 		List<Coord> points = line.getPoints();
 		int numPoints = points.size();
-		if (numPoints <= 1){
-			return;
+		if (numPoints <= 1) {
+			return; 
 		}
 		int requiredPoints = (line instanceof MapShape ) ? 4:2; 
 		List<Coord> newPoints = new ArrayList<>(numPoints);
@@ -67,13 +65,14 @@ public class RemoveObsoletePointsFilter implements MapFilter {
 				if (lastP.equals(newP)){
 					// only add the new point if it has different
 					// coordinates to the last point or is preserved
-					if (checkPreserved && line.isRoad()){
+					if (checkPreserved && line.isRoad()) {
 						if (!newP.preserved()) {
 							continue;
-						} else if (!lastP.preserved()){
+						} else if (!lastP.preserved()) {
 							newPoints.set(last, newP); // replace last
-						} 
-					} else {  
+							continue;
+						}
+					} else {
 						continue;
 					}
 				}
@@ -116,12 +115,14 @@ public class RemoveObsoletePointsFilter implements MapFilter {
 				int nPoints = newPoints.size();
 				switch(Utils.isStraight(newPoints.get(newPoints.size()-2), newPoints.get(0), newPoints.get(1))){
 				case Utils.STRAIGHT_SPIKE:
+					log.debug("removing closing spike");
 					newPoints.remove(0);
 					newPoints.set(newPoints.size()-1, newPoints.get(0));
 					if (newPoints.get(newPoints.size()-2).equals(newPoints.get(newPoints.size()-1)))
 						newPoints.remove(newPoints.size()-1);
 					break;
 				case Utils.STRICTLY_STRAIGHT:
+					log.debug("removing straight line across closing");
 					newPoints.remove(newPoints.size()-1);
 					newPoints.set(0, newPoints.get(newPoints.size()-1));
 					break;
