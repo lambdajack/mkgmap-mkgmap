@@ -13,7 +13,6 @@
 
 package uk.me.parabola.mkgmap.reader.osm;
 
-import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.geom.Area;
 import java.awt.geom.Line2D;
@@ -40,6 +39,7 @@ import java.util.stream.Collectors;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.util.IsInUtil;
 import uk.me.parabola.util.Java2DConverter;
 
 /**
@@ -56,9 +56,6 @@ public class MultiPolygonRelation extends Relation {
 	public static final String STYLE_FILTER_LINE = "polyline";
 	public static final String STYLE_FILTER_POLYGON = "polygon";
 
-	/** if true, run complex intersection tests */
-	private final boolean doComplexGeometryTest; 
-
 	/** A tag that is set with value true on each polygon that is created by the mp processing. */
 	public static final short TKM_MP_CREATED = TagDict.getInstance().xlate("mkgmap:mp_created");
 	private static final short TKM_MP_ROLE = TagDict.getInstance().xlate("mkgmap:mp_role");
@@ -71,6 +68,12 @@ public class MultiPolygonRelation extends Relation {
 	
 	protected ArrayList<BitSet> containsMatrix;
 	protected ArrayList<JoinedWay> polygons;
+	
+	/**
+	 * Set can contain polygons which intersect other polygons. No guarantee is made
+	 * that the collection is complete.
+	 * 
+	 */
 	protected Set<JoinedWay> intersectingPolygons;
 	
 	protected double largestSize;
@@ -87,15 +90,6 @@ public class MultiPolygonRelation extends Relation {
 	// the sum of all outer polygons area size 
 	private double mpAreaSize = 0;
 	
-	/** 
-	 * A point that has a lower or equal squared distance from 
-	 * a line is treated as if it lies one the line.<br/>
-	 * 1.0d is very exact. 2.0d covers rounding problems when converting
-	 * OSM locations to mkgmap internal format. A larger value 
-	 * is more tolerant against imprecise OSM data.
-	 */
-	private static final double OVERLAP_TOLERANCE_DISTANCE = 2.0d;
-	
 	/**
 	 * Create an instance based on an existing relation. We need to do this
 	 * because the type of the relation is not known until after all its tags
@@ -110,7 +104,6 @@ public class MultiPolygonRelation extends Relation {
 	 */
 	public MultiPolygonRelation(Relation other, Map<Long, Way> wayMap,
 			uk.me.parabola.imgfmt.app.Area bbox) {
-		this.doComplexGeometryTest = true;
 		this.tileWayMap = wayMap;
 		this.tileBounds = bbox;
 		// create an Area for the bbox to clip the polygons
@@ -162,7 +155,7 @@ public class MultiPolygonRelation extends Relation {
 	 */
 	protected String getRole(Element element) {
 		String role = roleMap.get(element.getId());
-		if (role != null && ("outer".equals(role) || "inner".equals(role))) {
+		if ("outer".equals(role) || "inner".equals(role)) {
 			return role;
 		}
 
@@ -623,28 +616,8 @@ public class MultiPolygonRelation extends Relation {
 	}
 
 	private boolean isFullyOutsideBBox(JoinedWay w) {
-		if (!w.getBounds().intersects(tileArea.getBounds())) {
-			return true;
-		}
-		
-		// check if the polygon bbox contains the complete tile bounds
-		if (w.getBounds().contains(tileArea.getBounds())) {
-			return false;
-		}
-		
-		// check if any point is inside tile bounds
-		if (w.getPoints().stream().anyMatch(tileBounds::contains))
-			return false;
-
-		// check if any line segment of the polygon crosses the tile bounds
-		for (int i = 0; i < w.getPoints().size() - 1; i++) {
-			if (lineCutsBbox(w.getPoints().get(i), w.getPoints().get(i + 1))) {
-				return false;
-			}
-		}
-		return true;
+		return IsInUtil.OUT == IsInUtil.isLineInShape(w.getPoints(), tileBounds.toCoords(), w.getArea()); 
 	}
-
 
 	/**
 	 * Find all polygons that are not contained by any other polygon.
@@ -1334,10 +1307,6 @@ public class MultiPolygonRelation extends Relation {
 			BitSet containsColumns = containsMatrix.get(rowIndex);
 			BitSet finishedCol = finishedMatrix.get(rowIndex);
 			
-			// the polygon need to be created only sometimes
-			// so use a lazy creation to improve performance
-			WayAndLazyPolygon lazyPotOuterPolygon = new WayAndLazyPolygon(potentialOuterPolygon);
-
 			// get all non calculated columns of the matrix
 			for (int colIndex = finishedCol.nextClearBit(0); colIndex >= 0
 					&& colIndex < polygonList.size(); colIndex = finishedCol
@@ -1346,7 +1315,7 @@ public class MultiPolygonRelation extends Relation {
 				JoinedWay innerPolygon = polygonList.get(colIndex);
 
 				if (potentialOuterPolygon.getBounds().intersects(innerPolygon.getBounds())) {
-					boolean contains = calcContains(lazyPotOuterPolygon, innerPolygon);
+					boolean contains = calcContains(potentialOuterPolygon, innerPolygon);
 					if (contains) {
 						containsColumns.set(colIndex);
 
@@ -1395,30 +1364,6 @@ public class MultiPolygonRelation extends Relation {
 
 	
 	/**
-	 * This is a helper class that creates a high precision polygon for a way 
-	 * on request only.
-	 */
-	private static class WayAndLazyPolygon {
-		private final JoinedWay way;
-		private Polygon polygon;
-		
-		public WayAndLazyPolygon(JoinedWay way) {
-			this.way = way;
-		}
-
-		public final JoinedWay getWay() {
-			return this.way;
-		}
-
-		public final Polygon getPolygon() {
-			if (this.polygon == null) {
-				this.polygon = Java2DConverter.createHighPrecPolygon(this.way.getPoints());
-			}
-			return this.polygon;
-		}
-	}
-	
-	/**
 	 * Checks if the polygon with polygonIndex1 contains the polygon with polygonIndex2.
 	 * 
 	 * @return true if polygon(polygonIndex1) contains polygon(polygonIndex2)
@@ -1428,223 +1373,30 @@ public class MultiPolygonRelation extends Relation {
 	}
 
 	/**
-	 * Checks if polygon1 contains polygon2.
+	 * Checks if polygon1 contains polygon2 or intersects. 
 	 * 
 	 * @param polygon1
 	 *            a closed way
 	 * @param polygon2
 	 *            a 2nd closed way
-	 * @return true if polygon1 contains polygon2
+	 * @return true if polygon1 contains a point of polygon2.   
 	 */
-	private boolean calcContains(WayAndLazyPolygon polygon1, JoinedWay polygon2) {
-		if (!polygon1.getWay().hasIdenticalEndPoints()) {
+	private boolean calcContains(JoinedWay polygon1, JoinedWay polygon2) {
+		if (!polygon1.hasIdenticalEndPoints()) {
 			return false;
 		}
 		// check if the bounds of polygon2 are completely inside/enclosed the bounds
 		// of polygon1
-		if (!polygon1.getWay().getBounds().contains(polygon2.getBounds())) {
+		if (!polygon1.getBounds().contains(polygon2.getBounds())) {
 			return false;
 		}
-
-		// check first if one point of polygon2 is in polygon1
-
-		// ignore intersections outside the bounding box
-		// so it is necessary to check if there is at least one
-		// point of polygon2 in polygon1 ignoring all points outside the bounding box
-		boolean onePointContained = false;
-		boolean allOnLine = true;
-		for (Coord px : polygon2.getPoints()) {
-			if (polygon1.getPolygon().contains(px.getHighPrecLon(), px.getHighPrecLat())) {
-				// there's one point that is in polygon1 ==> polygon1 may contain polygon2
-				onePointContained = true;
-				if (!locatedOnLine(px, polygon1.getWay().getPoints())) {
-					allOnLine = false;
-					break;
-				}
-			} else if (tileBounds.contains(px) && !locatedOnLine(px, polygon1.getWay().getPoints())) {
-				// there's one point that is not in polygon1 but inside the
-				// bounding box => polygon1 does not contain polygon2
-				return false;
-			}
+		int x = IsInUtil.isLineInShape(polygon2.getPoints(), polygon1.getPoints(), polygon2.getArea());
+		if (x == IsInUtil.IN_ON_OUT) {
+			intersectingPolygons.add(polygon1);
+			intersectingPolygons.add(polygon2);
 		}
-		
-		if (allOnLine) {
-			onePointContained = false;
-			// all points of polygon2 lie on lines of polygon1
-			// => the middle of each line polygon must NOT lie outside polygon1
-			ArrayList<Coord> middlePoints2 = new ArrayList<>(polygon2.getPoints().size());
-			Coord p1 = null;
-			for (Coord p2 : polygon2.getPoints()) {
-				if (p1 != null) {
-					Coord pm = p1.makeBetweenPoint(p2, 0.5);
-					middlePoints2.add(pm);
-				}
-				p1 = p2;
-			}
-			
-			for (Coord px : middlePoints2) {
-				if (polygon1.getPolygon().contains(px.getHighPrecLon(), px.getHighPrecLat())){
-					// there's one point that is in polygon1 => polygon1 may contain polygon2
-					if (!locatedOnLine(px, polygon1.getWay().getPoints())) {
-						onePointContained = true;
-						break;
-					}
-				} else if (tileBounds.contains(px) && !locatedOnLine(px, polygon1.getWay().getPoints())) {
-					// there's one point that is not in polygon1 but inside the
-					// bounding box => polygon1 does not contain polygon2
-					return false;
-				}
-			}			
-		}
+		return (x & IsInUtil.IN) != 0;
 
-		if (!onePointContained) {
-			// no point of polygon2 is in polygon1 => polygon1 does not contain polygon2
-			return false;
-		}
-		
-		boolean hasIntersection = doComplexGeometryTest && doIntersectionTest(polygon1, polygon2);
-		return !hasIntersection;
-	}
-
-	/**
-	 * Complex, rather slow test to find rings which overlap. May change map intersectingPolygons.
-	 * @param polygon1 first polygon 
-	 * @param polygon2 second polygon
-	 * @return true if an intersection is found, else false
-	 */
-	private boolean doIntersectionTest(WayAndLazyPolygon polygon1, JoinedWay polygon2) {
-		Iterator<Coord> it1 = polygon1.getWay().getPoints().iterator();
-		Coord p11 = it1.next();
-
-		while (it1.hasNext()) {
-			Coord p12 = p11;
-			p11 = it1.next();
-
-			if (!polygon2.linePossiblyIntersectsWay(p11, p12)) {
-				// don't check it - this segment of the first polygon
-				// definitely does not intersect the 2nd
-				continue;
-			}
-
-			int lonMin = Math.min(p11.getLongitude(), p12.getLongitude());
-			int lonMax = Math.max(p11.getLongitude(), p12.getLongitude());
-			int latMin = Math.min(p11.getLatitude(), p12.getLatitude());
-			int latMax = Math.max(p11.getLatitude(), p12.getLatitude());
-
-			// check all lines of way1 and way2 for intersections
-			Iterator<Coord> it2 = polygon2.getPoints().iterator();
-			Coord p21 = it2.next();
-
-			// for speedup we divide the area around the second line into
-			// a 3x3 matrix with lon(-1,0,1) and lat(-1,0,1).
-			// -1 means below min lon/lat of bbox line p1_1-p1_2
-			// 0 means inside the bounding box of the line p1_1-p1_2
-			// 1 means above max lon/lat of bbox line p1_1-p1_2
-			int lonField = p21.getLongitude() < lonMin ? -1 : p21.getLongitude() > lonMax ? 1 : 0;
-			int latField = p21.getLatitude() < latMin ? -1 : p21.getLatitude() > latMax ? 1 : 0;
-
-			int prevLonField = lonField;
-			int prevLatField = latField;
-
-			while (it2.hasNext()) {
-				Coord p22 = p21;
-				p21 = it2.next();
-
-				int changes = 0;
-				// check if the field of the 3x3 matrix has changed
-				if ((lonField >= 0 && p11.getLongitude() < lonMin)
-						|| (lonField <= 0 && p11.getLongitude() > lonMax)) {
-					changes++;
-					lonField = p11.getLongitude() < lonMin ? -1 : p11.getLongitude() > lonMax ? 1 : 0;
-				}
-				if ((latField >= 0 && p11.getLatitude() < latMin)
-						|| (latField <= 0 && p11.getLatitude() > latMax)) {
-					changes++;
-					latField = p11.getLatitude() < latMin ? -1 : p11.getLatitude() > latMax ? 1 : 0;
-				}
-
-				// an intersection is possible if
-				// latField and lonField has changed
-				// or if we come from or go to the inner matrix field
-				boolean intersectionPossible = (changes == 2)
-						|| (latField == 0 && lonField == 0)
-						|| (prevLatField == 0 && prevLonField == 0);
-
-				boolean intersects = intersectionPossible && linesCutEachOther(p11, p12, p21, p22);
-				
-				if (intersects) {
-					if ((polygon1.getWay().isClosedArtificially() && !it1.hasNext())
-							|| (polygon2.isClosedArtificially() && !it2.hasNext())) {
-						// don't care about this intersection
-						// one of the polygons is closed by this mp code and the
-						// closing segment causes the intersection
-						log.info("Polygon", polygon1, "may contain polygon", polygon2,
-							". Ignoring artificial generated intersection.");
-					} else if ((!tileBounds.contains(p11))
-							|| (!tileBounds.contains(p12))
-							|| (!tileBounds.contains(p21))
-							|| (!tileBounds.contains(p22))) {
-						// at least one point is outside the bounding box
-						// we ignore the intersection because the ways may not
-						// be complete
-						// due to removals of the tile splitter or osmosis
-						log.info("Polygon", polygon1, "may contain polygon", polygon2,
-							". Ignoring because at least one point is outside the bounding box.");
-					} else {
-						// store them in the intersection polygons set
-						// the error message will be printed out in the end of
-						// the mp handling
-						intersectingPolygons.add(polygon1.getWay());
-						intersectingPolygons.add(polygon2);
-						return true;
-					}
-				}
-
-				prevLonField = lonField;
-				prevLatField = latField;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Checks if the point p is located on one line of the given points.
-	 * @param p a point
-	 * @param points a list of points; all consecutive points are handled as lines
-	 * @return true if p is located on one line given by points
-	 */
-	private static boolean locatedOnLine(final Coord p, List<Coord> points) {
-		Coord cp1 = null;
-		final int pLon = p.getHighPrecLon();
-		final int pLat = p.getHighPrecLat();
-		for (Coord cp2 : points) {
-			if (p.highPrecEquals(cp2)) { 
-				return true;
-			}
-
-			try {
-				if (cp1 == null // first init
-						|| pLon < Math.min(cp1.getHighPrecLon(), cp2.getHighPrecLon())
-						|| pLon  > Math.max(cp1.getHighPrecLon(), cp2.getHighPrecLon())
-						|| pLat < Math.min(cp1.getHighPrecLat(), cp2.getHighPrecLat())
-						|| pLat > Math.max(cp1.getHighPrecLat(), cp2.getHighPrecLat())) {
-					continue;
-				}
-
-				double dist = Line2D.ptSegDistSq(cp1.getHighPrecLon(), cp1.getHighPrecLat(),
-						cp2.getHighPrecLon(), cp2.getHighPrecLat(),
-						pLon, pLat);
-
-				if (dist <= OVERLAP_TOLERANCE_DISTANCE) {
-					log.debug("Point", p, "is located on line between", cp1, "and",
-						cp2, ". Distance:", dist);
-					return true;
-				}
-			} finally {
-				cp1 = cp2;
-			}
-		}
-		return false;
 	}
 
 	private boolean lineCutsBbox(Coord p1, Coord p2) {
@@ -1933,6 +1685,7 @@ public class MultiPolygonRelation extends Relation {
 		private int minLon;
 		private int maxLon;
 		private Rectangle bounds;
+		private uk.me.parabola.imgfmt.app.Area area;
 
 		public JoinedWay(Way originalWay) {
 			super(originalWay.getOriginalId(), originalWay.getPoints());
@@ -2019,6 +1772,14 @@ public class MultiPolygonRelation extends Relation {
 			}
 
 			return bounds;
+		}
+
+		public uk.me.parabola.imgfmt.app.Area getArea() {
+			if (area == null) {
+				area = new uk.me.parabola.imgfmt.app.Area(minLat, minLon, maxLat, maxLon);
+			}
+
+			return area;
 		}
 
 		public boolean linePossiblyIntersectsWay(Coord p1, Coord p2) {
