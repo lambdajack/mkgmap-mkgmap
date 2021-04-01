@@ -60,11 +60,14 @@ public class MultiPolygonRelation extends Relation {
 	public static final short TKM_MP_CREATED = TagDict.getInstance().xlate("mkgmap:mp_created");
 	private static final short TKM_MP_ROLE = TagDict.getInstance().xlate("mkgmap:mp_role");
 	private static final short TKM_CACHE_AREA_SIZEKEY = TagDict.getInstance().xlate("mkgmap:cache_area_size");
+	
+	/** maps ids to ways, will be extended with joined ways */
 	private final Map<Long, Way> tileWayMap;
+	
+	/** maps ids to roles, contains original ways as well as joined rings */
 	private final Map<Long, String> roleMap = new HashMap<>();
  
 	private Map<Long, Way> mpPolygons = new LinkedHashMap<>();
-	
 	
 	protected ArrayList<BitSet> containsMatrix;
 	protected ArrayList<JoinedWay> polygons;
@@ -182,7 +185,6 @@ public class MultiPolygonRelation extends Relation {
 		int firstTmpIdx = 1;
 		boolean joinable = false;
 		
-		// use == or equals as comparator??
 		if (joinWay.getFirstPoint() == tempWay.getFirstPoint()) {
 			insIdx = 0;
 			reverseTempWay = true;
@@ -1092,21 +1094,19 @@ public class MultiPolygonRelation extends Relation {
 
 
 	protected void postProcessing() {
-		
+		String mpAreaSizeStr = null;
 		if (isAreaSizeCalculated()) {
 			// assign the area size of the whole multipolygon to all outer polygons
-			String mpAreaSizeStr = String.format(Locale.US, "%.3f", mpAreaSize); 
+			mpAreaSizeStr = String.format(Locale.US, "%.3f", mpAreaSize); 
 			addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
+		}
+
 			for (Way w : mpPolygons.values()) {
-				if ("outer".equals(w.getTag(TKM_MP_ROLE))) {
+			String role = w.deleteTag(TKM_MP_ROLE); 
+			if (mpAreaSizeStr != null && "outer".equals(role)) {
 					w.addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
 				}
 			}
-		}
-
-		for (Way w : mpPolygons.values()) {
-			w.deleteTag(TKM_MP_ROLE);
-		}
 		// copy all polygons created by the multipolygon algorithm to the global way map
 		tileWayMap.putAll(mpPolygons);
 		
@@ -1872,25 +1872,9 @@ public class MultiPolygonRelation extends Relation {
 
 		@Override
 		public String toString() {
-			StringBuilder sb = new StringBuilder(200);
-			sb.append(getId());
-			sb.append("(");
-			sb.append(getPoints().size());
-			sb.append("P)(");
-			boolean first = true;
-			for (Way w : getOriginalWays()) {
-				if (first) {
-					first = false;
-				} else {
-					sb.append(",");
-				}
-				sb.append(w.getId());
-				sb.append("[");
-				sb.append(w.getPoints().size());
-				sb.append("P]");
-			}
-			sb.append(")");
-			return sb.toString();
+			final String prefix = getId() + "(" + getPoints().size() + "P)(";
+			return getOriginalWays().stream().map(w -> w.getId() + "[" + w.getPoints().size() + "P]")
+					.collect(Collectors.joining(",", prefix, ")"));
 		}
 	}
 
