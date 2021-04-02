@@ -1255,54 +1255,53 @@ public class MultiPolygonRelation extends Relation {
 		
 		for (int rowIndex = 0; rowIndex < polygonList.size(); rowIndex++) {
 			JoinedWay potentialOuterPolygon = polygonList.get(rowIndex);
-		BitSet containsColumns = containsMatrix.get(rowIndex);
-		BitSet finishedCol = finishedMatrix.get(rowIndex);
-			
-		// get all non calculated columns of the matrix
-		for (int colIndex = finishedCol.nextClearBit(0); colIndex >= 0
-				&& colIndex < polygonList.size(); colIndex = finishedCol
-				.nextClearBit(colIndex + 1)) {
+			BitSet containsColumns = containsMatrix.get(rowIndex);
+			BitSet finishedCol = finishedMatrix.get(rowIndex);
 
-			JoinedWay innerPolygon = polygonList.get(colIndex);
+			// get all non calculated columns of the matrix
+			for (int colIndex = finishedCol.nextClearBit(0); colIndex >= 0
+					&& colIndex < polygonList.size(); colIndex = finishedCol
+					.nextClearBit(colIndex + 1)) {
 
-			if (potentialOuterPolygon.getBounds().intersects(innerPolygon.getBounds())) {
-				boolean contains = calcContains(potentialOuterPolygon, innerPolygon);
-				if (contains) {
-					containsColumns.set(colIndex);
+				JoinedWay innerPolygon = polygonList.get(colIndex);
 
-					// we also know that the inner polygon does not contain the
-					// outer polygon
-					// so we can set the finished bit for this matrix
-					// element
+				if (potentialOuterPolygon.getBounds().intersects(innerPolygon.getBounds())) {
+					boolean contains = calcContains(potentialOuterPolygon, innerPolygon);
+					if (contains) {
+						containsColumns.set(colIndex);
+
+						// we also know that the inner polygon does not contain the
+						// outer polygon
+						// so we can set the finished bit for this matrix
+						// element
+						finishedMatrix.get(colIndex).set(rowIndex);
+
+						// additionally we know that the outer polygon contains all
+						// polygons that are contained by the inner polygon
+						containsColumns.or(containsMatrix.get(colIndex));
+						finishedCol.or(containsColumns);
+					}
+				} else {
+					// both polygons do not intersect
+					// we can flag both matrix elements as finished
 					finishedMatrix.get(colIndex).set(rowIndex);
-
-					// additionally we know that the outer polygon contains all
-					// polygons that are contained by the inner polygon
-					containsColumns.or(containsMatrix.get(colIndex));
-					finishedCol.or(containsColumns);
+					finishedMatrix.get(rowIndex).set(colIndex);
 				}
-			} else {
-				// both polygons do not intersect
-				// we can flag both matrix elements as finished
-				finishedMatrix.get(colIndex).set(rowIndex);
-				finishedMatrix.get(rowIndex).set(colIndex);
+				// this matrix element is calculated now
+				finishedCol.set(colIndex);
 			}
-			// this matrix element is calculated now
-			finishedCol.set(colIndex);
 		}
-	}
 
 		if (log.isDebugEnabled()) {
 			long t2 = System.currentTimeMillis();
-			log.debug("createMatrix for", polygonList.size(), "polygons took",
-				(t2 - t1), "ms");
+			log.debug("createMatrix for", polygonList.size(), "polygons took", (t2 - t1), "ms");
 
 			log.debug("Containsmatrix:");
 			int i = 0;
 			boolean noContained = true;
 			for (BitSet b : containsMatrix) {
 				if (!b.isEmpty()) {
-					log.debug(i,"contains",b);
+					log.debug(i, "contains", b);
 					noContained = false;
 				}
 				i++;
