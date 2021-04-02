@@ -101,9 +101,6 @@ public class BoundaryRelation extends MultiPolygonRelation {
 			return;
 		}
 		
-		// the intersectingPolygons marks all intersecting/overlapping polygons
-		intersectingPolygons = new HashSet<>();
-		
 		// check which polygons lie inside which other polygon 
 		createContainsMatrix(polygons);
 

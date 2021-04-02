@@ -72,13 +72,6 @@ public class MultiPolygonRelation extends Relation {
 	protected ArrayList<BitSet> containsMatrix;
 	protected ArrayList<JoinedWay> polygons;
 	
-	/**
-	 * Set can contain polygons which intersect other polygons. No guarantee is made
-	 * that the collection is complete.
-	 * 
-	 */
-	protected Set<JoinedWay> intersectingPolygons;
-	
 	protected double largestSize;
 	protected JoinedWay largestOuterPolygon;
 	
@@ -105,8 +98,7 @@ public class MultiPolygonRelation extends Relation {
 	 * @param bbox
 	 *            The bounding box of the tile
 	 */
-	public MultiPolygonRelation(Relation other, Map<Long, Way> wayMap,
-			uk.me.parabola.imgfmt.app.Area bbox) {
+	public MultiPolygonRelation(Relation other, Map<Long, Way> wayMap, uk.me.parabola.imgfmt.app.Area bbox) {
 		this.tileWayMap = wayMap;
 		this.tileBounds = bbox;
 		// create an Area for the bbox to clip the polygons
@@ -778,9 +770,6 @@ public class MultiPolygonRelation extends Relation {
 			cleanup();
 			return;
 		}
-
-		// the intersectingPolygons marks all intersecting/overlapping polygons
-		intersectingPolygons = new HashSet<>();
 		
 		// check which polygons lie inside which other polygon 
 		createContainsMatrix(polygons);
@@ -911,13 +900,12 @@ public class MultiPolygonRelation extends Relation {
 			
 			// check if the polygon is an outer polygon or 
 			// if there are some holes
-			boolean processPolygon = currentPolygon.outer || (!holes.isEmpty());
+			boolean processPolygon = currentPolygon.outer || !holes.isEmpty();
 
 			if (processPolygon) {
 				List<Way> singularOuterPolygons;
 				if (holes.isEmpty()) {
-					singularOuterPolygons = Collections
-							.singletonList((Way) new JoinedWay(currentPolygon.polygon));
+					singularOuterPolygons = Collections.singletonList((Way) new JoinedWay(currentPolygon.polygon));
 				} else {
 					List<Way> innerWays = new ArrayList<>(holes.size());
 					for (PolygonStatus polygonHoleStatus : holes) {
@@ -1004,7 +992,6 @@ public class MultiPolygonRelation extends Relation {
 				outerWaysForLineTagging.addAll(w.getOriginalWays());
 			}
 			
-			runIntersectionCheck(unfinishedPolygons);
 			runOutmostInnerPolygonCheck(outmostInnerPolygons);
 			runNestedOuterPolygonCheck(nestedOuterPolygons);
 			runNestedInnerPolygonCheck(nestedInnerPolygons);
@@ -1127,41 +1114,6 @@ public class MultiPolygonRelation extends Relation {
 		}
 	}
 	
-	private void runIntersectionCheck(BitSet unfinishedPolys) {
-		if (intersectingPolygons.isEmpty()) {
-			// nothing to do
-			return;
-		}
-
-		log.warn("Some polygons are intersecting. This is not allowed in multipolygons.");
-
-		boolean oneOufOfBbox = false;
-		for (JoinedWay polygon : intersectingPolygons) {
-			int pi = polygons.indexOf(polygon);
-			unfinishedPolys.clear(pi);
-
-			boolean outOfBbox = false;
-			for (Coord c : polygon.getPoints()) {
-				if (!tileBounds.contains(c)) {
-					outOfBbox = true;
-					oneOufOfBbox = true;
-					break;
-				}
-			}
-
-			logWayURLs(Level.WARNING, (outOfBbox ? "*" : "-"), polygon);
-		}
-		
-		for (JoinedWay polygon : intersectingPolygons) {
-			// print out the details of the original ways
-			logFakeWayDetails(Level.WARNING, polygon);
-		}
-		
-		if (oneOufOfBbox) {
-			log.warn("Some of these intersections/overlaps may be caused by incomplete data on bounding box edges (*).");
-		}
-	}
-
 	private void runNestedOuterPolygonCheck(BitSet nestedOuterPolygons) {
 		// just print out warnings
 		// the check has been done before
@@ -1238,7 +1190,6 @@ public class MultiPolygonRelation extends Relation {
 		containsMatrix = null;
 		polygons = null;
 		tileArea = null;
-		intersectingPolygons = null;
 		outerWaysForLineTagging = null;
 		outerTags = null;
 		
@@ -1304,42 +1255,42 @@ public class MultiPolygonRelation extends Relation {
 		
 		for (int rowIndex = 0; rowIndex < polygonList.size(); rowIndex++) {
 			JoinedWay potentialOuterPolygon = polygonList.get(rowIndex);
-			BitSet containsColumns = containsMatrix.get(rowIndex);
-			BitSet finishedCol = finishedMatrix.get(rowIndex);
+		BitSet containsColumns = containsMatrix.get(rowIndex);
+		BitSet finishedCol = finishedMatrix.get(rowIndex);
 			
-			// get all non calculated columns of the matrix
-			for (int colIndex = finishedCol.nextClearBit(0); colIndex >= 0
-					&& colIndex < polygonList.size(); colIndex = finishedCol
-					.nextClearBit(colIndex + 1)) {
+		// get all non calculated columns of the matrix
+		for (int colIndex = finishedCol.nextClearBit(0); colIndex >= 0
+				&& colIndex < polygonList.size(); colIndex = finishedCol
+				.nextClearBit(colIndex + 1)) {
 
-				JoinedWay innerPolygon = polygonList.get(colIndex);
+			JoinedWay innerPolygon = polygonList.get(colIndex);
 
-				if (potentialOuterPolygon.getBounds().intersects(innerPolygon.getBounds())) {
-					boolean contains = calcContains(potentialOuterPolygon, innerPolygon);
-					if (contains) {
-						containsColumns.set(colIndex);
+			if (potentialOuterPolygon.getBounds().intersects(innerPolygon.getBounds())) {
+				boolean contains = calcContains(potentialOuterPolygon, innerPolygon);
+				if (contains) {
+					containsColumns.set(colIndex);
 
-						// we also know that the inner polygon does not contain the
-						// outer polygon
-						// so we can set the finished bit for this matrix
-						// element
-						finishedMatrix.get(colIndex).set(rowIndex);
-
-						// additionally we know that the outer polygon contains all
-						// polygons that are contained by the inner polygon
-						containsColumns.or(containsMatrix.get(colIndex));
-						finishedCol.or(containsColumns);
-					}
-				} else {
-					// both polygons do not intersect
-					// we can flag both matrix elements as finished
+					// we also know that the inner polygon does not contain the
+					// outer polygon
+					// so we can set the finished bit for this matrix
+					// element
 					finishedMatrix.get(colIndex).set(rowIndex);
-					finishedMatrix.get(rowIndex).set(colIndex);
+
+					// additionally we know that the outer polygon contains all
+					// polygons that are contained by the inner polygon
+					containsColumns.or(containsMatrix.get(colIndex));
+					finishedCol.or(containsColumns);
 				}
-				// this matrix element is calculated now
-				finishedCol.set(colIndex);
+			} else {
+				// both polygons do not intersect
+				// we can flag both matrix elements as finished
+				finishedMatrix.get(colIndex).set(rowIndex);
+				finishedMatrix.get(rowIndex).set(colIndex);
 			}
+			// this matrix element is calculated now
+			finishedCol.set(colIndex);
 		}
+	}
 
 		if (log.isDebugEnabled()) {
 			long t2 = System.currentTimeMillis();
@@ -1373,13 +1324,13 @@ public class MultiPolygonRelation extends Relation {
 	}
 
 	/**
-	 * Checks if polygon1 contains polygon2 or intersects. 
+	 * Checks if polygon1 contains polygon2 without intersection. 
 	 * 
 	 * @param polygon1
 	 *            a closed way
 	 * @param polygon2
 	 *            a 2nd closed way
-	 * @return true if polygon1 contains a point of polygon2.   
+	 * @return true if polygon1 contains polygon2 without intersection.
 	 */
 	private boolean calcContains(JoinedWay polygon1, JoinedWay polygon2) {
 		if (!polygon1.hasIdenticalEndPoints()) {
@@ -1390,13 +1341,10 @@ public class MultiPolygonRelation extends Relation {
 		if (!polygon1.getBounds().contains(polygon2.getBounds())) {
 			return false;
 		}
-		int x = IsInUtil.isLineInShape(polygon2.getPoints(), polygon1.getPoints(), polygon2.getArea());
-		if (x == IsInUtil.IN_ON_OUT) {
-			intersectingPolygons.add(polygon1);
-			intersectingPolygons.add(polygon2);
-		}
-		return (x & IsInUtil.IN) != 0;
-
+		int x = IsInUtil.isPointInShape(polygon2.getFirstPoint(), polygon1.getPoints());
+		if (x != IsInUtil.OUT)
+			x = IsInUtil.isLineInShape(polygon2.getPoints(), polygon1.getPoints(), polygon2.getArea());
+		return (x & IsInUtil.OUT) == 0;
 	}
 
 	private boolean lineCutsBbox(Coord p1, Coord p2) {
