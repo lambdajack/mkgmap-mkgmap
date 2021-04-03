@@ -835,44 +835,8 @@ public class MultiPolygonRelation extends Relation {
 			// polygonContains is the intersection of the unfinished and
 			// the contained polygons
 
-			// get the holes
-			// these are all polygons that are in the main polygon
-			// and that are not contained by any other polygon
-			boolean holesOk;
-			BitSet holeIndexes;
-			do {
-				holeIndexes = findOutmostPolygons(polygonContains);
-				holesOk = true;
-
-				if (currentPolygon.outer) {
-					// for role=outer only role=inner is allowed
-					if (holeIndexes.intersects(taggedOuterPolygons)) {
-						BitSet addOuterNestedPolygons = new BitSet();
-						addOuterNestedPolygons.or(holeIndexes);
-						addOuterNestedPolygons.and(taggedOuterPolygons);
-						nestedOuterPolygons.or(addOuterNestedPolygons);
-						holeIndexes.andNot(addOuterNestedPolygons);
-						// do not process them
-						unfinishedPolygons.andNot(addOuterNestedPolygons);
-						polygonContains.andNot(addOuterNestedPolygons);
-						
-						// recalculate the holes again to get all inner polygons 
-						// in the nested outer polygons
-						holesOk = false;
-					}
-				} else {
-					// for role=inner both role=inner and role=outer is supported
-					// although inner in inner is not officially allowed
-					if (holeIndexes.intersects(taggedInnerPolygons)) {
-						// process inner in inner but issue a warning later
-						BitSet addInnerNestedPolygons = new BitSet();
-						addInnerNestedPolygons.or(holeIndexes);
-						addInnerNestedPolygons.and(taggedInnerPolygons);
-						nestedInnerPolygons.or(addInnerNestedPolygons);
-					}
-				}
-			} while (!holesOk);
-
+			BitSet holeIndexes = checkRoleAgainstGeometry(currentPolygon, unfinishedPolygons, nestedOuterPolygons, nestedInnerPolygons);
+ 
 			ArrayList<PolygonStatus> holes = getPolygonStatus(holeIndexes, (currentPolygon.outer ? "inner" : "outer"));
 
 			// these polygons must all be checked for holes
@@ -1045,6 +1009,63 @@ public class MultiPolygonRelation extends Relation {
 		cleanup();
 	}
 	
+	/**
+	 * Check the roles of polygons against the actual findings in containsMatrix. Not sure what this does so far.
+	 * @param currentPolygon the current polygon
+	 * @param unfinishedPolygons might be modified 
+	 * @param nestedOuterPolygons might be modified
+	 * @param nestedInnerPolygons might be modified
+	 * @return set of polygon indexes which are considered as holes of the current polygon  
+	 */
+	protected BitSet checkRoleAgainstGeometry(PolygonStatus currentPolygon, BitSet unfinishedPolygons,
+			BitSet nestedOuterPolygons, BitSet nestedInnerPolygons) {
+		BitSet polygonContains = new BitSet();
+		polygonContains.or(containsMatrix.get(currentPolygon.index));
+		// use only polygon that are contained by the polygon
+		polygonContains.and(unfinishedPolygons);
+		// polygonContains is the intersection of the unfinished and
+		// the contained polygons
+
+		// get the holes
+		// these are all polygons that are in the current polygon
+		// and that are not contained by any other polygon
+		boolean holesOk;
+		BitSet holeIndexes;
+		do {
+			holeIndexes = findOutmostPolygons(polygonContains);
+			holesOk = true;
+
+			if (currentPolygon.outer) {
+				// for role=outer only role=inner is allowed
+				if (holeIndexes.intersects(taggedOuterPolygons)) {
+					BitSet addOuterNestedPolygons = new BitSet();
+					addOuterNestedPolygons.or(holeIndexes);
+					addOuterNestedPolygons.and(taggedOuterPolygons);
+					nestedOuterPolygons.or(addOuterNestedPolygons);
+					holeIndexes.andNot(addOuterNestedPolygons);
+					// do not process them
+					unfinishedPolygons.andNot(addOuterNestedPolygons);
+					polygonContains.andNot(addOuterNestedPolygons);
+					
+					// recalculate the holes again to get all inner polygons 
+					// in the nested outer polygons
+					holesOk = false;
+				}
+			} else {
+				// for role=inner both role=inner and role=outer is supported
+				// although inner in inner is not officially allowed
+				if (holeIndexes.intersects(taggedInnerPolygons)) {
+					// process inner in inner but issue a warning later
+					BitSet addInnerNestedPolygons = new BitSet();
+					addInnerNestedPolygons.or(holeIndexes);
+					addInnerNestedPolygons.and(taggedInnerPolygons);
+					nestedInnerPolygons.or(addInnerNestedPolygons);
+				}
+			}
+		} while (!holesOk);
+		return holeIndexes;
+	}
+ 
 	/**
 	 * Analyse roles in ways and fill corresponding sets.
 	 */

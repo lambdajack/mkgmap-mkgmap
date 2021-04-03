@@ -159,50 +159,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 			// further step
 			unfinishedPolygons.clear(currentPolygon.index);
 
-			BitSet polygonContains = new BitSet();
-			polygonContains.or(containsMatrix.get(currentPolygon.index));
-			// use only polygon that are contained by the polygon
-			polygonContains.and(unfinishedPolygons);
-			// polygonContains is the intersection of the unfinished and
-			// the contained polygons
-
-			// get the holes
-			// these are all polygons that are in the main polygon
-			// and that are not contained by any other polygon
-			boolean holesOk;
-			BitSet holeIndexes;
-			do {
-				holeIndexes = findOutmostPolygons(polygonContains);
-				holesOk = true;
-
-				if (currentPolygon.outer) {
-					// for role=outer only role=inner is allowed
-					if (holeIndexes.intersects(taggedOuterPolygons)) {
-						BitSet addOuterNestedPolygons = new BitSet();
-						addOuterNestedPolygons.or(holeIndexes);
-						addOuterNestedPolygons.and(taggedOuterPolygons);
-						nestedOuterPolygons.or(addOuterNestedPolygons);
-						holeIndexes.andNot(addOuterNestedPolygons);
-						// do not process them
-						unfinishedPolygons.andNot(addOuterNestedPolygons);
-						polygonContains.andNot(addOuterNestedPolygons);
-						
-						// recalculate the holes again to get all inner polygons 
-						// in the nested outer polygons
-						holesOk = false;
-					}
-				} else {
-					// for role=inner both role=inner and role=outer is supported
-					// although inner in inner is not officially allowed
-					if (holeIndexes.intersects(taggedInnerPolygons)) {
-						// process inner in inner but issue a warning later
-						BitSet addInnerNestedPolygons = new BitSet();
-						addInnerNestedPolygons.or(holeIndexes);
-						addInnerNestedPolygons.and(taggedInnerPolygons);
-						nestedInnerPolygons.or(addInnerNestedPolygons);
-					}
-				}
-			} while (!holesOk);
+			BitSet holeIndexes = checkRoleAgainstGeometry(currentPolygon, unfinishedPolygons, nestedOuterPolygons, nestedInnerPolygons);
 
 			ArrayList<PolygonStatus> holes = getPolygonStatus(holeIndexes, (currentPolygon.outer ? "inner" : "outer"));
 
