@@ -15,15 +15,12 @@ package uk.me.parabola.mkgmap.reader.osm.boundary;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
@@ -35,8 +32,7 @@ import uk.me.parabola.util.Java2DConverter;
 
 
 public class BoundaryRelation extends MultiPolygonRelation {
-	private static final Logger log = Logger
-	.getLogger(BoundaryRelation.class);
+	private static final Logger log = Logger.getLogger(BoundaryRelation.class);
 
 	private java.awt.geom.Area outerResultArea;
 	
@@ -58,114 +54,35 @@ public class BoundaryRelation extends MultiPolygonRelation {
 		return boundary;
 	}
 	
-	/**
-	 * Process the ways in this relation. Joins way with the role "outer" Adds
-	 * ways with the role "inner" to the way with the role "outer"
-	 */
 	@Override
-	public void processElements() {
-		log.info("Processing multipolygon", toBrowseURL());
-	
-		List<Way> allWays = getSourceWays();
-		
-		// join all single ways to polygons, try to close ways and remove non closed ways 
-		polygons = joinWays(allWays);
-		
-		outerWaysForLineTagging = new HashSet<>();
-		outerTags = new HashMap<>();
-		
-		removeOutOfBbox(polygons);
+	protected boolean isUsable() {
+		return true;
+	}
 
-		do {
-			closeWays(polygons, getMaxCloseDist());
-		} while (connectUnclosedWays(polygons));
-
-		removeUnclosedWays(polygons);
-
-		// now only closed ways are left => polygons only
-
-		// check if we have at least one polygon left
-		boolean hasPolygons = !polygons.isEmpty();
-
-		removeWaysOutsideBbox(polygons);
-
-		if (polygons.isEmpty()) {
-			// do nothing
-			if (log.isInfoEnabled()) {
-				log.info("Multipolygon", toBrowseURL(),
-						hasPolygons ? "is completely outside the bounding box. It is not processed."
-								: "does not contain a closed polygon.");
-			}
-			tagOuterWays();
-			cleanup();
-			return;
-		}
-		
-		// check which polygons lie inside which other polygon 
-		createContainsMatrix(polygons);
-
-		// unfinishedPolygons marks which polygons are not yet processed
-		unfinishedPolygons = new BitSet(polygons.size());
-		unfinishedPolygons.set(0, polygons.size());
-
-		analyseRelationRoles();
-		if (outerPolygons.isEmpty()) {
-			log.warn("Multipolygon", toBrowseURL(),
-				"does not contain any way tagged with role=outer or empty role.");
-			cleanup();
-			return;
-		}
-
-		Queue<PolygonStatus> polygonWorkingQueue = new LinkedBlockingQueue<>();
-		BitSet nestedOuterPolygons = new BitSet();
-		BitSet nestedInnerPolygons = new BitSet();
-
-		BitSet outmostPolygons;
-		BitSet outmostInnerPolygons = new BitSet();
-		boolean outmostInnerFound;
-		do {
-			outmostInnerFound = false;
-			outmostPolygons = findOutmostPolygons(unfinishedPolygons);
-
-			if (outmostPolygons.intersects(taggedInnerPolygons)) {
-				outmostInnerPolygons.or(outmostPolygons);
-				outmostInnerPolygons.and(taggedInnerPolygons);
-
-				if (log.isDebugEnabled())
-					log.debug("wrong inner polygons: " + outmostInnerPolygons);
-				// do not process polygons tagged with role=inner but which are
-				// not contained by any other polygon
-				unfinishedPolygons.andNot(outmostInnerPolygons);
-				outmostPolygons.andNot(outmostInnerPolygons);
-				outmostInnerFound = true;
-			}
-		} while (outmostInnerFound);
-		
-		if (!outmostPolygons.isEmpty()) {
-			polygonWorkingQueue.addAll(getPolygonStatus(outmostPolygons, "outer"));
-		}
-
+	@Override
+	protected void processQueue(Queue<PolygonStatus> polygonWorkingQueue, BitSet nestedOuterPolygons,
+			BitSet nestedInnerPolygons) {
 		boolean outmostPolygonProcessing = true;
 		
 		
 		outerResultArea = new java.awt.geom.Area();
 		
 		while (!polygonWorkingQueue.isEmpty()) {
-
+	
 			// the polygon is not contained by any other unfinished polygon
 			PolygonStatus currentPolygon = polygonWorkingQueue.poll();
-
+	
 			// this polygon is now processed and should not be used by any
 			// further step
 			unfinishedPolygons.clear(currentPolygon.index);
-
+	
 			BitSet holeIndexes = checkRoleAgainstGeometry(currentPolygon, unfinishedPolygons, nestedOuterPolygons, nestedInnerPolygons);
-
+	
 			ArrayList<PolygonStatus> holes = getPolygonStatus(holeIndexes, (currentPolygon.outer ? "inner" : "outer"));
-
+	
 			// these polygons must all be checked for holes
 			polygonWorkingQueue.addAll(holes);
-
+	
 			if (currentPolygon.outer) {
 				// add the original ways to the list of ways that get the line tags of the mp
 				// the joined ways may be changed by the auto closing algorithm
@@ -178,7 +95,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 					outerResultArea = toAdd;
 				else
 					outerResultArea.add(toAdd);
-
+	
 				for (Way outerWay : currentPolygon.polygon.getOriginalWays()) {
 					if (outmostPolygonProcessing) {
 						for (Entry<String, String> tag : outerWay.getTagEntryIterator()) {
@@ -198,44 +115,31 @@ public class BoundaryRelation extends MultiPolygonRelation {
 						.createArea(currentPolygon.polygon.getPoints()));
 			}
 		}
+	}
+
+	@Override
+	protected void doReporting(BitSet outmostInnerPolygons, BitSet unfinishedPolygons, BitSet nestedOuterPolygons,
+			BitSet nestedInnerPolygons) {
 		
-		if (hasStyleRelevantTags(this)) {
-			outerTags.clear();
-			for (Entry<String,String> mpTags : getTagEntryIterator()) {
-				if (!"type".equals(mpTags.getKey())) {
-					outerTags.put(mpTags.getKey(), mpTags.getValue());
-				}
-			}
-		} else {
-			for (Entry<String,String> mpTags : outerTags.entrySet()) {
-				addTag(mpTags.getKey(), mpTags.getValue());
+		// do nothing for BoundaryRelation
+	}
+
+	@Override
+	protected void createOuterLines() {
+		outerTags.clear();
+		for (Entry<String,String> mpTags : getTagEntryIterator()) {
+			if (!"type".equals(mpTags.getKey())) {
+				outerTags.put(mpTags.getKey(), mpTags.getValue());
 			}
 		}
-		
-		// Go through all original outer ways, create a copy, tag them
-		// with the mp tags and mark them only to be used for polyline processing
-		// This enables the style file to decide if the polygon information or
-		// the simple line information should be used.
 		for (Way orgOuterWay : outerWaysForLineTagging) {
-//			Way lineTagWay =  new Way(FakeIdGenerator.makeFakeId(), orgOuterWay.getPoints());
-//			lineTagWay.setName(orgOuterWay.getName());
-//			lineTagWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
 			for (Entry<String,String> tag : outerTags.entrySet()) {
-//				lineTagWay.addTag(tag.getKey(), tag.getValue());
-				
 				// remove the tag from the original way if it has the same value
 				if (tag.getValue().equals(orgOuterWay.getTag(tag.getKey()))) {
 					markTagsForRemovalInOrgWays(orgOuterWay, tag.getKey());
 				}
 			}
-			
-//			if (log.isDebugEnabled())
-//				log.debug("Add line way", lineTagWay.getId(), lineTagWay.toTagString());
-//			tileWayMap.put(lineTagWay.getId(), lineTagWay);
 		}
-		
-		postProcessing();
-		cleanup();
 	}
 
 	@Override
@@ -249,7 +153,7 @@ public class BoundaryRelation extends MultiPolygonRelation {
 		}
 		// try to connect ways lying outside or on the bbox
 		if (unclosed.size() >= 2) {
-			log.debug("Checking",unclosed.size(),"unclosed ways for connections outside the bbox");
+			log.debug("Checking", unclosed.size(), "unclosed ways for connections outside the bbox");
 			Map<Coord, JoinedWay> outOfBboxPoints = new IdentityHashMap<>();
 			
 			// check all ways for endpoints outside or on the bbox
@@ -289,7 +193,6 @@ public class BoundaryRelation extends MultiPolygonRelation {
 						(o1, o2) -> Double.compare(o1.distance, o2.distance));
 				
 				if (minCon.distance < getMaxCloseDist()) {
-
 					if (minCon.w1 == minCon.w2) {
 						log.debug("Close a gap in way", minCon.w1);
 						if (minCon.imC != null)
@@ -314,23 +217,23 @@ public class BoundaryRelation extends MultiPolygonRelation {
 		}
 		return false;
 	}
-	
+
 	@Override
 	protected double getMaxCloseDist() {
-		double dist = 1000;
-		String admString= getTag("admin_level");
-		
-		if ("2".equals(admString)) {
-			dist = 50000;
-		} else if ("3".equals(admString)) {
-			dist = 20000;
-		}else if ("4".equals(admString)) {
-			dist = 4000;
+		String admString = getTag("admin_level");
+		if (admString == null)
+			return 1000;
+		switch (admString) {
+		case "2": return 50000; 
+		case "3": return 20000;
+		case "4": return 4000; 
+		default:
+			return 1000;
 		}
-		return dist;
 	}
-	
-	private void removeOutOfBbox(List<JoinedWay> polygons) {
+
+	@Override
+	protected void filterUnclosed(ArrayList<JoinedWay> polygons) {
 		ListIterator<JoinedWay> pIter = polygons.listIterator();
 		while (pIter.hasNext()) {
 			JoinedWay w = pIter.next();
@@ -345,7 +248,6 @@ public class BoundaryRelation extends MultiPolygonRelation {
 				}
 			}
 		}
-
 	}
 
 	@Override

@@ -695,7 +695,7 @@ public class MultiPolygonRelation extends Relation {
 	 * Creates a list of all original ways of the multipolygon. 
 	 * @return all source ways
 	 */
-	protected List<Way> getSourceWays() {
+	private List<Way> getSourceWays() {
 		ArrayList<Way> allWays = new ArrayList<>();
 
 		for (Map.Entry<String, Element> entry : getElements()) {
@@ -719,7 +719,7 @@ public class MultiPolygonRelation extends Relation {
 	// unfinishedPolygons marks which polygons are not yet processed
 	protected BitSet unfinishedPolygons;
 
-	// create bitsets which polygons belong to the outer and to the inner role
+	// bitsets which polygons belong to the outer and to the inner role
 	protected BitSet innerPolygons;
 	protected BitSet taggedInnerPolygons;
 	protected BitSet outerPolygons;
@@ -729,11 +729,11 @@ public class MultiPolygonRelation extends Relation {
 	 * Process the ways in this relation. Joins way with the role "outer" Adds
 	 * ways with the role "inner" to the way with the role "outer"
 	 */
-	public void processElements() {
+	public final void processElements() {
 		log.info("Processing multipolygon", toBrowseURL());
 		
 		// check if it makes sense to process the mp 
-		if (!hasStyleRelevantTags(this)) {
+		if (!isUsable()) { 
 			log.info("Do not process multipolygon", getId(), "because it has no style relevant tags.");
 			return;
 		}
@@ -745,6 +745,8 @@ public class MultiPolygonRelation extends Relation {
 		
 		outerWaysForLineTagging = new HashSet<>();
 		outerTags = new HashMap<>();
+		
+		filterUnclosed(polygons);
 		
 		do {
 			closeWays(polygons, getMaxCloseDist());
@@ -791,8 +793,104 @@ public class MultiPolygonRelation extends Relation {
 		BitSet nestedOuterPolygons = new BitSet();
 		BitSet nestedInnerPolygons = new BitSet();
 
-		BitSet outmostPolygons;
 		BitSet outmostInnerPolygons = new BitSet();
+		BitSet outmostPolygons = getUsableOuters(outmostInnerPolygons);
+		
+		polygonWorkingQueue.addAll(getPolygonStatus(outmostPolygons, "outer"));
+		processQueue(polygonWorkingQueue, nestedOuterPolygons, nestedInnerPolygons);
+
+		doReporting(outmostInnerPolygons, unfinishedPolygons, nestedOuterPolygons, nestedInnerPolygons);
+		
+		createOuterLines();
+		
+		postProcessing();
+		cleanup();
+	}
+
+	protected boolean isUsable() {
+		return hasStyleRelevantTags(this); 
+	}
+
+
+	protected void doReporting(BitSet outmostInnerPolygons, BitSet unfinishedPolygons, BitSet nestedOuterPolygons,
+			BitSet nestedInnerPolygons) {
+		if (log.isLoggable(Level.WARNING) && (outmostInnerPolygons.cardinality() + unfinishedPolygons.cardinality()
+				+ nestedOuterPolygons.cardinality() + nestedInnerPolygons.cardinality() >= 1)) {
+			log.warn("Multipolygon", toBrowseURL(), toTagString(), "contains errors.");
+
+			BitSet outerUnusedPolys = new BitSet();
+			outerUnusedPolys.or(unfinishedPolygons);
+			outerUnusedPolys.or(outmostInnerPolygons);
+			outerUnusedPolys.or(nestedOuterPolygons);
+			outerUnusedPolys.or(nestedInnerPolygons);
+			outerUnusedPolys.or(unfinishedPolygons);
+			// use only the outer polygons
+			outerUnusedPolys.and(outerPolygons);
+			for (JoinedWay w : getWaysFromPolygonList(outerUnusedPolys)) {
+				outerWaysForLineTagging.addAll(w.getOriginalWays());
+			}
+
+			runOutmostInnerPolygonCheck(outmostInnerPolygons);
+			runNestedOuterPolygonCheck(nestedOuterPolygons);
+			runNestedInnerPolygonCheck(nestedInnerPolygons);
+			runWrongInnerPolygonCheck(unfinishedPolygons, innerPolygons);
+
+			// we have at least one polygon that could not be processed
+			// Probably we have intersecting or overlapping polygons
+			// one possible reason is if the relation overlaps the tile
+			// bounds
+			// => issue a warning
+			List<JoinedWay> lostWays = getWaysFromPolygonList(unfinishedPolygons);
+			for (JoinedWay w : lostWays) {
+				log.warn("Polygon", w, "is not processed due to an unknown reason.");
+				logWayURLs(Level.WARNING, "-", w);
+			}
+		}
+	}
+
+	protected void createOuterLines() {
+		String mpAreaSizeStr = null;
+		if (isAreaSizeCalculated()) {
+			// calculate tag value for mkgmap:cache_area_size only once
+			mpAreaSizeStr = String.format(Locale.US, "%.3f", mpAreaSize);
+		}
+		
+		// Go through all original outer ways, create a copy, tag them
+		// with the mp tags and mark them only to be used for polyline processing
+		// This enables the style file to decide if the polygon information or
+		// the simple line information should be used.
+		for (Way orgOuterWay : outerWaysForLineTagging) {
+			Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
+			lineTagWay.markAsGeneratedFrom(this);
+			lineTagWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
+			lineTagWay.addTag(TKM_MP_CREATED, "true");
+			if (mpAreaSizeStr != null) {
+				// assign the area size of the whole multipolygon to all outer polygons
+				lineTagWay.addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
+			}
+			for (Entry<String,String> tag : outerTags.entrySet()) {
+				lineTagWay.addTag(tag.getKey(), tag.getValue());
+				
+				// remove the tag from the original way if it has the same value
+				if (tag.getValue().equals(orgOuterWay.getTag(tag.getKey()))) {
+					markTagsForRemovalInOrgWays(orgOuterWay, tag.getKey());
+				}
+			}
+	
+			if (log.isDebugEnabled())
+				log.debug("Add line way", lineTagWay.getId(), lineTagWay.toTagString());
+			tileWayMap.put(lineTagWay.getId(), lineTagWay);
+		}
+	}
+
+
+	protected void filterUnclosed(ArrayList<JoinedWay> polygons) {
+		// do nothing , see BoundaryRelation
+	}
+
+
+	private BitSet getUsableOuters(BitSet outmostInnerPolygons) {
+		BitSet outmostPolygons;
 		boolean outmostInnerFound;
 		do {
 			outmostInnerFound = false;
@@ -811,14 +909,12 @@ public class MultiPolygonRelation extends Relation {
 				outmostInnerFound = true;
 			}
 		} while (outmostInnerFound);
-		
-		if (!outmostPolygons.isEmpty()) {
-			polygonWorkingQueue.addAll(getPolygonStatus(outmostPolygons, "outer"));
-		}
-
+		return outmostPolygons;
+	}
+	
+	protected void processQueue(Queue<PolygonStatus> polygonWorkingQueue, BitSet nestedOuterPolygons, BitSet nestedInnerPolygons) {
 		boolean outmostPolygonProcessing = true;
 		
-	
 		while (!polygonWorkingQueue.isEmpty()) {
 
 			// the polygon is not contained by any other unfinished polygon
@@ -827,13 +923,6 @@ public class MultiPolygonRelation extends Relation {
 			// this polygon is now processed and should not be used by any
 			// further step
 			unfinishedPolygons.clear(currentPolygon.index);
-
-			BitSet polygonContains = new BitSet();
-			polygonContains.or(containsMatrix.get(currentPolygon.index));
-			// use only polygon that are contained by the polygon
-			polygonContains.and(unfinishedPolygons);
-			// polygonContains is the intersection of the unfinished and
-			// the contained polygons
 
 			BitSet holeIndexes = checkRoleAgainstGeometry(currentPolygon, unfinishedPolygons, nestedOuterPolygons, nestedInnerPolygons);
  
@@ -939,76 +1028,9 @@ public class MultiPolygonRelation extends Relation {
 				}
 			}
 		}
-		
-		if (log.isLoggable(Level.WARNING) && (outmostInnerPolygons.cardinality() + unfinishedPolygons.cardinality()
-				+ nestedOuterPolygons.cardinality() + nestedInnerPolygons.cardinality() >= 1)) {
-			log.warn("Multipolygon", toBrowseURL(), toTagString(), "contains errors.");
-
-			BitSet outerUnusedPolys = new BitSet();
-			outerUnusedPolys.or(unfinishedPolygons);
-			outerUnusedPolys.or(outmostInnerPolygons);
-			outerUnusedPolys.or(nestedOuterPolygons);
-			outerUnusedPolys.or(nestedInnerPolygons);
-			outerUnusedPolys.or(unfinishedPolygons);
-			// use only the outer polygons
-			outerUnusedPolys.and(outerPolygons);
-			for (JoinedWay w : getWaysFromPolygonList(outerUnusedPolys)) {
-				outerWaysForLineTagging.addAll(w.getOriginalWays());
-			}
-			
-			runOutmostInnerPolygonCheck(outmostInnerPolygons);
-			runNestedOuterPolygonCheck(nestedOuterPolygons);
-			runNestedInnerPolygonCheck(nestedInnerPolygons);
-			runWrongInnerPolygonCheck(unfinishedPolygons, innerPolygons);
-
-			// we have at least one polygon that could not be processed
-			// Probably we have intersecting or overlapping polygons
-			// one possible reason is if the relation overlaps the tile
-			// bounds
-			// => issue a warning
-			List<JoinedWay> lostWays = getWaysFromPolygonList(unfinishedPolygons);
-			for (JoinedWay w : lostWays) {
-				log.warn("Polygon", w, "is not processed due to an unknown reason.");
-				logWayURLs(Level.WARNING, "-", w);
-			}
-		}
-
-		String mpAreaSizeStr = null;
-		if (isAreaSizeCalculated()) {
-			// calculate tag value for mkgmap:cache_area_size only once
-			mpAreaSizeStr = String.format(Locale.US, "%.3f", mpAreaSize);
-		}
-		// Go through all original outer ways, create a copy, tag them
-		// with the mp tags and mark them only to be used for polyline processing
-		// This enables the style file to decide if the polygon information or
-		// the simple line information should be used.
-		for (Way orgOuterWay : outerWaysForLineTagging) {
-			Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
-			lineTagWay.markAsGeneratedFrom(this);
-			lineTagWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
-			lineTagWay.addTag(TKM_MP_CREATED, "true");
-			if (mpAreaSizeStr != null) {
-				// assign the area size of the whole multipolygon to all outer polygons
-				lineTagWay.addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
-			}
-			for (Entry<String,String> tag : outerTags.entrySet()) {
-				lineTagWay.addTag(tag.getKey(), tag.getValue());
-				
-				// remove the tag from the original way if it has the same value
-				if (tag.getValue().equals(orgOuterWay.getTag(tag.getKey()))) {
-					markTagsForRemovalInOrgWays(orgOuterWay, tag.getKey());
-				}
-			}
-	
-			if (log.isDebugEnabled())
-				log.debug("Add line way", lineTagWay.getId(), lineTagWay.toTagString());
-			tileWayMap.put(lineTagWay.getId(), lineTagWay);
-		}
-		
-		postProcessing();
-		cleanup();
 	}
-	
+
+
 	/**
 	 * Check the roles of polygons against the actual findings in containsMatrix. Not sure what this does so far.
 	 * @param currentPolygon the current polygon
@@ -1069,7 +1091,7 @@ public class MultiPolygonRelation extends Relation {
 	/**
 	 * Analyse roles in ways and fill corresponding sets.
 	 */
-	protected void analyseRelationRoles() {
+	private void analyseRelationRoles() {
 		// create bitsets which polygons belong to the outer and to the inner role
 		innerPolygons = new BitSet();
 		taggedInnerPolygons = new BitSet();
@@ -1573,6 +1595,7 @@ public class MultiPolygonRelation extends Relation {
 	 * @param tagKey the tag key
 	 */
 	protected void markTagsForRemovalInOrgWays(Way way, String tagKey) {
+		//TODO: Can we directly remove the tags from the original way since we don't want to support old-style-MP?
 		if (tagKey == null || tagKey.isEmpty()) {
 			return;
 		}
