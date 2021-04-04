@@ -610,7 +610,26 @@ public class MultiPolygonRelation extends Relation {
 	}
 
 	private boolean isFullyOutsideBBox(JoinedWay w) {
-		return IsInUtil.OUT == IsInUtil.isLineInShape(w.getPoints(), tileBounds.toCoords(), w.getArea()); 
+		if (!w.getBounds().intersects(tileArea.getBounds())) {
+			return true;
+		}
+		
+		// check if the polygon bbox contains the complete tile bounds
+		if (w.getBounds().contains(tileArea.getBounds())) {
+			return false;
+		}
+		
+		// check if any point is inside tile bounds
+		if (w.getPoints().stream().anyMatch(tileBounds::contains))
+			return false;
+
+		// check if any line segment of the polygon crosses the tile bounds
+		for (int i = 0; i < w.getPoints().size() - 1; i++) {
+			if (lineCutsBbox(w.getPoints().get(i), w.getPoints().get(i + 1))) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
