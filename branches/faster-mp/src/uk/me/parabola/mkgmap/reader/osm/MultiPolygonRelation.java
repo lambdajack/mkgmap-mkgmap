@@ -797,9 +797,6 @@ public class MultiPolygonRelation extends Relation {
 			cleanup();
 			return;
 		}
-		if (this.getId() == 8427091) {
-			long dd = 4;
-		}
 
 		Queue<PolygonStatus> polygonWorkingQueue = new LinkedBlockingQueue<>();
 		BitSet nestedOuterPolygons = new BitSet();
