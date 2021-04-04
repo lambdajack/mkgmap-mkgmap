@@ -14,15 +14,14 @@ package uk.me.parabola.mkgmap.reader.osm.boundary;
 
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 
 import uk.me.parabola.imgfmt.app.Area;
-import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
+import uk.me.parabola.mkgmap.reader.osm.TagDict;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.util.Java2DConverter;
 
@@ -61,9 +60,6 @@ public class BoundaryRelation extends MultiPolygonRelation {
 	@Override
 	protected void processQueue(Queue<PolygonStatus> polygonWorkingQueue, BitSet nestedOuterPolygons,
 			BitSet nestedInnerPolygons) {
-		boolean outmostPolygonProcessing = true;
-		
-		
 		outerResultArea = new java.awt.geom.Area();
 		
 		while (!polygonWorkingQueue.isEmpty()) {
@@ -86,32 +82,14 @@ public class BoundaryRelation extends MultiPolygonRelation {
 				// add the original ways to the list of ways that get the line tags of the mp
 				// the joined ways may be changed by the auto closing algorithm
 				outerWaysForLineTagging.addAll(currentPolygon.polygon.getOriginalWays());
-			}
-			
-			if (currentPolygon.outer) {
+
 				java.awt.geom.Area toAdd = Java2DConverter.createArea(currentPolygon.polygon.getPoints());
 				if (outerResultArea.isEmpty())
 					outerResultArea = toAdd;
 				else
 					outerResultArea.add(toAdd);
-	
-				for (Way outerWay : currentPolygon.polygon.getOriginalWays()) {
-					if (outmostPolygonProcessing) {
-						for (Entry<String, String> tag : outerWay.getTagEntryIterator()) {
-							outerTags.put(tag.getKey(), tag.getValue());
-						}
-						outmostPolygonProcessing = false;
-					} else {
-						for (String tag : new ArrayList<>(outerTags.keySet())) {
-							if (!outerTags.get(tag).equals(outerWay.getTag(tag))) {
-								outerTags.remove(tag);
-							}
-						}
-					}
-				}
 			} else {
-				outerResultArea.subtract(Java2DConverter
-						.createArea(currentPolygon.polygon.getPoints()));
+				outerResultArea.subtract(Java2DConverter.createArea(currentPolygon.polygon.getPoints()));
 			}
 		}
 	}
@@ -119,23 +97,19 @@ public class BoundaryRelation extends MultiPolygonRelation {
 	@Override
 	protected void doReporting(BitSet outmostInnerPolygons, BitSet unfinishedPolygons, BitSet nestedOuterPolygons,
 			BitSet nestedInnerPolygons) {
-		
 		// do nothing for BoundaryRelation
 	}
 
 	@Override
 	protected void createOuterLines() {
-		outerTags.clear();
-		for (Entry<String,String> mpTags : getTagEntryIterator()) {
-			if (!"type".equals(mpTags.getKey())) {
-				outerTags.put(mpTags.getKey(), mpTags.getValue());
-			}
-		}
-		for (Way orgOuterWay : outerWaysForLineTagging) {
-			for (Entry<String,String> tag : outerTags.entrySet()) {
+		short typeKey = TagDict.getInstance().xlate("type");
+		for (Entry<Short, String> tag : this.getFastTagEntryIterator()) {
+			if (tag.getKey() == typeKey)
+				continue;
+			for (Way orgOuterWay : outerWaysForLineTagging) {
 				// remove the tag from the original way if it has the same value
 				if (tag.getValue().equals(orgOuterWay.getTag(tag.getKey()))) {
-					markTagsForRemovalInOrgWays(orgOuterWay, tag.getKey());
+					markTagsForRemovalInOrgWays(orgOuterWay, TagDict.getInstance().get(tag.getKey()));
 				}
 			}
 		}

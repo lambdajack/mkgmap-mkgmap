@@ -76,7 +76,7 @@ public class MultiPolygonRelation extends Relation {
 	private JoinedWay largestOuterPolygon;
 	
 	protected Set<Way> outerWaysForLineTagging;
-	protected Map<String, String> outerTags;
+	private Map<String, String> outerTags;
 
 	private final uk.me.parabola.imgfmt.app.Area tileBounds;
 	private Area tileArea;
