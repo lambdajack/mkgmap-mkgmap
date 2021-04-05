@@ -1742,11 +1742,6 @@ public class MultiPolygonRelation extends Relation {
 			return area;
 		}
 
-		public boolean linePossiblyIntersectsWay(Coord p1, Coord p2) {
-			return getBounds().intersectsLine(p1.getLongitude(),
-					p1.getLatitude(), p2.getLongitude(), p2.getLatitude());
-		}
-
 		public void addWay(Way way) {
 			if (way instanceof JoinedWay) {
 				for (Way w : ((JoinedWay) way).getOriginalWays()) {
