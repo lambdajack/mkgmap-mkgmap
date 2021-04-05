@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2014.
+ * Copyright (C) 2011-2021.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 3 or
@@ -1039,7 +1039,7 @@ public class MultiPolygonRelation extends Relation {
 						// remove the multipolygon tags in the original ways of the current polygon
 						markTagsForRemovalInOrgWays(this, currentPolygon.polygon);
 					} else {
-						//TODO: this looks completely wrong 
+						// we have a nested MP with one or more outer rings inside an inner ring 
 						// use the tags of the original ways
 						currentPolygon.polygon.mergeTagsFromOrgWays();
 						for (Way p : singularOuterPolygons) {
@@ -1528,36 +1528,28 @@ public class MultiPolygonRelation extends Relation {
 	 * Marks all tags of the original ways of the given JoinedWay that are also
 	 * contained in the given tagElement for removal.
 	 * 
-	 * @param tagElement
-	 *            an element contains the tags to be removed
-	 * @param way
-	 *            a joined way
+	 * @param tagElement an element that contains the tags to be removed
+	 * @param way        a joined way
 	 */
-	private void markTagsForRemovalInOrgWays(Element tagElement, JoinedWay way) {
+	private static void markTagsForRemovalInOrgWays(Element tagElement, JoinedWay way) {
 		for (Entry<String, String> tag : tagElement.getTagEntryIterator()) {
 			markTagForRemovalInOrgWays(way, tag.getKey(), tag.getValue());
 		}
 	}
 
 	/**
-	 * Mark the given tag of all original ways of the given JoinedWay.
+	 * Mark the given tag for removal in all original ways of the given way.
 	 * 
-	 * @param way
-	 *            a joined way
-	 * @param tagname
-	 *            the tag to be removed
-	 * @param tagvalue
-	 *            the value of the tag to be removed
+	 * @param way      a joined way
+	 * @param tagname  the tag to be removed
+	 * @param tagvalue the value of the tag to be removed
 	 */
-	private void markTagForRemovalInOrgWays(JoinedWay way, String tagname, String tagvalue) {
+	private static void markTagForRemovalInOrgWays(JoinedWay way, String tagname, String tagvalue) {
 		for (Way w : way.getOriginalWays()) {
 			if (w instanceof JoinedWay) {
 				// remove the tags recursively
 				markTagForRemovalInOrgWays((JoinedWay) w, tagname, tagvalue);
-				continue;
-			}
-
-			if (tagvalue.equals(w.getTag(tagname))) {
+			} else if (tagvalue.equals(w.getTag(tagname))) {
 				if (log.isDebugEnabled()) {
 					log.debug("Will remove", tagname + "=" + w.getTag(tagname), "from way", w.getId(), w.toTagString());
 				}
@@ -1572,10 +1564,9 @@ public class MultiPolygonRelation extends Relation {
 	 * @param way the way
 	 * @param tagKey the tag key
 	 */
-	protected void markTagsForRemovalInOrgWays(Way way, String tagKey) {
-		//TODO: Can we directly remove the tags from the original way since we don't want to support old-style-MP?
+	protected static void markTagsForRemovalInOrgWays(Way way, String tagKey) {
 		if (tagKey == null || tagKey.isEmpty()) {
-			return;
+			return; // should not happen
 		}
 		String tagsToRemove = way.getTag(ElementSaver.TKM_REMOVETAGS);
 		
@@ -1779,6 +1770,11 @@ public class MultiPolygonRelation extends Relation {
 			return closedArtificially;
 		}
 
+		/**
+		 * Get common tags of all ways.
+		 * @param ways the collection of ways
+		 * @return map with common tags, might be empty but will never be null
+		 */
 		public static Map<String, String> getMergedTags(Collection<Way> ways) {
 			Map<String, String> mergedTags = new HashMap<>();
 			boolean first = true;
@@ -1790,23 +1786,14 @@ public class MultiPolygonRelation extends Relation {
 					}
 					first = false;
 				} else {
-					// for all other ways all non matching tags are removed
-					ArrayList<String> tagsToRemove = null;
-					for (Map.Entry<String, String> tag : mergedTags.entrySet()) {
+					if (mergedTags.isEmpty()) {
+						break;
+					}
+					// remove tags with different value
+					mergedTags.entrySet().removeIf(tag -> {
 						String wayTagValue = way.getTag(tag.getKey());
-						if (wayTagValue != null && !tag.getValue().equals(wayTagValue)) {
-							// the tags are different
-							if (tagsToRemove == null) {
-								tagsToRemove = new ArrayList<>();
-							}
-							tagsToRemove.add(tag.getKey());
-						}
-					}
-					if (tagsToRemove != null) {
-						for (String tag : tagsToRemove) {
-							mergedTags.remove(tag);
-						}
-					}
+						return (wayTagValue != null && !tag.getValue().equals(wayTagValue));
+					});
 				}
 			}
 			return mergedTags;
