@@ -76,7 +76,6 @@ public class MultiPolygonRelation extends Relation {
 	private JoinedWay largestOuterPolygon;
 	
 	protected Set<Way> outerWaysForLineTagging;
-	private Map<String, String> outerTags;
 
 	private final uk.me.parabola.imgfmt.app.Area tileBounds;
 	private Area tileArea;
@@ -753,7 +752,6 @@ public class MultiPolygonRelation extends Relation {
 		polygons = joinWays(allWays);
 		
 		outerWaysForLineTagging = new HashSet<>();
-		outerTags = new HashMap<>();
 		
 		polygons = filterUnclosed(polygons);
 		
@@ -810,13 +808,14 @@ public class MultiPolygonRelation extends Relation {
 
 		doReporting(outmostInnerPolygons, unfinishedPolygons, nestedOuterPolygons, nestedInnerPolygons);
 		
-		createOuterLines();
+		tagOuterWays();
 		
 		postProcessing();
 		cleanup();
 	}
 
 	protected boolean isUsable() {
+		// TODO: add a hook to filter unwanted MP 
 		for (Map.Entry<String, String> tagEntry : this.getTagEntryIterator()) {
 			String tagName = tagEntry.getKey();
 			// all tags are style relevant
@@ -828,6 +827,23 @@ public class MultiPolygonRelation extends Relation {
 		return false;
 	}
 
+	/**
+	 * Should return true if extra ways with style filter {@code STYLE_FILTER_LINE}
+	 * should be added to the {@code tileWayMap}. Overwrite if those ways are not needed. 
+	 * @return true if extra ways with style filter {@code STYLE_FILTER_LINE}
+	 * should be added to the {@code tileWayMap}
+	 */
+	protected boolean needsWaysForOutlines() {
+		return true;
+	}
+
+	/**
+	 * Should return true if it is wanted that open rings are closed even when open
+	 * ends are outside of the tile bounds.
+	 * 
+	 * @return true if it is wanted that open rings are closed even when open ends
+	 *         are outside of the tile bounds.
+	 */
 	protected boolean allowCloseOutsideBBox() {
 		return true; 
 	}
@@ -868,38 +884,45 @@ public class MultiPolygonRelation extends Relation {
 		}
 	}
 
-	protected void createOuterLines() {
-		String mpAreaSizeStr = null;
-		if (isAreaSizeCalculated()) {
-			// calculate tag value for mkgmap:cache_area_size only once
-			mpAreaSizeStr = String.format(Locale.US, "%.3f", mpAreaSize);
+	private void tagOuterWays() {
+		if (outerWaysForLineTagging.isEmpty())
+			return;
+		
+		final Way patternWayForLineCopies;
+		if (needsWaysForOutlines()) {
+			// create pattern way with tags for outline of this multipolygon
+			patternWayForLineCopies = new Way(0);
+			patternWayForLineCopies.copyTags(this);
+			patternWayForLineCopies.deleteTag("type");
+			patternWayForLineCopies.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
+			patternWayForLineCopies.addTag(TKM_MP_CREATED, "true");
+			if (needsAreaSizeTag()) {
+				patternWayForLineCopies.addTag(TKM_CACHE_AREA_SIZEKEY, getAreaSizeString());
+			}
+		} else { 
+			patternWayForLineCopies = null;
 		}
 		
-		// Go through all original outer ways, create a copy, tag them
+		// Go through all original outer ways, create a copy if wanted, tag them
 		// with the mp tags and mark them only to be used for polyline processing
 		// This enables the style file to decide if the polygon information or
 		// the simple line information should be used.
 		for (Way orgOuterWay : outerWaysForLineTagging) {
-			Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
-			lineTagWay.markAsGeneratedFrom(this);
-			lineTagWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
-			lineTagWay.addTag(TKM_MP_CREATED, "true");
-			if (mpAreaSizeStr != null) {
-				// assign the area size of the whole multipolygon to all outer polygons
-				lineTagWay.addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
+			if (patternWayForLineCopies != null) {
+				Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
+				lineTagWay.markAsGeneratedFrom(this);
+				lineTagWay.copyTags(patternWayForLineCopies);
+				if (log.isDebugEnabled())
+					log.debug("Add line way", lineTagWay.getId(), lineTagWay.toTagString());
+				tileWayMap.put(lineTagWay.getId(), lineTagWay);
 			}
-			for (Entry<String,String> tag : outerTags.entrySet()) {
-				lineTagWay.addTag(tag.getKey(), tag.getValue());
-				
-				// remove the tag from the original way if it has the same value
+			
+			for (Entry<String, String> tag : this.getTagEntryIterator()) {
+				// mark the tag for removal in the original way if it has the same value
 				if (tag.getValue().equals(orgOuterWay.getTag(tag.getKey()))) {
 					markTagsForRemovalInOrgWays(orgOuterWay, tag.getKey());
 				}
 			}
-	
-			if (log.isDebugEnabled())
-				log.debug("Add line way", lineTagWay.getId(), lineTagWay.toTagString());
-			tileWayMap.put(lineTagWay.getId(), lineTagWay);
 		}
 	}
 
@@ -949,7 +972,6 @@ public class MultiPolygonRelation extends Relation {
 	 * @param nestedInnerPolygons will contain info about inner rings that are inside inner rings
 	 */
 	protected void processQueue(Queue<PolygonStatus> polygonWorkingQueue, BitSet nestedOuterPolygons, BitSet nestedInnerPolygons) {
-		boolean outmostPolygonProcessing = true;
 		
 		while (!polygonWorkingQueue.isEmpty()) {
 
@@ -1017,6 +1039,7 @@ public class MultiPolygonRelation extends Relation {
 						// remove the multipolygon tags in the original ways of the current polygon
 						markTagsForRemovalInOrgWays(this, currentPolygon.polygon);
 					} else {
+						//TODO: this looks completely wrong 
 						// use the tags of the original ways
 						currentPolygon.polygon.mergeTagsFromOrgWays();
 						for (Way p : singularOuterPolygons) {
@@ -1027,18 +1050,6 @@ public class MultiPolygonRelation extends Relation {
 						markTagsForRemovalInOrgWays(currentPolygon.polygon, currentPolygon.polygon);
 					}
 				
-					if (currentPolygon.outer && outmostPolygonProcessing) {
-						// this is the outer most polygon - copy its tags. They will be used
-						// later for tagging of the lines
-
-						// all cut polygons have the same tags - copy them from the first polygon
-						Way outerWay = singularOuterPolygons.get(0);
-						for (Entry<String, String> tag : outerWay.getTagEntryIterator()) {
-							outerTags.put(tag.getKey(), tag.getValue());
-						}
-						outmostPolygonProcessing = false;
-					}
-					
 					long fullArea = currentPolygon.polygon.getFullArea();
 					for (Way mpWay : singularOuterPolygons) {
 						// put the cut out polygons to the
@@ -1053,7 +1064,7 @@ public class MultiPolygonRelation extends Relation {
 						
 						if (currentPolygon.outer) {
 							mpWay.addTag(TKM_MP_ROLE, "outer");
-							if (isAreaSizeCalculated())
+							if (needsAreaSizeTag())
 								mpAreaSize += calcAreaSize(mpWay.getPoints());
 						} else {
 							mpWay.addTag(TKM_MP_ROLE, "inner");
@@ -1158,21 +1169,24 @@ public class MultiPolygonRelation extends Relation {
 		return -1; // overwritten in BoundaryRelation
 	}
 
+	private String getAreaSizeString() {
+		return String.format(Locale.US, "%.3f", mpAreaSize); 
+	}
 
 	protected void postProcessing() {
 		String mpAreaSizeStr = null;
-		if (isAreaSizeCalculated()) {
+		if (needsAreaSizeTag()) {
 			// assign the area size of the whole multipolygon to all outer polygons
-			mpAreaSizeStr = String.format(Locale.US, "%.3f", mpAreaSize); 
+			mpAreaSizeStr = getAreaSizeString(); 
 			addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
 		}
 
-			for (Way w : mpPolygons.values()) {
+		for (Way w : mpPolygons.values()) {
 			String role = w.deleteTag(TKM_MP_ROLE); 
 			if (mpAreaSizeStr != null && "outer".equals(role)) {
-					w.addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
-				}
+				w.addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
 			}
+		}
 		// copy all polygons created by the multipolygon algorithm to the global way map
 		tileWayMap.putAll(mpPolygons);
 		
@@ -1180,7 +1194,8 @@ public class MultiPolygonRelation extends Relation {
 			// use the center of the largest polygon as reference point
 			cOfG = largestOuterPolygon.getCofG();
 		}
-		if (largestOuterPolygon == null)
+		// TODO: maybe keep the cOfg data from a label node? 
+		if (largestOuterPolygon == null) 
 			cOfG = null; 
 	}
 	
@@ -1261,7 +1276,6 @@ public class MultiPolygonRelation extends Relation {
 		polygons = null;
 		tileArea = null;
 		outerWaysForLineTagging = null;
-		outerTags = null;
 		
 		unfinishedPolygons = null;
 		innerPolygons = null;
@@ -1510,34 +1524,6 @@ public class MultiPolygonRelation extends Relation {
 		}		
 	}
 
-	private void tagOuterWays() {
-		//TODO: merge with createOuterLines
-		
-		// Go through all original outer ways, create a copy, tag them
-		// with the mp tags and mark them only to be used for polyline processing
-		// This enables the style file to decide if the polygon information or
-		// the simple line information should be used.
-		for (Way orgOuterWay : outerWaysForLineTagging) {
-			Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
-			lineTagWay.markAsGeneratedFrom(this);
-			lineTagWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
-			lineTagWay.addTag(TKM_MP_CREATED, "true");
-			for (Entry<String, String> tag : this.getTagEntryIterator()) {
-				lineTagWay.addTag(tag.getKey(), tag.getValue());
-				
-				// remove the tag from the original way if it has the same value
-				if (tag.getValue().equals(orgOuterWay.getTag(tag.getKey()))) {
-					markTagsForRemovalInOrgWays(orgOuterWay, tag.getKey());
-				}
-			}
-			
-			if (log.isDebugEnabled())
-				log.debug("Add line way", lineTagWay.getId(), lineTagWay.toTagString());
-			tileWayMap.put(lineTagWay.getId(), lineTagWay);
-		}
-	}
-	
-	
 	/**
 	 * Marks all tags of the original ways of the given JoinedWay that are also
 	 * contained in the given tagElement for removal.
@@ -1611,7 +1597,7 @@ public class MultiPolygonRelation extends Relation {
 	 * Flag if the area size of the mp should be calculated and added as tag.
 	 * @return {@code true} area size should be calculated; {@code false} area size should not be calculated
 	 */
-	protected boolean isAreaSizeCalculated() {
+	protected boolean needsAreaSizeTag() {
 		return true;
 	}
 
@@ -1876,4 +1862,5 @@ public class MultiPolygonRelation extends Relation {
 			return polygon + "_" + outer;
 		}
 	}
+
 }

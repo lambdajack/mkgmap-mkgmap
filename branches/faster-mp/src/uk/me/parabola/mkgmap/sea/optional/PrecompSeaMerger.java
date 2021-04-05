@@ -187,7 +187,7 @@ class PrecompSeaMerger implements Runnable {
 				// do not calculate the area size => it is not required and adds
 				// a superfluous tag 
 				@Override
-				protected boolean isAreaSizeCalculated() {
+				protected boolean needsAreaSizeTag() {
 					return false;
 				}
 			};

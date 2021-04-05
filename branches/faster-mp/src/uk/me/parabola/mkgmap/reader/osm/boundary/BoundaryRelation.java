@@ -15,13 +15,11 @@ package uk.me.parabola.mkgmap.reader.osm.boundary;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Queue;
 
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
 import uk.me.parabola.mkgmap.reader.osm.Relation;
-import uk.me.parabola.mkgmap.reader.osm.TagDict;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.util.Java2DConverter;
 
@@ -54,6 +52,11 @@ public class BoundaryRelation extends MultiPolygonRelation {
 
 	@Override
 	protected boolean allowCloseOutsideBBox() {
+		return false; 
+	}
+	
+	@Override
+	protected boolean needsWaysForOutlines() {
 		return false; 
 	}
 	
@@ -98,21 +101,6 @@ public class BoundaryRelation extends MultiPolygonRelation {
 	protected void doReporting(BitSet outmostInnerPolygons, BitSet unfinishedPolygons, BitSet nestedOuterPolygons,
 			BitSet nestedInnerPolygons) {
 		// do nothing for BoundaryRelation
-	}
-
-	@Override
-	protected void createOuterLines() {
-		short typeKey = TagDict.getInstance().xlate("type");
-		for (Entry<Short, String> tag : this.getFastTagEntryIterator()) {
-			if (tag.getKey() == typeKey)
-				continue;
-			for (Way orgOuterWay : outerWaysForLineTagging) {
-				// remove the tag from the original way if it has the same value
-				if (tag.getValue().equals(orgOuterWay.getTag(tag.getKey()))) {
-					markTagsForRemovalInOrgWays(orgOuterWay, TagDict.getInstance().get(tag.getKey()));
-				}
-			}
-		}
 	}
 
 	@Override
