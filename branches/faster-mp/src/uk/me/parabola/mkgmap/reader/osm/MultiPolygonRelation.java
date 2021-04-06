@@ -61,6 +61,9 @@ public class MultiPolygonRelation extends Relation {
 	private static final short TKM_MP_ROLE = TagDict.getInstance().xlate("mkgmap:mp_role");
 	private static final short TKM_CACHE_AREA_SIZEKEY = TagDict.getInstance().xlate("mkgmap:cache_area_size");
 	
+	public static final String ROLE_OUTER = "outer";  
+	public static final String ROLE_INNER= "inner";  
+	
 	/** maps ids to ways, will be extended with joined ways */
 	private final Map<Long, Way> tileWayMap;
 	
@@ -151,18 +154,17 @@ public class MultiPolygonRelation extends Relation {
 	}
 	
 	/**
-	 * Retrieves the mp role of the given element.
+	 * Retrieves the role of the given element based on the role in the MP.
 	 * 
-	 * @param element
-	 *            the element
-	 * @return the role of the element
+	 * @param element the element
+	 * @return either ROLE_INNER, ROLE_OUTER or null.
 	 */
 	protected String getRole(Element element) {
 		String role = roleMap.get(element.getId());
-		if ("outer".equals(role) || "inner".equals(role)) {
-			return role;
-		}
-
+		if (ROLE_INNER.equals(role))
+			return ROLE_INNER;
+		if (ROLE_OUTER.equals(role))
+			return ROLE_OUTER;
 		return null;
 	}
 
@@ -216,7 +218,7 @@ public class MultiPolygonRelation extends Relation {
 			List<Coord> tempCoords = tempWay.getPoints().subList(firstTmpIdx,lastIdx);
 			
 			if (reverseTempWay) {
-				// the remp coords need to be reversed so copy the list
+				// the temp coords need to be reversed so copy the list
 				tempCoords = new ArrayList<>(tempCoords);
 				// and reverse it
 				Collections.reverse(tempCoords);
@@ -296,8 +298,8 @@ public class MultiPolygonRelation extends Relation {
 				// if a role is not 'inner' or 'outer' then it is used as
 				// universal
 				// check if the roles of the ways are matching
-				if ((!"outer".equals(joinRole) && !"inner".equals(joinRole))
-						|| (!"outer".equals(tempRole) && !"inner".equals(tempRole))
+				if ((!ROLE_OUTER.equals(joinRole) && !ROLE_INNER.equals(joinRole))
+						|| (!ROLE_OUTER.equals(tempRole) && !ROLE_INNER.equals(tempRole))
 						|| (joinRole != null && joinRole.equals(tempRole))) {
 					// the roles are matching => try to join both ways
 					joined = joinWays(joinWay, tempWay, false);
@@ -586,7 +588,7 @@ public class MultiPolygonRelation extends Relation {
 				
 				if (inBbox) {
 					String role = getRole(tempWay);
-					if (role == null || "".equals(role) || "outer".equals(role)) {
+					if (role == null || ROLE_OUTER.equals(role)) {
 						// anyhow add the ways to the list for line tagging
 						outerWaysForLineTagging.addAll(tempWay.getOriginalWays());
 					}
@@ -661,13 +663,12 @@ public class MultiPolygonRelation extends Relation {
 	}
 
 	/**
-	 * Finds all polygons that are not contained by any other polygons and that match
-	 * to the given role. All polygons with index given by <var>candidates</var>
-	 * are used.
+	 * Finds all polygons that are not contained by any other polygons and that
+	 * match the given role. All polygons with index given by
+	 * <var>candidates</var> are tested.
 	 * 
-	 * @param candidates
-	 *            indexes of the polygons that should be used
-	 * @return the bits of all outermost polygons are set to true
+	 * @param candidates indexes of the polygons that should be used
+	 * @return set of indexes of all outermost polygons 
 	 */
 	private BitSet findOutmostPolygons(BitSet candidates) {
 		BitSet outmostPolygons = new BitSet();
@@ -677,16 +678,8 @@ public class MultiPolygonRelation extends Relation {
 		candidates.stream().forEach(candidateIndex -> {
 			// check if the candidateIndex polygon is not contained by any
 			// other candidate polygon
-			boolean isOutmost = true;
-			for (int otherCandidateIndex = candidates.nextSetBit(0); otherCandidateIndex >= 0; otherCandidateIndex = candidates
-					.nextSetBit(otherCandidateIndex + 1)) {
-				if (contains(otherCandidateIndex, candidateIndex)) {
-					// candidateIndex is not an outermost polygon because it is
-					// contained by the otherCandidateIndex polygon
-					isOutmost = false;
-					break;
-				}
-			}
+			boolean isOutmost = candidates.stream()
+					.noneMatch(otherCandidateIndex -> contains(otherCandidateIndex, candidateIndex));
 			if (isOutmost) {
 				// this is an outermost polygon
 				// put it to the bitset
@@ -708,7 +701,7 @@ public class MultiPolygonRelation extends Relation {
 			if (role == null || "".equals(role)) {
 				role = defaultRole;
 			} 
-			polygonStatusList.add(new PolygonStatus("outer".equals(role), polyIndex, polygon));
+			polygonStatusList.add(new PolygonStatus(ROLE_OUTER.equals(role), polyIndex, polygon));
 		});
 		// sort by role and then by number of points, this improves performance
 		// in the routines which add the polygons to areas
@@ -732,8 +725,8 @@ public class MultiPolygonRelation extends Relation {
 	private BitSet taggedOuterPolygons;
 
 	/**
-	 * Process the ways in this relation. Joins way with the role "outer" Adds
-	 * ways with the role "inner" to the way with the role "outer"
+	 * Process the ways in this relation. Tries to join the ways to closed rings and
+	 * detect inner/outer status and calls methods to process them.
 	 */
 	public final void processElements() {
 		log.info("Processing multipolygon", toBrowseURL());
@@ -779,13 +772,6 @@ public class MultiPolygonRelation extends Relation {
 			cleanup();
 			return;
 		}
-		
-		// check which polygons lie inside which other polygon 
-		createContainsMatrix(polygons);
-
-		// unfinishedPolygons marks which polygons are not yet processed
-		unfinishedPolygons = new BitSet(polygons.size());
-		unfinishedPolygons.set(0, polygons.size());
 
 		analyseRelationRoles();
 		
@@ -796,14 +782,41 @@ public class MultiPolygonRelation extends Relation {
 			return;
 		}
 
+		// check which polygons lie inside which other polygon 
+		createContainsMatrix(polygons);
+
+		// unfinishedPolygons marks which polygons are not yet processed
+		unfinishedPolygons = new BitSet(polygons.size());
+		unfinishedPolygons.set(0, polygons.size());
+
 		Queue<PolygonStatus> polygonWorkingQueue = new LinkedBlockingQueue<>();
 		BitSet nestedOuterPolygons = new BitSet();
 		BitSet nestedInnerPolygons = new BitSet();
 
 		BitSet outmostInnerPolygons = new BitSet();
-		BitSet outmostPolygons = getUsableOuters(outmostInnerPolygons);
+		BitSet outmostPolygons;
+		boolean outmostInnerFound;
+		do {
+			outmostInnerFound = false;
+			outmostPolygons = findOutmostPolygons(unfinishedPolygons);
+
+			if (outmostPolygons.intersects(taggedInnerPolygons)) {
+				// found outmost ring(s) with role inner
+				outmostInnerPolygons.or(outmostPolygons);
+				outmostInnerPolygons.and(taggedInnerPolygons);
+
+				if (log.isDebugEnabled())
+					log.debug("wrong inner polygons: " + outmostInnerPolygons);
+				// do not process polygons tagged with role=inner but which are
+				// not contained by any other polygon
+				unfinishedPolygons.andNot(outmostInnerPolygons);
+				outmostPolygons.andNot(outmostInnerPolygons);
+				outmostInnerFound = true;
+			}
+		} while (outmostInnerFound);
+
 		
-		polygonWorkingQueue.addAll(getPolygonStatus(outmostPolygons, "outer"));
+		polygonWorkingQueue.addAll(getPolygonStatus(outmostPolygons, ROLE_OUTER));
 		processQueue(polygonWorkingQueue, nestedOuterPolygons, nestedInnerPolygons);
 
 		doReporting(outmostInnerPolygons, unfinishedPolygons, nestedOuterPolygons, nestedInnerPolygons);
@@ -942,29 +955,6 @@ public class MultiPolygonRelation extends Relation {
 		}).collect(Collectors.toList());
 	}
 
-	private BitSet getUsableOuters(BitSet outmostInnerPolygons) {
-		BitSet outmostPolygons;
-		boolean outmostInnerFound;
-		do {
-			outmostInnerFound = false;
-			outmostPolygons = findOutmostPolygons(unfinishedPolygons);
-
-			if (outmostPolygons.intersects(taggedInnerPolygons)) {
-				outmostInnerPolygons.or(outmostPolygons);
-				outmostInnerPolygons.and(taggedInnerPolygons);
-
-				if (log.isDebugEnabled())
-					log.debug("wrong inner polygons: " + outmostInnerPolygons);
-				// do not process polygons tagged with role=inner but which are
-				// not contained by any other polygon
-				unfinishedPolygons.andNot(outmostInnerPolygons);
-				outmostPolygons.andNot(outmostInnerPolygons);
-				outmostInnerFound = true;
-			}
-		} while (outmostInnerFound);
-		return outmostPolygons;
-	}
-	
 	/**
 	 * The main routine to cut or split the rings.
 	 * @param polygonWorkingQueue the queue that contains the initial outer rings
@@ -984,7 +974,8 @@ public class MultiPolygonRelation extends Relation {
 
 			BitSet holeIndexes = checkRoleAgainstGeometry(currentPolygon, unfinishedPolygons, nestedOuterPolygons, nestedInnerPolygons);
  
-			ArrayList<PolygonStatus> holes = getPolygonStatus(holeIndexes, (currentPolygon.outer ? "inner" : "outer"));
+			ArrayList<PolygonStatus> holes = getPolygonStatus(holeIndexes,
+					(currentPolygon.outer ? ROLE_INNER : ROLE_OUTER));
 
 			// these polygons must all be checked for holes
 			polygonWorkingQueue.addAll(holes);
@@ -1063,11 +1054,11 @@ public class MultiPolygonRelation extends Relation {
 						mpWay.addTag(TKM_MP_CREATED, "true");
 						
 						if (currentPolygon.outer) {
-							mpWay.addTag(TKM_MP_ROLE, "outer");
+							mpWay.addTag(TKM_MP_ROLE, ROLE_OUTER);
 							if (needsAreaSizeTag())
 								mpAreaSize += calcAreaSize(mpWay.getPoints());
 						} else {
-							mpWay.addTag(TKM_MP_ROLE, "inner");
+							mpWay.addTag(TKM_MP_ROLE, ROLE_INNER);
 						}
 						
 						getMpPolygons().put(mpWay.getId(), mpWay);
@@ -1150,10 +1141,10 @@ public class MultiPolygonRelation extends Relation {
 			w.setFullArea(w.getFullArea()); // trigger setting area before start cutting...
 			// do like this to disguise function with side effects
 			String role = getRole(w);
-			if ("inner".equals(role)) {
+			if (ROLE_INNER.equals(role)) {
 				innerPolygons.set(wi);
 				taggedInnerPolygons.set(wi);
-			} else if ("outer".equals(role)) {
+			} else if (ROLE_OUTER.equals(role)) {
 				outerPolygons.set(wi);
 				taggedOuterPolygons.set(wi);
 			} else {
@@ -1183,7 +1174,7 @@ public class MultiPolygonRelation extends Relation {
 
 		for (Way w : mpPolygons.values()) {
 			String role = w.deleteTag(TKM_MP_ROLE); 
-			if (mpAreaSizeStr != null && "outer".equals(role)) {
+			if (mpAreaSizeStr != null && ROLE_OUTER.equals(role)) {
 				w.addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
 			}
 		}
@@ -1234,7 +1225,7 @@ public class MultiPolygonRelation extends Relation {
 		BitSet wrongInnerPolygons = findOutmostPolygons(unfinishedPolygons, innerPolygons);
 		if (log.isDebugEnabled()) {
 			log.debug("unfinished", unfinishedPolygons);
-			log.debug("inner", innerPolygons);
+			log.debug(ROLE_INNER, innerPolygons);
 			// other polygon
 			log.debug("wrong", wrongInnerPolygons);
 		}
@@ -1631,10 +1622,9 @@ public class MultiPolygonRelation extends Relation {
 		return Math.abs(areaSize);
 	}
 
-
 	/**
 	 * This is a helper class that gives access to the original
-	 * segments of a joined way.
+	 * segments of a joined way or a string of ways. It may be unclosed.
 	 */
 	public static final class JoinedWay extends Way {
 		private final List<Way> originalWays;
