@@ -76,8 +76,9 @@ public class BoundaryRelation extends MultiPolygonRelation {
 	
 			BitSet holeIndexes = checkRoleAgainstGeometry(currentPolygon, unfinishedPolygons, nestedOuterPolygons, nestedInnerPolygons);
 	
-			ArrayList<PolygonStatus> holes = getPolygonStatus(holeIndexes, (currentPolygon.outer ? "inner" : "outer"));
-	
+			ArrayList<PolygonStatus> holes = getPolygonStatus(holeIndexes,
+					(currentPolygon.outer ? ROLE_INNER : ROLE_OUTER));
+
 			// these polygons must all be checked for holes
 			polygonWorkingQueue.addAll(holes);
 	
