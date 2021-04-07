@@ -321,8 +321,6 @@ public class RouteArc {
 			} else {
 				writer.put(directionFromDegrees(initialHeading));
 			}
-		} else {
-//			System.out.println("skipped writing of initial dir");
 		}
 		if (haveCurve) {
 			int[] curvedat = encodeCurve();

@@ -1115,8 +1115,6 @@ public class ExtTypeAttributes {
 				range = Double.parseDouble(parts[1]);
 			if(parts.length > 2)
 				angle = Double.parseDouble(parts[2]);
-
-			//System.err.println("light = " + this);
 		}
 
 		public String toString() {

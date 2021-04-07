@@ -136,7 +136,6 @@ public abstract class TypElement implements Comparable<TypElement> {
 			} catch (CharacterCodingException ignore) {
 				//ignore.printStackTrace();
 				String name = encoder.charset().name();
-				//System.out.println("cs " + name);
 				log.warn("Cannot represent String", tl.getText(), "for language", tl.getLang(), "in CodePage", name);
 				//throw new TypLabelException(name);
 			}
