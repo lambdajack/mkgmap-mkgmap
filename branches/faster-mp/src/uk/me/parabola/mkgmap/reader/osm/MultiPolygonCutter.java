@@ -29,7 +29,6 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
-import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation.JoinedWay;
 import uk.me.parabola.util.Java2DConverter;
 
 /**
@@ -69,7 +68,7 @@ public class MultiPolygonCutter {
 	 */
 	public List<Way> cutOutInnerPolygons(Way outerPolygon, List<Way> innerPolygons) {
 		if (innerPolygons.isEmpty()) {
-			Way outerWay = new JoinedWay(outerPolygon);
+			Way outerWay = new Way(outerPolygon.getId(), outerPolygon.getPoints());
 			if (log.isDebugEnabled()) {
 				log.debug("Way", outerPolygon.getId(), "splitted to way", outerWay.getId());
 			}

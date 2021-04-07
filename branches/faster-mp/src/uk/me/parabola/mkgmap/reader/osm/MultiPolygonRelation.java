@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
@@ -62,14 +63,17 @@ public class MultiPolygonRelation extends Relation {
 	private static final short TKM_CACHE_AREA_SIZEKEY = TagDict.getInstance().xlate("mkgmap:cache_area_size");
 	
 	public static final String ROLE_OUTER = "outer";  
-	public static final String ROLE_INNER= "inner";  
-	
+	public static final String ROLE_INNER = "inner";  
+
+	private static final short INT_ROLE_NULL = 1; 
+	private static final short INT_ROLE_INNER = 2; 
+	private static final short INT_ROLE_OUTER = 4; 
+	private static final short INT_ROLE_BLANK = 8; 
+	private static final short INT_ROLE_OTHER = 16; 
+
 	/** maps ids to ways, will be extended with joined ways */
 	private final Map<Long, Way> tileWayMap;
 	
-	/** maps ids to roles, contains original ways as well as joined rings */
-	private final Map<Long, String> roleMap = new HashMap<>();
- 
 	private Map<Long, Way> mpPolygons = new LinkedHashMap<>();
 	
 	private List<BitSet> containsMatrix;
@@ -109,33 +113,10 @@ public class MultiPolygonRelation extends Relation {
 		setId(other.getId());
 		copyTags(other);
 
+		other.getElements().forEach(e -> addElement(e.getKey(), e.getValue()));
 		if (log.isDebugEnabled()) {
-			log.debug("Construct multipolygon", toBrowseURL(), toTagString());
+			log.debug("Constructed multipolygon", toBrowseURL(), toTagString());
 		}
-
-		for (Map.Entry<String, Element> pair : other.getElements()) {
-			String role = pair.getKey();
-			Element el = pair.getValue();
-			if (log.isDebugEnabled()) {
-				log.debug(" ", role, el.toBrowseURL(), el.toTagString());
-			}
-			if (el instanceof Way) {
-				if (roleMap.containsKey(el.getId()) )
-					log.warn("repeated member with id", el.getId(), "in multipolygon relation", this.getId(), "is ignored");
-				else {
-					addElement(role, el);
-					roleMap.put(el.getId(), role);
-				}
-			} else {
-				if (cOfG == null && el instanceof Node && "label".equals(role)) {
-					// yes => use the label node as reference point
-					cOfG = ((Node) el).getLocation();
-				} else if (!(el instanceof Node) || (!"admin_centre".equals(role) && !"label".equals(role))) {
-					log.warn("Non way member in role", role, el.toBrowseURL(), "in multipolygon", toBrowseURL(),
-							toTagString());
-				}			
-			}
-		} 
 	}
 	
 
@@ -156,14 +137,13 @@ public class MultiPolygonRelation extends Relation {
 	/**
 	 * Retrieves the role of the given element based on the role in the MP.
 	 * 
-	 * @param element the element
+	 * @param jw the element
 	 * @return either ROLE_INNER, ROLE_OUTER or null.
 	 */
-	protected String getRole(Element element) {
-		String role = roleMap.get(element.getId());
-		if (ROLE_INNER.equals(role))
+	private static String getRole(JoinedWay jw) {
+		if (jw.intRole == INT_ROLE_INNER)
 			return ROLE_INNER;
-		if (ROLE_OUTER.equals(role))
+		if (jw.intRole == INT_ROLE_OUTER)
 			return ROLE_OUTER;
 		return null;
 	}
@@ -233,39 +213,53 @@ public class MultiPolygonRelation extends Relation {
 	/**
 	 * Combine a list of way segments to a list of maximally joined ways
 	 * 
-	 * @param segments
-	 *            a list of closed or unclosed ways
+	 * @param segments a list of closed or unclosed ways
 	 * @return a list of closed ways
 	 */
-	protected ArrayList<JoinedWay> joinWays(List<Way> segments) {
-		// TODO check if the closed polygon is valid and implement a backtracking algorithm to get other combinations
-
-		ArrayList<JoinedWay> joinedWays = new ArrayList<>();
-		if (segments == null || segments.isEmpty()) {
-			return joinedWays;
-		}
-
-		// go through all segments and categorize them to closed and unclosed
-		// list
-		ArrayList<JoinedWay> unclosedWays = new ArrayList<>();
-		for (Way orgSegment : segments) {
-			JoinedWay jw = new JoinedWay(orgSegment);
-			roleMap.put(jw.getId(), getRole(orgSegment));
-			if (orgSegment.isClosed()) {
-				if (!orgSegment.isComplete()) {
-					// the way is closed in planet but some points are missing in this tile
-					// we can close it artificially
-					if (log.isDebugEnabled())
-						log.debug("Close incomplete but closed polygon:",orgSegment);
-					jw.closeWayArtificially();
+	private List<JoinedWay> joinWays() {
+		List<JoinedWay> joinedWays = new ArrayList<>();
+		List<JoinedWay> unclosedWays = new LinkedList<>();
+		
+		// go through relation elements. For "ways" add both ends to coord map. For "nodes" note label
+		for (Map.Entry<String, Element> entry : getElements()) {
+			String role = entry.getKey();
+			Element el = entry.getValue();
+			if (el instanceof Way) {
+				Way wayEl = (Way) el;
+				if (wayEl.getPoints().size() <= 1) {
+					log.warn("Way", wayEl, "has", wayEl.getPoints().size(),
+							 "points and cannot be used for the multipolygon", toBrowseURL());
+				} else {
+					JoinedWay jw = new JoinedWay(wayEl, role);
+					if (jw.intRole == INT_ROLE_OTHER) 
+						log.warn("Way role not inner/outer", role, el.toBrowseURL(),
+								 "in multipolygon", toBrowseURL(), toTagString());
+					if (!wayEl.isComplete()) {
+						// the way is closed in planet but some points are missing in this tile
+						// we can close it artificially
+						if (log.isDebugEnabled())
+							log.debug("Close incomplete but closed polygon:",wayEl);
+						jw.closeWayArtificially();
+					}
+					if (jw.hasIdenticalEndPoints())
+						joinedWays.add(jw);
+					else {
+						unclosedWays.add(jw);
+					}
 				}
-				assert 	jw.hasIdenticalEndPoints() : "way is not closed";
-				joinedWays.add(jw);
+			} else if (el instanceof Node) {
+				if ("label".equals(role))
+					cOfG = ((Node) el).getLocation();
+				else if (!"admin_centre".equals(role)) 
+					log.warn("Node with unknown role", role, el.toBrowseURL(),
+							 "in multipolygon", toBrowseURL(), toTagString());
 			} else {
-				unclosedWays.add(jw);
+				log.warn("Non Way/Node member with role", role, el.toBrowseURL(),
+						 "in multipolygon", toBrowseURL(), toTagString());
 			}
 		}
 
+		
 		while (!unclosedWays.isEmpty()) {
 			JoinedWay joinWay = unclosedWays.remove(0);
 
@@ -289,7 +283,9 @@ public class MultiPolygonRelation extends Relation {
 			// => add all points of tempWay to joinWay, remove tempWay and put
 			// joinWay to the beginning of the list
 			// (not optimal but understandable - can be optimized later)
-			for (JoinedWay tempWay : unclosedWays) {
+			Iterator<JoinedWay> iter = unclosedWays.iterator();
+			while (iter.hasNext()) {
+				JoinedWay tempWay = iter.next();
 				if (tempWay.hasIdenticalEndPoints()) {
 					continue;
 				}
@@ -318,10 +314,9 @@ public class MultiPolygonRelation extends Relation {
 						wrongRoleWay = tempWay;
 					}
 				}
-
 				if (joined) {
 					// we have joined the way
-					unclosedWays.remove(tempWay);
+					iter.remove();
 					break;
 				}
 			}
@@ -360,7 +355,6 @@ public class MultiPolygonRelation extends Relation {
 				joinedWays.add(joinWay);
 			}
 		}
-
 		return joinedWays;
 	}
 
@@ -372,7 +366,7 @@ public class MultiPolygonRelation extends Relation {
 	 * @param maxCloseDist max distance between ends for artificial close
 	 * 
 	 */
-	protected void closeWays(List<JoinedWay> wayList, double maxCloseDist) {
+	private void closeWays(List<JoinedWay> wayList, double maxCloseDist) {
 		for (JoinedWay way : wayList) {
 			if (way.hasIdenticalEndPoints() || way.getPoints().size() < 3) {
 				continue;
@@ -736,14 +730,8 @@ public class MultiPolygonRelation extends Relation {
 			log.info("Do not process multipolygon", getId(), "because it has no style relevant tags.");
 			return;
 		}
-		
-		List<Way> allWays = getElements().stream()
-				.filter(e -> e.getValue() instanceof Way).map(e -> (Way) e.getValue())
-				.collect(Collectors.toList());
-		
-		// join all single ways to polygons, try to close ways and remove non closed ways 
-		polygons = joinWays(allWays);
-		
+		polygons = joinWays();
+
 		outerWaysForLineTagging = new HashSet<>();
 		
 		polygons = filterUnclosed(polygons);
@@ -1007,7 +995,8 @@ public class MultiPolygonRelation extends Relation {
 			if (processPolygon) {
 				List<Way> singularOuterPolygons;
 				if (holes.isEmpty()) {
-					singularOuterPolygons = Collections.singletonList((Way) new JoinedWay(currentPolygon.polygon));
+					Way w = new Way(currentPolygon.polygon.getId(), currentPolygon.polygon.getPoints());
+					singularOuterPolygons = Collections.singletonList(w);
 				} else {
 					List<Way> innerWays = new ArrayList<>(holes.size());
 					for (PolygonStatus polygonHoleStatus : holes) {
@@ -1137,14 +1126,14 @@ public class MultiPolygonRelation extends Relation {
 		taggedOuterPolygons = new BitSet();
 		
 		int wi = 0;
-		for (Way w : polygons) {
-			w.setFullArea(w.getFullArea()); // trigger setting area before start cutting...
+		for (JoinedWay jw : polygons) {
+			jw.setFullArea(jw.getFullArea()); // trigger setting area before start cutting...
 			// do like this to disguise function with side effects
-			String role = getRole(w);
-			if (ROLE_INNER.equals(role)) {
+			
+			if (jw.intRole == INT_ROLE_INNER) {
 				innerPolygons.set(wi);
 				taggedInnerPolygons.set(wi);
-			} else if (ROLE_OUTER.equals(role)) {
+			} else if (jw.intRole == INT_ROLE_OUTER) {
 				outerPolygons.set(wi);
 				taggedOuterPolygons.set(wi);
 			} else {
@@ -1262,7 +1251,6 @@ public class MultiPolygonRelation extends Relation {
 
 	protected void cleanup() {
 		mpPolygons = null;
-		roleMap.clear();
 		containsMatrix = null;
 		polygons = null;
 		tileArea = null;
@@ -1393,9 +1381,7 @@ public class MultiPolygonRelation extends Relation {
 		if (!polygon1.getBounds().contains(polygon2.getBounds())) {
 			return false;
 		}
-		int x = IsInUtil.isPointInShape(polygon2.getFirstPoint(), polygon1.getPoints());
-		if (x != IsInUtil.OUT)
-			x = IsInUtil.isLineInShape(polygon2.getPoints(), polygon1.getPoints(), polygon2.getArea());
+		int	x = IsInUtil.isLineInShape(polygon2.getPoints(), polygon1.getPoints(), polygon2.getArea());
 		return (x & IsInUtil.OUT) == 0;
 	}
 
@@ -1628,6 +1614,7 @@ public class MultiPolygonRelation extends Relation {
 	 */
 	public static final class JoinedWay extends Way {
 		private final List<Way> originalWays;
+		private short intRole;  
 		private boolean closedArtificially;
 
 		private int minLat;
@@ -1637,11 +1624,11 @@ public class MultiPolygonRelation extends Relation {
 		private Rectangle bounds;
 		private uk.me.parabola.imgfmt.app.Area area;
 
-		public JoinedWay(Way originalWay) {
+		public JoinedWay(Way originalWay, String givenRole) {
 			super(originalWay.getOriginalId(), originalWay.getPoints());
 			markAsGeneratedFrom(originalWay);
 			originalWays = new ArrayList<>();
-			addWay(originalWay);
+			addWay(originalWay, roleToInt(givenRole));
 
 			// we have to initialize the min/max values
 			Coord c0 = originalWay.getFirstPoint();
@@ -1649,6 +1636,21 @@ public class MultiPolygonRelation extends Relation {
 			minLon = maxLon = c0.getLongitude();
 
 			updateBounds(originalWay.getPoints());
+		}
+
+		private short roleToInt(String role) {
+			if (role == null)
+				return INT_ROLE_NULL;
+			switch (role) {
+			case ROLE_INNER:
+				return INT_ROLE_INNER;
+			case ROLE_OUTER:
+				return INT_ROLE_OUTER;
+			case "":
+				return INT_ROLE_BLANK;
+			default:
+				return INT_ROLE_OTHER;
+			}
 		}
 
 		public void addPoint(int index, Coord point) {
@@ -1732,18 +1734,24 @@ public class MultiPolygonRelation extends Relation {
 			return area;
 		}
 
-		public void addWay(Way way) {
+		public void addWay(Way way, int internalRole) {
 			if (way instanceof JoinedWay) {
-				for (Way w : ((JoinedWay) way).getOriginalWays()) {
-					addWay(w);
-				}
+				originalWays.addAll(((JoinedWay) way).getOriginalWays());
+				this.intRole |= ((JoinedWay) way).intRole;
 				updateBounds((JoinedWay) way);
 			} else {
 				if (log.isDebugEnabled()) {
 					log.debug("Joined", this.getId(), "with", way.getId());
 				}
 				this.originalWays.add(way);
+				this.intRole |= internalRole;
 			}
+		}
+
+		public void addWay(JoinedWay way) {
+			originalWays.addAll(way.originalWays);
+			this.intRole |= way.intRole;
+			updateBounds(way);
 		}
 
 		public void closeWayArtificially() {
