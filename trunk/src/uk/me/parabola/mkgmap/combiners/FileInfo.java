@@ -26,6 +26,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 import uk.me.parabola.imgfmt.FileSystemParam;
+import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.ReadFailedException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
@@ -164,7 +165,7 @@ public class FileInfo {
 				info = new FileInfo(inputName, UNKNOWN_KIND);
 			}
 		} catch (AssertionError | ReadFailedException e) {
-			throw new ReadFailedException("Could not read file " + inputName, e);
+			throw new MapFailedException("Could not read file " + inputName, e);
 		}
 		return info;
 	}
