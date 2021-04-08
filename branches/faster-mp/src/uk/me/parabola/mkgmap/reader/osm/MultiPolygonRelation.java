@@ -219,6 +219,7 @@ public class MultiPolygonRelation extends Relation {
 	private List<JoinedWay> joinWays() {
 		List<JoinedWay> joinedWays = new ArrayList<>();
 		List<JoinedWay> unclosedWays = new LinkedList<>();
+		OSMId2ObjectMap<Way> dupCheck = new OSMId2ObjectMap<>();
 		
 		// go through relation elements. For "ways" add both ends to coord map. For "nodes" note label
 		for (Map.Entry<String, Element> entry : getElements()) {
@@ -226,6 +227,9 @@ public class MultiPolygonRelation extends Relation {
 			Element el = entry.getValue();
 			if (el instanceof Way) {
 				Way wayEl = (Way) el;
+				if (dupCheck.put(wayEl.getId(), wayEl) != null) {
+					log.warn("repeated way member with id", el.getId(), "in multipolygon relation", toBrowseURL(), "is ignored");
+				}
 				if (wayEl.getPoints().size() <= 1) {
 					log.warn("Way", wayEl, "has", wayEl.getPoints().size(),
 							 "points and cannot be used for the multipolygon", toBrowseURL());
