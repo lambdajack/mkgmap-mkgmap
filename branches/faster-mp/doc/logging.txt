@@ -45,3 +45,10 @@ log file, with warning and error messages being also sent to stdout.
 Further information can be found at
 [https://docs.oracle.com/javase/8/docs/technotes/guides/logging/overview.html https://docs.oracle.com/javase/8/docs/technotes/guides/logging/overview.html]
 
+If you see messages that contain non-ASCII characters which are not displaying
+properly in the console, you may need to use the Java -Dfile.encoding=<codepage>
+option and/or precede the mkgmap command line with a chcp command to make
+sure that the Java environment has the same code page as the shell it is
+being run from. This is especially likely on the Windows platform where the
+Java environment uses the Windows default code page, but the Windows command
+shell normally uses a different code page.

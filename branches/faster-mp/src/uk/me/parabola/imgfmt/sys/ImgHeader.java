@@ -188,7 +188,6 @@ class ImgHeader {
 	 */
 	private void writeSizeValues(int blockSize) {
 		int endSector = (int) (((numBlocks+1L) * blockSize + 511) / 512);
-		//System.out.printf("end sector %d %x\n", endSector, endSector);
 
 		// We have three maximum values for sectors, heads and cylinders.  We attempt to find values
 		// for them that are larger than the 
@@ -205,7 +204,6 @@ class ImgHeader {
 			for (int s : asList(4, 8, 16, 32)) {
 				for (int c : asList(0x20, 0x40, 0x80, 0x100, 0x200, 0x3ff)) {
 					log.info("shc=", s + "," + h + "," + c, "end=", endSector);
-					//System.out.println("shc=" + s + "," + h + "," + c + "end=" + endSector);
 					if (s * h * c > endSector) {
 						headsPerCylinder = h;
 						sectorsPerTrack = s;

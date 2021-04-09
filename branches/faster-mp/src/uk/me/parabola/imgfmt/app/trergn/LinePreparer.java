@@ -75,16 +75,20 @@ public class LinePreparer {
 		BitWriter bsBest = bsSimple; 
 		int xBestBase = xBase;
 		int yBestBase = yBase;
-		if (xBase > 0 ||  yBase > 0 && log.isDebugEnabled()) {
+		if ((xBase > 0 || yBase > 0) && log.isDebugEnabled()) {
 			log.debug("start opt:", xBase, yBase, xSameSign, xSignNegative, ySameSign, ySignNegative);
 		}
 		if (xBase > 0){
 			int notBetter = 0;
+			int xTestBase = xBase-1;
 			boolean xSameSignBak = xSameSign;
-			xSameSign = false;
-			for (int xTestBase = xBase-1; xTestBase >= 0; xTestBase--){
+			if (xSameSign) {
+				xSameSign = false;
+				--xTestBase; // changing to signed will add a bit to each node so xBase-1 can't give saving
+			}
+			for ( ; xTestBase >= 0; xTestBase--){
 				BitWriter bstest = makeBitStream(minPointsRequired, xTestBase, yBase);
-				if (bstest.getBitPosition() >= bsBest.getBitPosition() ){
+				if (bstest.getBitPosition() >= bsBest.getBitPosition()){
 					if (++notBetter >= 2)
 						break; // give up
 				} else {
@@ -97,9 +101,13 @@ public class LinePreparer {
 		}
 		if (yBase > 0){
 			int notBetter = 0;
+			int yTestBase = yBase-1;
 			boolean ySameSignBak = ySameSign;
-			ySameSign = false;
-			for (int yTestBase = yBase-1; yTestBase >= 0; yTestBase--){
+			if (ySameSign) {
+				ySameSign = false;
+				--yTestBase; // changing to signed will add a bit to each node so yBase-1 can't give saving
+			}
+			for ( ; yTestBase >= 0; yTestBase--){
 				BitWriter bstest = makeBitStream(minPointsRequired, xBestBase, yTestBase);
 				if (bstest.getBitPosition() >= bsBest.getBitPosition()){
 					if (++notBetter >= 2)
@@ -112,7 +120,7 @@ public class LinePreparer {
 			}
 			ySameSign = ySameSignBak;
 		}
-		if (xBase != xBestBase || yBestBase != yBase && log.isInfoEnabled()) {
+		if ((xBase != xBestBase || yBestBase != yBase) && log.isInfoEnabled()) {
 			if (bsSimple.getLength() > bsBest.getLength())
 				log.info("optimizer reduced bit stream byte length from",bsSimple.getLength(),"->",bsBest.getLength(),"(" + (bsSimple.getLength()-bsBest.getLength()), "byte(s)) for",polyline.getClass().getSimpleName(),"with",polyline.getPoints().size(),"points");
 			else 
@@ -252,8 +260,8 @@ public class LinePreparer {
 		// OK go through the points
 		int lastLat = 0;
 		int lastLong = 0;
-		int minDx = Integer.MAX_VALUE, maxDx = 0;
-		int minDy = Integer.MAX_VALUE, maxDy = 0;
+		int minDx = 0, maxDx = 0;
+		int minDy = 0, maxDy = 0;
 		// index of first point in a series of identical coords (after shift)
 		int firstsame = 0;
 		for (int i = 0; i < numPointsToUse; i++) {

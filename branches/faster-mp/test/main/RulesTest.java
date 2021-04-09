@@ -12,6 +12,17 @@
  */
 package main;
 
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.AND;
+import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.EXISTS;
+import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.FUNCTION;
+import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.GTE;
+import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.NOT;
+import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.NOT_EQUALS;
+import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.NOT_EXISTS;
+import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.OR;
+import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.VALUE;
+
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -21,6 +32,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
@@ -40,8 +52,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BiFunction;
-
-import javax.xml.bind.DatatypeConverter;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.mkgmap.main.StyleTester;
@@ -67,9 +77,6 @@ import uk.me.parabola.mkgmap.reader.osm.FeatureKind;
 import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.mkgmap.scan.SyntaxException;
 import uk.me.parabola.mkgmap.scan.TokenScanner;
-
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static uk.me.parabola.mkgmap.osmstyle.eval.NodeType.*;
 
 public class RulesTest {
 	private static final Random rand = new Random();
@@ -348,7 +355,7 @@ public class RulesTest {
 		try {
 			MessageDigest md5 = MessageDigest.getInstance("md5");
 			byte[] digest = md5.digest(rule.getBytes("utf-8"));
-			String s = DatatypeConverter.printHexBinary(digest).substring(0, 8);
+			String s = String.format("%032x", new BigInteger(1, digest)).substring(0, 8);
 			fileName = String.format("t-%s.test", s);
 		} catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
 			fileName = String.format("t-%06d.test", id);

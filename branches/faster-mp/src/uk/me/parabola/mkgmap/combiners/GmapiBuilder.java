@@ -99,7 +99,7 @@ public class GmapiBuilder implements Combiner {
 				typFile = info.getFilename();
 
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new ExitException("Error saving gmapi data", e);
 		}
 	}
 
@@ -131,7 +131,7 @@ public class GmapiBuilder implements Combiner {
 			writeXmlFile(gmapDir);
 
 		} catch (IOException e) {
-			e.printStackTrace();
+			throw new ExitException("Error building gmapi data", e);
 		}
 	}
 
