@@ -162,7 +162,7 @@ public class MultiPolygonRelation extends Relation {
 	 * @return <code>true</code> if tempWay way is (or could be) joined to
 	 *         joinWay
 	 */
-	private static boolean joinWays(JoinedWay joinWay, JoinedWay tempWay, boolean checkOnly) {
+	private static boolean joinTwoWays(JoinedWay joinWay, JoinedWay tempWay, boolean checkOnly) {
 		boolean reverseTempWay = false;
 		int insIdx = -1;
 		int firstTmpIdx = 1;
@@ -219,7 +219,7 @@ public class MultiPolygonRelation extends Relation {
 	private List<JoinedWay> joinWays() {
 		List<JoinedWay> joinedWays = new ArrayList<>();
 		List<JoinedWay> unclosedWays = new LinkedList<>();
-		OSMId2ObjectMap<Way> dupCheck = new OSMId2ObjectMap<>();
+		Map<Long, Way> dupCheck = new HashMap<>();
 		
 		// go through relation elements. For "ways" add both ends to coord map. For "nodes" note label
 		for (Map.Entry<String, Element> entry : getElements()) {
@@ -302,7 +302,7 @@ public class MultiPolygonRelation extends Relation {
 						|| (!ROLE_OUTER.equals(tempRole) && !ROLE_INNER.equals(tempRole))
 						|| (joinRole != null && joinRole.equals(tempRole))) {
 					// the roles are matching => try to join both ways
-					joined = joinWays(joinWay, tempWay, false);
+					joined = joinTwoWays(joinWay, tempWay, false);
 				} else {
 					// the roles are not matching => test if both ways would
 					// join
@@ -312,7 +312,7 @@ public class MultiPolygonRelation extends Relation {
 					// or if the alternative way is shorter then check if
 					// the way with the wrong role could be joined
 					if (wrongRoleWay == null || wrongRoleWay.getPoints().size() < tempWay.getPoints().size()
-							&& joinWays(joinWay, tempWay, true)) {
+							&& joinTwoWays(joinWay, tempWay, true)) {
 						// save this way => maybe we will use it in the end
 						// if we don't find any other way
 						wrongRoleWay = tempWay;
@@ -334,7 +334,7 @@ public class MultiPolygonRelation extends Relation {
 				log.warn("Way2 Role:", getRole(wrongRoleWay));
 				logWayURLs(Level.WARNING, "-", wrongRoleWay);
 
-				joined = joinWays(joinWay, wrongRoleWay, false);
+				joined = joinTwoWays(joinWay, wrongRoleWay, false);
 				if (joined) {
 					// we have joined the way
 					unclosedWays.remove(wrongRoleWay);
@@ -1831,7 +1831,7 @@ public class MultiPolygonRelation extends Relation {
 		}
 	}
 
-	public static class PolygonStatus {
+	protected static class PolygonStatus {
 		public final boolean outer;
 		public final int index;
 		public final JoinedWay polygon;
