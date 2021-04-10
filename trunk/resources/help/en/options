@@ -627,35 +627,26 @@ libraries.
     problems. Default value is 0 (disabled) because it's not a completely
     reliable heuristic.
 
---check-routing-island-len=INTEGER
+--report-routing-islands
     Routing islands are small road networks which are not connected to other
     roads. A typical case is a footway that is not connected to the main road
     network, or a small set of ways on the inner courtyard of a large building.
     These islands can cause problems if you try to calculate a route and the
     GPS selects a point on the island as a start or end. It will fail to
     calculate the route even if a major road is only a few steps away. If this
-    option is specified, then mkgmap will detect these islands. If the value is
-    set to zero, mkgmap will simply report the islands (you will need to set
-    uk.me.parabola.imgfmt.app.net.RoadNetwork.level=INFO to activate logging of
-    the message). If the value is greater than zero, mkgmap will mark islands
-    with a total length less than the specified value in metres as not
-    routable. Reasonable values are 500 or higher. The default is for the check
-    to not take place. If any of the roads forming the island touches a tile
-    boundary or a country border the island is ignored, as it may be connected
-    to other roads in a different tile.
-    See also option --add-boundary-nodes-at-admin-boundaries.
-    This option seems to cause routing problems in BaseCamp.
+    option is specified, then mkgmap will report these islands.
+    See also --max-routing-island-len.
 
 --report-similar-arcs
     Issue a warning when more than one arc connects two nodes and the ways that
-    the arcs are derived from contain identical points. It doesn't make sense
-    to use this option at the same time as using the cycleway creating options.
+    the arcs are derived from contain identical points.
 
---report-dead-ends=LEVEL
-    Set the dead end road warning level. The value of LEVEL (which defaults to
-    1 if this option is not specified) determines those roads to report:
-    * 0 = none
-    * 1 = report on connected one-way roads that go nowhere
+--report-dead-ends[=LEVEL]
+    Set the dead end road warning level. The value of LEVEL determines those
+    roads to report:
+    * 0 = none (the default)
+    * 1 = report on connected one-way roads that go nowhere (default if no
+    LEVEL specified)
     * 2 = also report on individual one-way roads that go nowhere.
 
 --dead-ends[=key[=value]][,key[=value]...]
@@ -965,12 +956,34 @@ libraries.
     The tag mkgmap:drawLevel can be used to override the natural area of a
     polygon, so forcing changes to the rendering order.
 
+--max-routing-island-len=integer
+    Routing islands are small road networks which are not connected to other
+    roads. A typical case is a footway that is not connected to the main road
+    network, or a small set of ways on the inner courtyard of a large building.
+    These islands can cause problems if you try to calculate a route and the
+    GPS selects a point on the island as a start or end. It will fail to
+    calculate the route even if a major road is only a few steps away. If a
+    positive value is specified, then mkgmap will mark islands with a total
+    length less than the specified value in metres as not routable. Reasonable
+    values are 500 or higher. The default is to not to mark any islands as
+    unroutable. If any of the roads forming the island touches a tile boundary
+    or a country border the island is ignored, as it may be connected to other
+    roads in a different tile.
+    See also options --add-boundary-nodes-at-admin-boundaries and
+    --report-routing-islands.
+    This option seems to cause routing problems in BaseCamp.
+
 === Deprecated and Obsolete Options ===
+
+--check-routing-island-len=integer
+    Deprecated; use --report-routing-islands and --max-routing-island-len
+    instead. Translated to --report-routing-islands if info level logging is
+    enabled, plus --max-routing-island-len=integer.
 
 --drive-on-left
 --drive-on-right
-    Deprecated; use drive-on instead. The options are translated to
-    drive-on=left|right.
+    Deprecated; use --drive-on instead. The options are translated to
+    --drive-on=left|right.
 
 --make-all-cycleways
     Deprecated; use --make-opposite-cycleways instead. Former meaning: Turn on

@@ -20,6 +20,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Calendar;
 import java.util.logging.Formatter;
+import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
 /**
@@ -38,29 +39,30 @@ public class UsefulFormatter extends Formatter {
 	public String format(LogRecord record) {
 		StringBuffer sb = new StringBuffer();
 
-		if (showTime) {
-			long millis = record.getMillis();
-			Calendar cal = Calendar.getInstance();
-			cal.setTimeInMillis(millis);
-			sb.append(cal.get(Calendar.YEAR));
-			sb.append('/');
-			sb.append(fmt2(cal.get(Calendar.MONTH)+1));
-			sb.append('/');
-			sb.append(fmt2(cal.get(Calendar.DAY_OF_MONTH)));
-			sb.append(' ');
-			sb.append(fmt2(cal.get(Calendar.HOUR_OF_DAY)));
-			sb.append(':');
-			sb.append(fmt2(cal.get(Calendar.MINUTE)));
-			sb.append(':');
-			sb.append(fmt2(cal.get(Calendar.SECOND)));
-			sb.append(' ');
+		if (record.getLevel().intValue() <= Level.SEVERE.intValue()) {
+			if (showTime) {
+				long millis = record.getMillis();
+				Calendar cal = Calendar.getInstance();
+				cal.setTimeInMillis(millis);
+				sb.append(cal.get(Calendar.YEAR));
+				sb.append('/');
+				sb.append(fmt2(cal.get(Calendar.MONTH)+1));
+				sb.append('/');
+				sb.append(fmt2(cal.get(Calendar.DAY_OF_MONTH)));
+				sb.append(' ');
+				sb.append(fmt2(cal.get(Calendar.HOUR_OF_DAY)));
+				sb.append(':');
+				sb.append(fmt2(cal.get(Calendar.MINUTE)));
+				sb.append(':');
+				sb.append(fmt2(cal.get(Calendar.SECOND)));
+				sb.append(' ');
+			}
+			
+			sb.append(record.getLevel().getLocalizedName());
+			sb.append(" (");
+			sb.append(shortName(record.getLoggerName()));
+			sb.append("): ");
 		}
-		
-		sb.append(record.getLevel().getLocalizedName());
-		sb.append(" (");
-		sb.append(shortName(record.getLoggerName()));
-		sb.append("): ");
-
 		sb.append(record.getMessage());
 		
 		sb.append(lineSeparator);

@@ -204,7 +204,7 @@ public class StyledConverter implements OsmConverter {
 			countryAbbr = countryAbbr.toUpperCase();
 			
 		checkRoundabouts = props.getProperty("check-roundabouts",false);
-		reportDeadEnds = props.getProperty("report-dead-ends", 1);  
+		reportDeadEnds = (props.getProperty("report-dead-ends") != null) ? props.getProperty("report-dead-ends", 1) : 0;  
 		prefixSuffixFilter = new PrefixSuffixFilter(props);
 
 		lineAdder = line -> {
@@ -348,9 +348,9 @@ public class StyledConverter implements OsmConverter {
 						numDriveOnSideUnknown++;
 					}
 				}
-				if (cw.isRoundabout() && wasReversed) {
-					log.warn("Roundabout", way.getId(),
-							"has reverse oneway tag (" + way.getFirstPoint().toOSMURL() + ")");
+				if (cw.isRoundabout() && wasReversed && checkRoundabouts) {
+					log.diagnostic("Roundabout " + way.getId() +
+							" has reverse oneway tag (" + way.getFirstPoint().toOSMURL() + ")");
 				}
 				lastRoadId = way.getId();
 			} else {
@@ -1075,13 +1075,13 @@ public class StyledConverter implements OsmConverter {
 				if (points.get(0) == points.get(points.size() - 1)) {
 					// roundabout is a loop
 					if (dirIsWrong) {
-						log.warn("Roundabout " + way.getId() + " direction is wrong - reversing it (see "
+						log.diagnostic("Roundabout " + way.getId() + " direction is wrong - reversing it (see "
 								+ centre.toOSMURL() + ")");
 						way.reverse();
 					}
 				} else if (dirIsWrong) {
 					// roundabout is a line
-					log.warn("Roundabout segment " + way.getId() + " direction looks wrong (see "
+					log.diagnostic("Roundabout segment " + way.getId() + " direction looks wrong (see "
 							+ points.get(0).toOSMURL() + ")");
 				}
 			}
@@ -1232,7 +1232,6 @@ public class StyledConverter implements OsmConverter {
 			line.setType(replType);
 		line.setPoints(points);
 
-		
 		if (way.tagIsLikeYes(TK_ONEWAY))
 			line.setDirection(true);
 
@@ -2231,7 +2230,7 @@ public class StyledConverter implements OsmConverter {
 				}
 
 				if (isDeadEnd && (isDeadEndOfMultipleWays || reportDeadEnds > 1)) {
-					log.warn("Oneway road " + way.getId() + " with tags " + way.toTagString()
+					log.diagnostic("Oneway road " + way.getId() + " with tags " + way.toTagString()
 							+ ((pos == 0) ? " comes from" : " goes to") + " nowhere at " + p.toOSMURL());
 				}
 			}
