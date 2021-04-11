@@ -215,7 +215,7 @@ public class OverviewBuilder implements Combiner {
 			codepage = finfo.getCodePage();
 		} 
 		if (codepage != finfo.getCodePage()){
-			System.err.println("WARNING: input file " + filename + " has different code page " + finfo.getCodePage());
+			Logger.defaultLogger.warn("Input file " + filename + " has different code page " + finfo.getCodePage());
 		}
 
 		try {
@@ -225,7 +225,7 @@ public class OverviewBuilder implements Combiner {
 				encodingType = mapReader.getEncodingType();
 			} 
 			if (encodingType != mapReader.getEncodingType()){
-				System.err.println("WARNING: input file " + filename + " has different charset type " + encodingType);
+				Logger.defaultLogger.warn("Input file " + filename + " has different charset type " + encodingType);
 			}
 
 			String[] msgs = mapReader.getCopyrights();
@@ -324,7 +324,6 @@ public class OverviewBuilder implements Combiner {
 			int min = levels[l].getLevel();
 			int res = levels[l].getResolution();
 			List<Polyline> lineList = mapReader.linesForLevel(min);
-			//System.out.println(lineList.size() + " lines in lowest resolution " + levels[1].getResolution());
 			for (Polyline line : lineList) {
 				if (log.isDebugEnabled())
 					log.debug("got line", line);

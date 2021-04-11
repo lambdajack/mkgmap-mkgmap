@@ -23,6 +23,8 @@ import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
 
+import uk.me.parabola.log.Logger;
+
 /**
  * The MDX index file.  Used with the global index.  This is located
  * at the family level in the windows registry and can perhaps index
@@ -103,7 +105,7 @@ public class MdxFile {
 			// Although its not necessarily wrong for them to be zero, it probably
 			// sign that something is wrong.
 			if (info.getHexMapname() == 0 || info.getMapname() == 0)
-				System.err.println("Invalid mapname for " + info.getFilename() + ", perhaps it is not a .img file");
+				Logger.defaultLogger.error("Invalid mapname for " + info.getFilename() + ", perhaps it is not a .img file");
 
 			buf.compact();
 			info.write(buf);

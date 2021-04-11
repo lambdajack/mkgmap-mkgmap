@@ -27,6 +27,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import uk.me.parabola.imgfmt.Utils;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.CommandArgs;
 import uk.me.parabola.mkgmap.Version;
 
@@ -95,7 +96,7 @@ public class NsisBuilder implements Combiner {
 		} catch (Exception ex) {
 			inStream = this.getClass().getResourceAsStream("/installer/installer_template.nsi");
 			if (inStream == null) {
-				System.err.println("Could not find the installer template.");
+				Logger.defaultLogger.error("Could not find the installer template.");
 				return;
 			}
 		}
@@ -118,7 +119,7 @@ public class NsisBuilder implements Combiner {
 			}
 
 		} catch (IOException e) {
-			System.err.println("Could not write NSIS file");
+			Logger.defaultLogger.error("Could not write NSIS file");
 		} finally {
 			Utils.closeFile(inStream);
 		}
@@ -182,7 +183,7 @@ public class NsisBuilder implements Combiner {
 		} catch (Exception ex) {
 			inStream = this.getClass().getResourceAsStream("/installer/license_template.txt");
 			if (inStream == null) {
-				System.err.println("Could not find the license template.");
+				Logger.defaultLogger.error("Could not find the license template.");
 				return;
 			}
 		}
@@ -198,7 +199,7 @@ public class NsisBuilder implements Combiner {
 			}
 
 		} catch (IOException e) {
-			System.err.println("Could not write license file");
+			Logger.defaultLogger.error("Could not write license file");
 		} finally {
 			Utils.closeFile(inStream);
 		}
