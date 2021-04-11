@@ -16,9 +16,10 @@
 package uk.me.parabola.mkgmap.osmstyle.actions;
 
 import uk.me.parabola.mkgmap.reader.osm.Element;
+import uk.me.parabola.log.Logger;
 
 /**
- * Sends a message to the console.
+ * Logs a message.
  * 
  * @author Richard Fairhurst
  */
@@ -30,7 +31,7 @@ public class EchoAction implements Action {
 	}
 
 	public boolean perform(Element el) {
-		System.err.println(el.getBasicLogInformation() + " " + value.build(el, el));
+		Logger.defaultLogger.echo(el.getBasicLogInformation() + " " + value.build(el, el));
 		return false;
 	}
 }
