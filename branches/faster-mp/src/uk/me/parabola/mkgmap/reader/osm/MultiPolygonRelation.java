@@ -38,10 +38,12 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.util.IsInUtil;
 import uk.me.parabola.util.Java2DConverter;
+import uk.me.parabola.util.MultiIdentityHashMap;
 
 /**
  * Representation of an OSM Multipolygon Relation.<br/>
@@ -65,11 +67,11 @@ public class MultiPolygonRelation extends Relation {
 	public static final String ROLE_OUTER = "outer";  
 	public static final String ROLE_INNER = "inner";  
 
-	private static final short INT_ROLE_NULL = 1; 
-	private static final short INT_ROLE_INNER = 2; 
-	private static final short INT_ROLE_OUTER = 4; 
-	private static final short INT_ROLE_BLANK = 8; 
-	private static final short INT_ROLE_OTHER = 16; 
+	private static final byte INT_ROLE_NULL = 1; 
+	private static final byte INT_ROLE_INNER = 2; 
+	private static final byte INT_ROLE_OUTER = 4; 
+	private static final byte INT_ROLE_BLANK = 8; 
+	private static final byte INT_ROLE_OTHER = 16; 
 
 	/** maps ids to ways, will be extended with joined ways */
 	private final Map<Long, Way> tileWayMap;
@@ -149,86 +151,61 @@ public class MultiPolygonRelation extends Relation {
 	}
 
 	/**
-	 * Try to join the two ways.
+	 * Combine a list of way segments to a list of maximally joined ways. There are
+	 * lots of possible ways to do this but the result should be predictable, so
+	 * that multiple runs of mkgmap produce the same polygons.
 	 * 
-	 * @param joinWay
-	 *            the way to which tempWay is added in case both ways could be
-	 *            joined and checkOnly is false.
-	 * @param tempWay
-	 *            the way to be added to joinWay
-	 * @param checkOnly
-	 *            <code>true</code> checks only and does not perform the join
-	 *            operation
-	 * @return <code>true</code> if tempWay way is (or could be) joined to
-	 *         joinWay
-	 */
-	private static boolean joinTwoWays(JoinedWay joinWay, JoinedWay tempWay, boolean checkOnly) {
-		boolean reverseTempWay = false;
-		int insIdx = -1;
-		int firstTmpIdx = 1;
-		boolean joinable = false;
-		
-		if (joinWay.getFirstPoint() == tempWay.getFirstPoint()) {
-			insIdx = 0;
-			reverseTempWay = true;
-			firstTmpIdx = 1;
-			joinable = true;
-		} else if (joinWay.getLastPoint() == tempWay.getFirstPoint()) {
-			insIdx = joinWay.getPoints().size();
-			firstTmpIdx = 1;
-			joinable = true;
-		} else if (joinWay.getFirstPoint() == tempWay.getLastPoint()) {
-			insIdx = 0; 
-			firstTmpIdx = 0;
-			joinable = true;
-		} else if (joinWay.getLastPoint() == tempWay.getLastPoint()) {
-			insIdx = joinWay.getPoints().size();
-			reverseTempWay = true;
-			firstTmpIdx = 0;
-			joinable = true;
-		}
-		
-		if (!checkOnly && joinable){
-			int lastIdx = tempWay.getPoints().size();
-			if (firstTmpIdx == 0) {
-				// the last temp point is already contained in the joined way - do not copy it
-				lastIdx--;
-			}
-					
-			List<Coord> tempCoords = tempWay.getPoints().subList(firstTmpIdx,lastIdx);
-			
-			if (reverseTempWay) {
-				// the temp coords need to be reversed so copy the list
-				tempCoords = new ArrayList<>(tempCoords);
-				// and reverse it
-				Collections.reverse(tempCoords);
-			}
-			
-			joinWay.getPoints().addAll(insIdx, tempCoords);
-			joinWay.addWay(tempWay);
-		}
-		return joinable;
-	}
-
-	/**
-	 * Combine a list of way segments to a list of maximally joined ways
-	 * 
-	 * @param segments a list of closed or unclosed ways
 	 * @return a list of closed ways
 	 */
 	private List<JoinedWay> joinWays() {
 		List<JoinedWay> joinedWays = new ArrayList<>();
 		List<JoinedWay> unclosedWays = new LinkedList<>();
-		Map<Long, Way> dupCheck = new HashMap<>();
 		
-		// go through relation elements. For "ways" add both ends to coord map. For "nodes" note label
+		parseElements(joinedWays, unclosedWays);
+		
+		int numUnclosed = unclosedWays.size();
+		if (numUnclosed == 0)
+			return joinedWays;
+		
+		if (unclosedWays.size() > 1) {
+			// first try to combine ways in the given order
+			joinInGivenOrder(joinedWays, unclosedWays);
+		}
+		if (unclosedWays.size() == 1) {
+			joinedWays.add(unclosedWays.remove(0));
+		}
+		if (!unclosedWays.isEmpty()) {
+			// members are not fully ordered or we have unclosed rings
+			joinWithIndex(joinedWays, unclosedWays);
+		}
+		joinedWays.addAll(unclosedWays);
+		if(log.isInfoEnabled()) {
+			for (JoinedWay jw : joinedWays) {
+				if (Integer.bitCount(jw.intRole) > 1) {
+					log.info("Joined polygon ways have different roles", this.toBrowseURL(), jw.toString());
+				}
+			}
+		}
+		return joinedWays;
+	}
+
+	/**
+	 * Go through list of elements, do some basic checks and separate the ways into
+	 * closed and unclosed ways. The (last) label node is used to set cOfG.
+	 * 
+	 * @param closedWays   list to which closed ways are added
+	 * @param unclosedWays list to which unclosed ways are added
+	 */
+	private void parseElements(List<JoinedWay> closedWays, List<JoinedWay> unclosedWays) {
+		Map<Long, Way> dupCheck = new HashMap<>();
+
 		for (Map.Entry<String, Element> entry : getElements()) {
 			String role = entry.getKey();
 			Element el = entry.getValue();
 			if (el instanceof Way) {
 				Way wayEl = (Way) el;
 				if (dupCheck.put(wayEl.getId(), wayEl) != null) {
-					log.warn("repeated way member with id", el.getId(), "in multipolygon relation", toBrowseURL(), "is ignored");
+					log.warn("repeated way member with id", el.getId(), "is ignored in multipolygon relation", toBrowseURL());
 				}
 				if (wayEl.getPoints().size() <= 1) {
 					log.warn("Way", wayEl, "has", wayEl.getPoints().size(),
@@ -236,7 +213,7 @@ public class MultiPolygonRelation extends Relation {
 				} else {
 					JoinedWay jw = new JoinedWay(wayEl, role);
 					if (jw.intRole == INT_ROLE_OTHER) 
-						log.warn("Way role not inner/outer", role, el.toBrowseURL(),
+						log.warn("Way role invalid", role, el.toBrowseURL(),
 								 "in multipolygon", toBrowseURL(), toTagString());
 					if (!wayEl.isComplete()) {
 						// the way is closed in planet but some points are missing in this tile
@@ -246,7 +223,7 @@ public class MultiPolygonRelation extends Relation {
 						jw.closeWayArtificially();
 					}
 					if (jw.hasIdenticalEndPoints())
-						joinedWays.add(jw);
+						closedWays.add(jw);
 					else {
 						unclosedWays.add(jw);
 					}
@@ -255,112 +232,88 @@ public class MultiPolygonRelation extends Relation {
 				if ("label".equals(role))
 					cOfG = ((Node) el).getLocation();
 				else if (!"admin_centre".equals(role)) 
-					log.warn("Node with unknown role", role, el.toBrowseURL(),
+					log.warn("Node with unknown role is ignored", role, el.toBrowseURL(),
 							 "in multipolygon", toBrowseURL(), toTagString());
 			} else {
-				log.warn("Non Way/Node member with role", role, el.toBrowseURL(),
+				log.warn("Non Way/Node member with role is ignored", role, el.toBrowseURL(),
 						 "in multipolygon", toBrowseURL(), toTagString());
 			}
 		}
-
 		
+	}
+
+	/**
+	 * Combines ways in the given order. Closed ways are added to closedWays, unclosed ways remain in unclosed.  
+	 * Stops when two ways cannot be joined in the given order.
+	 * @param closedWays
+	 * @param unclosedWays
+	 */
+	private void joinInGivenOrder(List<JoinedWay> closedWays, List<JoinedWay> unclosedWays) {
+		JoinedWay work = null;
+		while (unclosedWays.size() > 1) {
+			if (work == null)
+				work = unclosedWays.get(0);
+			if (!work.canJoin(unclosedWays.get(1)))
+				break;
+			work.joinWith(unclosedWays.get(1));
+			unclosedWays.remove(1);
+			if (work.hasIdenticalEndPoints()) {
+				closedWays.add(work);
+				unclosedWays.remove(0);
+				work = null;
+			}
+		}
+	}
+
+	private void joinWithIndex(List<JoinedWay> closedWays, List<JoinedWay> unclosedWays) {
+		MultiIdentityHashMap<Coord, JoinedWay> index = new MultiIdentityHashMap<>();
+		unclosedWays.forEach(jw -> {
+			index.add(jw.getFirstPoint(), jw);
+			index.add(jw.getLastPoint(), jw);
+		});
+
+		List<JoinedWay> finishedUnclosed = new ArrayList<>();
 		while (!unclosedWays.isEmpty()) {
 			JoinedWay joinWay = unclosedWays.remove(0);
 
-			// check if the current way is already closed or if it is the last
-			// way
-			if (joinWay.hasIdenticalEndPoints() || unclosedWays.isEmpty()) {
-				joinedWays.add(joinWay);
+			List<JoinedWay> candidates = index.get(joinWay.getLastPoint());
+			if (candidates.size() != 2) {
+				candidates = index.get(joinWay.getFirstPoint());
+			}
+			if (candidates.size() <= 1) {
+				// cannot join further
+				finishedUnclosed.add(joinWay);
+				// no need to maintain index
 				continue;
 			}
-
-			boolean joined = false;
-
-			// if we have a way that could be joined but which has a wrong role
-			// then store it here and check in the end if it's working
-			JoinedWay wrongRoleWay = null;
-			String joinRole = getRole(joinWay);
-
-			// go through all ways and check if there is a way that can be
-			// joined with it
-			// in this case join the two ways
-			// => add all points of tempWay to joinWay, remove tempWay and put
-			// joinWay to the beginning of the list
-			// (not optimal but understandable - can be optimized later)
-			Iterator<JoinedWay> iter = unclosedWays.iterator();
-			while (iter.hasNext()) {
-				JoinedWay tempWay = iter.next();
-				if (tempWay.hasIdenticalEndPoints()) {
-					continue;
-				}
-
-				String tempRole = getRole(tempWay);
-				// if a role is not 'inner' or 'outer' then it is used as
-				// universal
-				// check if the roles of the ways are matching
-				if ((!ROLE_OUTER.equals(joinRole) && !ROLE_INNER.equals(joinRole))
-						|| (!ROLE_OUTER.equals(tempRole) && !ROLE_INNER.equals(tempRole))
-						|| (joinRole != null && joinRole.equals(tempRole))) {
-					// the roles are matching => try to join both ways
-					joined = joinTwoWays(joinWay, tempWay, false);
-				} else {
-					// the roles are not matching => test if both ways would
-					// join
-
-					// as long as we don't have an alternative way with wrong
-					// role
-					// or if the alternative way is shorter then check if
-					// the way with the wrong role could be joined
-					if (wrongRoleWay == null || wrongRoleWay.getPoints().size() < tempWay.getPoints().size()
-							&& joinTwoWays(joinWay, tempWay, true)) {
-						// save this way => maybe we will use it in the end
-						// if we don't find any other way
-						wrongRoleWay = tempWay;
-					}
-				}
-				if (joined) {
-					// we have joined the way
-					iter.remove();
-					break;
-				}
+			// we will join
+			candidates.remove(joinWay);
+			JoinedWay other = candidates.get(0);
+			if (candidates.size() > 1) {
+				// we have alternatives, prefer one that closes the ring. 
+				other = candidates.stream().filter(joinWay::buildsRingWith).findFirst().orElse(other);
 			}
+			
+			// maintain index, we don't know which node is removed by the joining
+			index.removeMapping(other.getFirstPoint(), other);
+			index.removeMapping(other.getLastPoint(), other);
+			index.removeMapping(joinWay.getFirstPoint(), joinWay);
+			index.removeMapping(joinWay.getLastPoint(), joinWay);
 
-			if (!joined && wrongRoleWay != null) {
+			unclosedWays.remove(other); // needs sequential search. Could set a flag in JoinedWay instead
+			joinWay.joinWith(other);
 
-				log.warn("Join ways with different roles. Multipolygon: "
-						+ toBrowseURL());
-				log.warn("Way1 Role:", getRole(joinWay));
-				logWayURLs(Level.WARNING, "-", joinWay);
-				log.warn("Way2 Role:", getRole(wrongRoleWay));
-				logWayURLs(Level.WARNING, "-", wrongRoleWay);
-
-				joined = joinTwoWays(joinWay, wrongRoleWay, false);
-				if (joined) {
-					// we have joined the way
-					unclosedWays.remove(wrongRoleWay);
-					break;
-				}
-			}
-
-			if (joined) {
-				if (joinWay.hasIdenticalEndPoints()) {
-					// it's closed => don't process it again
-					joinedWays.add(joinWay);
-				} else if (unclosedWays.isEmpty()) {
-					// no more ways to join with
-					// it's not closed but we cannot join it more
-					joinedWays.add(joinWay);
-				} else {
-					// it is not yet closed => process it once again
-					unclosedWays.add(0, joinWay);
-				}
+			if (joinWay.hasIdenticalEndPoints()) {
+				closedWays.add(joinWay);
 			} else {
-				// it's not closed but we cannot join it more
-				joinedWays.add(joinWay);
+				index.add(joinWay.getFirstPoint(), joinWay);
+				index.add(joinWay.getLastPoint(), joinWay);
+				unclosedWays.add(0, joinWay);
 			}
 		}
-		return joinedWays;
+		unclosedWays.addAll(finishedUnclosed);
 	}
+
 
 	/**
 	 * Try to close unclosed ways in the given list of ways.
@@ -1618,7 +1571,7 @@ public class MultiPolygonRelation extends Relation {
 	 */
 	public static final class JoinedWay extends Way {
 		private final List<Way> originalWays;
-		private short intRole;  
+		private byte intRole;  
 		private boolean closedArtificially;
 
 		private int minLat;
@@ -1642,7 +1595,7 @@ public class MultiPolygonRelation extends Relation {
 			updateBounds(originalWay.getPoints());
 		}
 
-		private short roleToInt(String role) {
+		private byte roleToInt(String role) {
 			if (role == null)
 				return INT_ROLE_NULL;
 			switch (role) {
@@ -1828,6 +1781,66 @@ public class MultiPolygonRelation extends Relation {
 			final String prefix = getId() + "(" + getPoints().size() + "P)(";
 			return getOriginalWays().stream().map(w -> w.getId() + "[" + w.getPoints().size() + "P]")
 					.collect(Collectors.joining(",", prefix, ")"));
+		}
+
+		public boolean canJoin(JoinedWay other) {
+			return getFirstPoint() == other.getFirstPoint() || getFirstPoint() == other.getLastPoint()
+					|| getLastPoint() == other.getFirstPoint() || getLastPoint() == other.getLastPoint();
+		}
+
+		public boolean buildsRingWith(JoinedWay other) {
+			return getFirstPoint() == other.getFirstPoint() && getLastPoint() == other.getLastPoint()
+					|| getFirstPoint() == other.getLastPoint() && getLastPoint() == other.getFirstPoint();
+		}
+		
+		/**
+		 * Join the other way.
+		 * 
+		 * @param other     the way to be added to this 
+		 * @throws ExitException if ways cannot be joined 
+		 */
+		private void joinWith(JoinedWay other) {
+			boolean reverseOther = false;
+			int insIdx = -1;
+			int firstOtherIdx = 1;
+			
+			if (this.getFirstPoint() == other.getFirstPoint()) {
+				insIdx = 0;
+				reverseOther = true;
+				firstOtherIdx = 1;
+			} else if (this.getLastPoint() == other.getFirstPoint()) {
+				insIdx = this.getPoints().size();
+				firstOtherIdx = 1;
+			} else if (this.getFirstPoint() == other.getLastPoint()) {
+				insIdx = 0; 
+				firstOtherIdx = 0;
+			} else if (this.getLastPoint() == other.getLastPoint()) {
+				insIdx = this.getPoints().size();
+				reverseOther = true;
+				firstOtherIdx = 0;
+			} else {
+				String msg = "Cannot join " + this.getBasicLogInformation() + " with " + other.getBasicLogInformation();
+				log.error(msg);
+				throw new ExitException(msg);
+			}
+			
+			int lastIdx = other.getPoints().size();
+			if (firstOtherIdx == 0) {
+				// the last temp point is already contained in the joined way - do not copy it
+				lastIdx--;
+			}
+
+			List<Coord> tempCoords = other.getPoints().subList(firstOtherIdx,lastIdx);
+
+			if (reverseOther) {
+				// the temp coords need to be reversed so copy the list
+				tempCoords = new ArrayList<>(tempCoords);
+				// and reverse it
+				Collections.reverse(tempCoords);
+			}
+
+			this.getPoints().addAll(insIdx, tempCoords);
+			this.addWay(other);
 		}
 	}
 
