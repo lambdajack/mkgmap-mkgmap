@@ -165,6 +165,10 @@ public class StyledConverter implements OsmConverter {
 	
 	private LineAdder lineAdder;
 	private NearbyPoiHandler nearbyPoiHandler;
+
+	static List<String> unusedStyleOptions = new ArrayList<>();
+	static List<String> duplicateKeys = new ArrayList<>();
+	static List<String> unspecifiedStyleOptions = new ArrayList<>();
 	
 	public StyledConverter(Style style, MapCollector collector, EnhancedProperties props) {
 		this.collector = collector;
@@ -250,13 +254,23 @@ public class StyledConverter implements OsmConverter {
 				String optionKey = pair[0];
 				String tagKey = STYLE_OPTION_PREF + optionKey;
 				if (!style.getUsedTags().contains(tagKey)) {
-					System.err.println("Warning: Option style-options sets tag not used in style: '" 
-							+ optionKey + "' (gives " + tagKey + ")");
-				} else {
-					String val = (pair.length == 1) ? "true" : pair[1];
-					String old = styleTags.put(tagKey, val);
-					if (old != null)
-						log.error("duplicate tag key", optionKey, "in style option", styleOption);
+					synchronized(unusedStyleOptions) {
+						if (!unusedStyleOptions.contains(optionKey)) {
+							unusedStyleOptions.add(optionKey);
+							Logger.defaultLogger.warn("Option style-options sets tag not used in style: '" 
+									+ optionKey + "' (gives " + tagKey + ")");
+						}
+					}
+				}
+				String val = (pair.length == 1) ? "true" : pair[1];
+				String old = styleTags.put(tagKey, val);
+				if (old != null) {
+					synchronized(duplicateKeys) {
+						if (!duplicateKeys.contains(optionKey)) {
+							duplicateKeys.add(optionKey);
+							Logger.defaultLogger.error("duplicate tag key", optionKey, "in style option", styleOption);
+						}
+					}
 				}
 			}
 		}
@@ -264,8 +278,13 @@ public class StyledConverter implements OsmConverter {
 		if (style.getUsedTags() != null) {
 			for (String s : style.getUsedTags()) {
 				if (s != null && s.startsWith(STYLE_OPTION_PREF) && styleTags.get(s) == null) {
-					System.err.println("Warning: Option style-options doesn't specify '"
-							+ s.replaceFirst(STYLE_OPTION_PREF, "") + "' (for " + s + ")");
+					synchronized(unspecifiedStyleOptions) {
+						if (!unspecifiedStyleOptions.contains(s)) {
+							unspecifiedStyleOptions.add(s);
+							Logger.defaultLogger.warn("Option style-options doesn't specify '"
+									+ s.replaceFirst(STYLE_OPTION_PREF, "") + "' (for " + s + ")");
+						}
+					}
 				}
 			}
 		}

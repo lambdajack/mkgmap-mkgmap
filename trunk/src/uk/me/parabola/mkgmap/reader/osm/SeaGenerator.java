@@ -690,8 +690,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		} catch (FileNotFoundException exp) {
 			log.error("Preompiled sea tile " + tileName + " not found.");
 		} catch (Exception exp) {
-			log.error(exp);
-			exp.printStackTrace();
+			log.error("Unexpected error reading "+ tileName, exp);
 		}
 	}
 
