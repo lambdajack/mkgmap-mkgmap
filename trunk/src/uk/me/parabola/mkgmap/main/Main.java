@@ -81,6 +81,7 @@ import uk.me.parabola.util.EnhancedProperties;
  */
 public class Main implements ArgumentProcessor {
 	private static final Logger log = Logger.getLogger(Main.class);
+	private static final Date StartTime = new Date();
 
 	// Final .img file combiners.
 	private final List<Combiner> combiners = new ArrayList<>();
@@ -103,6 +104,7 @@ public class Main implements ArgumentProcessor {
 	private volatile int programRC = 0;
 
 	private final Map<String, Combiner> combinerMap = new HashMap<>();
+	private boolean informationDisplayed = false;
 
 	/**
 	 * Used for unit tests
@@ -126,7 +128,7 @@ public class Main implements ArgumentProcessor {
 	 */
 	private static int mainStart(String... args) {
 		Instant start = Instant.now();
-		System.out.println("Time started: " + new Date());
+
 		// We need at least one argument.
 		if (args.length < 1) {
 			printUsage();
@@ -137,18 +139,19 @@ public class Main implements ArgumentProcessor {
 		Main mm = new Main();
 
 		int numExitExceptions = 0;
+		CommandArgsReader commandArgs = new CommandArgsReader(mm);
 		try {
 			// Read the command line arguments and process each filename found.
-			CommandArgsReader commandArgs = new CommandArgsReader(mm);
 			commandArgs.setValidOptions(getValidOptions(System.err));
 			commandArgs.readArgs(args);
 		} catch (OutOfMemoryError e) {
 			++numExitExceptions;
-			System.err.println(e);
+			String message = "Out of memory.\r\n";
 			if (mm.maxJobs > 1)
-				System.err.println("Try using the mkgmap --max-jobs option with a value less than " + mm.maxJobs  + " to reduce the memory requirement, or use the Java -Xmx option to increase the available heap memory.");
+				message += "Try using the mkgmap --max-jobs option with a value less than " + mm.maxJobs  + " to reduce the memory requirement, or use the Java -Xmx option to increase the available heap memory.";
 			else
-				System.err.println("Try using the Java -Xmx option to increase the available heap memory.");
+				message += "Try using the Java -Xmx option to increase the available heap memory.";
+			Logger.defaultLogger.error(message);
 		} catch (MapFailedException | ExitException e) {
 			// one of the combiners failed
 			++numExitExceptions;
@@ -158,32 +161,33 @@ public class Main implements ArgumentProcessor {
 				message += "\r\n" + cause.toString();
 				cause = cause.getCause();
 			}
-			System.err.println(message);
+			Logger.defaultLogger.error(message);
 		}
-		
-		System.out.println("Number of ExitExceptions: " + numExitExceptions);
-		
-		System.out.println("Time finished: " + new Date());
-		Duration duration = Duration.between(start, Instant.now());
-		long seconds = duration.getSeconds();
-		if (seconds > 0) {
-			long hours = seconds / 3600;
-			seconds -= hours * 3600;
-			long minutes = seconds / 60;
-			seconds -= minutes * 60;
-			System.out.println("Total time taken: " + 
-								(hours > 0 ? hours + (hours > 1 ? " hours " : " hour ") : "") +
-								(minutes > 0 ? minutes + (minutes > 1 ? " minutes " : " minute ") : "") +
-								(seconds > 0 ? seconds + (seconds > 1 ? " seconds" : " second") : ""));
+
+		if(commandArgs.getHasFiles()) {
+			Logger.defaultLogger.write("Number of ExitExceptions: " + numExitExceptions);
+
+			Logger.defaultLogger.write("Time finished: " + new Date());
+			Duration duration = Duration.between(start, Instant.now());
+			long seconds = duration.getSeconds();
+			if (seconds > 0) {
+				long hours = seconds / 3600;
+				seconds -= hours * 3600;
+				long minutes = seconds / 60;
+				seconds -= minutes * 60;
+				Logger.defaultLogger.write("Total time taken: " + 
+							 (hours > 0 ? hours + (hours > 1 ? " hours " : " hour ") : "") +
+							 (minutes > 0 ? minutes + (minutes > 1 ? " minutes " : " minute ") : "") +
+							 (seconds > 0 ? seconds + (seconds > 1 ? " seconds" : " second") : ""));
+			}
+			else
+				Logger.defaultLogger.write("Total time taken: " + duration.getNano() / 1000000 + " ms");
 		}
-		else
-			System.out.println("Total time taken: " + duration.getNano() / 1000000 + " ms");
-		if (numExitExceptions > 0 || mm.getProgramRC() != 0){
-			return 1;
-		}
-		return 0;
+		else if (numExitExceptions == 0 && !mm.informationDisplayed)
+			System.err.println("The command line does not appear to require mkgmap to do anything.");
+		return (numExitExceptions > 0 || mm.getProgramRC() != 0) ? 1 : 0;
 	}
-	
+
 	private static void printUsage (){
 		System.err.println("Usage: mkgmap [options...] <file.osm>");
 	}
@@ -318,6 +322,7 @@ public class Main implements ArgumentProcessor {
 
 			break;
 		case "help":
+			informationDisplayed = true;
 			printHelp(System.out, getLang(), (!val.isEmpty()) ? val : "help");
 			break;
 		case "style-file":
@@ -331,9 +336,11 @@ public class Main implements ArgumentProcessor {
 			verbose = true;
 			break;
 		case "list-styles":
+			informationDisplayed = true;
 			listStyles();
 			break;
 		case "check-styles":
+			informationDisplayed = true;
 			checkStyles();
 			break;
 		case "max-jobs":
@@ -342,14 +349,16 @@ public class Main implements ArgumentProcessor {
 			else {
 				maxJobs = Integer.parseInt(val);
 				if (maxJobs < 1) {
-					log.warn("max-jobs has to be at least 1");
+					Logger.defaultLogger.warn("max-jobs has to be at least 1");
 					maxJobs = 1;
 				}
 				if (maxJobs > Runtime.getRuntime().availableProcessors())
-					log.warn("It is recommended that max-jobs be no greater that the number of processor cores");
+					Logger.defaultLogger.warn("It is recommended that max-jobs be no greater that the number of processor cores");
 			}
 			break;
 		case "version":
+			informationDisplayed = true;
+			System.err.println("Mkgmap version " + Version.VERSION);
 			System.err.println(Version.VERSION);
 			System.exit(0);
 		}
@@ -458,14 +467,14 @@ public class Main implements ArgumentProcessor {
 		try {
 			style = new StyleImpl(styleFile, name, new EnhancedProperties(), performChecks);
 		} catch (SyntaxException e) {
-			System.err.println("Error in style: " + e.getMessage());
+			Logger.defaultLogger.error("Error in style: " + e.getMessage());
 		} catch (FileNotFoundException e) {
 			log.debug("could not find style", name);
 			try {
 				searchedStyleName = new File(styleFile).getName();
 				style = new StyleImpl(styleFile, null, new EnhancedProperties(), performChecks);
 			} catch (SyntaxException e1) {
-				System.err.println("Error in style: " + e1.getMessage());
+				Logger.defaultLogger.error("Error in style: " + e1.getMessage());
 			} catch (FileNotFoundException e1) {
 				log.debug("could not find style", styleFile);
 			}
@@ -485,9 +494,13 @@ public class Main implements ArgumentProcessor {
 	public void endOptions(CommandArgs args) {
 		fileOptions(args);
 
+		int taskCount = futures.size();
+		if (taskCount > 0) {
+			Logger.defaultLogger.write("Mkgmap version " + Version.VERSION);
+			Logger.defaultLogger.write("Time started: " + StartTime);
+		}
 		log.info("Start tile processors");
 		int threadCount = maxJobs;
-		int taskCount = futures.size();
 		Runtime runtime = Runtime.getRuntime();
 		if (threadPool == null) {
 			if (threadCount == 0) {
@@ -511,7 +524,7 @@ public class Main implements ArgumentProcessor {
 					}
 					threadCount = Math.max(threadCount, 1);
 					threadCount = Math.min(threadCount, runtime.availableProcessors());
-					System.out.println("Setting max-jobs to " + threadCount);
+					Logger.defaultLogger.warn("Setting max-jobs to " + threadCount);
 				}
 			}
 
@@ -566,14 +579,14 @@ public class Main implements ArgumentProcessor {
 						throw new ExitException("Exiting - if you want to carry on regardless, use the --keep-going option");
 					}
 				} catch (Exception e) {
-					e.printStackTrace();
+					Logger.defaultLogger.error("Unexpected error", e);
 					throw new ExitException("Exiting due to unexpected error");
 				}
 			}
 		}
-		System.out.println("Number of MapFailedExceptions: " + numMapFailedExceptions);
+		Logger.defaultLogger.write("Number of MapFailedExceptions: " + numMapFailedExceptions);
 		if ((taskCount > threadCount + 1) && (maxJobs == 0) && (threadCount < runtime.availableProcessors())) {
-			System.out.println("To reduce the run time, consider increasing the amnount of memory available for use by mkgmap by using the Java -Xmx flag to set the memory to more than " + 100* (1 + ((runtime.maxMemory() * runtime.availableProcessors()) / (threadCount * 1024 * 1024 * 100))) + " MB, providing this is less than the amount of physical memory installed.");
+			Logger.defaultLogger.warn("To reduce the run time, consider increasing the amnount of memory available for use by mkgmap by using the Java -Xmx flag to set the memory to more than " + 100* (1 + ((runtime.maxMemory() * runtime.availableProcessors()) / (threadCount * 1024 * 1024 * 100))) + " MB, providing this is less than the amount of physical memory installed.");
 		}
 
 		if (combiners.isEmpty())
@@ -589,7 +602,7 @@ public class Main implements ArgumentProcessor {
 			hasFiles = true;
 		}
 		if (!hasFiles){
-			log.warn("nothing to do for combiners.");
+			log.info("nothing to do for combiners.");
 			return;
 		}
 		log.info("Combining maps");
@@ -679,7 +692,7 @@ public class Main implements ArgumentProcessor {
 				if (f.exists() && f.isFile()) {
 					try {
 						Files.delete(f.toPath());
-						log.warn("removed " + f);
+						log.info("removed " + f);
 					} catch (IOException e) {
 						log.warn("removing " + f + "failed with " + e.getMessage());
 					}

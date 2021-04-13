@@ -16,10 +16,13 @@
  */
 package func.lib;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayDeque;
@@ -28,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.mkgmap.general.LevelInfo;
@@ -133,6 +137,54 @@ public class TestUtils {
 		}
 
 		return new Outputs(outsink.toString(), errsink.toString());
+	}
+
+	/**
+	 * Run with the given args as a new process.  Some standard arguments are added first.
+	 *
+	 * @param in The arguments to use.
+	 */
+	public static Outputs runAsProcess(String ... in) {
+        List<String> args = new ArrayList<>(Arrays.asList(
+                "java",
+                "-classpath",
+                "build/classes" + File.pathSeparator + "lib/compile/*",
+                "uk.me.parabola.mkgmap.main.Main",
+                Args.TEST_STYLE_ARG
+        ));
+        args.addAll(Arrays.asList(in));
+		ProcessBuilder pb = new ProcessBuilder(args);
+		StringBuilder outBuilder = new StringBuilder();
+		StringBuilder errBuilder = new StringBuilder();
+		try {
+			Process process = pb.start();
+			try (BufferedReader errorStream = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+				 BufferedReader outputStream = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+				while (true) {
+					getStreamOutput(outputStream, outBuilder);
+					getStreamOutput(errorStream, errBuilder);
+					if (process.waitFor(1, TimeUnit.MILLISECONDS)) {
+						getStreamOutput(outputStream, outBuilder);
+						getStreamOutput(errorStream, errBuilder);
+						break;
+					}
+				}
+			}
+		} catch (IOException e) {
+			// do nothing
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+		return new Outputs(outBuilder.toString(), errBuilder.toString());
+	}
+
+	private static void getStreamOutput(BufferedReader stream, StringBuilder stringBuilder) throws IOException {
+		char[] buff = new char[100000];
+		while (stream.ready()) {
+			int count = stream.read(buff);
+			if (count > 0)
+				stringBuilder.append(buff, 0, count);
+		}
 	}
 
 	/**

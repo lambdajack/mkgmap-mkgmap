@@ -38,7 +38,7 @@ import static org.junit.Assert.*;
 public class ArgsTest extends Base {
 	@Test
 	public void testHelp() {
-		Outputs outputs = TestUtils.run("--help");
+		Outputs outputs = TestUtils.runAsProcess("--help");
 		outputs.checkOutput("--help=options", "--help=links");
 		outputs.checkNoError();
 		checkNoStdFile();
@@ -46,7 +46,7 @@ public class ArgsTest extends Base {
 
 	@Test
 	public void testHelpOptions() {
-		Outputs outputs = TestUtils.run("--help=options");
+		Outputs outputs = TestUtils.runAsProcess("--help=options");
 		outputs.checkNoError();
 		outputs.checkOutput("--mapname=name", "--latin1", "--list-styles");
 		checkNoStdFile();
@@ -54,7 +54,7 @@ public class ArgsTest extends Base {
 
 	@Test
 	public void testHelpUnknown() {
-		Outputs outputs = TestUtils.run("--help=unknown-help-option");
+		Outputs outputs = TestUtils.runAsProcess("--help=unknown-help-option");
 		outputs.checkNoError();
 		outputs.checkOutput("Could not find", "unknown-help-option");
 		checkNoStdFile();
@@ -62,7 +62,7 @@ public class ArgsTest extends Base {
 
 	@Test
 	public void testListStyles() {
-		Outputs op = TestUtils.run("--style-file=test/resources/teststyles", "--list-styles");
+		Outputs op = TestUtils.runAsProcess("--style-file=test/resources/teststyles", "--list-styles");
 		op.checkNoError();
 		op.checkOutput("empty", "main", "simple", "derived", "2.2: A simple test style");
 		checkNoStdFile();
@@ -70,7 +70,7 @@ public class ArgsTest extends Base {
 
 	@Test
 	public void testListStylesVerbose() {
-		Outputs op = TestUtils.run("--style-file=test/resources/teststyles",
+		Outputs op = TestUtils.runAsProcess("--style-file=test/resources/teststyles",
 				"--verbose", "--list-styles");
 		op.checkNoError();
 		op.checkOutput("empty", "main", "simple", "derived",
@@ -83,9 +83,9 @@ public class ArgsTest extends Base {
 		TestUtils.registerFile("osmmap.img");
 		 
 		int pri = 42;
-		Outputs op = TestUtils.run("--draw-priority=" + pri,
+		Outputs op = TestUtils.runAsProcess("--draw-priority=" + pri,
 				Args.TEST_RESOURCE_OSM + "uk-test-1.osm.gz");
-		op.checkNoError();
+		op.checkError("Number of ExitExceptions: 0");
 
 		FileSystem fs = openFs(Args.DEF_MAP_FILENAME);
 		ImgChannel chan = fs.open(Args.DEF_MAP_ID + ".TRE", "r");
@@ -96,7 +96,7 @@ public class ArgsTest extends Base {
 
 	@Test
 	public void testNoDescription() {
-		Outputs op = TestUtils.run("--description", Args.TEST_RESOURCE_OSM + "uk-test-1.osm.gz");
-		op.checkNoError();
+		Outputs op = TestUtils.runAsProcess("--description", Args.TEST_RESOURCE_OSM + "uk-test-1.osm.gz");
+		op.checkError("Number of ExitExceptions: 0");
 	}
 }
