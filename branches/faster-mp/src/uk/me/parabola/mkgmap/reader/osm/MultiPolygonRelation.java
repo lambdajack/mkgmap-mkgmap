@@ -15,7 +15,6 @@ package uk.me.parabola.mkgmap.reader.osm;
 
 import java.awt.Rectangle;
 import java.awt.geom.Area;
-import java.awt.geom.Line2D;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -41,6 +40,7 @@ import java.util.stream.Collectors;
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.util.GpxCreator;
 import uk.me.parabola.util.IsInUtil;
 import uk.me.parabola.util.Java2DConverter;
 import uk.me.parabola.util.MultiIdentityHashMap;
@@ -215,7 +215,7 @@ public class MultiPolygonRelation extends Relation {
 					if (jw.intRole == INT_ROLE_OTHER) 
 						log.warn("Way role invalid", role, el.toBrowseURL(),
 								 "in multipolygon", toBrowseURL(), toTagString());
-					if (!wayEl.isComplete()) {
+					if (wayEl.isClosedInOSM() && wayEl.hasIdenticalEndPoints() && !wayEl.isComplete()) {
 						// the way is closed in planet but some points are missing in this tile
 						// we can close it artificially
 						if (log.isDebugEnabled())
@@ -324,12 +324,15 @@ public class MultiPolygonRelation extends Relation {
 	 * 
 	 */
 	private void closeWays(List<JoinedWay> wayList, double maxCloseDist) {
+//		GpxCreator.createGpx("e:/ld/bounds", tileBounds.toCoords());
+
 		for (JoinedWay way : wayList) {
 			if (way.hasIdenticalEndPoints() || way.getPoints().size() < 3) {
 				continue;
 			}
 			Coord p1 = way.getFirstPoint();
 			Coord p2 = way.getLastPoint();
+//			GpxCreator.createGpx("e:/ld/before", way.getPoints());
 
 			if (!tileBounds.insideBoundary(p1) && !tileBounds.insideBoundary(p2)
 					// both points lie outside the bbox or on the bbox
@@ -345,43 +348,6 @@ public class MultiPolygonRelation extends Relation {
 				way.closeWayArtificially();
 				log.info("Endpoints of way", way, "are both outside the bbox. Closing it directly.");
 				continue;
-			}
-			
-			Line2D closingLine = new Line2D.Double(p1.getHighPrecLon(), 
-					p1.getHighPrecLat(), p2.getHighPrecLon(), p2.getHighPrecLat());
-
-			boolean intersects = false;
-			Coord lastPoint = null;
-			// don't use the first and the last point
-			// the closing line can intersect only in one point or complete.
-			// Both isn't interesting for this check
-			for (Coord thisPoint : way.getPoints().subList(1, way.getPoints().size() - 1)) {
-				if (lastPoint != null && closingLine.intersectsLine(lastPoint.getHighPrecLon(), lastPoint.getHighPrecLat(),
-						thisPoint.getHighPrecLon(), thisPoint.getHighPrecLat())) {
-					intersects = true;
-					break;
-				}
-				lastPoint = thisPoint;
-			}
-
-			if (!intersects) {
-				// close the polygon
-				// the new way segment does not intersect the rest of the polygon
-				boolean doClose = true;
-				if (maxCloseDist > 0) {
-					// calc the distance to close
-					double closeDist = way.getFirstPoint().distance(way.getLastPoint());
-					doClose = closeDist < maxCloseDist;
-				}
-				if (doClose) {
-					if (log.isInfoEnabled()) {
-						log.info("Closing way", way);
-						log.info("from", way.getFirstPoint().toOSMURL());
-						log.info("to", way.getLastPoint().toOSMURL());
-					}
-					// mark this ways as artificially closed
-					way.closeWayArtificially();
-				}
 			}
 		}
 	}
@@ -865,6 +831,7 @@ public class MultiPolygonRelation extends Relation {
 		// with the mp tags and mark them only to be used for polyline processing
 		// This enables the style file to decide if the polygon information or
 		// the simple line information should be used.
+		
 		for (Way orgOuterWay : outerWaysForLineTagging) {
 			if (patternWayForLineCopies != null) {
 				Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
@@ -1498,7 +1465,7 @@ public class MultiPolygonRelation extends Relation {
 	 * @param way the way
 	 * @param tagKey the tag key
 	 */
-	protected static void markTagsForRemovalInOrgWays(Way way, String tagKey) {
+	private static void markTagsForRemovalInOrgWays(Way way, String tagKey) {
 		if (tagKey == null || tagKey.isEmpty()) {
 			return; // should not happen
 		}
@@ -1713,6 +1680,7 @@ public class MultiPolygonRelation extends Relation {
 
 		public void closeWayArtificially() {
 			addPoint(getPoints().get(0));
+//			GpxCreator.createGpx("e:/ld/after", getPoints());
 			closedArtificially = true;
 		}
 
