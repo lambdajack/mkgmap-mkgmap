@@ -617,6 +617,10 @@ the standard mkgmap build due to its dependencies on external libraries.
 
 === Diagnostic options ===
 
+Messages produced by the diagnostic options are directed to stderr when no logging
+configuration file is in use. When using a logging configuration file, they are logged
+with custom level DIAGNOSTIC (1100).
+
 ;--check-roundabouts
 : 	Check that roundabouts have the expected direction (clockwise
 when vehicles drive on the left). Roundabouts that are complete
