@@ -38,7 +38,7 @@ public class HGTList {
 		try {
 			knownHgt = loadConfig();
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.defaultLogger.error("Error reading hgt config", e);
 		}
 	} 
 	
@@ -114,7 +114,7 @@ public class HGTList {
 					
 					bs.set(getBitSetPos(lat, lon));
 				} catch (NumberFormatException e) {
-					e.printStackTrace();
+					Logger.defaultLogger.error("Error reading latitude/longitude", e);
 				}
 			}
 			return bs;

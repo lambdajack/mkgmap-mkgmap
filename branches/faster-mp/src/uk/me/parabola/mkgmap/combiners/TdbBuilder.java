@@ -190,7 +190,6 @@ public class TdbBuilder implements Combiner {
 		try {
 			tdb.write(Utils.joinPath(outputDir, overviewMapname, "tdb"));
 		} catch (IOException e) {
-			log.error("tdb write", e);
 			throw new ExitException("Could not write the TDB file", e);
 		}
 	}

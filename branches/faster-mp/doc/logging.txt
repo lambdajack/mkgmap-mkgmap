@@ -12,7 +12,6 @@ or class level, plus a default value. An example file is:
 <pre>
 # The default level FINE, WARNING, INFO, SEVERE 
 .level=SEVERE
-#handlers: java.util.logging.ConsoleHandler 
 handlers: java.util.logging.FileHandler java.util.logging.ConsoleHandler 
 # package or class name with .level appended and then the level
 uk.me.parabola.imgfmt.level=INFO
@@ -39,8 +38,18 @@ java.util.logging.FileHandler.pattern=mkgmap.log
 java.util.logging.FileHandler.append=false
 </pre>
 
-The above example enables certain informational messages and sends them to a
-log file, with warning and error messages being also sent to stdout.
+The above example enables certain informational messages and uses FileHandler to send
+them to a log file, with warning and error messages being also sent to stderr via
+ConsoleHandler.
+
+Mkgmap provides UsefulFormatter to help format messages, but you can use the
+standard Java SimpleFormatter if you prefer.
+
+In addition to the standard Java levels, mkgmap uses three additional levels
+DIAGNOSTIC (1100), ECHO (1200) and OVERRIDE (1300) for messages from its
+diagnostic options, echo/echotags style compiler actions and to display
+mkgmap startup and completion information. You can use the numeric values but
+not the names to specify these levels in a logging configuration file.
 
 Further information can be found at
 [https://docs.oracle.com/javase/8/docs/technotes/guides/logging/overview.html https://docs.oracle.com/javase/8/docs/technotes/guides/logging/overview.html]

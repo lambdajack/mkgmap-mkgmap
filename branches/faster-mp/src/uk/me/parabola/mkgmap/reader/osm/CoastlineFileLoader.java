@@ -106,8 +106,7 @@ public final class CoastlineFileLoader {
 			} catch (FileNotFoundException exp) {
 				log.error("Coastline file " + coastlineFile + " not found.");
 			} catch (Exception exp) {
-				log.error(exp);
-				exp.printStackTrace();
+				log.error("Unexpected exception reading " + coastlineFile, exp);
 			}
 		}
 		coastlinesLoaded.set(true);

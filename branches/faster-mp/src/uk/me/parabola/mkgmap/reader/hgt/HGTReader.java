@@ -130,7 +130,7 @@ public class HGTReader {
 				HGTList hgtList = HGTList.get();
 				if (hgtList != null) {
 					if (hgtList.shouldExist(lat, lon))
-						System.err.println(this.getClass().getSimpleName() + ": file " + fileName + " not found but it should exist. Height values will be 0.");
+						Logger.defaultLogger.warn(this.getClass().getSimpleName() + ": file " + fileName + " not found but it should exist. Height values will be 0.");
 				} else { 
 					log.warn("file " + fileName + " not found. Is expected to cover sea.");
 				}

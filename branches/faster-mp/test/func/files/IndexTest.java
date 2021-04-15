@@ -36,7 +36,7 @@ public class IndexTest extends Base {
 		f.delete();
 		assertFalse("does not pre-exist", f.exists());
 
-		Outputs outputs = TestUtils.run(
+		Outputs outputs = TestUtils.runAsProcess(
 				Args.TEST_STYLE_ARG,
 				"--index",
 				"--latin1",
@@ -45,7 +45,7 @@ public class IndexTest extends Base {
 				Args.TEST_RESOURCE_IMG + "63240001.img",
 				Args.TEST_RESOURCE_IMG + "63240002.img"
 		);
-		outputs.checkNoError();
+		outputs.checkError("Number of ExitExceptions: 0");
 
 		TestUtils.registerFile(MDR_IMG);
 		TestUtils.registerFile(OVERVIEW_NAME+".tdb");

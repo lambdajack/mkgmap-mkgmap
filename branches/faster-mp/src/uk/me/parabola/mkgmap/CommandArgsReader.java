@@ -17,7 +17,6 @@
 package uk.me.parabola.mkgmap;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.Iterator;
@@ -47,6 +46,7 @@ public class CommandArgsReader {
 	private final ArgumentProcessor proc;
 
 	private boolean mapnameWasSet;
+	private boolean hasFiles = false;
 
 	private final ArgList arglist = new ArgList();
 
@@ -109,6 +109,7 @@ public class CommandArgsReader {
 
 			} else {
 				log.debug("adding filename:", arg);
+				hasFiles = true;
 				add(new Filename(arg));
 			}
 		}
@@ -125,6 +126,9 @@ public class CommandArgsReader {
 			proc.endOptions(new CommandArgs(this.args));
 	}
 
+	public boolean getHasFiles() {
+		return hasFiles;
+	}
 
 	/**
 	 * Add an option based on the option and value separately.
@@ -202,6 +206,7 @@ public class CommandArgsReader {
 		case "input-file":
 			if (value != null){
 				log.debug("adding filename", value);
+				hasFiles = true;
 				add(new Filename(value));
 			}
 			break;

@@ -61,8 +61,8 @@ public class RoadNetwork {
 	private int maxFlareLengthRatio ;
 	private boolean reportSimilarArcs;
 	private boolean routable;
-
-	private long maxSumRoadLenghts;
+	private boolean reportRoutingIslands;
+	private long maxSumRoadLengths;
 	/** for route island search */
 	private int visitId;  
 
@@ -71,7 +71,14 @@ public class RoadNetwork {
 		checkRoundaboutFlares = props.getProperty("check-roundabout-flares", false);
 		maxFlareLengthRatio = props.getProperty("max-flare-length-ratio", 0);
 		reportSimilarArcs = props.getProperty("report-similar-arcs", false);
-		maxSumRoadLenghts = props.getProperty("check-routing-island-len", -1);
+		int checkRoutingIslandLengths = props.getProperty("check-routing-island-len", -1);
+		if (checkRoutingIslandLengths >= 0) {
+			Logger.defaultLogger.warn("The --check-routing-island-len option is deprecated. Please use --report-routing-islands and/or max-routing-island-len");
+			maxSumRoadLengths = checkRoutingIslandLengths;
+			reportRoutingIslands = log.isInfoEnabled();
+		}
+		maxSumRoadLengths = props.getProperty("max-routing-island-len", -1);
+		reportRoutingIslands = props.getProperty("report-routing-islands", false);
 		routable = props.containsKey("route");
 		angleChecker.config(props);
 	}
@@ -303,8 +310,9 @@ public class RoadNetwork {
 	 * report routing islands and maybe remove them from NOD.  
 	 */
 	private void checkRoutingIslands() {
-		if (maxSumRoadLenghts < 0)
+		if (maxSumRoadLengths <= 0 && !reportRoutingIslands)
 			return; // island check is disabled
+		
 		long t1 = System.currentTimeMillis();
 
 		// calculate all islands
@@ -314,7 +322,7 @@ public class RoadNetwork {
 		if (!islands.isEmpty()) {
 			analyseIslands(islands);
 		}
-		if (maxSumRoadLenghts > 0) {
+		if (maxSumRoadLengths > 0) {
 			long t3 = System.currentTimeMillis();
 			log.info("routing island removal took", (t3 - t2), "ms");
 		}
@@ -350,10 +358,11 @@ public class RoadNetwork {
 		for (List<RouteNode> island : islands) {
 			// compute size of island as sum of road lengths
 			Set<RoadDef> visitedRoads = new HashSet<>();
-			long sumOfRoadLenghts = calcIslandSize(island, nodeToRoadMap, visitedRoads);
-			log.info("Routing island at", island.get(0).getCoord().toDegreeString(), "with", island.size(),
-					"routing node(s) and total length of", sumOfRoadLenghts, "m");
-			if (sumOfRoadLenghts < maxSumRoadLenghts) {
+			long sumOfRoadLengths = calcIslandSize(island, nodeToRoadMap, visitedRoads);
+			if (reportRoutingIslands)
+				log.diagnostic("Routing island " + visitedRoads.iterator().next() +  " at " + island.get(0).getCoord().toDegreeString() + " with " + island.size() +
+					" routing node(s) and total length of " + sumOfRoadLengths + "m");
+			if (sumOfRoadLengths < maxSumRoadLengths) {
 				// set discarded flag for all nodes of the island
 				island.forEach(RouteNode::discard);
 				visitedRoads.forEach(rd -> rd.skipAddToNOD(true));

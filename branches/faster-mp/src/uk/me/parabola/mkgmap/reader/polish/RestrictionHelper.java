@@ -14,6 +14,7 @@ package uk.me.parabola.mkgmap.reader.polish;
 
 import uk.me.parabola.imgfmt.app.CoordNode;
 import uk.me.parabola.imgfmt.app.net.GeneralRouteRestriction;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.MapDetails;
 
 import java.util.ArrayList;
@@ -56,7 +57,7 @@ public class RestrictionHelper {
     	if (restriction.isValid())
     		allRestrictions.add(restriction);
     	else {
-    		System.err.println(restriction);
+    		Logger.defaultLogger.warn("Invalid restriction " + restriction.toString());
     	}
     }
 }

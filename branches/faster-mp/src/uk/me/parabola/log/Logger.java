@@ -35,6 +35,8 @@ import java.util.logging.LogManager;
  */
 public class Logger {
 	private final java.util.logging.Logger log;
+	private final boolean addPrefix;
+	public static final Logger defaultLogger = new Logger(java.util.logging.Logger.GLOBAL_LOGGER_NAME, false);
 
 	private static final ThreadLocal<String> threadTags = new ThreadLocal<>();
 
@@ -42,8 +44,9 @@ public class Logger {
 		initLogging();
 	}
 
-	private Logger(String name) {
+	private Logger(String name, boolean addPrefix) {
 		this.log = java.util.logging.Logger.getLogger(name);
+		this.addPrefix = addPrefix;
 	}
 
 	/**
@@ -55,7 +58,7 @@ public class Logger {
 	 * @return The logger.
 	 */
 	public static Logger getLogger(String name) {
-		return new Logger(name);
+		return new Logger(name, true);
 	}
 
 	/**
@@ -83,6 +86,8 @@ public class Logger {
 		else {
 			staticSetup();
 		}
+		if (!defaultLogger.isLoggable(Level.WARNING))
+			defaultLogger.log.setLevel(Level.WARNING);
 	}
 
 	private static void initLoggingFromFile(String logconf) {
@@ -177,7 +182,8 @@ public class Logger {
 	}
 
 	public void warn(Object o) {
-		log.warning(tagMessage(o == null? "null" : o.toString()));
+		if (log.isLoggable(Level.WARNING))
+			log.warning(tagMessage(o == null? "null" : o.toString()));
 	}
 
 	public void warn(Object ... olist) {
@@ -195,14 +201,30 @@ public class Logger {
 	}
 
 	public void error(Object ... olist) {
-			arrayFormat(Level.SEVERE, olist);
+		arrayFormat(Level.SEVERE, olist);
 	}
+
 	public void errorf(String fmt, Object... args) {
 		printf(Level.SEVERE, fmt, args);
 	}
 	
 	public void error(Object o, Throwable e) {
 		log.log(Level.SEVERE, tagMessage(o == null? "null" : o.toString()), e);
+	}
+	
+	// output a requested diagnostic message
+	public void diagnostic(String msg) {
+		log.log(LogLevel.DIAGNOSTIC, tagMessage(msg));
+	}
+
+	// output an echo or echotags message
+	public void echo(String msg) {
+		log.log(LogLevel.ECHO, tagMessage(msg));
+	}
+
+	// an information message that is always output
+	public void write(String msg) {
+		log.log(LogLevel.OVERRIDE, tagMessage(msg));
 	}
 
 	public void log(Level level, Object o) {
@@ -226,23 +248,28 @@ public class Logger {
 	 * @param olist The argument list as objects.
 	 */
 	private void arrayFormat(Level type, Object... olist) {
-		StringBuilder sb = new StringBuilder();
-
-		for (Object o : olist) {
-			sb.append(o);
-			sb.append(' ');
+		if (log.isLoggable(type)) {
+			StringBuilder sb = new StringBuilder();
+			for (Object o : olist) {
+				sb.append(o);
+				sb.append(' ');
+			}
+			sb.setLength(sb.length()-1);
+			log.log(type, tagMessage(sb.toString()));
 		}
-		sb.setLength(sb.length()-1);
-
-		log.log(type, tagMessage(sb.toString()));
 	}
 
 	private void printf(Level type, String fmt, Object... args) {
-		String msg = String.format(fmt, args);
-		log.log(type, tagMessage(msg));
+		if (log.isLoggable(type)) {
+			String msg = String.format(fmt, args);
+			log.log(type, tagMessage(msg));
+		}
 	}
 
-	private static String tagMessage(String message) {
+	private String tagMessage(String message) {
+		if (!addPrefix)
+			return message;
+		
 		String threadTag = threadTags.get();
 		return (threadTag != null) ? threadTag + ": " + message : message;
 	}

@@ -1,5 +1,7 @@
 package uk.me.parabola.imgfmt.app.net;
 
+import uk.me.parabola.log.Logger;
+
 /**
  * The number style down one side of a side of a road.
  *
@@ -63,7 +65,7 @@ public enum NumberStyle {
 		case 'O': return ODD;
 		case 'B': return BOTH;
 		case '0':
-			System.err.println("zero instead of capital O in number spec");
+			Logger.defaultLogger.error("zero instead of capital O in number spec");
 			return ODD;
 		default: return NONE;
 		}

@@ -106,7 +106,7 @@ public class HousenumberGenerator {
 		if (n != nameSearchDepth) {
 			nameSearchDepth = Math.min(25, Math.max(0, n));
 			if (nameSearchDepth != n) {
-				System.err.println("name-service-roads=" + n + " was changed to name-service-roads=" + nameSearchDepth);
+				Logger.defaultLogger.warn("name-service-roads=" + n + " was changed to name-service-roads=" + nameSearchDepth);
 			}
 		}
 	}

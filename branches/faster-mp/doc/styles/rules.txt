@@ -525,14 +525,18 @@ beginning of a route, presuming that the relation is complete and ordered so
 that the first member is the start of the route. 
                                                 
 === echo ===
-The echo action prints the element id plus a text to standard error. This can be
-used for quality checks and debugging purposes.
+The echo action prints the element id plus a text to stderr or to where directed by
+a logging configuration file. This can be used for quality checks and debugging
+purposes. When using a logging configuration file, the messages are logged
+with custom level ECHO (1200).
 [source]
   highway=motorway_link & oneway!=* { echo "motorway_link without oneway tag" }
 
 === echotags ===
-The echotags action prints the element id, all tags and values plus a text to standard error. 
-This can be used for style debugging purposes.
+The echotags action prints the element id, all tags and values plus a text to stderr
+or to where directed by a logging configuration file. This can be used for style
+debugging purposes. When using a logging configuration file, the messages are
+logged with custom level ECHO (1200).
 [source]
   highway=living_street { echotags "This is a living_street" }
 

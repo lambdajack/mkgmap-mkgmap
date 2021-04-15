@@ -51,7 +51,7 @@ public class MapMaker implements MapProcessor {
 
 	public String makeMap(CommandArgs args, String filename) {
 		if (new File(filename).isDirectory()) {
-			System.err.println("Need a single file, not a directory: " + filename);
+			Logger.defaultLogger.error("Need a single file, not a directory: " + filename);
 			return filename;
 		}
 		try {
@@ -69,11 +69,10 @@ public class MapMaker implements MapProcessor {
 			}
 			return makeMap(args, src, "");
 		} catch (FormatException e) {
-			System.err.println("Bad file format: " + filename);
-			System.err.println(e.getMessage());
+			Logger.defaultLogger.error("Bad file format: " + filename);
 			return filename;
 		} catch (FileNotFoundException e) {
-			System.err.println("Could not open file: " + filename);
+			Logger.defaultLogger.error("Could not open file: " + filename);
 			return filename;
 		}
 	}
@@ -120,14 +119,14 @@ public class MapMaker implements MapProcessor {
 			map.close();
 			return outName;
 		} catch (FileExistsException e) {
-			log.error("File exists already");
+			Logger.defaultLogger.error(e.getMessage());
 			throw new MapFailedException("File exists already", e);
 		} catch (FileNotWritableException e) {
-			log.error("Could not create or write to file");
+			Logger.defaultLogger.error(e.getMessage());
 			throw new MapFailedException("Could not create or write to file", e);
 		}
 		catch (MapFailedException e) {
-			log.error(e.getMessage()); // make sure the filename is logged
+			Logger.defaultLogger.error(e.getMessage()); // make sure the filename is logged
 			throw e;
 		}
 	}

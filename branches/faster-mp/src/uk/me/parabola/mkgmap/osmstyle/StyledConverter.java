@@ -165,6 +165,10 @@ public class StyledConverter implements OsmConverter {
 	
 	private LineAdder lineAdder;
 	private NearbyPoiHandler nearbyPoiHandler;
+
+	static List<String> unusedStyleOptions = new ArrayList<>();
+	static List<String> duplicateKeys = new ArrayList<>();
+	static List<String> unspecifiedStyleOptions = new ArrayList<>();
 	
 	public StyledConverter(Style style, MapCollector collector, EnhancedProperties props) {
 		this.collector = collector;
@@ -204,7 +208,7 @@ public class StyledConverter implements OsmConverter {
 			countryAbbr = countryAbbr.toUpperCase();
 			
 		checkRoundabouts = props.getProperty("check-roundabouts",false);
-		reportDeadEnds = props.getProperty("report-dead-ends", 1);  
+		reportDeadEnds = (props.getProperty("report-dead-ends") != null) ? props.getProperty("report-dead-ends", 1) : 0;  
 		prefixSuffixFilter = new PrefixSuffixFilter(props);
 
 		lineAdder = line -> {
@@ -250,13 +254,23 @@ public class StyledConverter implements OsmConverter {
 				String optionKey = pair[0];
 				String tagKey = STYLE_OPTION_PREF + optionKey;
 				if (!style.getUsedTags().contains(tagKey)) {
-					System.err.println("Warning: Option style-options sets tag not used in style: '" 
-							+ optionKey + "' (gives " + tagKey + ")");
-				} else {
-					String val = (pair.length == 1) ? "true" : pair[1];
-					String old = styleTags.put(tagKey, val);
-					if (old != null)
-						log.error("duplicate tag key", optionKey, "in style option", styleOption);
+					synchronized(unusedStyleOptions) {
+						if (!unusedStyleOptions.contains(optionKey)) {
+							unusedStyleOptions.add(optionKey);
+							Logger.defaultLogger.warn("Option style-options sets tag not used in style: '" 
+									+ optionKey + "' (gives " + tagKey + ")");
+						}
+					}
+				}
+				String val = (pair.length == 1) ? "true" : pair[1];
+				String old = styleTags.put(tagKey, val);
+				if (old != null) {
+					synchronized(duplicateKeys) {
+						if (!duplicateKeys.contains(optionKey)) {
+							duplicateKeys.add(optionKey);
+							Logger.defaultLogger.error("duplicate tag key", optionKey, "in style option", styleOption);
+						}
+					}
 				}
 			}
 		}
@@ -264,8 +278,13 @@ public class StyledConverter implements OsmConverter {
 		if (style.getUsedTags() != null) {
 			for (String s : style.getUsedTags()) {
 				if (s != null && s.startsWith(STYLE_OPTION_PREF) && styleTags.get(s) == null) {
-					System.err.println("Warning: Option style-options doesn't specify '"
-							+ s.replaceFirst(STYLE_OPTION_PREF, "") + "' (for " + s + ")");
+					synchronized(unspecifiedStyleOptions) {
+						if (!unspecifiedStyleOptions.contains(s)) {
+							unspecifiedStyleOptions.add(s);
+							Logger.defaultLogger.warn("Option style-options doesn't specify '"
+									+ s.replaceFirst(STYLE_OPTION_PREF, "") + "' (for " + s + ")");
+						}
+					}
 				}
 			}
 		}
@@ -348,9 +367,9 @@ public class StyledConverter implements OsmConverter {
 						numDriveOnSideUnknown++;
 					}
 				}
-				if (cw.isRoundabout() && wasReversed) {
-					log.warn("Roundabout", way.getId(),
-							"has reverse oneway tag (" + way.getFirstPoint().toOSMURL() + ")");
+				if (cw.isRoundabout() && wasReversed && checkRoundabouts) {
+					log.diagnostic("Roundabout " + way.getId() +
+							" has reverse oneway tag (" + way.getFirstPoint().toOSMURL() + ")");
 				}
 				lastRoadId = way.getId();
 			} else {
@@ -1075,13 +1094,13 @@ public class StyledConverter implements OsmConverter {
 				if (points.get(0) == points.get(points.size() - 1)) {
 					// roundabout is a loop
 					if (dirIsWrong) {
-						log.warn("Roundabout " + way.getId() + " direction is wrong - reversing it (see "
+						log.diagnostic("Roundabout " + way.getId() + " direction is wrong - reversing it (see "
 								+ centre.toOSMURL() + ")");
 						way.reverse();
 					}
 				} else if (dirIsWrong) {
 					// roundabout is a line
-					log.warn("Roundabout segment " + way.getId() + " direction looks wrong (see "
+					log.diagnostic("Roundabout segment " + way.getId() + " direction looks wrong (see "
 							+ points.get(0).toOSMURL() + ")");
 				}
 			}
@@ -1232,7 +1251,6 @@ public class StyledConverter implements OsmConverter {
 			line.setType(replType);
 		line.setPoints(points);
 
-		
 		if (way.tagIsLikeYes(TK_ONEWAY))
 			line.setDirection(true);
 
@@ -2231,7 +2249,7 @@ public class StyledConverter implements OsmConverter {
 				}
 
 				if (isDeadEnd && (isDeadEndOfMultipleWays || reportDeadEnds > 1)) {
-					log.warn("Oneway road " + way.getId() + " with tags " + way.toTagString()
+					log.diagnostic("Oneway road " + way.getId() + " with tags " + way.toTagString()
 							+ ((pos == 0) ? " comes from" : " goes to") + " nowhere at " + p.toOSMURL());
 				}
 			}

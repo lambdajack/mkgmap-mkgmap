@@ -205,7 +205,7 @@ public class FileInfo {
 			fr.position(0x15);
 			info.setCodePage(fr.get2u());
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.defaultLogger.error("Unexpected error reading " + filename, e);
 		}
 	}
 

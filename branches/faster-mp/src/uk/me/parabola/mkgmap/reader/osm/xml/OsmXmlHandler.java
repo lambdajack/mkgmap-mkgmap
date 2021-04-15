@@ -221,7 +221,7 @@ public class OsmXmlHandler extends OsmHandler {
 		 */
 		@Override
 		public void fatalError(SAXParseException e) throws SAXException {
-			System.err.println("Error at line " + e.getLineNumber() + ", col "
+			Logger.defaultLogger.error("Error at line " + e.getLineNumber() + ", col "
 					+ e.getColumnNumber());
 			super.fatalError(e);
 		}

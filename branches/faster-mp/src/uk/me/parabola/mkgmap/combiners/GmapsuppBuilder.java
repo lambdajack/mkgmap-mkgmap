@@ -60,8 +60,6 @@ import uk.me.parabola.mkgmap.CommandArgs;
  * @author Steve Ratcliffe
  */
 public class GmapsuppBuilder implements Combiner {
-	private static final Logger log = Logger.getLogger(GmapsuppBuilder.class);
-
 	private static final String GMAPSUPP = "gmapsupp.img";
 
 	private final Map<String, FileInfo> files = new LinkedHashMap<>();
@@ -121,7 +119,7 @@ public class GmapsuppBuilder implements Combiner {
 			ImgChannel chan = imgFs.create(imgname);
 			mdrBuilder.initForDevice(chan, sort, mdrConfig);
 		} catch (FileExistsException e) {
-			System.err.println("Could not create duplicate MDR file");
+			Logger.defaultLogger.error("Could not create duplicate MDR file");
 		}
 
 		mdrBuilderMap.put(familyId, mdrBuilder);
@@ -140,11 +138,9 @@ public class GmapsuppBuilder implements Combiner {
 			}
 		} else {
 			if (prevSort.getCodepage() != sort.getCodepage())
-				System.err.printf("WARNING: input file '%s' has a different code page (%d rather than %d)\n",
-						info.getFilename(), sort.getCodepage(), prevSort.getCodepage());
+				Logger.defaultLogger.warn("Input file '" + info.getFilename() + "' has a different code page (" + sort.getCodepage() + " rather than " + prevSort.getCodepage() + ")");
 			if (info.hasSortOrder() && prevSort.getSortOrderId() != sort.getSortOrderId())
-				System.err.printf("WARNING: input file '%s' has a different sort order (%x rather than %x\n",
-						info.getFilename(), sort.getSortOrderId(), prevSort.getSortOrderId());
+				Logger.defaultLogger.warn("Input file '" + info.getFilename() + "' has a different sort order (" + sort.getSortOrderId() + " rather than " + prevSort.getSortOrderId() + ")");
 		}
 	}
 
@@ -186,8 +182,7 @@ public class GmapsuppBuilder implements Combiner {
 			writeMpsFile();
 
 		} catch (FileNotWritableException e) {
-			log.warn("Could not create gmapsupp file");
-			System.err.println("Could not create gmapsupp file");
+			Logger.defaultLogger.error("Could not create gmapsupp file");
 		} finally {
 			Utils.closeFile(imgFs);
 		}
@@ -215,7 +210,7 @@ public class GmapsuppBuilder implements Combiner {
 				// Do not close srtFile here
 			} catch (FileExistsException e) {
 				// well it shouldn't exist!
-				log.error("could not create SRT file as it exists already");
+				Logger.defaultLogger.error("could not create SRT file as it exists already");
 				throw new FileNotWritableException("already existed", e);
 			}
 		}
@@ -286,7 +281,7 @@ public class GmapsuppBuilder implements Combiner {
 
 				((FileLink)chan).link(sf, sync);
 			} catch (FileExistsException e) {
-				log.warn("Could not copy " + sf.getName(), e);
+				Logger.defaultLogger.warn("Could not copy " + sf.getName(), e);
 			}
 		}
 	}
@@ -299,7 +294,7 @@ public class GmapsuppBuilder implements Combiner {
 			ImgChannel chan = outfs.create(createImgFilename(filename));
 			((FileLink) chan).link(info.subFiles().get(0), fc.file(chan));
 		} catch (FileExistsException e) {
-			log.warn("Counld not copy " + filename, e);
+			Logger.defaultLogger.warn("Could not copy " + filename, e);
 		}
 	}
 
@@ -319,7 +314,7 @@ public class GmapsuppBuilder implements Combiner {
 				mpsFile.addProduct(b);
 			mr.close();
 		} catch (IOException e) {
-			log.error("Could not read MPS file from gmapsupp", e);
+			Logger.defaultLogger.error("Could not read MPS file from gmapsupp", e);
 		}
 	}
 
@@ -340,7 +335,7 @@ public class GmapsuppBuilder implements Combiner {
 			return new MpsFile(channel);
 		} catch (FileExistsException e) {
 			// well it shouldn't exist!
-			log.error("could not create MPS file as it already exists");
+			Logger.defaultLogger.error("could not create MPS file as it already exists");
 			throw new FileNotWritableException("already existed", e);
 		}
 	}

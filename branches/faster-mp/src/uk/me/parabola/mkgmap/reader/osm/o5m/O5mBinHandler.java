@@ -18,7 +18,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
+import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.imgfmt.app.Coord;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.reader.osm.GeneralRelation;
 import uk.me.parabola.mkgmap.reader.osm.Node;
@@ -107,12 +109,13 @@ public class O5mBinHandler extends OsmHandler{
 		try {
 			int start = is.read();
 			++countBytes;
-			if (start != RESET_FLAG)
-				throw new IOException("wrong header byte " + start);
+			if (start != RESET_FLAG) {
+				Logger.defaultLogger.error("wrong header byte " + start);
+				throw new FormatException("wrong header byte " + start);
+			}
 			readFile();
 		} catch (IOException e) {
-			System.err.println("exception after " + countBytes + " bytes");
-			e.printStackTrace();
+			Logger.defaultLogger.error("exception after " + countBytes + " bytes", e);
 		}
 	}
 	

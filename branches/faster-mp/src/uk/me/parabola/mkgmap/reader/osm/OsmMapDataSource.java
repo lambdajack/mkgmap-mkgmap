@@ -167,7 +167,7 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 					break;
 				} catch (InstantiationException | IllegalAccessException e) {
 					// TODO Auto-generated catch block
-					e.printStackTrace();
+					log.error("Unexpected error", e);
 				}
 			}
 		}

@@ -14,9 +14,10 @@
 package uk.me.parabola.mkgmap.osmstyle.actions;
 
 import uk.me.parabola.mkgmap.reader.osm.Element;
+import uk.me.parabola.log.Logger;
 
 /**
- * Sends a message including the tags of an element to System.err.
+ * Logs a message including the tags of an element.
  * 
  * @author WanMil
  */
@@ -28,7 +29,7 @@ public class EchoTagsAction implements Action {
 	}
 
 	public boolean perform(Element el) {
-		System.err.println(el.getBasicLogInformation() + " " + el.toTagString() + " " + value.build(el, el));
+		Logger.defaultLogger.echo(el.getBasicLogInformation() + " " + el.toTagString() + " " + value.build(el, el));
 		return false;
 	}
 	

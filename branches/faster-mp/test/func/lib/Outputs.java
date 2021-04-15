@@ -16,7 +16,10 @@
  */
 package func.lib;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /**
  * Standard output and error as produced during a run.
@@ -37,7 +40,11 @@ public class Outputs {
 	}
 
 	protected String getErr() {
-		return err;
+		// filter possible lines added by set JRE option _JAVA_OPTIONS=... which cases 
+		// a line "Picked up _JAVA_OPTIONS:" in stderr
+		return Arrays.stream(err.split("\n"))
+				.filter(line -> !line.contains("_JAVA_OPTIONS"))
+				.collect(Collectors.joining("\n"));
 	}
 
 	/**
