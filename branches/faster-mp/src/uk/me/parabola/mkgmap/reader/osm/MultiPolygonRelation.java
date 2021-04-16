@@ -213,7 +213,7 @@ public class MultiPolygonRelation extends Relation {
 					if (jw.intRole == INT_ROLE_OTHER) 
 						log.warn("Way role invalid", role, el.toBrowseURL(),
 								 "in multipolygon", toBrowseURL(), toTagString());
-					if (wayEl.isClosedInOSM() && wayEl.hasIdenticalEndPoints() && !wayEl.isComplete()) {
+					if (wayEl.isClosedInOSM() && !wayEl.hasIdenticalEndPoints() && !wayEl.isComplete()) {
 						// the way is closed in planet but some points are missing in this tile
 						// we can close it artificially
 						if (log.isDebugEnabled())
