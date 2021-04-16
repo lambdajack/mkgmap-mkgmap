@@ -417,7 +417,7 @@ public class MultiPolygonRelation extends Relation {
 						if (!lineCutsBbox(cd.c1, edgePoint1) && !lineCutsBbox(edgePoint1, cd.c2)) {
 							cd.imC = edgePoint1;
 						} else if (!lineCutsBbox(cd.c1, edgePoint2) && !lineCutsBbox(edgePoint2, cd.c2)) {
-							cd.imC = edgePoint1;
+							cd.imC = edgePoint2;
 						} else {
 							// both endpoints are on opposite sides of the bounding box
 							// automatically closing such points would create wrong polygons in most cases
