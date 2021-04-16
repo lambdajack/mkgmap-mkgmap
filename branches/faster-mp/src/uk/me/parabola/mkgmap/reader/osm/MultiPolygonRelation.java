@@ -215,9 +215,9 @@ public class MultiPolygonRelation extends Relation {
 								 "in multipolygon", toBrowseURL(), toTagString());
 					if (wayEl.isClosedInOSM() && !wayEl.hasIdenticalEndPoints() && !wayEl.isComplete()) {
 						// the way is closed in planet but some points are missing in this tile
-						// we can close it artificially
+						// we can close it artificially, it is very likely outside of the tile bounds
 						if (log.isDebugEnabled())
-							log.debug("Close incomplete but closed polygon:",wayEl);
+							log.debug("Close incomplete but closed polygon:", wayEl);
 						jw.closeWayArtificially();
 					}
 					if (jw.hasIdenticalEndPoints())
@@ -319,7 +319,7 @@ public class MultiPolygonRelation extends Relation {
 	 * @param wayList a list of joined ways
 	 * 
 	 */
-	private void closeWays(List<JoinedWay> wayList) {
+	private void tryCloseSingleWays(List<JoinedWay> wayList) {
 		for (JoinedWay way : wayList) {
 			if (way.hasIdenticalEndPoints() || way.getPoints().size() < 3) {
 				continue;
@@ -327,14 +327,12 @@ public class MultiPolygonRelation extends Relation {
 			Coord p1 = way.getFirstPoint();
 			Coord p2 = way.getLastPoint();
 
-			if (!tileBounds.insideBoundary(p1) && !tileBounds.insideBoundary(p2)
-					// both points lie outside the bbox or on the bbox
-					// check if both points are on the same side of the bounding box
-					&& (p1.getLatitude() <= tileBounds.getMinLat() && p2.getLatitude() <= tileBounds.getMinLat())
+			if ((p1.getLatitude() <= tileBounds.getMinLat() && p2.getLatitude() <= tileBounds.getMinLat())
 					|| (p1.getLatitude() >= tileBounds.getMaxLat() && p2.getLatitude() >= tileBounds.getMaxLat())
 					|| (p1.getLongitude() <= tileBounds.getMinLong() && p2.getLongitude() <= tileBounds.getMinLong())
 					|| (p1.getLongitude() >= tileBounds.getMaxLong() && p2.getLongitude() >= tileBounds.getMaxLong())) {
-				// they are on the same side outside of the bbox
+				// both points lie outside the bbox or on the bbox and 
+				// they are on the same side of the bbox
 				// so just close them without worrying about if
 				// they intersect itself because the intersection also
 				// is outside the bbox
@@ -370,20 +368,14 @@ public class MultiPolygonRelation extends Relation {
 			
 			// check all ways for endpoints outside or on the bbox
 			for (JoinedWay w : unclosed) {
-				Coord c1 = w.getFirstPoint();
-				Coord c2 = w.getLastPoint();
-				if (!checkOutsideBBox) {
-					outOfBboxPoints.put(c1, w);
-					outOfBboxPoints.put(c2, w);
-				} else {
-					if (!tileBounds.insideBoundary(c1)) {
-						log.debug("Point", c1, "of way", w.getId(), "outside bbox");
-						outOfBboxPoints.put(c1, w);
-					}
-
-					if (!tileBounds.insideBoundary(c2)) {
-						log.debug("Point", c2, "of way", w.getId(), "outside bbox");
-						outOfBboxPoints.put(c2, w);
+				for (Coord e : Arrays.asList(w.getFirstPoint(), w.getLastPoint())) { 
+					if (!checkOutsideBBox) {
+						outOfBboxPoints.put(e, w);
+					} else {
+						if (!tileBounds.insideBoundary(e)) {
+							log.debug("Point", e, "of way", w.getId(), "outside bbox");
+							outOfBboxPoints.put(e, w);
+						}
 					}
 				}
 			}
@@ -430,37 +422,35 @@ public class MultiPolygonRelation extends Relation {
 					coordPairs.add(cd);
 				}
 			}
-			
+
 			if (coordPairs.isEmpty()) {
 				log.debug("All potential connections cross the bbox. No connection possible.");
 				return false;
-			} else {
-				// retrieve the connection with the minimum distance
-				ConnectionData minCon = Collections.min(coordPairs,
-						(o1, o2) -> Double.compare(o1.distance, o2.distance));
+			}
+			// retrieve the connection with the minimum distance
+			ConnectionData minCon = Collections.min(coordPairs, (o1, o2) -> Double.compare(o1.distance, o2.distance));
 
-				if (checkOutsideBBox || minCon.distance < getMaxCloseDist()) {
-					if (minCon.w1 == minCon.w2) {
-						log.debug("Close a gap in way", minCon.w1);
-						if (minCon.imC != null)
-							minCon.w1.getPoints().add(minCon.imC);
-						minCon.w1.closeWayArtificially();
-					} else {
-						log.debug("Connect", minCon.w1, "with", minCon.w2);
+			if (checkOutsideBBox || minCon.distance < getMaxCloseDist()) {
+				if (minCon.w1 == minCon.w2) {
+					log.debug("Close a gap in way", minCon.w1);
+					if (minCon.imC != null)
+						minCon.w1.getPoints().add(minCon.imC);
+					minCon.w1.closeWayArtificially();
+				} else {
+					log.debug("Connect", minCon.w1, "with", minCon.w2);
 
-						if (minCon.w1.getFirstPoint() == minCon.c1) {
-							Collections.reverse(minCon.w1.getPoints());
-						}
-						if (minCon.w2.getFirstPoint() != minCon.c2) {
-							Collections.reverse(minCon.w2.getPoints());
-						}
-
-						minCon.w1.getPoints().addAll(minCon.w2.getPoints());
-						minCon.w1.addWay(minCon.w2);
-						allWays.remove(minCon.w2);
+					if (minCon.w1.getFirstPoint() == minCon.c1) {
+						Collections.reverse(minCon.w1.getPoints());
 					}
-					return true;
+					if (minCon.w2.getFirstPoint() != minCon.c2) {
+						Collections.reverse(minCon.w2.getPoints());
+					}
+
+					minCon.w1.getPoints().addAll(minCon.w2.getPoints());
+					minCon.w1.addWay(minCon.w2);
+					allWays.remove(minCon.w2);
 				}
+				return true;
 			}
 		}
 		return false;
@@ -652,7 +642,7 @@ public class MultiPolygonRelation extends Relation {
 		polygons = filterUnclosed(polygons);
 		
 		do {
-			closeWays(polygons);
+			tryCloseSingleWays(polygons);
 		} while (connectUnclosedWays(polygons, allowCloseOutsideBBox()));
 
 		removeUnclosedWays(polygons);
