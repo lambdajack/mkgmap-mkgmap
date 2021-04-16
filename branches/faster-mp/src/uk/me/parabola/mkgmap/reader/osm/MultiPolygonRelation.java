@@ -40,7 +40,6 @@ import java.util.stream.Collectors;
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
-import uk.me.parabola.util.GpxCreator;
 import uk.me.parabola.util.IsInUtil;
 import uk.me.parabola.util.Java2DConverter;
 import uk.me.parabola.util.MultiIdentityHashMap;
@@ -163,8 +162,7 @@ public class MultiPolygonRelation extends Relation {
 		
 		parseElements(joinedWays, unclosedWays);
 		
-		int numUnclosed = unclosedWays.size();
-		if (numUnclosed == 0)
+		if (unclosedWays.isEmpty())
 			return joinedWays;
 		
 		if (unclosedWays.size() > 1) {
@@ -318,21 +316,16 @@ public class MultiPolygonRelation extends Relation {
 	/**
 	 * Try to close unclosed ways in the given list of ways.
 	 * 
-	 * @param wayList
-	 *            a list of ways
-	 * @param maxCloseDist max distance between ends for artificial close
+	 * @param wayList a list of joined ways
 	 * 
 	 */
-	private void closeWays(List<JoinedWay> wayList, double maxCloseDist) {
-//		GpxCreator.createGpx("e:/ld/bounds", tileBounds.toCoords());
-
+	private void closeWays(List<JoinedWay> wayList) {
 		for (JoinedWay way : wayList) {
 			if (way.hasIdenticalEndPoints() || way.getPoints().size() < 3) {
 				continue;
 			}
 			Coord p1 = way.getFirstPoint();
 			Coord p2 = way.getLastPoint();
-//			GpxCreator.createGpx("e:/ld/before", way.getPoints());
 
 			if (!tileBounds.insideBoundary(p1) && !tileBounds.insideBoundary(p2)
 					// both points lie outside the bbox or on the bbox
@@ -347,7 +340,6 @@ public class MultiPolygonRelation extends Relation {
 				// is outside the bbox
 				way.closeWayArtificially();
 				log.info("Endpoints of way", way, "are both outside the bbox. Closing it directly.");
-				continue;
 			}
 		}
 	}
@@ -660,7 +652,7 @@ public class MultiPolygonRelation extends Relation {
 		polygons = filterUnclosed(polygons);
 		
 		do {
-			closeWays(polygons, getMaxCloseDist());
+			closeWays(polygons);
 		} while (connectUnclosedWays(polygons, allowCloseOutsideBBox()));
 
 		removeUnclosedWays(polygons);
@@ -1680,7 +1672,6 @@ public class MultiPolygonRelation extends Relation {
 
 		public void closeWayArtificially() {
 			addPoint(getPoints().get(0));
-//			GpxCreator.createGpx("e:/ld/after", getPoints());
 			closedArtificially = true;
 		}
 
