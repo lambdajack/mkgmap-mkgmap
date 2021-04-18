@@ -47,12 +47,18 @@ public class BoundaryRelation extends MultiPolygonRelation {
 	
 	@Override
 	protected boolean isUsable() {
-		return true;
+		return true; // we assume that tags were already checked by calling code
 	}
 
+	/**
+	 * Tile bounds have a different meaning when boundaries are compiled We expect
+	 * either planet or a bbox around a country extract in tile bounds.
+	 * 
+	 * @return false
+	 */
 	@Override
-	protected boolean allowCloseOutsideBBox() {
-		return false; 
+	protected boolean assumeDataInBoundsIsComplete() {
+		return false;
 	}
 	
 	@Override
@@ -123,5 +129,17 @@ public class BoundaryRelation extends MultiPolygonRelation {
 		super.cleanup();
 		this.getElements().clear();
 		((ArrayList<?>)this.getElements()).trimToSize();
+	}
+	
+	@Override
+	public String toString() {
+		String basicInfo = "boundary r" + getId();
+		String admLevel = getTag("admin_level");
+		if (admLevel != null)
+			return basicInfo + " admlvl=" + admLevel + " (" + getTag("name") + ")";
+		String postal = getTag("postal_code");
+		if (postal != null)
+			return basicInfo + " postal_code=" + postal;
+		return basicInfo;
 	}
 }

@@ -15,6 +15,7 @@ package uk.me.parabola.mkgmap.reader.osm;
 
 import java.awt.Rectangle;
 import java.awt.geom.Area;
+import java.awt.geom.Line2D;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -76,9 +77,20 @@ public class MultiPolygonRelation extends Relation {
 	private final Map<Long, Way> tileWayMap;
 	
 	private Map<Long, Way> mpPolygons = new LinkedHashMap<>();
-	
-	private List<BitSet> containsMatrix;
+
 	private List<JoinedWay> polygons;
+	
+	// Various BitSets which relate to the content of field polygons  
+	private List<BitSet> containsMatrix;
+	// unfinishedPolygons marks which polygons are not yet processed
+	protected BitSet unfinishedPolygons;
+
+	// reporting: BitSets which polygons belong to the outer and to the inner role
+	private BitSet innerPolygons;
+	private BitSet taggedInnerPolygons;
+	private BitSet outerPolygons;
+	private BitSet taggedOuterPolygons;
+
 	
 	private double largestSize;
 	private JoinedWay largestOuterPolygon;
@@ -91,7 +103,7 @@ public class MultiPolygonRelation extends Relation {
 	private Coord cOfG = null;
 	
 	// the sum of all outer polygons area size 
-	private double mpAreaSize = 0;
+	private double mpAreaSize;
 	
 	/**
 	 * Create an instance based on an existing relation. We need to do this
@@ -154,7 +166,7 @@ public class MultiPolygonRelation extends Relation {
 	 * lots of possible ways to do this but the result should be predictable, so
 	 * that multiple runs of mkgmap produce the same polygons.
 	 * 
-	 * @return a list of closed ways
+	 * @return a list of maximally joined ways
 	 */
 	private List<JoinedWay> joinWays() {
 		List<JoinedWay> joinedWays = new ArrayList<>();
@@ -312,37 +324,72 @@ public class MultiPolygonRelation extends Relation {
 		unclosedWays.addAll(finishedUnclosed);
 	}
 
-
 	/**
 	 * Try to close unclosed ways in the given list of ways.
 	 * 
 	 * @param wayList a list of joined ways
 	 * 
 	 */
-	private void tryCloseSingleWays(List<JoinedWay> wayList) {
-		for (JoinedWay way : wayList) {
-			if (way.hasIdenticalEndPoints() || way.getPoints().size() < 3) {
-				continue;
-			}
-			Coord p1 = way.getFirstPoint();
-			Coord p2 = way.getLastPoint();
+	private void tryCloseSingleWays(JoinedWay way) {
+		if (way.hasIdenticalEndPoints() || way.getPoints().size() < 3) 
+			return;
+		
+		Coord p1 = way.getFirstPoint();
+		Coord p2 = way.getLastPoint();
 
-			if ((p1.getLatitude() <= tileBounds.getMinLat() && p2.getLatitude() <= tileBounds.getMinLat())
-					|| (p1.getLatitude() >= tileBounds.getMaxLat() && p2.getLatitude() >= tileBounds.getMaxLat())
-					|| (p1.getLongitude() <= tileBounds.getMinLong() && p2.getLongitude() <= tileBounds.getMinLong())
-					|| (p1.getLongitude() >= tileBounds.getMaxLong() && p2.getLongitude() >= tileBounds.getMaxLong())) {
-				// both points lie outside the bbox or on the bbox and 
-				// they are on the same side of the bbox
-				// so just close them without worrying about if
-				// they intersect itself because the intersection also
-				// is outside the bbox
-				way.closeWayArtificially();
-				log.info("Endpoints of way", way, "are both outside the bbox. Closing it directly.");
-			}
+		if ((p1.getLatitude() <= tileBounds.getMinLat() && p2.getLatitude() <= tileBounds.getMinLat())
+				|| (p1.getLatitude() >= tileBounds.getMaxLat() && p2.getLatitude() >= tileBounds.getMaxLat())
+				|| (p1.getLongitude() <= tileBounds.getMinLong() && p2.getLongitude() <= tileBounds.getMinLong())
+				|| (p1.getLongitude() >= tileBounds.getMaxLong() && p2.getLongitude() >= tileBounds.getMaxLong())) {
+			// both points lie outside the bbox or on the bbox and 
+			// they are on the same side of the bbox
+			// so just close them without worrying about if
+			// they intersect itself because the intersection also
+			// is outside the bbox
+			way.closeWayArtificially();
+			log.info("Endpoints of way", way, "are both outside the bbox. Closing it directly.");
+			return;
 		}
-	}
+		
+		// calc the distance to close
+		double closeDist = way.getFirstPoint().distance(way.getLastPoint());
+		if (closeDist > getMaxCloseDist()) 
+			return;
+			
+		// We may get here with boundary preparer, for example when a country extract doesn't contain the 
+		// complete data. It is assumed that the country border is very close to the cutting polygon that was
+		// used for the country extract.
+		Line2D closingLine = new Line2D.Double(p1.getHighPrecLon(), 
+				p1.getHighPrecLat(), p2.getHighPrecLon(), p2.getHighPrecLat());
 
-	
+		boolean intersects = false;
+		Coord lastPoint = null;
+		// don't use the first and the last point
+		// the closing line can intersect only in one point or complete.
+		// Both isn't interesting for this check
+		for (Coord thisPoint : way.getPoints().subList(1, way.getPoints().size() - 1)) {
+			if (lastPoint != null && closingLine.intersectsLine(lastPoint.getHighPrecLon(), lastPoint.getHighPrecLat(),
+					thisPoint.getHighPrecLon(), thisPoint.getHighPrecLat())) {
+				intersects = true;
+				break;
+			}
+			lastPoint = thisPoint;
+		}
+
+		//TODO: why is the intersection a problem?
+		if (!intersects) {
+			// close the polygon
+			// the new way segment does not intersect the rest of the polygon
+			if (log.isInfoEnabled()) {
+				log.info("Closing way", way);
+				log.info("from", way.getFirstPoint().toOSMURL());
+				log.info("to", way.getLastPoint().toOSMURL());
+			}
+			// mark this ways as artificially closed
+			way.closeWayArtificially();
+		}
+	} 
+
 	private static class ConnectionData {
 		Coord c1;
 		Coord c2;
@@ -352,8 +399,8 @@ public class MultiPolygonRelation extends Relation {
 		Coord imC;
 		double distance;
 	}
-	
-	private boolean connectUnclosedWays(List<JoinedWay> allWays, boolean checkOutsideBBox) {
+
+	private boolean connectUnclosedWays(List<JoinedWay> allWays, boolean onlyOutside) {
 		List<JoinedWay> unclosed = new ArrayList<>();
 
 		for (JoinedWay w : allWays) {
@@ -364,38 +411,38 @@ public class MultiPolygonRelation extends Relation {
 		// try to connect ways lying outside or on the bbox
 		if (unclosed.size() >= 2) {
 			log.debug("Checking", unclosed.size(), "unclosed ways for connections outside the bbox");
-			Map<Coord, JoinedWay> outOfBboxPoints = new IdentityHashMap<>();
+			Map<Coord, JoinedWay> openEnds = new IdentityHashMap<>();
 			
 			// check all ways for endpoints outside or on the bbox
 			for (JoinedWay w : unclosed) {
 				for (Coord e : Arrays.asList(w.getFirstPoint(), w.getLastPoint())) { 
-					if (!checkOutsideBBox) {
-						outOfBboxPoints.put(e, w);
+					if (!onlyOutside) {
+						openEnds.put(e, w);
 					} else {
 						if (!tileBounds.insideBoundary(e)) {
 							log.debug("Point", e, "of way", w.getId(), "outside bbox");
-							outOfBboxPoints.put(e, w);
+							openEnds.put(e, w);
 						}
 					}
 				}
 			}
 
-			if (outOfBboxPoints.size() < 2) {
-				log.debug(outOfBboxPoints.size(), "point outside the bbox. No connection possible.");
+			if (openEnds.size() < 2) {
+				log.debug(openEnds.size(), "point outside the bbox. No connection possible.");
 				return false;
 			}
 			
 			List<ConnectionData> coordPairs = new ArrayList<>();
-			ArrayList<Coord> coords = new ArrayList<>(outOfBboxPoints.keySet());
+			ArrayList<Coord> coords = new ArrayList<>(openEnds.keySet());
 			for (int i = 0; i < coords.size(); i++) {
 				for (int j = i + 1; j < coords.size(); j++) {
 					ConnectionData cd = new ConnectionData();
 					cd.c1 = coords.get(i);
 					cd.c2 = coords.get(j);
-					cd.w1 = outOfBboxPoints.get(cd.c1);					
-					cd.w2 = outOfBboxPoints.get(cd.c2);					
+					cd.w1 = openEnds.get(cd.c1);					
+					cd.w2 = openEnds.get(cd.c2);					
 					
-					if (checkOutsideBBox && lineCutsBbox(cd.c1, cd.c2)) {
+					if (onlyOutside && lineCutsBbox(cd.c1, cd.c2)) {
 						// Check if the way can be closed with one additional point
 						// outside the bounding box.
 						// The additional point is combination of the coords of both endpoints.
@@ -430,7 +477,7 @@ public class MultiPolygonRelation extends Relation {
 			// retrieve the connection with the minimum distance
 			ConnectionData minCon = Collections.min(coordPairs, (o1, o2) -> Double.compare(o1.distance, o2.distance));
 
-			if (checkOutsideBBox || minCon.distance < getMaxCloseDist()) {
+			if (onlyOutside || minCon.distance < getMaxCloseDist()) {
 				if (minCon.w1 == minCon.w2) {
 					log.debug("Close a gap in way", minCon.w1);
 					if (minCon.imC != null)
@@ -455,7 +502,6 @@ public class MultiPolygonRelation extends Relation {
 		}
 		return false;
 	}
-
 	
 	/**
 	 * Removes all non closed ways from the given list.
@@ -468,30 +514,26 @@ public class MultiPolygonRelation extends Relation {
 		Iterator<JoinedWay> it = wayList.iterator();
 		boolean firstWarn = true;
 		while (it.hasNext()) {
-			JoinedWay tempWay = it.next();
-			if (!tempWay.hasIdenticalEndPoints()) {
-				// warn only if the way intersects the bounding box 
-				boolean inBbox = tempWay.intersects(tileBounds);
-				if (inBbox) {
+			JoinedWay jw = it.next();
+			if (!jw.hasIdenticalEndPoints()) {
+				// warn only if the way bbox intersects the bounding box 
+				if (jw.getArea().intersects(tileBounds)) {
 					if (firstWarn) {
 						log.warn(
 							"Cannot join the following ways to closed polygons. Multipolygon",
 							toBrowseURL(), toTagString());
 						firstWarn = false;
 					}
-					logWayURLs(Level.WARNING, "- way:", tempWay);
-					logFakeWayDetails(Level.WARNING, tempWay);
+					logWayURLs(Level.WARNING, "- way:", jw);
+					logFakeWayDetails(Level.WARNING, jw);
+					String role = getRole(jw);
+					if (role == null || ROLE_OUTER.equals(role)) {
+						// anyhow add the ways to the list for line tagging
+						outerWaysForLineTagging.addAll(jw.getOriginalWays());
+					}
 				}
 
 				it.remove();
-				
-				if (inBbox) {
-					String role = getRole(tempWay);
-					if (role == null || ROLE_OUTER.equals(role)) {
-						// anyhow add the ways to the list for line tagging
-						outerWaysForLineTagging.addAll(tempWay.getOriginalWays());
-					}
-				}
 			}
 		}
 	}
@@ -614,15 +656,6 @@ public class MultiPolygonRelation extends Relation {
 		return polygonStatusList;
 	}
 
-	// unfinishedPolygons marks which polygons are not yet processed
-	protected BitSet unfinishedPolygons;
-
-	// reporting: BitSets which polygons belong to the outer and to the inner role
-	private BitSet innerPolygons;
-	private BitSet taggedInnerPolygons;
-	private BitSet outerPolygons;
-	private BitSet taggedOuterPolygons;
-
 	/**
 	 * Process the ways in this relation. Tries to join the ways to closed rings and
 	 * detect inner/outer status and calls methods to process them.
@@ -642,8 +675,8 @@ public class MultiPolygonRelation extends Relation {
 		polygons = filterUnclosed(polygons);
 		
 		do {
-			tryCloseSingleWays(polygons);
-		} while (connectUnclosedWays(polygons, allowCloseOutsideBBox()));
+			polygons.forEach(this::tryCloseSingleWays);
+		} while (connectUnclosedWays(polygons, assumeDataInBoundsIsComplete()));
 
 		removeUnclosedWays(polygons);
 
@@ -676,7 +709,7 @@ public class MultiPolygonRelation extends Relation {
 		}
 
 		// check which polygons lie inside which other polygon 
-		createContainsMatrix(polygons);
+		createContainsMatrix();
 
 		// unfinishedPolygons marks which polygons are not yet processed
 		unfinishedPolygons = new BitSet(polygons.size());
@@ -743,14 +776,8 @@ public class MultiPolygonRelation extends Relation {
 		return true;
 	}
 
-	/**
-	 * Should return true if it is wanted that open rings are closed even when open
-	 * ends are outside of the tile bounds.
-	 * 
-	 * @return true if it is wanted that open rings are closed even when open ends
-	 *         are outside of the tile bounds.
-	 */
-	protected boolean allowCloseOutsideBBox() {
+	protected boolean assumeDataInBoundsIsComplete() {
+		// we assume that data inside tile boundaries is complete
 		return true; 
 	}
 
@@ -840,7 +867,7 @@ public class MultiPolygonRelation extends Relation {
 	 * @return the original list if {@link allowCloseOutsideBBox} returns false, else the filtered list
 	 */
 	private List<JoinedWay> filterUnclosed(List<JoinedWay> polygons) {
-		if (allowCloseOutsideBBox())
+		if (assumeDataInBoundsIsComplete())
 			return polygons;
 		return polygons.stream().filter(w -> {
 			Coord first = w.getFirstPoint();
@@ -956,7 +983,7 @@ public class MultiPolygonRelation extends Relation {
 							mpWay.addTag(TKM_MP_ROLE, ROLE_INNER);
 						}
 						
-						getMpPolygons().put(mpWay.getId(), mpWay);
+						mpPolygons.put(mpWay.getId(), mpWay);
 					}
 				}
 			}
@@ -1174,43 +1201,40 @@ public class MultiPolygonRelation extends Relation {
 	/**
 	 * Creates a matrix which polygon contains which polygon. A polygon does not
 	 * contain itself.
-	 * 
-	 * @param polygonList
-	 *            a list of polygons
 	 */
-	private void createContainsMatrix(List<JoinedWay> polygonList) {
+	private void createContainsMatrix() {
 		containsMatrix = new ArrayList<>();
-		for (int i = 0; i < polygonList.size(); i++) {
+		for (int i = 0; i < polygons.size(); i++) {
 			containsMatrix.add(new BitSet());
 		}
 
 		long t1 = System.currentTimeMillis();
 
 		if (log.isDebugEnabled())
-			log.debug("createContainsMatrix listSize:", polygonList.size());
+			log.debug("createContainsMatrix listSize:", polygons.size());
 
 		// use this matrix to check which matrix element has been
 		// calculated
-		ArrayList<BitSet> finishedMatrix = new ArrayList<>(polygonList.size());
+		ArrayList<BitSet> finishedMatrix = new ArrayList<>(polygons.size());
 
-		for (int i = 0; i < polygonList.size(); i++) {
+		for (int i = 0; i < polygons.size(); i++) {
 			BitSet matrixRow = new BitSet();
 			// a polygon does not contain itself
 			matrixRow.set(i);
 			finishedMatrix.add(matrixRow);
 		}
 		
-		for (int rowIndex = 0; rowIndex < polygonList.size(); rowIndex++) {
-			JoinedWay potentialOuterPolygon = polygonList.get(rowIndex);
+		for (int rowIndex = 0; rowIndex < polygons.size(); rowIndex++) {
+			JoinedWay potentialOuterPolygon = polygons.get(rowIndex);
 			BitSet containsColumns = containsMatrix.get(rowIndex);
 			BitSet finishedCol = finishedMatrix.get(rowIndex);
 
 			// get all non calculated columns of the matrix
 			for (int colIndex = finishedCol.nextClearBit(0); colIndex >= 0
-					&& colIndex < polygonList.size(); colIndex = finishedCol
+					&& colIndex < polygons.size(); colIndex = finishedCol
 					.nextClearBit(colIndex + 1)) {
 
-				JoinedWay innerPolygon = polygonList.get(colIndex);
+				JoinedWay innerPolygon = polygons.get(colIndex);
 
 				if (potentialOuterPolygon.getBounds().intersects(innerPolygon.getBounds())) {
 					boolean contains = calcContains(potentialOuterPolygon, innerPolygon);
@@ -1241,7 +1265,7 @@ public class MultiPolygonRelation extends Relation {
 
 		if (log.isDebugEnabled()) {
 			long t2 = System.currentTimeMillis();
-			log.debug("createMatrix for", polygonList.size(), "polygons took", (t2 - t1), "ms");
+			log.debug("createMatrix for", polygons.size(), "polygons took", (t2 - t1), "ms");
 
 			log.debug("Containsmatrix:");
 			int i = 0;
@@ -1604,22 +1628,6 @@ public class MultiPolygonRelation extends Relation {
 			updateBounds(point.getLatitude(), point.getLongitude());
 		}
 		
-		/**
-		 * Checks if this way intersects the given bounding box at least with
-		 * one point.
-		 * 
-		 * @param bbox
-		 *            the bounding box
-		 * @return <code>true</code> if this way intersects or touches the
-		 *         bounding box; <code>false</code> else
-		 */
-		public boolean intersects(uk.me.parabola.imgfmt.app.Area bbox) {
-			return (maxLat >= bbox.getMinLat() 
-					&& minLat <= bbox.getMaxLat() 
-					&& maxLon >= bbox.getMinLong()
-					&& minLon <= bbox.getMaxLong());
-		}
-
 		public Rectangle getBounds() {
 			if (bounds == null) {
 				// note that we increase the rectangle by 1 because intersects
