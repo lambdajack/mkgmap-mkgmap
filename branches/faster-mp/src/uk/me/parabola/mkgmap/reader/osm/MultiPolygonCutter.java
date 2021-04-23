@@ -191,43 +191,9 @@ public class MultiPolygonCutter {
 				// Now find the intersection of these two boxes with the
 				// original polygon. This will make two new areas, and each
 				// area will be one (or more) polygons.
-				Area a1 = new Area(r1); 
-				Area a2 = new Area(r2);
-				a1.intersect(areaCutData.outerArea);
-				a2.intersect(areaCutData.outerArea);
-				if (areaCutData.innerAreas.isEmpty()) {
-					finishedAreas.addAll(Java2DConverter.areaToSingularAreas(a1));
-					finishedAreas.addAll(Java2DConverter.areaToSingularAreas(a2));
-				} else {
-					ArrayList<Area> cuttedAreas = new ArrayList<>();
-					cuttedAreas.addAll(Java2DConverter.areaToSingularAreas(a1));
-					cuttedAreas.addAll(Java2DConverter.areaToSingularAreas(a2));
-					
-					for (Area nextOuterArea : cuttedAreas) {
-						ArrayList<Area> nextInnerAreas = null;
-						// go through all remaining inner areas and check if they
-						// must be further processed with the nextOuterArea 
-						for (Area nonProcessedInner : areaCutData.innerAreas) {
-							if (nextOuterArea.intersects(nonProcessedInner.getBounds2D())) {
-								if (nextInnerAreas == null) {
-									nextInnerAreas = new ArrayList<>();
-								}
-								nextInnerAreas.add(nonProcessedInner);
-							}
-						}
-						
-						if (nextInnerAreas == null || nextInnerAreas.isEmpty()) {
-							finishedAreas.add(nextOuterArea);
-						} else {
-							AreaCutData outCutData = new AreaCutData();
-							outCutData.outerArea = nextOuterArea;
-							outCutData.innerAreas= nextInnerAreas;
-							areasToCut.add(outCutData);
-						}
-					}
-				}
+				cutWithRectangle(r1, areaCutData, finishedAreas, areasToCut);
+				cutWithRectangle(r2, areaCutData, finishedAreas, areasToCut);
 			}
-			
 		}
 		
 		// convert the java.awt.geom.Area back to the mkgmap way
@@ -262,6 +228,51 @@ public class MultiPolygonCutter {
 		return cuttedOuterPolygon;
 	}
 	
+	/**
+	 * Intersect area with cut rectangle.
+	 * Find the intersection of the rectangle with the original polygon and decide if the result is added to the 
+	 * finished areas or if another cut is needed. 
+	 * 
+	 * @param cutRect the cut rectangle
+	 * @param areaCutData the cut data
+	 * @param finishedAreas list of finished areas
+	 * @param areasToCut queue with unfinished cut data
+	 */
+	private static void cutWithRectangle(Rectangle2D cutRect, AreaCutData areaCutData, Collection<Area> finishedAreas,
+			Queue<AreaCutData> areasToCut) {
+		
+		Area outer = new Area(cutRect); 
+		outer.intersect(areaCutData.outerArea);
+		final List<Area> dividedAreas = Java2DConverter.areaToSingularAreas(outer);
+		if (areaCutData.innerAreas.isEmpty()) {
+			finishedAreas.addAll(dividedAreas);
+			return;
+		} 
+
+		for (Area nextOuterArea : dividedAreas) {
+			ArrayList<Area> nextInnerAreas = null;
+			// go through all remaining inner areas and check if they
+			// must be further processed with the nextOuterArea
+			for (Area nonProcessedInner : areaCutData.innerAreas) {
+				if (nextOuterArea.intersects(nonProcessedInner.getBounds2D())) {
+					if (nextInnerAreas == null) {
+						nextInnerAreas = new ArrayList<>();
+					}
+					nextInnerAreas.add(nonProcessedInner);
+				}
+			}
+
+			if (nextInnerAreas == null || nextInnerAreas.isEmpty()) {
+				finishedAreas.add(nextOuterArea);
+			} else {
+				AreaCutData outCutData = new AreaCutData();
+				outCutData.outerArea = nextOuterArea;
+				outCutData.innerAreas = nextInnerAreas;
+				areasToCut.add(outCutData);
+			}
+		}
+	}
+
 	private static CutPoint calcNextCutPoint(AreaCutData areaData) {
 		if (areaData.innerAreas == null || areaData.innerAreas.isEmpty()) {
 			return null;
