@@ -457,7 +457,7 @@ public class MultiPolygonRelation extends Relation {
 			}
 		}
 		// try to connect ways lying outside or on the bbox
-		if (unclosed.size() >= 2) {
+		if (!unclosed.isEmpty()) {
 			log.debug("Checking", unclosed.size(), "unclosed ways for connections outside the bbox");
 			Map<Coord, JoinedWay> outOfBboxPoints = new IdentityHashMap<>();
 			
@@ -545,8 +545,8 @@ public class MultiPolygonRelation extends Relation {
 					minCon.w1.getPoints().addAll(minCon.w2.getPoints());
 					minCon.w1.addWay(minCon.w2);
 					allWays.remove(minCon.w2);
-					return true;
 				}
+				return true;
 			}
 		}
 		return false;
