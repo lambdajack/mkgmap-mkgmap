@@ -18,7 +18,7 @@ import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -158,12 +158,13 @@ class PrecompSeaMerger implements Runnable {
 			// no land in this tile => create a sea way only
 			ways.addAll(convertToWays(new Area(mergeData.bounds), "sea"));
 		} else {
-			Map<Long, Way> landWays = new HashMap<>();
-			List<List<Coord>> landParts = Java2DConverter
-					.areaToShapes(mergeData.landArea);
+			Map<Long, Way> wayMap = new LinkedHashMap<>();
+			List<List<Coord>> landParts = Java2DConverter.areaToShapes(mergeData.landArea);
+			Relation rel = new GeneralRelation(FakeIdGenerator.makeFakeId());
 			for (List<Coord> landPoints : landParts) {
 				Way landWay = new Way(FakeIdGenerator.makeFakeId(), landPoints);
-				landWays.put(landWay.getId(), landWay);
+				wayMap.put(landWay.getId(), landWay);
+				rel.addElement("inner", landWay);
 			}
 
 			Way seaWay = new Way(FakeIdGenerator.makeFakeId());
@@ -173,15 +174,11 @@ class PrecompSeaMerger implements Runnable {
 			seaWay.addPoint(new Coord(-90.0d, 180.0d));
 			seaWay.addPoint(seaWay.getFirstPoint()); // close shape
 			seaWay.setClosedInOSM(true);
-			landWays.put(seaWay.getId(), seaWay);
-
-			Relation rel = new GeneralRelation(FakeIdGenerator.makeFakeId());
-			for (Way w : landWays.values()) {
-				rel.addElement((w == seaWay ? "outer" : "inner"), w);
-			}
+			wayMap.put(seaWay.getId(), seaWay);
+			rel.addElement("outer", seaWay);
 
 			// process the tile as sea multipolygon to create simple polygons only
-			MultiPolygonRelation mpr = new MultiPolygonRelation(rel, landWays,
+			MultiPolygonRelation mpr = new MultiPolygonRelation(rel, wayMap,
 					Java2DConverter.createBbox(new Area(mergeData.bounds))) 
 			{
 				// do not calculate the area size => it is not required and adds
@@ -195,15 +192,12 @@ class PrecompSeaMerger implements Runnable {
 			mpr.addTag("natural", "sea");
 			mpr.processElements();
 
-			for (Way w : landWays.values()) {
+			for (Way w : wayMap.values()) {
 				// process the polygon ways only
 				// the mp processing also creates line ways which must 
 				// be ignored here
-				if (MultiPolygonRelation.STYLE_FILTER_POLYGON.equals(w
-						.getTag(MultiPolygonRelation.STYLE_FILTER_TAG))) {
-					
-					String tag = w.getTag("natural");
-					if (!"sea".equals(tag)) {
+				if (MultiPolygonRelation.STYLE_FILTER_POLYGON.equals(w.getTag(MultiPolygonRelation.STYLE_FILTER_TAG))) {
+					if (!"sea".equals(w.getTag("natural"))) {
 						// ignore the land polygons - we already have them in our list
 						continue;
 					}
