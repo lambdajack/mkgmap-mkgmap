@@ -182,7 +182,7 @@ public class BitWriter {
 
 	private void debugPrint(int b, int i) {
 		if (log.isDebugEnabled())
-			log.debug("after put", i, "of", b, " bufsize=", bufsize, ", len=",
+			log.debug("after put", i, "of", b, "bufsize=", bufsize, ", len=",
 					buflen, ", pos=", bitoff);
 	}
 

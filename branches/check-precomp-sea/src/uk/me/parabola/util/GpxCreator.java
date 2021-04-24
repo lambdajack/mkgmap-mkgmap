@@ -113,7 +113,7 @@ public class GpxCreator {
 				pw.close();
 			} catch (Exception exp) {
 				// only for debugging so just log
-				log.warn("Could not create gpx file ", fname);
+				log.warn("Could not create gpx file", fname);
 			}
 		}
 	}
@@ -159,7 +159,7 @@ public class GpxCreator {
 				pw.close();
 			} catch (Exception exp) {
 				// only for debugging so just log
-				log.warn("Could not create gpx file ", fname);
+				log.warn("Could not create gpx file", fname);
 			}
 		}
 	}

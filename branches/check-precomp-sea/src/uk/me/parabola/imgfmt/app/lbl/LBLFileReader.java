@@ -29,6 +29,7 @@ import uk.me.parabola.imgfmt.app.labelenc.CodeFunctions;
 import uk.me.parabola.imgfmt.app.labelenc.DecodedText;
 import uk.me.parabola.imgfmt.app.trergn.Subdivision;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
+import uk.me.parabola.log.Logger;
 
 import static uk.me.parabola.imgfmt.app.Label.NULL_LABEL;
 
@@ -444,7 +445,7 @@ public class LBLFileReader extends ImgFile {
 			}
 
 			if (hasTides) {
-				System.out.println("Map has tide prediction, please implement!");
+				Logger.defaultLogger.warn("Map has tide prediction, please implement!");
 			}
 
 			pois.put(poiOffset, poi);

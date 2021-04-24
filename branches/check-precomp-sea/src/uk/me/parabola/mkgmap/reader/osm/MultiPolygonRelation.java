@@ -127,7 +127,7 @@ public class MultiPolygonRelation extends Relation {
 				log.debug(" ", role, el.toBrowseURL(), el.toTagString());
 			}
 			if (roleMap.containsKey(el.getId()) )
-				log.warn("repeated member with id ", el.getId(), "in multipolygon relation",this.getId(),"is ignored");
+				log.warn("repeated member with id", el.getId(), "in multipolygon relation", this.getId(), "is ignored");
 			else {
 				addElement(role, el);
 				roleMap.put(el.getId(), role);
@@ -395,8 +395,8 @@ public class MultiPolygonRelation extends Relation {
 				continue;
 			}
 			
-			Line2D closingLine = new Line2D.Float(p1.getLongitude(), p1
-					.getLatitude(), p2.getLongitude(), p2.getLatitude());
+			Line2D closingLine = new Line2D.Double(p1.getHighPrecLon(), 
+					p1.getHighPrecLat(), p2.getHighPrecLon(), p2.getHighPrecLat());
 
 			boolean intersects = false;
 			Coord lastPoint = null;
@@ -404,8 +404,8 @@ public class MultiPolygonRelation extends Relation {
 			// the closing line can intersect only in one point or complete.
 			// Both isn't interesting for this check
 			for (Coord thisPoint : way.getPoints().subList(1, way.getPoints().size() - 1)) {
-				if (lastPoint != null && closingLine.intersectsLine(lastPoint.getLongitude(), lastPoint.getLatitude(),
-						thisPoint.getLongitude(), thisPoint.getLatitude())) {
+				if (lastPoint != null && closingLine.intersectsLine(lastPoint.getHighPrecLon(), lastPoint.getHighPrecLat(),
+						thisPoint.getHighPrecLon(), thisPoint.getHighPrecLat())) {
 					intersects = true;
 					break;
 				}
@@ -457,7 +457,7 @@ public class MultiPolygonRelation extends Relation {
 			}
 		}
 		// try to connect ways lying outside or on the bbox
-		if (unclosed.size() >= 2) {
+		if (!unclosed.isEmpty()) {
 			log.debug("Checking", unclosed.size(), "unclosed ways for connections outside the bbox");
 			Map<Coord, JoinedWay> outOfBboxPoints = new IdentityHashMap<>();
 			
@@ -505,7 +505,7 @@ public class MultiPolygonRelation extends Relation {
 						if (!lineCutsBbox(cd.c1, edgePoint1) && !lineCutsBbox(edgePoint1, cd.c2)) {
 							cd.imC = edgePoint1;
 						} else if (!lineCutsBbox(cd.c1, edgePoint2) && !lineCutsBbox(edgePoint2, cd.c2)) {
-							cd.imC = edgePoint1;
+							cd.imC = edgePoint2;
 						} else {
 							// both endpoints are on opposite sides of the bounding box
 							// automatically closing such points would create wrong polygons in most cases
@@ -545,8 +545,8 @@ public class MultiPolygonRelation extends Relation {
 					minCon.w1.getPoints().addAll(minCon.w2.getPoints());
 					minCon.w1.addWay(minCon.w2);
 					allWays.remove(minCon.w2);
-					return true;
 				}
+				return true;
 			}
 		}
 		return false;
@@ -1301,7 +1301,7 @@ public class MultiPolygonRelation extends Relation {
 			String tagName = tagEntry.getKey();
 			// all tags are style relevant
 			// except: type (for relations), mkgmap:* 
-			boolean isStyleRelevant = !(element instanceof Relation && "typ".equals(tagName))
+			boolean isStyleRelevant = !(element instanceof Relation && "type".equals(tagName))
 					&& !tagName.startsWith("mkgmap:");
 			if (isStyleRelevant) {
 				return true;
@@ -1794,14 +1794,14 @@ public class MultiPolygonRelation extends Relation {
 		// => log the start and end points
 		
 		for (Way orgWay : fakeWay.getOriginalWays()) {
-			log.log(logLevel, " Way",orgWay.getId(),"is composed of other artificial ways. Details:");
-			log.log(logLevel, "  Start:",orgWay.getFirstPoint().toOSMURL());
+			log.log(logLevel, "Way", orgWay.getId(), "is composed of other artificial ways. Details:");
+			log.log(logLevel, " Start:", orgWay.getFirstPoint().toOSMURL());
 			if (orgWay.hasEqualEndPoints()) {
 				// the way is closed so start and end are equal - log the point in the middle of the way
 				int mid = orgWay.getPoints().size()/2;
-				log.log(logLevel, "  Mid:  ",orgWay.getPoints().get(mid).toOSMURL());
+				log.log(logLevel, " Mid:  ", orgWay.getPoints().get(mid).toOSMURL());
 			} else {
-				log.log(logLevel, "  End:  ",orgWay.getLastPoint().toOSMURL());
+				log.log(logLevel, " End:  ", orgWay.getLastPoint().toOSMURL());
 			}
 		}		
 	}

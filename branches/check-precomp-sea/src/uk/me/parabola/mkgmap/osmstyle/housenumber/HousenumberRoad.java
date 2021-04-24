@@ -13,8 +13,6 @@
 
 package uk.me.parabola.mkgmap.osmstyle.housenumber;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -23,9 +21,9 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.CityInfo;
@@ -651,12 +649,10 @@ public class HousenumberRoad {
 	 * Identify those houses which are assigned to this road because it was the closest,
 	 * but can't be correct because street name doesn't match.
 	 * 
-	 * @param road2HousenumberRoadMap maps {@link MapRoad} instances to corresponding  
-	 * {@link HousenumberRoad} instances
 	 * @param nodeId2RoadLists maps node ids to the {@link MapRoad} that use the corresponding nodes.  
 	 * @return
 	 */
-	public List<HousenumberMatch> checkStreetName(Map<MapRoad, HousenumberRoad> road2HousenumberRoadMap, Int2ObjectOpenHashMap<HashSet<MapRoad>> nodeId2RoadLists) {
+	public List<HousenumberMatch> checkStreetName(Int2ObjectOpenHashMap<HashSet<MapRoad>> nodeId2RoadLists) {
 		List<HousenumberMatch> noWrongHouses = Collections.emptyList();
 		List<HousenumberMatch> wrongHouses = Collections.emptyList();
 		double minDist = Double.MAX_VALUE;

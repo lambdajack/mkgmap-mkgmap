@@ -149,7 +149,7 @@ class Directory {
 			Dirent ent = (Dirent) dir;
 
 			if (!ent.isSpecial()) {
-				log.debug("wrting ", dir.getFullName(), " at ", chan.position());
+				log.debug("writing", dir.getFullName(), "at", chan.position());
 				log.debug("ent size", ent.getSize());
 				ent.sync(chan);
 			}

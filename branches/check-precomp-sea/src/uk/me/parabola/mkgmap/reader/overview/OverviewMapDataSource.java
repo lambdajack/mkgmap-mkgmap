@@ -55,6 +55,10 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 		return tileAreaPath;
 	}
 
+	public void addToTileAreaPath(List<Coord> points) {
+		tileAreaPath.append(Java2DConverter.createPath2D(points), false);
+	}
+
 	/**
 	 * This is a fake source of data and is not read from a file, so always
 	 * return false here.
@@ -158,10 +162,6 @@ public class OverviewMapDataSource extends MapperBasedMapDataSource
 	 */
 	public void addShape(MapShape shape) {
 		mapper.addShape(shape);
-		if (shape.getType() == 0x4a) {
-			tileAreaPath.append(Java2DConverter.createPath2D(shape.getPoints()),false);
-			
-		}
 	}
 
 	public void addRoad(MapRoad road) {

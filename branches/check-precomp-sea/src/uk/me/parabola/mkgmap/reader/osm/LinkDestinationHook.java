@@ -176,7 +176,7 @@ public class LinkDestinationHook implements OsmReadingHooks {
 			if (log.isDebugEnabled() && !standardTagKey.equals(destSourceTagKey)) {
 				String msg = destSourceTagKey.startsWith(destinationLanes)
 						? "as destination tag because there is one lane information only." : "as destination tag.";
-				log.debug("Use", destSourceTagKey, msg, "Way ", w.getId(), w.toTagString());
+				log.debug("Use", destSourceTagKey, msg, "Way", w.getId(), w.toTagString());
 			}
 		}
 	}

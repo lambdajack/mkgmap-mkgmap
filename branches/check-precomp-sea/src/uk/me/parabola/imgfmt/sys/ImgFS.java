@@ -101,7 +101,7 @@ public class ImgFS implements FileSystem {
 			FileChannel chan = FileChannel.open(Paths.get(filename), OPEN_CREATE_RW);
 			return createFs(chan, params);
 		} catch (IOException e) {
-			throw new FileNotWritableException("Could not create file: " + params.getFilename(), e);
+			throw new FileNotWritableException("Could not create file", e);
 		}
 	}
 

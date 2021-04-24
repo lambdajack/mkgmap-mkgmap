@@ -51,7 +51,7 @@ public class NETFile extends ImgFile {
 
 	public NETFile(ImgChannel chan) {
 		setHeader(netHeader);
-		setWriter(new BufferedImgFileWriter(chan));
+		setWriter(new BufferedImgFileWriter(chan, "NET"));
 		position(NETHeader.HEADER_LEN);
 	}
 

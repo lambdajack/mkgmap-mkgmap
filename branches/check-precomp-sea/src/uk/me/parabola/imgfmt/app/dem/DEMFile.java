@@ -15,6 +15,7 @@ package uk.me.parabola.imgfmt.app.dem;
 
 import java.util.List;
 
+import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.BufferedImgFileReader;
@@ -46,7 +47,7 @@ public class DEMFile extends ImgFile {
 		setHeader(demHeader);
 
 		if (write) {
-			setWriter(new BufferedImgFileWriter(chan));
+			setWriter(new BufferedImgFileWriter(chan, "DEM"));
 			position(DEMHeader.HEADER_LEN);
 		} else {
 			setReader(new BufferedImgFileReader(chan));
@@ -98,6 +99,8 @@ public class DEMFile extends ImgFile {
 			}
 			// last 4 bits of distance should be 0
 			distance = ((distance + 8) / 16) * 16;
+			if (distance == 0)
+				throw new ExitException("DEM distance is zero");
 
 			int xTop = top;
 			int xLeft = left;

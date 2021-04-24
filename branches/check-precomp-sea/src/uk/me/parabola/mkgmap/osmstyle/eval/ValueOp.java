@@ -16,8 +16,6 @@
  */
 package uk.me.parabola.mkgmap.osmstyle.eval;
 
-import java.util.EnumMap;
-
 import uk.me.parabola.mkgmap.reader.osm.Element;
 
 /**

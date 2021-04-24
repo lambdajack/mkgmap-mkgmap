@@ -55,7 +55,7 @@ public class TYPFile extends ImgFile {
 
 	public TYPFile(ImgChannel chan) {
 		setHeader(header);
-		setWriter(new BufferedImgFileWriter(chan));
+		setWriter(new BufferedImgFileWriter(chan, "TYP"));
 		position(TYPHeader.HEADER_LEN);
 	}
 

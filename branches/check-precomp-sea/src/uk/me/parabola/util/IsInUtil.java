@@ -315,7 +315,7 @@ public class IsInUtil {
 			final int nodeLat = node.getHighPrecLat();
 		final int nodeLon = node.getHighPrecLon();
 		if (log.isDebugEnabled()) {
-			log.debug("node ", node, nodeLon, nodeLat, shape.size(), shape);
+			log.debug("node", node, nodeLon, nodeLat, shape.size(), shape);
 		}
 		int trailLat = 0, trailLon = 0;
 		int lhsCount = 0, rhsCount = 0; // count both, to be sure

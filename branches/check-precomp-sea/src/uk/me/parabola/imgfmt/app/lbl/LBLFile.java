@@ -66,7 +66,7 @@ public class LBLFile extends ImgFile {
 		lblHeader.setOffsetMultiplier(OFFSET_MULTIPLIER);
 		setHeader(lblHeader);
 
-		setWriter(new BufferedImgFileWriter(chan));
+		setWriter(new BufferedImgFileWriter(chan, "LBL"));
 
 		position((long) LBLHeader.HEADER_LEN + lblHeader.getSortDescriptionLength());
 

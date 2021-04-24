@@ -102,7 +102,7 @@ public class MapSplitter {
 		MapArea[] origArea = {ma};
 		MapArea[] areas = splitMaxSize(ma);
 		if (areas == null) {
-			log.warn("initial split returned null for ",ma);
+			log.warn("initial split returned null for", ma);
 			return origArea;
 		}
 

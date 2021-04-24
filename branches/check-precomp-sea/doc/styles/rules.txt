@@ -525,14 +525,18 @@ beginning of a route, presuming that the relation is complete and ordered so
 that the first member is the start of the route. 
                                                 
 === echo ===
-The echo action prints the element id plus a text to standard error. This can be
-used for quality checks and debugging purposes.
+The echo action prints the element id plus a text to stderr or to where directed by
+a logging configuration file. This can be used for quality checks and debugging
+purposes. When using a logging configuration file, the messages are logged
+with custom level ECHO (1200).
 [source]
   highway=motorway_link & oneway!=* { echo "motorway_link without oneway tag" }
 
 === echotags ===
-The echotags action prints the element id, all tags and values plus a text to standard error. 
-This can be used for style debugging purposes.
+The echotags action prints the element id, all tags and values plus a text to stderr
+or to where directed by a logging configuration file. This can be used for style
+debugging purposes. When using a logging configuration file, the messages are
+logged with custom level ECHO (1200).
 [source]
   highway=living_street { echotags "This is a living_street" }
 
@@ -1043,3 +1047,23 @@ the Garmin POI will be _7, Alya Street, Lagos, 90210 open 09.00-17.00_.
 
 ====
 
+.Mountain Passes depending on the way they belong to
+====
+[source]
+  mkgmap:from-node:mountain_pass=yes & highway=* & highway!=path & highway!=track
+    {set mkgmap:label:1='${mkgmap:from-node:name}'} [0x5208 resolution 24-14]
+
+Note: This only works if you activated --add-pois-to-lines.
+When you activate this option, all points of a line (a way in OpenStreetMap) generate a point.
+
+Those points attributes are those from OpenStreetMap's way. The specific node's
+attributes are set as mkgmap:from-node:attribute_name. For instance, here,
+all points from a way are available to a "points" rule. We're looking for
+mountain passes, but only if they can be reached by something else than a path
+or a track. So we match all points that belong to a way that's not a path or a
+track, and where the original point is tagged as a mountain pass.
+
+Please note that if the point is part of several ways, you'll get duplicates 
+(you could use --nearby-poi-rules to solve this).
+
+====

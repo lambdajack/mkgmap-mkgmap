@@ -41,7 +41,7 @@ public class RouteArc {
 
 	private int offset;
 
-	// heading / bearing: 
+	// heading / bearing: -180 <= val < +180
 	private float initialHeading; // degrees (A-> B in an arc ABCD) 
 	private final float directHeading; // degrees (A-> D in an arc ABCD)
 
@@ -97,8 +97,9 @@ public class RouteArc {
 		this.roadDef = roadDef;
 		this.source = source;
 		this.dest = dest;
-		this.initialHeading = (float) initialBearing;
-		this.directHeading = (directBearing < 180) ? (float) directBearing : -180.0f;
+		this.initialHeading = initialBearing >= 180 ? (float)(initialBearing - 360) : (float)initialBearing;
+		// bearingTo can return +180 and inversions elsewhere simply adds 180 so return to normalised (-180 <= deg < +180)
+		this.directHeading  = directBearing >= 180  ? (float)(directBearing  - 360) : (float)directBearing;
 		int len = NODHeader.metersToRaw(arcLength);
 		if (len >= (1 << 22)) {
 			log.error("Way " + roadDef.getName() + " (id " + roadDef.getId() + ") contains an arc whose length (" + len + " units) is too big to be encoded, using length",((1 << 22) - 1));
@@ -134,11 +135,20 @@ public class RouteArc {
 		initialHeading = ih;
 	}
 
+	public void modInitialHeading(float adjust) {
+		initialHeading += adjust;
+		if (initialHeading >= 180)
+			initialHeading -= 360;
+		else if (initialHeading < -180)
+			initialHeading += 360;
+	}
+
 	public float getFinalHeading() {
 		float fh = 0;
 		if (lengthInMeter != 0){
-			fh = getReverseArc().getInitialHeading();
-			fh = (fh <= 0) ? 180.0f + fh : -(180.0f - fh) % 180.0f;
+			fh = getReverseArc().getInitialHeading() + 180;
+			if (fh >= 180)
+				fh -= 360;
 		}
 		return fh;
 	}
@@ -231,9 +241,31 @@ public class RouteArc {
 	}
 	
 	public static byte directionFromDegrees(float dir) {
-		return (byte) Math.round(dir * 256.0 / 360) ;
+		return (byte) Math.round(dir * 256 / 360);
 	}
 
+	/*
+	 * return heading as value 0..15, where 0 is North +-11.25 degrees
+	 */
+	public static int compactDirFromDegrees(float dir) { 
+		return ((directionFromDegrees(dir) + 8) >> 4) & 0x0f;
+	}
+
+	/**
+	 * RouteArc binary format has various space saving measures:
+	 * 1/ flag on first arc to indicate compactDirs format is used for all arcs in the RouteNode.
+	 * 2/ flag on subsequent arcs to indicate a change in indexA==road. Uses the same bit as above.
+	 * 3/ flag isForward - the arc destination is further along the line.
+	 *
+	 * indexA is written for the first arc and when indexA changes.
+	 * initialHeading is 'required' for a new indexA or a change in isForward.
+	 *   NB: addArcsToMajorRoads() adds arcs with the same indexA, initialHeading and isForward. 
+	 * compactDirs uses 4 bits for the initialHeading rather than 8, giving 16 possible headings
+	 *   rather than 256. These are grouped in pairs, with the other 4 bits are being used for the
+	 *   next 'required' initialHeading, independent of changes to indexA/isForward.
+	 *   There doesn't seem to be any detectable behaviour change in using a compactDirs pair for the
+	 *   forward and reverse heading for the same road.
+	 */
 	public void write(ImgFileWriter writer, RouteArc lastArc, boolean useCompactDirs, Byte compactedDir) {
 		boolean first = lastArc == null;
 		if (first){
@@ -289,8 +321,6 @@ public class RouteArc {
 			} else {
 				writer.put(directionFromDegrees(initialHeading));
 			}
-		} else {
-//			System.out.println("skipped writing of initial dir");
 		}
 		if (haveCurve) {
 			int[] curvedat = encodeCurve();

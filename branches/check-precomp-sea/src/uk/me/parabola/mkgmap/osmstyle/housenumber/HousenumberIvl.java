@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
@@ -200,7 +201,7 @@ public class HousenumberIvl {
 					HousenumberGenerator.findClosestRoadSegment(test[i], r);
 					test[i].calcRoadSide();
 				}
-				if (test[i].getRoad() == null || test[i].getDistance() > MAX_INTERPOLATION_DISTANCE_TO_ROAD ){
+				if (test[i].getRoad() == null || test[i].getDistance() > MAX_INTERPOLATION_DISTANCE_TO_ROAD) {
 					foundSingleRoad = false;
 					break;
 				}
@@ -257,7 +258,7 @@ public class HousenumberIvl {
 				}
 			}
 		}
-		if (!foundSingleRoad && bestRoad != null){
+		if (!foundSingleRoad && bestRoad != null) {
 			// not matching road name in original OSM data, use the closest
 			foundSingleRoad = true;
 			test[0] = closest[0];
@@ -271,21 +272,26 @@ public class HousenumberIvl {
 			hasMultipleRoads = true;
 			return true;
 		}
-		// we found the road that should be used for interpolation
+		for (int i = 0; i < 2; i++) {
+			if (test[i].getSegmentFrac() < 0 || test[i].getSegmentFrac() > 1) {
+				// might still be one road that bends but that will not cause trouble 
+				hasMultipleRoads = true;
+				return true;
+			}
+		}
+
+		// we found a single road instance that should be used for all interpolated numbers
 		roadForInterpolatedHouses = test[0].getRoad();
 
 		// we found a single plausible road, make sure that both nodes are using it
-		for (int i = 0; i < 2; i++){
-			if (knownHouses[i].getRoad() != test[i].getRoad() || knownHouses[i].getSegment() != test[i].getSegment()){
+		for (int i = 0; i < 2; i++) {
+			if (knownHouses[i].getRoad() != test[i].getRoad() || knownHouses[i].getSegment() != test[i].getSegment()) {
 				copyRoadData(test[i], knownHouses[i]);
 				knownHouses[i].forgetAlternativeRoads();
 			}
-			if (knownHouses[i].getSegmentFrac() < 0 || knownHouses[i].getSegmentFrac() > 1){
-				hasMultipleRoads = true;
-			}
 		}
-		if (knownHouses[0].isLeft() != knownHouses[1].isLeft()){
-			log.warn("addr:interpolation way crosses road",streetName,this);
+		if (knownHouses[0].isLeft() != knownHouses[1].isLeft()) {
+			log.warn("addr:interpolation way crosses road", streetName, this);
 			return false;
 		}
 		return true;
@@ -296,7 +302,7 @@ public class HousenumberIvl {
 			if (source.getRoad() != dest.getRoad())
 				log.info("moving",streetName,dest.getSign(),dest.toBrowseURL(),"from road",dest.getRoad(),"to road",source.getRoad());
 			else 
-				log.info("moving",streetName,dest.getSign(),dest.toBrowseURL(),"from segment",dest.getSegment(),"to ",source.getSegment(),"in road",source.getRoad());
+				log.info("moving",streetName,dest.getSign(),dest.toBrowseURL(),"from segment",dest.getSegment(),"to", source.getSegment(),"in road",source.getRoad());
 		}
 		dest.setRoad(source.getRoad());
 		dest.setSegment(source.getSegment());
@@ -477,10 +483,6 @@ public class HousenumberIvl {
 			return true;
 		}
 		return false;
-	}
-
-	public boolean foundCluster() {
-		return foundCluster;
 	}
 
 	public void setEqualEnds() {

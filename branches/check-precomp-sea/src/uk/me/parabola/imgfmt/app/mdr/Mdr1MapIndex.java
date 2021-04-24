@@ -25,7 +25,7 @@ import uk.me.parabola.imgfmt.app.ImgFileWriter;
  */
 public class Mdr1MapIndex {
 	private final Mdr1SubHeader subHeader = new Mdr1SubHeader();
-	private final BufferedImgFileWriter subWriter = new BufferedImgFileWriter(null);
+	private final BufferedImgFileWriter subWriter = new BufferedImgFileWriter(null, "MDR");
 
 	private int pointerSize;
 

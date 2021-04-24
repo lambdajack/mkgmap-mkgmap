@@ -24,6 +24,7 @@ import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.Sized;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.imgfmt.sys.FileLink;
+import uk.me.parabola.log.Logger;
 
 /**
  * Write img file data to a temporary file. On a call to sync() the data
@@ -70,7 +71,7 @@ public class FileBackedImgFileWriter implements ImgFileWriter, Sized {
 			channel.transferTo(0, channel.size(), outputChan);
 		} finally {
 			if (!tmpFile.delete())
-				System.err.println("could not delete temporary file " + tmpFile.getPath());
+				Logger.defaultLogger.error("could not delete temporary file " + tmpFile.getPath());
 		}
 	}
 

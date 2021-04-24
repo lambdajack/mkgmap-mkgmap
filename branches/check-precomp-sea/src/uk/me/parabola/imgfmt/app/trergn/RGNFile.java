@@ -57,7 +57,7 @@ public class RGNFile extends ImgFile {
 	public RGNFile(ImgChannel chan) {
 		setHeader(header);
 
-		setWriter(new BufferedImgFileWriter(chan));
+		setWriter(new BufferedImgFileWriter(chan, "RGN"));
 
 		// Position at the start of the writable area.
 		position(HEADER_LEN);
@@ -179,7 +179,7 @@ public class RGNFile extends ImgFile {
 				throw new IllegalStateException("Polygon offset too large: " + off);
 
 			if (log.isDebugEnabled())
-				log.debug("setting polygon offset to ", off, " @", polygonPtrOff);
+				log.debug("setting polygon offset to", off, "@", polygonPtrOff);
 			position(polygonPtrOff);
 			getWriter().put2u((int) off);
 			position(currPos);

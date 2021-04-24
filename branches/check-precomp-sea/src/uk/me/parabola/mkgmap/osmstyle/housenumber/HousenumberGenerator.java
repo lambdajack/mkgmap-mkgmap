@@ -106,7 +106,7 @@ public class HousenumberGenerator {
 		if (n != nameSearchDepth) {
 			nameSearchDepth = Math.min(25, Math.max(0, n));
 			if (nameSearchDepth != n) {
-				System.err.println("name-service-roads=" + n + " was changed to name-service-roads=" + nameSearchDepth);
+				Logger.defaultLogger.warn("name-service-roads=" + n + " was changed to name-service-roads=" + nameSearchDepth);
 			}
 		}
 	}
@@ -638,7 +638,7 @@ public class HousenumberGenerator {
 			while (iter.hasNext()) {
 				HousenumberRoad hnr = iter.next();
 				
-				List<HousenumberMatch> lostHouses = hnr.checkStreetName(road2HousenumberRoadMap, nodeId2RoadLists);
+				List<HousenumberMatch> lostHouses = hnr.checkStreetName(nodeId2RoadLists);
 				for (HousenumberMatch house : lostHouses) {
 					MapRoad r = house.getRoad();
 					if (r != null) {
@@ -891,17 +891,14 @@ public class HousenumberGenerator {
 				MapRoad[] uncheckedRoads = new MapRoad[houses.length];
 				for (int i = 0 ; i < houses.length; i++)
 					uncheckedRoads[i] = houses[i].getRoad();
-				isOK = info.checkRoads();
+				info.checkRoads();
 				// check if houses are assigned to different roads now
 				houses = info.getHouseNodes();
 				for (int i = 0 ; i < houses.length; i++) {
 					if (houses[i].getRoad() != uncheckedRoads[i]) {
 						initialHousesForRoads.removeMapping(uncheckedRoads[i], houses[i]);
-						if (!houses[i].isIgnored())
+						if (!houses[i].isIgnored()) {
 							initialHousesForRoads.add(houses[i].getRoad(), houses[i]);
-						else {
-							if (!isOK)
-								log.info("housenumber is assigned to different road after checking addr:interpolation way which turned out to be invalid",houses[i],info );
 						}
 					}
 				}
@@ -1157,8 +1154,7 @@ public class HousenumberGenerator {
 				if (dupCount > 0) {
 					log.warn("addr:interpolation way",streetName,hivl,"is ignored, it produces",dupCount,"duplicate number(s) too far from existing nodes");
 					badIvls.add(hivl);
-				}
-				else {
+				} else {
 					housesToAdd.put(hivl, interpolatedHouses);
 					for (HousenumberMatch hnm : interpolatedHouses)
 						interpolatedNumbers.put(hnm.getHousenumber(), hnm);
@@ -1181,7 +1177,7 @@ public class HousenumberGenerator {
 				if (house.getRoad() != null && !house.isIgnored()) {
 					HousenumberRoad hnr = road2HousenumberRoadMap.get(house.getRoad());
 					if (hnr == null) {
-						log.error("internal error: found no housenumber road for interpolated house",house.toBrowseURL());
+						log.error("internal error: found no housenumber road for interpolated house number", house.getHousenumber(),house.toBrowseURL());
 						continue;
 					}
 					hnr.addHouse(house);
@@ -1303,7 +1299,7 @@ public class HousenumberGenerator {
 			}
 			if (markFarDup) {
 				if (log.isDebugEnabled())
-					log.debug("keeping duplicate numbers assigned to different roads in cluster ", streetName, house1,house2);
+					log.debug("keeping duplicate numbers assigned to different roads in cluster", streetName, house1, house2);
 				house1.setFarDuplicate(true);
 				house2.setFarDuplicate(true);
 				continue;
@@ -1331,7 +1327,7 @@ public class HousenumberGenerator {
 				}
 			} else {
 				if (log.isDebugEnabled())
-					log.debug("keeping duplicate numbers assigned to different roads in cluster ", streetName, house1,house2);
+					log.debug("keeping duplicate numbers assigned to different roads in cluster", streetName, house1, house2);
 				house1.setFarDuplicate(true);
 				house2.setFarDuplicate(true);
 			}

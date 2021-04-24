@@ -180,13 +180,12 @@ public class LocatorConfig {
 			}
 			else
 			{
-				System.out.println(fileName + "contains invalid root tag " + rootNode.getNodeName());
+				log.error(fileName + "contains invalid root tag " + rootNode.getNodeName());
 			}
-   	}
+		}
 		catch (Exception ex)
 		{
-			ex.printStackTrace();
-			//System.out.println("Something is wrong here");
+			Logger.defaultLogger.error("Unexpected error reading " + fileName, ex);
 		}
   	}
 

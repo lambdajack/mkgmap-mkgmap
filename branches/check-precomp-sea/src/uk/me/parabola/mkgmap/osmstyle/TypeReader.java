@@ -107,7 +107,7 @@ public class TypeReader {
 			if(gt.getRoadClass() < 0 || gt.getRoadClass() > 4)
 				log.error("road class value", gt.getRoadClass(), "not in the range 0-4 in style file lines, line " + ts.getLinenumber());
 			if(gt.getRoadSpeed() < 0 || gt.getRoadSpeed() > 7)
-				log.error("road speed value ", gt.getRoadSpeed(), "not in the range 0-7 in style file lines, line " + ts.getLinenumber());
+				log.error("road speed value", gt.getRoadSpeed(), "not in the range 0-7 in style file lines, line " + ts.getLinenumber());
 		}
 		if (performChecks){
 			boolean fromOverlays = false;

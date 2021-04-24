@@ -46,7 +46,7 @@ public class MpsFile {
 
 	public MpsFile(ImgChannel chan) {
 		assert chan instanceof FileNode;
-		writer = new BufferedImgFileWriter(chan);
+		writer = new BufferedImgFileWriter(chan, "MPS");
 	}
 
 	public void sync() throws IOException {

@@ -40,7 +40,7 @@ public class SRTFile extends ImgFile {
 	private final List<Integer> srt8Starts = new ArrayList<>();
 
 	public SRTFile(ImgChannel chan) {
-		BufferedImgFileWriter fileWriter = new BufferedImgFileWriter(chan);
+		BufferedImgFileWriter fileWriter = new BufferedImgFileWriter(chan, "SRT");
 		fileWriter.setMaxSize(Long.MAX_VALUE);
 		setWriter(fileWriter);
 	}

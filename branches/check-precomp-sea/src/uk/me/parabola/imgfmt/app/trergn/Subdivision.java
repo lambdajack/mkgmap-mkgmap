@@ -128,7 +128,7 @@ public class Subdivision {
 			w = 0x7fff;
 		}
 		if (w < 0) { // think can get this from empty/unbounded maps
-			log.error("Subdivision neg width ", w, "min=", area.getMinLong(), "mid=", longitude, "max=", area.getMaxLong(), "shift=", shift, "mask=", mask, "@", getCenter().toOSMURL());
+			log.error("Subdivision neg width", w, "min=", area.getMinLong(), "mid=", longitude, "max=", area.getMaxLong(), "shift=", shift, "mask=", mask, "@", getCenter().toOSMURL());
 			w = 0x7fff;
 		}
 
@@ -137,7 +137,8 @@ public class Subdivision {
 			h = 0xffff;
 		}
 		if (h < 0) { // think can get this from empty/unbounded maps
-			log.error("Subdivision neg height ", h, "min=", area.getMinLat(), "mid=", latitude, "max=", area.getMaxLat(), "shift=", shift, "mask=", mask, "@", getCenter().toOSMURL());
+			log.error("Subdivision neg height", h, "min=", area.getMinLat(), "mid=", latitude, "max=", area.getMaxLat(),
+					"shift=", shift, "mask=", mask, "@", getCenter().toOSMURL());
 			h = 0xffff;
 		}
 

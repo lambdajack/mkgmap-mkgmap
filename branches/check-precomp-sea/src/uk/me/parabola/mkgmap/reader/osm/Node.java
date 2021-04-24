@@ -36,8 +36,9 @@ public class Node extends Element {
 		return location;
 	}
 
+	@Override
 	public String toString() {
-		return "NODE: " + getId() + " @ " + location.toDegreeString();
+		return super.toString() + " @ " + (location == null ? "unknown" : location.toDegreeString());
 	}
 
 	@Override

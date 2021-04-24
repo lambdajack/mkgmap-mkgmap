@@ -202,12 +202,12 @@ public class MapArea implements MapDataSource {
 					if (e.getMinResolution() <= areaResolution)
 						log.debug("line. locn=", e.getPoints().get(0).toOSMURL(),
 							 " type=", uk.me.parabola.mkgmap.reader.osm.GType.formatType(e.getType()),
-							 " name=", e.getName(), " min=", e.getMinResolution(), " max=", e.getMaxResolution());
+							 " name=", e.getName(), "min=", e.getMinResolution(), "max=", e.getMaxResolution());
 				for (MapShape e : this.shapes)
 					if (e.getMinResolution() <= areaResolution)
 						log.debug("shape. locn=", e.getPoints().get(0).toOSMURL(),
 							 " type=", uk.me.parabola.mkgmap.reader.osm.GType.formatType(e.getType()),
-							 " name=", e.getName(), " min=", e.getMinResolution(), " max=", e.getMaxResolution(),
+							 " name=", e.getName(), "min=", e.getMinResolution(), "max=", e.getMaxResolution(),
 							 " full=", e.getFullArea(),
 							 " calc=", uk.me.parabola.mkgmap.filters.ShapeMergeFilter.calcAreaSizeTestVal(e.getPoints()));
 				// the main culprits are lots of bits of sea and coastline in an overview map (res 12)

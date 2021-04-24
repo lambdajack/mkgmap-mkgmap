@@ -10,10 +10,10 @@ highway=secondary
 abc=yes
 
 <<<lines>>>
-highway=primary & abc=yes { set oneway=reverse; } [0x1 road_class=1 continue]
+highway=primary & abc=yes { set oneway=-1; } [0x1 road_class=1 continue]
 highway=primary [0x2 road_class=1]
 
-highway=secondary & abc=yes { set oneway=reverse; } [0x3 road_class=2 continue
+highway=secondary & abc=yes { set oneway=-1; } [0x3 road_class=2 continue
 with_actions]
 highway=secondary [0x4 road_class=2]
 

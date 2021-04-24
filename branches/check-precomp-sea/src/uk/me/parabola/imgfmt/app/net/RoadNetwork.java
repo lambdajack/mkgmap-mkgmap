@@ -61,8 +61,8 @@ public class RoadNetwork {
 	private int maxFlareLengthRatio ;
 	private boolean reportSimilarArcs;
 	private boolean routable;
-
-	private long maxSumRoadLenghts;
+	private boolean reportRoutingIslands;
+	private long maxSumRoadLengths;
 	/** for route island search */
 	private int visitId;  
 
@@ -71,7 +71,14 @@ public class RoadNetwork {
 		checkRoundaboutFlares = props.getProperty("check-roundabout-flares", false);
 		maxFlareLengthRatio = props.getProperty("max-flare-length-ratio", 0);
 		reportSimilarArcs = props.getProperty("report-similar-arcs", false);
-		maxSumRoadLenghts = props.getProperty("check-routing-island-len", -1);
+		int checkRoutingIslandLengths = props.getProperty("check-routing-island-len", -1);
+		if (checkRoutingIslandLengths >= 0) {
+			Logger.defaultLogger.warn("The --check-routing-island-len option is deprecated. Please use --report-routing-islands and/or max-routing-island-len");
+			maxSumRoadLengths = checkRoutingIslandLengths;
+			reportRoutingIslands = log.isInfoEnabled();
+		}
+		maxSumRoadLengths = props.getProperty("max-routing-island-len", -1);
+		reportRoutingIslands = props.getProperty("report-routing-islands", false);
 		routable = props.containsKey("route");
 		angleChecker.config(props);
 	}
@@ -203,8 +210,8 @@ public class RoadNetwork {
 		double reverseInitialBearing = currNode.bearingTo(reverseBearingPoint);
 		double reverseDirectBearing = 0;
 		if (directLength > 0){
-			// bearing on rhumb line is a constant, so we can simply revert
-			reverseDirectBearing = (forwardDirectBearing <= 0) ? 180 + forwardDirectBearing: -(180 - forwardDirectBearing) % 180.0;
+			// bearing on rhumb line is a constant, so we can simply reverse
+			reverseDirectBearing = forwardDirectBearing + 180; // RouteArc will normalise
 		}
 		RouteArc reverseArc = new RouteArc(roadDef,
 						   node2, node1,
@@ -240,22 +247,26 @@ public class RoadNetwork {
 			return;
 		assert centers.isEmpty() : "already subdivided into centers";
 
-		// sort nodes by NodeGroup 
 		List<RouteNode> nodeList = new ArrayList<>(nodes.values());
 		nodes.clear(); // return to GC
-		for (int group = 0; group <= 4; group++){
-			NOD1Part nod1 = new NOD1Part();
-			int n = 0;
+
+		nodeList.forEach(this::performChecks);
+
+		// first add all nodes without arcs (they always come first in Garmin maps)
+		NOD1Part nod1 = new NOD1Part();
+		nodeList.stream().filter(node -> node.getArcs().isEmpty()).forEach(nod1::addNode);
+		centers.addAll(nod1.subdivide());
+		nodeList.removeIf(node -> node.getArcs().isEmpty());
+
+		// group remaining nodes by NodeGroup
+		for (int group = 0; group <= 4; group++) {
+			nod1 = new NOD1Part();
 			for (RouteNode node : nodeList) {
 				if (node.getGroup() == group) {
-					performChecks(node);
-
 					nod1.addNode(node);
-					n++;
 				}
 			}
-			if (n > 0)
-				centers.addAll(nod1.subdivide());
+			centers.addAll(nod1.subdivide());
 		}
 	}
 
@@ -281,6 +292,15 @@ public class RoadNetwork {
 			
 			angleChecker.check(nodes);
 			addArcsToMajorRoads();
+			
+			// set node-class for nodes with no arcs to the highest class of a road referring to that node
+			for (RoadDef rd : roadDefs) {
+				if (rd.getNode().getArcs().isEmpty()) {
+					rd.getNode().setRoadClass(Math.max(rd.getRoadClass(),rd.getNode().getNodeClass()));
+
+				}
+			}
+			
 			splitCenters();
 		}
 		return centers;
@@ -290,8 +310,9 @@ public class RoadNetwork {
 	 * report routing islands and maybe remove them from NOD.  
 	 */
 	private void checkRoutingIslands() {
-		if (maxSumRoadLenghts < 0)
+		if (maxSumRoadLengths <= 0 && !reportRoutingIslands)
 			return; // island check is disabled
+		
 		long t1 = System.currentTimeMillis();
 
 		// calculate all islands
@@ -301,7 +322,7 @@ public class RoadNetwork {
 		if (!islands.isEmpty()) {
 			analyseIslands(islands);
 		}
-		if (maxSumRoadLenghts > 0) {
+		if (maxSumRoadLengths > 0) {
 			long t3 = System.currentTimeMillis();
 			log.info("routing island removal took", (t3 - t2), "ms");
 		}
@@ -337,10 +358,11 @@ public class RoadNetwork {
 		for (List<RouteNode> island : islands) {
 			// compute size of island as sum of road lengths
 			Set<RoadDef> visitedRoads = new HashSet<>();
-			long sumOfRoadLenghts = calcIslandSize(island, nodeToRoadMap, visitedRoads);
-			log.info("Routing island at", island.get(0).getCoord().toDegreeString(), "with", island.size(),
-					"routing node(s) and total length of", sumOfRoadLenghts, "m");
-			if (sumOfRoadLenghts < maxSumRoadLenghts) {
+			long sumOfRoadLengths = calcIslandSize(island, nodeToRoadMap, visitedRoads);
+			if (reportRoutingIslands)
+				log.diagnostic("Routing island " + visitedRoads.iterator().next() +  " at " + island.get(0).getCoord().toDegreeString() + " with " + island.size() +
+					" routing node(s) and total length of " + sumOfRoadLengths + "m");
+			if (sumOfRoadLengths < maxSumRoadLengths) {
 				// set discarded flag for all nodes of the island
 				island.forEach(RouteNode::discard);
 				visitedRoads.forEach(rd -> rd.skipAddToNOD(true));
@@ -489,7 +511,8 @@ public class RoadNetwork {
 		}
 		List<RouteArc> fromArcs = fn.getDirectArcsTo(firstViaNode, grr.getFromWayId()); 
 		if (fromArcs.isEmpty()){
-			log.error(sourceDesc, "can't locate arc from 'from' node ",fromId,"to 'via' node",firstViaId,"on way",grr.getFromWayId());
+			log.error(sourceDesc, "can't locate arc from 'from' node", fromId, "to 'via' node", firstViaId, "on way",
+					grr.getFromWayId());
 			return 0;
 		}
 		
@@ -551,7 +574,8 @@ public class RoadNetwork {
 			toArcs = angleMap.get(bestAngle);
 		}
 		if (toArcs.isEmpty()){
-			log.error(sourceDesc, "can't locate arc from 'via' node ",lastViaId,"to 'to' node",toId,"on way",grr.getToWayId());
+			log.error(sourceDesc, "can't locate arc from 'via' node", lastViaId, "to 'to' node", toId, "on way",
+					grr.getToWayId());
 			return 0;
 		}
 		
@@ -678,7 +702,7 @@ public class RoadNetwork {
 
 		// double check
 		if (indexes[0] != arcLists.get(0).size())
-			log.error(sourceDesc, " failed to generate all possible paths");
+			log.error(sourceDesc, "failed to generate all possible paths");
 		log.info(sourceDesc, "added",added,"route restriction(s) to img file");
 		return added;
 	}

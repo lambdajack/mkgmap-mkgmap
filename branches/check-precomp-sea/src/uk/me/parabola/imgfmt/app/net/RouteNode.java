@@ -74,6 +74,8 @@ public class RouteNode implements Comparable<RouteNode> {
 	
 	private byte nodeGroup = -1;
 
+	private boolean useCompactDirs = false;  // AngleChecker might change
+
 	public RouteNode(Coord coord) {
 		this.coord = (CoordNode) coord;
 		setBoundary(this.coord.getOnBoundary() || this.coord.getOnCountryBorder());
@@ -183,6 +185,20 @@ public class RouteNode implements Comparable<RouteNode> {
 	 * Writes a nod1 entry.
 	 */
 	public void write(ImgFileWriter writer) {
+//		boolean diagNodeArcs = false;
+//		if (log.isInfoEnabled()) {
+//			String areaName = null;
+//			if (isClose(51.182575, -1.388928, 0.002))
+//				areaName = "A303 lead off/on";
+//			else if (isClose(51.012253, -1.087559, 0.0008))
+//				areaName = "West Meon";
+//			else if (isClose(51.064075, -1.380348, 0.0001))
+//				areaName = "Woodmans";
+//			if (areaName != null) {
+//				diagNodeArcs = true;
+//				log.info("diagNodeArcs", areaName, this, "compactDirs", useCompactDirs, "nArcs", arcs.size(), "cl", nodeClass);
+//			}
+//		}
 		if(log.isDebugEnabled())
 			log.debug("writing node, first pass, nod1", coord.getId());
 		offsetNod1 = writer.position();
@@ -192,6 +208,10 @@ public class RouteNode implements Comparable<RouteNode> {
 
 		writer.put1u(0);  // will be overwritten later
 		flags |= (nodeClass & MAX_DEST_CLASS_MASK); // max. road class of any outgoing road
+		if (flags == 0) {
+			// avoids possible case that low flag and flags are both 0 when node has no arcs
+			flags |= F_LARGE_OFFSETS; 
+		}
 		writer.put1u(flags);
 
 		if (haveLargeOffsets()) {
@@ -201,33 +221,28 @@ public class RouteNode implements Comparable<RouteNode> {
 		}
 
 		if (!arcs.isEmpty()) {
-			boolean useCompactDirs = true;
 			IntArrayList initialHeadings = new IntArrayList(arcs.size()+1);
 			RouteArc lastArc = null;
-			for (RouteArc arc: arcs){
-				if (lastArc == null || lastArc.getIndexA() != arc.getIndexA() || lastArc.isForward() != arc.isForward()){
-					int dir = RouteArc.directionFromDegrees(arc.getInitialHeading());
-					dir = (dir + 8) & 0xf0;
-					if (initialHeadings.contains(dir)){
-						useCompactDirs = false;
-						break;
-					}
-					initialHeadings.add(dir);
+			if (useCompactDirs) {
+				for (RouteArc arc: arcs) {
+					if (lastArc == null || lastArc.getIndexA() != arc.getIndexA() || lastArc.isForward() != arc.isForward())
+						initialHeadings.add(RouteArc.compactDirFromDegrees(arc.getInitialHeading()));
+					lastArc = arc;
 				}
-				lastArc = arc;
+				initialHeadings.add(0); // add dummy 0 so that we don't have to check for existence
+				lastArc = null;
 			}
-			initialHeadings.add(0); // add dummy 0 so that we don't have to check for existence
 			arcs.get(arcs.size() - 1).setLast();
-			lastArc = null;
-			
 			int index = 0;
 			for (RouteArc arc: arcs){
 				Byte compactedDir = null;
 				if (useCompactDirs && (lastArc == null || lastArc.getIndexA() != arc.getIndexA() || lastArc.isForward() != arc.isForward())){
 					if (index % 2 == 0)
-						compactedDir = (byte) ((initialHeadings.get(index) >> 4) | initialHeadings.getInt(index+1));
+						compactedDir = (byte) (initialHeadings.get(index) | (initialHeadings.getInt(index+1)<<4));
 					index++;
 				}
+//				if (diagNodeArcs)
+//					log.info(arc, arc.getIndexA(), arc.getInitialHeading(), RouteArc.compactDirFromDegrees(arc.getInitialHeading()), compactedDir, "cl", arc.getRoadDef().getRoadClass());
 				arc.write(writer, lastArc, useCompactDirs, compactedDir);
 				lastArc = arc;
 			}
@@ -330,7 +345,7 @@ public class RouteNode implements Comparable<RouteNode> {
 	}
 
 	public String toString() {
-		return String.valueOf(coord.getId());
+		return String.valueOf(coord.getId()) + "@" + coord.toOSMURL();
 	}
 
 	/*
@@ -373,7 +388,7 @@ public class RouteNode implements Comparable<RouteNode> {
 							// non roundabout highway overlaps roundabout
 							nonRoundaboutArcs.remove(ra1);
 							if(!ra.getRoadDef().messagePreviouslyIssued("roundabout forks/overlaps"))
-								log.warn("Highway",ra1.getRoadDef(), "overlaps roundabout", ra.getRoadDef(), "at",coord.toOSMURL());
+								log.diagnostic("Highway " + ra1.getRoadDef() + " overlaps roundabout " + ra.getRoadDef() + " at " + coord.toOSMURL());
 							break;
 						}						
 					}
@@ -446,27 +461,27 @@ public class RouteNode implements Comparable<RouteNode> {
 			
 				RouteArc roundaboutArc = roundaboutArcs.get(0);
 				if (arcs.size() > 1 && roundaboutArcs.size() == 1)
-					log.warn("Roundabout",roundaboutArc.getRoadDef(),roundaboutArc.isForward() ? "starts at" : "ends at", coord.toOSMURL());
+					log.diagnostic("Roundabout " + roundaboutArc.getRoadDef() + (roundaboutArc.isForward() ? " starts at " : " ends at ") + coord.toOSMURL());
 				if (countNonRoundaboutRoads > 1)
-					log.warn("Roundabout",roundaboutArc.getRoadDef(),"is connected to more than one road at",coord.toOSMURL());
+					log.diagnostic("Roundabout " + roundaboutArc.getRoadDef() + " is connected to more than one road at " + coord.toOSMURL());
 				else if (countNonRoundaboutRoads == 1) {
 					if (countNonRoundaboutOtherHighways > 0) {
 						if (countHighwaysInsideRoundabout > 0)
-							log.warn("Roundabout",roundaboutArc.getRoadDef(),"is connected to a road",countNonRoundaboutOtherHighways,"other highway(s) and",countHighwaysInsideRoundabout,"highways inside the roundabout at",coord.toOSMURL());
+							log.diagnostic("Roundabout " + roundaboutArc.getRoadDef() + " is connected to a road, " + countNonRoundaboutOtherHighways + " other highway(s) and " + countHighwaysInsideRoundabout + " highways inside the roundabout at " + coord.toOSMURL());
 						else
-							log.warn("Roundabout",roundaboutArc.getRoadDef(),"is connected to a road and",countNonRoundaboutOtherHighways,"other highway(s) at",coord.toOSMURL());
+							log.diagnostic("Roundabout " + roundaboutArc.getRoadDef() + " is connected to a road and " + countNonRoundaboutOtherHighways + " other highway(s) at " + coord.toOSMURL());
 					}
 					else if (countHighwaysInsideRoundabout > 0)
-						log.warn("Roundabout",roundaboutArc.getRoadDef(),"is connected to a road and",countHighwaysInsideRoundabout,"highway(s) inside the roundabout at",coord.toOSMURL());
+						log.diagnostic("Roundabout " + roundaboutArc.getRoadDef() + " is connected to a road and " + countHighwaysInsideRoundabout + " highway(s) inside the roundabout at " + coord.toOSMURL());
 				}
 				else if (countNonRoundaboutOtherHighways > 0) {
 					if (countHighwaysInsideRoundabout > 0)
-						log.warn("Roundabout",roundaboutArc.getRoadDef(),"is connected to",countNonRoundaboutOtherHighways,"highway(s) and",countHighwaysInsideRoundabout,"inside the roundabout at",coord.toOSMURL());
+						log.diagnostic("Roundabout " + roundaboutArc.getRoadDef() + " is connected to " + countNonRoundaboutOtherHighways+ " highway(s) and " + countHighwaysInsideRoundabout + " inside the roundabout at " + coord.toOSMURL());
 					else if (countNonRoundaboutOtherHighways > 1)
-						log.warn("Roundabout",roundaboutArc.getRoadDef(),"is connected to",countNonRoundaboutOtherHighways,"highways at",coord.toOSMURL());
+						log.diagnostic("Roundabout " + roundaboutArc.getRoadDef() + " is connected to " + countNonRoundaboutOtherHighways + " highways at " + coord.toOSMURL());
 				}
 				else if (countHighwaysInsideRoundabout > 1)
-					log.warn("Roundabout",roundaboutArc.getRoadDef(),"is connected to",countHighwaysInsideRoundabout,"highways inside the roundabout at",coord.toOSMURL());
+					log.diagnostic("Roundabout " +roundaboutArc.getRoadDef() + " is connected to " + countHighwaysInsideRoundabout + " highways inside the roundabout at " + coord.toOSMURL());
 				if(roundaboutArcs.size() > 2) {
 					for(RouteArc fa : roundaboutArcs) {
 						if(fa.isForward()) {
@@ -477,12 +492,12 @@ public class RouteNode implements Comparable<RouteNode> {
 									   ((fb.isForward() && fb.getDest() == fa.getDest()) ||
 										(!fb.isForward() && fb.getSource() == fa.getDest()))) {
 										if(!rd.messagePreviouslyIssued("roundabout forks/overlaps")) {
-											log.warn("Roundabout " + rd + " overlaps " + fb.getRoadDef() + " at " + coord.toOSMURL());
+											log.diagnostic("Roundabout " + rd + " overlaps " + fb.getRoadDef() + " at " + coord.toOSMURL());
 										}
 									}
 									else if (fb.isForward()
 											&& !rd.messagePreviouslyIssued("roundabout forks/overlaps")) {
-										log.warn("Roundabout " + rd + " forks at " + coord.toOSMURL());
+										log.diagnostic("Roundabout " + rd + " forks at " + coord.toOSMURL());
 									}
 								}
 							}
@@ -626,23 +641,23 @@ public class RouteNode implements Comparable<RouteNode> {
 
 						// only issue one warning per flare
 						if(!fa.isForward())
-							log.warn("Outgoing roundabout flare road " + fa.getRoadDef() + " points in wrong direction? " + fa.getSource().coord.toOSMURL());
+							log.diagnostic("Outgoing roundabout flare road " + fa.getRoadDef() + " points in wrong direction? " + fa.getSource().coord.toOSMURL());
 						else if(fb.isForward())
-							log.warn("Incoming roundabout flare road " + fb.getRoadDef() + " points in wrong direction? " + fb.getSource().coord.toOSMURL());
+							log.diagnostic("Incoming roundabout flare road " + fb.getRoadDef() + " points in wrong direction? " + fb.getSource().coord.toOSMURL());
 						else if(!fa.getRoadDef().isOneway())
-							log.warn("Outgoing roundabout flare road " + fa.getRoadDef() + " is not oneway? " + fa.getSource().coord.toOSMURL());
+							log.diagnostic("Outgoing roundabout flare road " + fa.getRoadDef() + " is not oneway? " + fa.getSource().coord.toOSMURL());
 
 						else if(!fb.getRoadDef().isOneway())
-							log.warn("Incoming roundabout flare road " + fb.getRoadDef() + " is not oneway? " + fb.getDest().coord.toOSMURL());
+							log.diagnostic("Incoming roundabout flare road " + fb.getRoadDef() + " is not oneway? " + fb.getDest().coord.toOSMURL());
 						else {
 							// check that the flare road arcs are not
 							// part of a longer way
 							for(RouteArc a : fa.getDest().arcs) {
 								if(a.isDirect() && a.getDest() != this && a.getDest() != nb) {
 									if(a.getRoadDef() == fa.getRoadDef())
-										log.warn("Outgoing roundabout flare road " + fb.getRoadDef() + " does not finish at flare? " + fa.getDest().coord.toOSMURL());
+										log.diagnostic("Outgoing roundabout flare road " + fb.getRoadDef() + " does not finish at flare? " + fa.getDest().coord.toOSMURL());
 									else if(a.getRoadDef() == fb.getRoadDef())
-										log.warn("Incoming roundabout flare road " + fb.getRoadDef() + " does not start at flare? " + fb.getDest().coord.toOSMURL());
+										log.diagnostic("Incoming roundabout flare road " + fb.getRoadDef() + " does not start at flare? " + fb.getDest().coord.toOSMURL());
 								}
 							}
 						}
@@ -655,16 +670,19 @@ public class RouteNode implements Comparable<RouteNode> {
 	public void reportSimilarArcs() {
 		for(int i = 0; i < arcs.size(); ++i) {
 			RouteArc arci = arcs.get(i);
-			if (!arci.isDirect())
+			RoadDef rdi = arci.getRoadDef();
+			if (!arci.isDirect() || rdi.isSynthesised())
 				continue;
 			for(int j = i + 1; j < arcs.size(); ++j) {
 				RouteArc arcj = arcs.get(j);
-				if (!arcj.isDirect())
+				RoadDef rdj = arcj.getRoadDef();
+				if (!arcj.isDirect() || rdj.isSynthesised())
 					continue;
 				if(arci.getDest() == arcj.getDest() &&
 				   arci.getLength() == arcj.getLength() &&
-				   arci.getPointsHash() == arcj.getPointsHash()) {
-					log.warn("Similar arcs (" + arci.getRoadDef() + " and " + arcj.getRoadDef() + ") from " + coord.toOSMURL());
+				   arci.getPointsHash() == arcj.getPointsHash() &&
+				   !rdi.messagePreviouslyIssued("Similar arcs")) {
+					log.diagnostic("Similar arcs " + rdi + " and " + rdj + " found at " + coord.toOSMURL());
 				}
 			}
 		}
@@ -680,8 +698,12 @@ public class RouteNode implements Comparable<RouteNode> {
 	 * always point to a higher road than the previous arc.
 	 * The length and direct bearing of the additional arc is measured 
 	 * from the target node of the preceding arc to the new target node.
-	 * The initial bearing doesn't really matter as it is not written
-	 * for indirect arcs.  
+	 *
+	 * Arcs for the same road/direction must be inserted directly after the
+	 * direct arc and this allows the optimisation of initial bearing not being
+	 * written. Note that this routine is called after AngleChecker.fixSharpAngles
+	 * so the bearings will be consistent anyway.
+	 *
 	 * @param road
 	 */
 	public void addArcsToMajorRoads(RoadDef road){
@@ -888,4 +910,28 @@ public class RouteNode implements Comparable<RouteNode> {
 			}
 		}
 	}
+
+
+	public void setUseCompactDirs(boolean newValue) {
+		useCompactDirs = newValue;
+	}
+
+	public boolean getUseCompactDirs() {
+		return useCompactDirs;
+	}
+
+	public void setRoadClass(int roadClass) {
+		nodeClass = (byte) roadClass;
+	}
+
+//	/**
+//	 * simple-minded quick test for enabling RouteNode diagnostic for an area of interest.
+//	 * leeway is in degrees
+//	 */
+//	private boolean isClose(double latitude, double longitude, double leeway) {
+//		double nodeLat = coord.getLatDegrees();
+//		double nodeLon = coord.getLonDegrees();
+//		return nodeLat >= latitude  - leeway && nodeLat <= latitude  + leeway &&
+//			   nodeLon >= longitude - leeway && nodeLon <= longitude + leeway;
+//	}
 }

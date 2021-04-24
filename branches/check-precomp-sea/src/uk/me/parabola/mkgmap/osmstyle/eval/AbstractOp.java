@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import uk.me.parabola.imgfmt.ExitException;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.osmstyle.function.GetTagFunction;
 import uk.me.parabola.mkgmap.reader.osm.Element;
 import uk.me.parabola.mkgmap.scan.SyntaxException;
@@ -210,7 +211,7 @@ public abstract class AbstractOp implements Op {
 		} else if (this.isType(NodeType.EXISTS) || this.isType(NodeType.NOT_EXISTS) || this.isType(NodeType.NOT)) {
 			set.addAll(getFirst().getEvaluatedTagKeys());
 		} else if (this.getFirst() != null) {
-			System.err.println("Unhandled type of Op");
+			Logger.defaultLogger.error("Unhandled type of Op");
 		}
 			
 	}

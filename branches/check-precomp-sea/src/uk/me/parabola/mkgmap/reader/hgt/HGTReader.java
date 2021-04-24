@@ -48,6 +48,8 @@ public class HGTReader {
 	private String path;
 	private boolean read;
 	private long count;
+	private int numPixelsX;
+	private int numPixelsY;
 
 	
 	private static final Map<String,Set<String>> missingMap = new HashMap<>();
@@ -128,7 +130,7 @@ public class HGTReader {
 				HGTList hgtList = HGTList.get();
 				if (hgtList != null) {
 					if (hgtList.shouldExist(lat, lon))
-						System.err.println(this.getClass().getSimpleName() + ": file " + fileName + " not found but it should exist. Height values will be 0.");
+						Logger.defaultLogger.warn(this.getClass().getSimpleName() + ": file " + fileName + " not found but it should exist. Height values will be 0.");
 				} else { 
 					log.warn("file " + fileName + " not found. Is expected to cover sea.");
 				}
@@ -212,8 +214,16 @@ public class HGTReader {
 	 */
 	private int calcRes(long size, String fname) {
 		long numVals = (long) Math.sqrt(size / 2d);
-		if (2 * numVals * numVals == size)
+		if (2 * 1801 * 3601 == size) {
+			numPixelsX = 1801;
+			numPixelsY = 3601;
+			return 3600;
+		}
+		if (2 * numVals * numVals == size) {
+			numPixelsX = (int) numVals;
+			numPixelsY = (int) numVals;
 			return (int) (numVals - 1);
+		}
 		log.error("file", fname, "has unexpected size", size, "and is ignored");
 		return -1;
 	}
@@ -231,9 +241,10 @@ public class HGTReader {
 		}
 		if (buffer == null)
 			return 0;
-		assert (x >= 0 && x <= res && y >= 0 && y <= res) : "wrong x/y value for res" + res + " x=" + x + " y=" + y;
+		assert (x >= 0 && x < numPixelsX && y >= 0 && y < numPixelsY) : 
+			"wrong x/y value for res" + numPixelsX + "x" + numPixelsY + " x=" + x + " y=" + y;
 		count++;
-		return buffer.getShort(2 * ((res - y) * (res + 1) + x));
+		return buffer.getShort(2 * ((numPixelsY - 1 - y) * numPixelsX + x));
 		
 	}
 
@@ -283,6 +294,14 @@ public class HGTReader {
 			}
 
 		}
+	}
+
+	public int getResX() {
+		return numPixelsX - 1;
+	}
+
+	public int getResY() {
+		return numPixelsY - 1;
 	}
 	
 }

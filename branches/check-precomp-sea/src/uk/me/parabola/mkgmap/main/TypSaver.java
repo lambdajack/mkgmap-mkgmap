@@ -42,6 +42,8 @@ class TypSaver implements MapProcessor {
 		try (FileInputStream in = new FileInputStream(filename)) {
 			byte[] buf = new byte[256];
 			int n = in.read(buf);
+			if (n == -1)
+				throw new ExitException("TYP file is empty: " + filename);
 
 			ByteBuffer buffer = ByteBuffer.wrap(buf);
 			buffer.order(ByteOrder.LITTLE_ENDIAN);

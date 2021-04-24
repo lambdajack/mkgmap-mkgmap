@@ -31,6 +31,7 @@ import java.util.zip.GZIPInputStream;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
+import uk.me.parabola.log.Logger;
 /**
  * Some miscellaneous functions that are used within the .img code.
  *
@@ -189,7 +190,7 @@ public class Utils {
 			try {
 				f.close();
 			} catch (IOException e) {
-				e.printStackTrace();
+				Logger.defaultLogger.error("Error closing file", e);
 			}
 		}
 	}

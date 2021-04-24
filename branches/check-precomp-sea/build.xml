@@ -307,46 +307,46 @@
 		<mkdir dir="test/resources/in/osm"/>
 		<mkdir dir="test/resources/in/mp"/>
 		<mkdir dir="test/resources/in/img"/>
-		<get src="http://www.mkgmap.org.uk/testinput/osm/lon1.osm.gz"
+		<get src="https://www.mkgmap.org.uk/testinput/osm/lon1.osm.gz"
 			dest="test/resources/in/osm/lon1.osm.gz" usetimestamp="true"
 			ignoreerrors="true"/>
-		<get src="http://www.mkgmap.org.uk/testinput/osm/uk-test-1.osm.gz"
+		<get src="https://www.mkgmap.org.uk/testinput/osm/uk-test-1.osm.gz"
 			dest="test/resources/in/osm/uk-test-1.osm.gz" usetimestamp="true"
 			ignoreerrors="true"/>
-		<get src="http://www.mkgmap.org.uk/testinput/osm/uk-test-2.osm.gz"
+		<get src="https://www.mkgmap.org.uk/testinput/osm/uk-test-2.osm.gz"
 			dest="test/resources/in/osm/uk-test-2.osm.gz" usetimestamp="true"
 			ignoreerrors="true"/>
-		<get src="http://www.mkgmap.org.uk/testinput/osm/is-in-samples.osm"
+		<get src="https://www.mkgmap.org.uk/testinput/osm/is-in-samples.osm"
 			dest="test/resources/in/osm/is-in-samples.osm" usetimestamp="true"
 			ignoreerrors="true"/>
-		<get src="http://www.mkgmap.org.uk/testinput/mp/test1.mp"
+		<get src="https://www.mkgmap.org.uk/testinput/mp/test1.mp"
 			dest="test/resources/in/mp/test1.mp" usetimestamp="true"
 			ignoreerrors="true"/>
-		<get src="http://www.mkgmap.org.uk/testinput/img/63240001.img"
+		<get src="https://www.mkgmap.org.uk/testinput/img/63240001.img"
 			dest="test/resources/in/img/63240001.img" usetimestamp="true"
 			ignoreerrors="true"/>
-		<get src="http://www.mkgmap.org.uk/testinput/img/63240002.img"
+		<get src="https://www.mkgmap.org.uk/testinput/img/63240002.img"
 			dest="test/resources/in/img/63240002.img" usetimestamp="true"
 			ignoreerrors="true"/>
-		<get src="http://www.mkgmap.org.uk/testinput/img/63240003.img"
+		<get src="https://www.mkgmap.org.uk/testinput/img/63240003.img"
 			dest="test/resources/in/img/63240003.img" usetimestamp="true"
 			ignoreerrors="true"/>
-		<get src="http://www.mkgmap.org.uk/testinput/hgt/N00W090.hgt.zip"
+		<get src="https://www.mkgmap.org.uk/testinput/hgt/N00W090.hgt.zip"
 			dest="test/resources/in/hgt/N00W090.hgt.zip" usetimestamp="true"
 			ignoreerrors="true"/>
-		<get src="http://www.mkgmap.org.uk/testinput/hgt/N00W091.hgt.zip"
+		<get src="https://www.mkgmap.org.uk/testinput/hgt/N00W091.hgt.zip"
 			dest="test/resources/in/hgt/N00W091.hgt.zip" usetimestamp="true"
 			ignoreerrors="true"/>
-		<get src="http://www.mkgmap.org.uk/testinput/hgt/S01W090.hgt.zip"
+		<get src="https://www.mkgmap.org.uk/testinput/hgt/S01W090.hgt.zip"
 			dest="test/resources/in/hgt/S01W090.hgt.zip" usetimestamp="true"
 			ignoreerrors="true"/>
-		<get src="http://www.mkgmap.org.uk/testinput/hgt/S01W091.hgt.zip"
+		<get src="https://www.mkgmap.org.uk/testinput/hgt/S01W091.hgt.zip"
 			dest="test/resources/in/hgt/S01W091.hgt.zip" usetimestamp="true"
 			ignoreerrors="true"/>
-		<get src="http://www.mkgmap.org.uk/testinput/hgt/S02W090.hgt.zip"
+		<get src="https://www.mkgmap.org.uk/testinput/hgt/S02W090.hgt.zip"
 			dest="test/resources/in/hgt/S02W090.hgt.zip" usetimestamp="true"
 			ignoreerrors="true"/>
-		<get src="http://www.mkgmap.org.uk/testinput/hgt/S02W091.hgt.zip"
+		<get src="https://www.mkgmap.org.uk/testinput/hgt/S02W091.hgt.zip"
 			dest="test/resources/in/hgt/S02W091.hgt.zip" usetimestamp="true"
 			ignoreerrors="true"/>
 	</target>

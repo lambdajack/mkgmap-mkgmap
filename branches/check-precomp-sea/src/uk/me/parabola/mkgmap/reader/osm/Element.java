@@ -64,13 +64,13 @@ public abstract class Element {
 			String squashed = Label.squashSpaces(val);
 			if (!val.equals(squashed)) {
 				if (log.isInfoEnabled())
-					log.info(this.toBrowseURL(),"obsolete blanks removed from tag", key, " '" + val + "' -> '" + squashed + "'");
+					log.info(this.toBrowseURL(),"obsolete blanks removed from tag", key, "'" + val + "' -> '" + squashed + "'");
 				val = squashed;
 			}
 			squashed = Label.squashDel(val);
 			if (!val.equals(squashed)) {
 				if (log.isInfoEnabled())
-					log.info(this.toBrowseURL(),"DEL character (0x7f) removed from tag", key, " '" + val + "' -> '" + squashed + "'");
+					log.info(this.toBrowseURL(),"DEL character (0x7f) removed from tag", key, "'" + val + "' -> '" + squashed + "'");
 				val = squashed;
 			}
 		}
@@ -312,6 +312,9 @@ public abstract class Element {
 	}
 
 	public String toBrowseURL() {
+		if (FakeIdGenerator.isFakeId(id))
+			return getBasicLogInformation();
+
 		return "http://www.openstreetmap.org/" + kind() + "/" + id;
 	}
 
@@ -323,7 +326,7 @@ public abstract class Element {
 		// Can be implemented in subclasses
 		throw new UnsupportedOperationException("unsupported element copy");
 	}
-	
+
 	public String getDebugName() {
 		String name = getName();
 		if(name == null)
@@ -332,9 +335,9 @@ public abstract class Element {
 			name = "";
 		else
 			name += " ";
-		return name + "(OSM id " + getId() + ")";
+		return name + "(OSM id " + originalId + ")";
 	}
-	
+
 	/**
 	 * Calculate a short string to be used in log messages or style functions
 	 * echo or echotags.
@@ -346,7 +349,16 @@ public abstract class Element {
 	 */
 	public String getBasicLogInformation() {
 		String className = getClass().getSimpleName();
-		return ("GeneralRelation".equals(className)) ? "Relation" : className 
-				+ (FakeIdGenerator.isFakeId(getId()) ? " generated from " + getOrigElement(): "") + " " +  originalId;
+		if ("GeneralRelation".equals(className))
+			className = "Relation";
+		if (FakeIdGenerator.isFakeId(originalId))
+			return "generated " + className;
+		
+		return className + (FakeIdGenerator.isFakeId(id) ? " generated from " + getOrigElement() : "") + " " + originalId;
+	}
+
+	@Override
+	public String toString() {
+		return getBasicLogInformation();
 	}
 }

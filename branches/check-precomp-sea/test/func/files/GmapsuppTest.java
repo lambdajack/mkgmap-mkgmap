@@ -401,7 +401,7 @@ public class GmapsuppTest extends Base {
 				"--latin1",
 				Args.TEST_RESOURCE_OSM + "uk-test-2.osm.gz");
 
-		Outputs outputs = TestUtils.run(Args.TEST_STYLE_ARG,
+		Outputs outputs = TestUtils.runAsProcess(Args.TEST_STYLE_ARG,
 				"--gmapsupp",
 				"--index",
 

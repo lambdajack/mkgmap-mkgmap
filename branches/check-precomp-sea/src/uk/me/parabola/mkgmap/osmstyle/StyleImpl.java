@@ -239,19 +239,18 @@ public class StyleImpl implements Style {
 		try (InputStream is = this.getClass().getResourceAsStream("/styles/builtin-tag-list");) {
 			if (is != null) {
 				BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-				// System.out.println("Got built in list");
 				String line;
 				while ((line = br.readLine()) != null) {
 					line = line.trim();
 					if (line.startsWith("#"))
 						continue;
-					// System.out.println("adding " + line);
+
 					set.add(line);
 				}
 			}
 		} catch (IOException e) {
 			// the file doesn't exist, this is ok but unlikely
-			System.err.println("warning: built in tag list not found");
+			Logger.defaultLogger.warn("built in tag list not found");
 		}
 		return set;
 	}
@@ -262,7 +261,7 @@ public class StyleImpl implements Style {
 			l = LevelInfo.DEFAULT_LEVELS;
 		LevelInfo[] levels = LevelInfo.createFromString(l);
 		if (performChecks && levels[0].getBits() <= 10) {
-			System.err.println("Warning: Resolution values <= 10 may confuse MapSource: " + l);
+			Logger.defaultLogger.warn("Resolution values <= 10 may confuse MapSource: " + l);
 		}
 		l = generalOptions.get("overview-levels");
 		if (l != null){
@@ -270,10 +269,10 @@ public class StyleImpl implements Style {
 			// TODO: make sure that the combination of the two level strings makes sense
 			if (performChecks){
 				if (ovLevels[0].getBits() <= 10){
-					System.err.println("Warning: Resolution values <= 10 may confuse MapSource: " + l);
+					Logger.defaultLogger.warn("Resolution values <= 10 may confuse MapSource: " + l);
 				}
 				if (levels[0].getLevel() >= ovLevels[ovLevels.length-1].getLevel()){
-					System.err.println("Warning: Overview level not higher than highest normal level. " + l);
+					Logger.defaultLogger.warn("Overview level not higher than highest normal level. " + l);
 				}
 			}
 			List<LevelInfo> tmp = new ArrayList<>();
@@ -336,7 +335,7 @@ public class StyleImpl implements Style {
 				String val = opt.getValue();
 				if ("name-tag-list".equals(key)) {
 					if (!"name".equals(val)) {
-						System.err.println("Warning: option name-tag-list used in the style options is ignored. "
+						Logger.defaultLogger.warn("Option name-tag-list used in the style options is ignored. "
 								+ "Please use only the command line option to specify this value.");
 					}
 				} else if (OPTION_LIST.contains(key)) {
@@ -410,7 +409,7 @@ public class StyleImpl implements Style {
 		try {
 			baseStyles.add(new StyleImpl(location, name, props, performChecks));
 		} catch (SyntaxException e) {
-			System.err.println("Error in style: " + e.getMessage());
+			Logger.defaultLogger.error("Error in style: " + e.getMessage());
 		} catch (FileNotFoundException e) {
 			// not found, try on the classpath.  This is the common
 			// case where you have an external style, but want to
@@ -420,9 +419,9 @@ public class StyleImpl implements Style {
 			try {
 				baseStyles.add(new StyleImpl(null, name, props, performChecks));
 			} catch (SyntaxException se) {
-				System.err.println("Error in style: " + se.getMessage());
+				Logger.defaultLogger.error("Error in style: " + se.getMessage());
 			} catch (FileNotFoundException e1) {
-				log.error("Could not find base style", e);
+				Logger.defaultLogger.error("Could not find base style", e);
 			}
 		}
 	}
@@ -478,7 +477,7 @@ public class StyleImpl implements Style {
 		}
 
 		if (version > VERSION) {
-			System.err.println("Warning: unrecognised style version " + version +
+			Logger.defaultLogger.warn("Unrecognised style version " + version +
 			", but only versions up to " + VERSION + " are understood");
 		}
 	}
@@ -546,7 +545,7 @@ public class StyleImpl implements Style {
 		try {
 			style = new StyleImpl(loc, name, props, WITHOUT_CHECKS);
 		} catch (SyntaxException e) {
-			System.err.println("Error in style: " + e.getMessage());
+			Logger.defaultLogger.error("Error in style: " + e.getMessage());
 			throw new ExitException("Could not open style " + (name == null? "":name));
 		} catch (FileNotFoundException e) {
 			String msg = "Could not open style ";

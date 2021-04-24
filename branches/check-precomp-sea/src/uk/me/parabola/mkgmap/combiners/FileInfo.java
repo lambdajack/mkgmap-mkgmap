@@ -26,6 +26,8 @@ import java.util.Locale;
 import java.util.Objects;
 
 import uk.me.parabola.imgfmt.FileSystemParam;
+import uk.me.parabola.imgfmt.MapFailedException;
+import uk.me.parabola.imgfmt.ReadFailedException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.BufferedImgFileReader;
@@ -152,16 +154,19 @@ public class FileInfo {
 		String ext = end < 3 ? "" : inputName.substring(end - 3).toUpperCase(Locale.ENGLISH);
 		FileInfo info;
 
-		if (Objects.equals(ext, "IMG")) {
-			info = imgInfo(inputName);
-		} else if ("TYP".equals(ext)) {
-			info = fileInfo(inputName, TYP_KIND);
-		} else if (KNOWN_FILE_TYPE_EXT.contains(ext)) {
-			info = fileInfo(inputName, APP_KIND);
-		} else {
-			info = new FileInfo(inputName, UNKNOWN_KIND);
+		try {
+			if (Objects.equals(ext, "IMG")) {
+				info = imgInfo(inputName);
+			} else if ("TYP".equals(ext)) {
+				info = fileInfo(inputName, TYP_KIND);
+			} else if (KNOWN_FILE_TYPE_EXT.contains(ext)) {
+				info = fileInfo(inputName, APP_KIND);
+			} else {
+				info = new FileInfo(inputName, UNKNOWN_KIND);
+			}
+		} catch (AssertionError | ReadFailedException e) {
+			throw new MapFailedException("Could not read file " + inputName, e);
 		}
-
 		return info;
 	}
 
@@ -200,7 +205,7 @@ public class FileInfo {
 			fr.position(0x15);
 			info.setCodePage(fr.get2u());
 		} catch (IOException e) {
-			e.printStackTrace();
+			Logger.defaultLogger.error("Unexpected error reading " + filename, e);
 		}
 	}
 

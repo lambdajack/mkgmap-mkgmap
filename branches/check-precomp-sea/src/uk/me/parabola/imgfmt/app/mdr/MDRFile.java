@@ -28,6 +28,7 @@ import uk.me.parabola.imgfmt.app.net.RoadDef;
 import uk.me.parabola.imgfmt.app.srt.Sort;
 import uk.me.parabola.imgfmt.app.trergn.Point;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
+import uk.me.parabola.log.Logger;
 
 /**
  * The MDR file.  This is embedded into a .img file, either its own
@@ -150,7 +151,7 @@ public class MDRFile extends ImgFile {
 		Sort sort = mdrHeader.getSort();
 
 		if (sort.getCodepage() != codePage)
-			System.err.println("WARNING: input files have different code pages");
+			Logger.defaultLogger.warn("Input files have different code pages");
 	}
 
 	public Mdr14Record addCountry(Country country) {
@@ -370,7 +371,9 @@ public class MDRFile extends ImgFile {
 		// The following do not have mdr1 subsections
 		//writeSection(writer, 8, mdr8);
 		writeSection(writer, 9, mdr9);
-		writeSection(writer, 12, mdr12);
+		if (!isMulti) {
+			writeSection(writer, 12, mdr12);
+		}
 		writeSection(writer, 13, mdr13);
 		writeSection(writer, 14, mdr14);
 		writeSection(writer, 15, mdr15);

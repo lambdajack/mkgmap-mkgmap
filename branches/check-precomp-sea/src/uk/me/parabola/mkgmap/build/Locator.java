@@ -187,8 +187,6 @@ public class Locator {
 		{	
 			String[] cityList = p.getIsIn().split(",");
 			
-			//System.out.println(p.getIsIn());
-
 			// is_in content is not well defined so we try our best to get some info out of it
 			// Format 1 popular in Germany: "County,State,Country,Continent"
 

@@ -51,7 +51,7 @@ public class MapMaker implements MapProcessor {
 
 	public String makeMap(CommandArgs args, String filename) {
 		if (new File(filename).isDirectory()) {
-			System.err.println("Need a single file, not a directory: " + filename);
+			Logger.defaultLogger.error("Need a single file, not a directory: " + filename);
 			return filename;
 		}
 		try {
@@ -69,11 +69,10 @@ public class MapMaker implements MapProcessor {
 			}
 			return makeMap(args, src, "");
 		} catch (FormatException e) {
-			System.err.println("Bad file format: " + filename);
-			System.err.println(e.getMessage());
+			Logger.defaultLogger.error("Bad file format: " + filename);
 			return filename;
 		} catch (FileNotFoundException e) {
-			System.err.println("Could not open file: " + filename);
+			Logger.defaultLogger.error("Could not open file: " + filename);
 			return filename;
 		}
 	}
@@ -94,7 +93,7 @@ public class MapMaker implements MapProcessor {
 	 *
 	 * @param args User supplied arguments.
 	 * @param src The data source to load.
-	 * @param mapNameExt 
+	 * @param mapNamePrefix prefix for output file (e.g. ovm_ for overview map component files)
 	 * @return The output filename for the map.
 	 */
 	private String makeMap(CommandArgs args, LoadableMapDataSource src, String mapNamePrefix) {
@@ -107,10 +106,10 @@ public class MapMaker implements MapProcessor {
 		params.setMapDescription(args.getDescription());
 		log.info("Started making", args.getMapname(), "(" + args.getDescription() + ")");
 		try {
-			Map map = Map.createMap(mapNamePrefix + args.getMapname(), args.getOutputDir(), params, args.getMapname(), sort);
+			Map map = Map.createMap(mapNamePrefix + args.getMapname(), args.getOutputDir(), params, args.getMapname(), sort, false);
 			setOptions(map, args);
 
-			MapBuilder builder = new MapBuilder();
+			MapBuilder builder = new MapBuilder(OverviewBuilder.OVERVIEW_PREFIX.equals(mapNamePrefix), false);
 			builder.config(args.getProperties());
 			builder.makeMap(map, src);
 
@@ -120,9 +119,15 @@ public class MapMaker implements MapProcessor {
 			map.close();
 			return outName;
 		} catch (FileExistsException e) {
+			Logger.defaultLogger.error(e.getMessage());
 			throw new MapFailedException("File exists already", e);
 		} catch (FileNotWritableException e) {
+			Logger.defaultLogger.error(e.getMessage());
 			throw new MapFailedException("Could not create or write to file", e);
+		}
+		catch (MapFailedException e) {
+			Logger.defaultLogger.error(e.getMessage()); // make sure the filename is logged
+			throw e;
 		}
 	}
 
