@@ -262,7 +262,7 @@ public class MultiPolygonCutter {
 				}
 			}
 
-			if (nextInnerAreas == null || nextInnerAreas.isEmpty()) {
+			if (nextInnerAreas == null) {
 				finishedAreas.add(nextOuterArea);
 			} else {
 				AreaCutData outCutData = new AreaCutData();
@@ -296,9 +296,8 @@ public class MultiPolygonCutter {
 		
 		ArrayList<Area> innerStart = new ArrayList<>(areaData.innerAreas);
 		
-		ArrayList<CutPoint> bestCutPoints = new ArrayList<>(CoordinateAxis.values().length);
+		CutPoint bestCutPoint = null;
 		for (CoordinateAxis axis : CoordinateAxis.values()) {
-			CutPoint bestCutPoint = new CutPoint(axis, outerBounds);
 			CutPoint currentCutPoint = new CutPoint(axis, outerBounds);
 
 			innerStart.sort(axis == CoordinateAxis.LONGITUDE ? COMP_LONG_START: COMP_LAT_START);
@@ -306,14 +305,13 @@ public class MultiPolygonCutter {
 			for (Area anInnerStart : innerStart) {
 				currentCutPoint.addArea(anInnerStart);
 
-				if (currentCutPoint.compareTo(bestCutPoint) > 0) {
+				if (bestCutPoint == null || currentCutPoint.compareTo(bestCutPoint) > 0) {
 					bestCutPoint = currentCutPoint.duplicate();
 				}
 			}
-			bestCutPoints.add(bestCutPoint);
 		}
 
-		return Collections.max(bestCutPoints);
+		return bestCutPoint;
 		
 	}
 
@@ -563,7 +561,6 @@ public class MultiPolygonCutter {
 			}
 			return minAspectRatio;
 		}
-		
 		
 		public int compareTo(CutPoint o) {
 			if (this == o) {
