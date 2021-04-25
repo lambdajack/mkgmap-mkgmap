@@ -275,7 +275,12 @@ public class SeaGenerator implements OsmReadingHooks {
 //				createIndexRef(precompData); // enable to create a new reference file in the current directory
 				if (!checkedPrecomp.containsKey(precompSea)) {
 					checkedPrecomp.put(precompSea, Boolean.TRUE);
-					checkIndex(precompData, failOnIndexCheck);
+					try {
+						checkIndex(precompData, failOnIndexCheck);
+					} catch (IOException e) {
+						Logger.defaultLogger.error("Internal error: Cannot check index file " + indexFileName + " in "
+								+ precompSea + ". Resource sea-check.txt is probably wrong.");
+					}
 				}
 				
 				precompData.dirFile = precompSeaDir;
