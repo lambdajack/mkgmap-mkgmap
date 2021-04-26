@@ -38,12 +38,14 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.util.IsInUtil;
 import uk.me.parabola.util.Java2DConverter;
 import uk.me.parabola.util.MultiIdentityHashMap;
+import uk.me.parabola.util.ShapeSplitter;
 
 /**
  * Representation of an OSM Multipolygon Relation.<br/>
@@ -78,7 +80,7 @@ public class MultiPolygonRelation extends Relation {
 	
 	private Map<Long, Way> mpPolygons = new LinkedHashMap<>();
 
-	private List<JoinedWay> polygons;
+	protected List<JoinedWay> polygons;
 	
 	// Various BitSets which relate to the content of field polygons  
 	private List<BitSet> containsMatrix;
@@ -94,7 +96,7 @@ public class MultiPolygonRelation extends Relation {
 	
 	private double largestSize;
 	private JoinedWay largestOuterPolygon;
-	
+	private Long2ObjectOpenHashMap<Coord> commonCoordMap = new Long2ObjectOpenHashMap<>();
 	protected Set<Way> outerWaysForLineTagging;
 
 	private final uk.me.parabola.imgfmt.app.Area tileBounds;
@@ -631,7 +633,7 @@ public class MultiPolygonRelation extends Relation {
 		return outmostPolygons;
 	}
 
-	protected ArrayList<PolygonStatus> getPolygonStatus(BitSet outmostPolygons, String defaultRole) {
+	protected static ArrayList<PolygonStatus> getPolygonStatus(List<JoinedWay> polygons, BitSet outmostPolygons, String defaultRole) {
 		ArrayList<PolygonStatus> polygonStatusList = new ArrayList<>();
 		outmostPolygons.stream().forEach(polyIndex -> {
 			// polyIndex is the polygon that is not contained by any other
@@ -662,6 +664,7 @@ public class MultiPolygonRelation extends Relation {
 	 */
 	public final void processElements() {
 		log.info("Processing multipolygon", toBrowseURL());
+//		long t1 = System.currentTimeMillis();
 		
 		// check if it makes sense to process the mp 
 		if (!isUsable()) { 
@@ -698,7 +701,7 @@ public class MultiPolygonRelation extends Relation {
 			cleanup();
 			return;
 		}
-
+		
 		analyseRelationRoles();
 		
 		if (outerPolygons.isEmpty()) {
@@ -707,6 +710,58 @@ public class MultiPolygonRelation extends Relation {
 			cleanup();
 			return;
 		}
+
+		
+		List<List<JoinedWay>> partitions = new ArrayList<>();
+//		polygons.sort((o1,o2) -> Integer.compare(o2.getPoints().size(), o1.getPoints().size()));
+//		if (true) // TODO: maybe not always?
+			divideLargest(polygons, partitions, 0);
+//		else 
+//			partitions.add(polygons);
+//		log.diagnostic("have " + partitions.size() + " partitions");
+		for (int i = 0; i < partitions.size(); i++) {
+			processPartition(partitions.get(i));
+		}
+		tagOuterWays();
+		
+		postProcessing();
+		cleanup();
+//		long dt = System.currentTimeMillis() - t1;
+//		log.diagnostic("processing MP relation " + this + " took " + dt + " ms");
+		
+	}
+
+
+	/**
+	 * Calculate the bounds of given collection of joined ways
+	 * @param polygons list of polygons
+	 * @return the bounds
+	 */
+	private static uk.me.parabola.imgfmt.app.Area calcBounds(Collection<JoinedWay> polygons) {
+		int minLat = Integer.MAX_VALUE;
+		int minLon = Integer.MAX_VALUE;
+		int maxLat = Integer.MIN_VALUE;
+		int maxLon = Integer.MIN_VALUE;
+		for (JoinedWay jw : polygons) {
+			if (jw.minLat < minLat)
+				minLat = jw.minLat;
+			if (jw.minLon < minLon)
+				minLon = jw.minLon;
+			if (jw.maxLat > maxLat)
+				maxLat = jw.maxLat;
+			if (jw.maxLon > maxLon)
+				maxLon = jw.maxLon;
+		}
+		return new uk.me.parabola.imgfmt.app.Area(minLat, minLon, maxLat, maxLon);
+	}
+
+
+	void processPartition(List<JoinedWay> partition) {
+		polygons = partition;
+		
+		analyseRelationRoles();
+		
+		assert !outerPolygons.isEmpty(): "no outer way in partition"; 
 
 		// check which polygons lie inside which other polygon 
 		createContainsMatrix();
@@ -742,15 +797,11 @@ public class MultiPolygonRelation extends Relation {
 		} while (outmostInnerFound);
 
 		
-		polygonWorkingQueue.addAll(getPolygonStatus(outmostPolygons, ROLE_OUTER));
+		polygonWorkingQueue.addAll(getPolygonStatus(polygons, outmostPolygons, ROLE_OUTER));
 		processQueue(polygonWorkingQueue, nestedOuterPolygons, nestedInnerPolygons);
 
 		doReporting(outmostInnerPolygons, unfinishedPolygons, nestedOuterPolygons, nestedInnerPolygons);
-		
-		tagOuterWays();
-		
-		postProcessing();
-		cleanup();
+
 	}
 
 	protected boolean isUsable() {
@@ -895,7 +946,7 @@ public class MultiPolygonRelation extends Relation {
 
 			BitSet holeIndexes = checkRoleAgainstGeometry(currentPolygon, unfinishedPolygons, nestedOuterPolygons, nestedInnerPolygons);
  
-			ArrayList<PolygonStatus> holes = getPolygonStatus(holeIndexes,
+			ArrayList<PolygonStatus> holes = getPolygonStatus(polygons, holeIndexes,
 					(currentPolygon.outer ? ROLE_INNER : ROLE_OUTER));
 
 			// these polygons must all be checked for holes
@@ -936,7 +987,7 @@ public class MultiPolygonRelation extends Relation {
 						innerWays.add(polygonHoleStatus.polygon);
 					}
 
-					MultiPolygonCutter cutter = new MultiPolygonCutter(this, tileArea);
+					MultiPolygonCutter cutter = new MultiPolygonCutter(this, tileArea, commonCoordMap);
 					singularOuterPolygons = cutter.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
 				}
 				
@@ -1196,6 +1247,7 @@ public class MultiPolygonRelation extends Relation {
 		taggedOuterPolygons = null;
 		
 		largestOuterPolygon = null;
+		commonCoordMap = null;
 	}
 
 	/**
@@ -1296,22 +1348,26 @@ public class MultiPolygonRelation extends Relation {
 	/**
 	 * Checks if polygon1 contains polygon2 without intersection. 
 	 * 
-	 * @param polygon1
+	 * @param expectedOuter
 	 *            a closed way
-	 * @param polygon2
+	 * @param expectedInner
 	 *            a 2nd closed way
 	 * @return true if polygon1 contains polygon2 without intersection.
 	 */
-	private boolean calcContains(JoinedWay polygon1, JoinedWay polygon2) {
-		if (!polygon1.hasIdenticalEndPoints()) {
+	private boolean calcContains(JoinedWay expectedOuter, JoinedWay expectedInner) {
+		if (!expectedOuter.hasIdenticalEndPoints()) {
 			return false;
 		}
 		// check if the bounds of polygon2 are completely inside/enclosed the bounds
 		// of polygon1
-		if (!polygon1.getBounds().contains(polygon2.getBounds())) {
+		if (!expectedOuter.getBounds().contains(expectedInner.getBounds())) {
 			return false;
 		}
-		int	x = IsInUtil.isLineInShape(polygon2.getPoints(), polygon1.getPoints(), polygon2.getArea());
+		//TODO remove hack
+//		if (getId() == 9488835 && expectedOuter.getPoints().size() > 400_000
+//				&& !expectedInner.getOriginalWays().stream().anyMatch(w -> w.getId() == 197301581L))
+//			return true;
+		int	x = IsInUtil.isLineInShape(expectedInner.getPoints(), expectedOuter.getPoints(), expectedInner.getArea());
 		return (x & IsInUtil.OUT) == 0;
 	}
 
@@ -1568,6 +1624,21 @@ public class MultiPolygonRelation extends Relation {
 			updateBounds(originalWay.getPoints());
 		}
 
+		public JoinedWay(JoinedWay other, List<Coord> points) {
+			super(other.getOriginalId(), points);
+			markAsGeneratedFrom(other);
+			originalWays = new ArrayList<>(other.getOriginalWays());
+			intRole = other.intRole;
+			closedArtificially = other.closedArtificially;
+			// we have to initialize the min/max values
+			Coord c0 = points.get(0);
+			minLat = maxLat = c0.getLatitude();
+			minLon = maxLon = c0.getLongitude();
+
+			updateBounds(points);
+			
+		}
+
 		private byte roleToInt(String role) {
 			if (role == null)
 				return INT_ROLE_NULL;
@@ -1816,5 +1887,65 @@ public class MultiPolygonRelation extends Relation {
 			return polygon + "_" + outer;
 		}
 	}
+	
+	private void divideLargest(List<JoinedWay> partition, List<List<JoinedWay>> partitions, int depth) {
+		if (partition.isEmpty())
+			return;
+		//TODO: find out in what case dividing will produce false results in calcContains
+		// probably complex polygons with crossing /self intersecting ways will be problematic 
+		if (depth >= 10 || partition.size() < 2) {
+			partitions.add(partition);
+			return;
+		}
+		JoinedWay mostComplex = null;
+		for (JoinedWay jw : partition) {
+			if (mostComplex == null || mostComplex.getPoints().size() < jw.getPoints().size())
+				mostComplex = jw;
+		}
+		if (mostComplex.getPoints().size() > 2000) {
+			uk.me.parabola.imgfmt.app.Area fullArea = calcBounds(partition);
+			uk.me.parabola.imgfmt.app.Area[] areas;
+			final int niceSplitShift = 11; 
+			if (fullArea.getHeight() > fullArea.getWidth())
+				areas = fullArea.split(1, 2, niceSplitShift);
+			else 
+				areas = fullArea.split(2, 1, niceSplitShift);
+			// code to calculate dividingLine taken from MapSplitter
+			if (areas != null && areas.length == 2) {
+				int dividingLine = 0;
+				boolean isLongitude = false;
+				boolean commonLine = true;
+				if (areas[0].getMaxLat() == areas[1].getMinLat()) {
+					dividingLine = areas[0].getMaxLat();
+				} else if (areas[0].getMaxLong() == areas[1].getMinLong()) {
+					dividingLine = areas[0].getMaxLong();
+					isLongitude = true;
+				} else {
+					commonLine = false;
+					log.error("Split into 2 expects shared edge between the areas");
+				}
+				if (commonLine) {
+					List<JoinedWay> dividedLess = new ArrayList<>();
+					List<JoinedWay> dividedMore = new ArrayList<>();
+					for (int i = 0; i < partition.size(); i++) {
+						JoinedWay jw = partition.get(i);
+						
+						List<List<Coord>> lessList = new ArrayList<>();
+						List<List<Coord>> moreList = new ArrayList<>();
+						ShapeSplitter.splitShape(jw.getPoints(), dividingLine << Coord.DELTA_SHIFT, isLongitude,
+								lessList, moreList, commonCoordMap);
+						
+						lessList.forEach(part -> dividedLess.add(new JoinedWay(jw, part)));
+						moreList.forEach(part -> dividedMore.add(new JoinedWay(jw, part)));
+					}
+					divideLargest(dividedLess, partitions, depth + 1);
+					divideLargest(dividedMore, partitions, depth + 1);
+					return;
+				}
+			}
+		} 
+		partitions.add(partition);
+	}
+
 
 }
