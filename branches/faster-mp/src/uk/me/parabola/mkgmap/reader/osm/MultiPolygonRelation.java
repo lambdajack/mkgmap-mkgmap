@@ -411,7 +411,7 @@ public class MultiPolygonRelation extends Relation {
 			}
 		}
 		// try to connect ways lying outside or on the bbox
-		if (unclosed.size() >= 2) {
+		if (!unclosed.isEmpty()) {
 			log.debug("Checking", unclosed.size(), "unclosed ways for connections outside the bbox");
 			Map<Coord, JoinedWay> openEnds = new IdentityHashMap<>();
 			

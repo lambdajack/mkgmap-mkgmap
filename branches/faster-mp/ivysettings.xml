@@ -1,5 +1,5 @@
 <ivysettings>
-	<property name="mkgmap.ivy.repo" value="http://ivy.mkgmap.org.uk/repo" />
+	<property name="mkgmap.ivy.repo" value="https://ivy.mkgmap.org.uk/repo" />
 	<settings defaultResolver="custom" />
 
 	<include url="${ivy.default.settings.dir}/ivysettings-public.xml"/>
@@ -23,8 +23,8 @@
 		<ibiblio name="geotools-resolver" m2compatible="true" root="https://repo.osgeo.org/repository/release/" />
 
 		<url name="spring-resolver" >
-			<ivy pattern="http://repository.springsource.com/ivy/bundles/external/[organisation]/[module]/[revision]/[artifact]-[revision].[ext]" />
-			<artifact pattern="http://repository.springsource.com/ivy/bundles/external/[organisation]/[module]/[revision]/[artifact]-[revision].[ext]" />
+			<ivy pattern="https://repository.springsource.com/ivy/bundles/external/[organisation]/[module]/[revision]/[artifact]-[revision].[ext]" />
+			<artifact pattern="https://repository.springsource.com/ivy/bundles/external/[organisation]/[module]/[revision]/[artifact]-[revision].[ext]" />
 		</url>
 
 	</resolvers>

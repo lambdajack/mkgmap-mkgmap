@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.app.srt.Sort;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.util.EnhancedProperties;
 
 public class CommandArgs {
@@ -91,23 +92,26 @@ public class CommandArgs {
 	}
 
 	public String getOutputDir() {
-		final String DEFAULT_DIR = ".";
-		String fileOutputDir = currentOptions.getProperty("output-dir", DEFAULT_DIR);
- 
+		String fileOutputDir = currentOptions.getProperty("output-dir");
+
+		if (fileOutputDir == null)
+			return ".";
+
 		// Test if directory exists
 		File outputDir = new File(fileOutputDir);
 		if (!outputDir.exists()) {
-			System.out.println("Output directory not found. Creating directory '" + fileOutputDir + "'");
-			outputDir.mkdirs();
-			if (!outputDir.exists()) {
-				System.err.println("Unable to create output directory! Using default directory instead");
-				fileOutputDir = DEFAULT_DIR;
+			Logger.defaultLogger.info("Output directory not found. Creating directory '" + fileOutputDir + "'");
+			try {
+				if (!outputDir.mkdirs()) {
+					throw new ExitException("Unable to create output directory " + fileOutputDir);
+				}
+			} catch (SecurityException e) {
+				throw new ExitException("Error creating output directory " + fileOutputDir, e);
 			}
 		} else if (!outputDir.isDirectory()) {
-			System.err.println("The --output-dir parameter must specify a directory. The parameter is being ignored, writing to default directory instead.");
-			fileOutputDir = DEFAULT_DIR;
+			throw new ExitException("The --output-dir parameter must specify a directory.");
 		}
-		
+
 		return fileOutputDir;
 	}
 
