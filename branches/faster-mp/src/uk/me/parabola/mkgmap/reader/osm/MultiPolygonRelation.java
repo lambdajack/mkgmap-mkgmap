@@ -430,7 +430,10 @@ public class MultiPolygonRelation extends Relation {
 					cd.c1 = coords.get(i);
 					cd.c2 = coords.get(j);
 					cd.w1 = openEnds.get(cd.c1);					
-					cd.w2 = openEnds.get(cd.c2);					
+					cd.w2 = openEnds.get(cd.c2);
+					
+					if (!onlyOutside && cd.w1 == cd.w2) 
+						continue; // was already tested in tryCloseSingleWays() 
 					
 					if (onlyOutside && lineCutsBbox(cd.c1, cd.c2)) {
 						// Check if the way can be closed with one additional point
