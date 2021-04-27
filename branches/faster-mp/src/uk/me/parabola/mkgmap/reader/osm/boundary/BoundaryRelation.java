@@ -13,7 +13,7 @@
 package uk.me.parabola.mkgmap.reader.osm.boundary;
 
 import java.util.ArrayList;
-import java.util.BitSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
@@ -67,11 +67,9 @@ public class BoundaryRelation extends MultiPolygonRelation {
 	}
 	
 	@Override
-	protected void processQueue(Queue<PolygonStatus> polygonWorkingQueue, BitSet nestedOuterPolygons,
-			BitSet nestedInnerPolygons) {
-		if (outerResultArea == null) {
+	protected void processQueue(Partition partition, Queue<PolygonStatus> polygonWorkingQueue) {
+		if (outerResultArea == null)
 			outerResultArea = new java.awt.geom.Area();
-		}
 		
 		while (!polygonWorkingQueue.isEmpty()) {
 	
@@ -80,12 +78,9 @@ public class BoundaryRelation extends MultiPolygonRelation {
 	
 			// this polygon is now processed and should not be used by any
 			// further step
-			unfinishedPolygons.clear(currentPolygon.index);
+			partition.markFinished(currentPolygon);
 	
-			BitSet holeIndexes = checkRoleAgainstGeometry(currentPolygon, unfinishedPolygons, nestedOuterPolygons, nestedInnerPolygons);
-	
-			ArrayList<PolygonStatus> holes = getPolygonStatus(polygons, holeIndexes,
-					(currentPolygon.outer ? ROLE_INNER : ROLE_OUTER));
+			List<PolygonStatus> holes = partition.getPolygonStatus(currentPolygon);
 
 			// these polygons must all be checked for holes
 			polygonWorkingQueue.addAll(holes);
@@ -107,9 +102,8 @@ public class BoundaryRelation extends MultiPolygonRelation {
 	}
 
 	@Override
-	protected void doReporting(BitSet outmostInnerPolygons, BitSet unfinishedPolygons, BitSet nestedOuterPolygons,
-			BitSet nestedInnerPolygons) {
-		// do nothing for BoundaryRelation
+	protected boolean doReporting() {
+		return false;
 	}
 
 	@Override
