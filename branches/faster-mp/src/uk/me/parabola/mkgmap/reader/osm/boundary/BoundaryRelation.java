@@ -69,7 +69,9 @@ public class BoundaryRelation extends MultiPolygonRelation {
 	@Override
 	protected void processQueue(Queue<PolygonStatus> polygonWorkingQueue, BitSet nestedOuterPolygons,
 			BitSet nestedInnerPolygons) {
-		outerResultArea = new java.awt.geom.Area();
+		if (outerResultArea == null) {
+			outerResultArea = new java.awt.geom.Area();
+		}
 		
 		while (!polygonWorkingQueue.isEmpty()) {
 	
