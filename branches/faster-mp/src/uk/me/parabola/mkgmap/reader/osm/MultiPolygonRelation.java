@@ -251,7 +251,6 @@ public class MultiPolygonRelation extends Relation {
 						 "in multipolygon", toBrowseURL(), toTagString());
 			}
 		}
-		
 	}
 
 	/**
@@ -591,74 +590,6 @@ public class MultiPolygonRelation extends Relation {
 	}
 
 	/**
-	 * Find all polygons that are not contained by any other polygon.
-	 * 
-	 * @param candidates
-	 *            all polygons that should be checked
-	 * @param roleFilter
-	 *            an additional filter
-	 * @return all polygon indexes that are not contained by any other polygon
-	 */
-	private BitSet findOutmostPolygons(BitSet candidates, BitSet roleFilter) {
-		BitSet realCandidates = ((BitSet) candidates.clone());
-		realCandidates.and(roleFilter);
-		return findOutmostPolygons(realCandidates);
-	}
-
-	/**
-	 * Finds all polygons that are not contained by any other polygons and that
-	 * match the given role. All polygons with index given by
-	 * <var>candidates</var> are tested.
-	 * 
-	 * @param candidates indexes of the polygons that should be used
-	 * @return set of indexes of all outermost polygons 
-	 */
-	private BitSet findOutmostPolygons(BitSet candidates) {
-		BitSet outmostPolygons = new BitSet();
-
-		// go through all candidates and check if they are contained by any
-		// other candidate
-		candidates.stream().forEach(candidateIndex -> {
-			// check if the candidateIndex polygon is not contained by any
-			// other candidate polygon
-			boolean isOutmost = candidates.stream()
-					.noneMatch(otherCandidateIndex -> contains(otherCandidateIndex, candidateIndex));
-			if (isOutmost) {
-				// this is an outermost polygon
-				// put it to the bitset
-				outmostPolygons.set(candidateIndex);
-			}
-		});
-
-		return outmostPolygons;
-	}
-
-	protected static ArrayList<PolygonStatus> getPolygonStatus(List<JoinedWay> polygons, BitSet outmostPolygons, String defaultRole) {
-		ArrayList<PolygonStatus> polygonStatusList = new ArrayList<>();
-		outmostPolygons.stream().forEach(polyIndex -> {
-			// polyIndex is the polygon that is not contained by any other
-			// polygon
-			JoinedWay polygon = polygons.get(polyIndex);
-			String role = getRole(polygon);
-			// if the role is not explicitly set use the default role
-			if (role == null || "".equals(role)) {
-				role = defaultRole;
-			} 
-			polygonStatusList.add(new PolygonStatus(ROLE_OUTER.equals(role), polyIndex, polygon));
-		});
-		// sort by role and then by number of points, this improves performance
-		// in the routines which add the polygons to areas
-		if (polygonStatusList.size() > 2) {
-			polygonStatusList.sort((o1, o2) -> {
-				if (o1.outer != o2.outer)
-					return (o1.outer) ? -1 : 1;
-				return o1.polygon.getPoints().size() - o2.polygon.getPoints().size();
-			});
-		}
-		return polygonStatusList;
-	}
-
-	/**
 	 * Process the ways in this relation. Tries to join the ways to closed rings and
 	 * detect inner/outer status and calls methods to process them.
 	 */
@@ -832,42 +763,6 @@ public class MultiPolygonRelation extends Relation {
 		return true; 
 	}
 
-	protected void doReporting(BitSet outmostInnerPolygons, BitSet unfinishedPolygons, BitSet nestedOuterPolygons,
-			BitSet nestedInnerPolygons) {
-		if (log.isLoggable(Level.WARNING) && (outmostInnerPolygons.cardinality() + unfinishedPolygons.cardinality()
-				+ nestedOuterPolygons.cardinality() + nestedInnerPolygons.cardinality() >= 1)) {
-			log.warn("Multipolygon", toBrowseURL(), toTagString(), "contains errors.");
-
-			BitSet outerUnusedPolys = new BitSet();
-			outerUnusedPolys.or(unfinishedPolygons);
-			outerUnusedPolys.or(outmostInnerPolygons);
-			outerUnusedPolys.or(nestedOuterPolygons);
-			outerUnusedPolys.or(nestedInnerPolygons);
-			outerUnusedPolys.or(unfinishedPolygons);
-			// use only the outer polygons
-			outerUnusedPolys.and(outerPolygons);
-			for (JoinedWay w : getWaysFromPolygonList(outerUnusedPolys)) {
-				outerWaysForLineTagging.addAll(w.getOriginalWays());
-			}
-
-			runOutmostInnerPolygonCheck(outmostInnerPolygons);
-			runNestedOuterPolygonCheck(nestedOuterPolygons);
-			runNestedInnerPolygonCheck(nestedInnerPolygons);
-			runWrongInnerPolygonCheck(unfinishedPolygons, innerPolygons);
-
-			// we have at least one polygon that could not be processed
-			// Probably we have intersecting or overlapping polygons
-			// one possible reason is if the relation overlaps the tile
-			// bounds
-			// => issue a warning
-			List<JoinedWay> lostWays = getWaysFromPolygonList(unfinishedPolygons);
-			for (JoinedWay w : lostWays) {
-				log.warn("Polygon", w, "is not processed due to an unknown reason.");
-				logWayURLs(Level.WARNING, "-", w);
-			}
-		}
-	}
-
 	private void tagOuterWays() {
 		if (outerWaysForLineTagging.isEmpty())
 			return;
@@ -910,7 +805,6 @@ public class MultiPolygonRelation extends Relation {
 			}
 		}
 	}
-
 
 	/**
 	 * Filter unclosed ways which have one or both end points outside of the tile bounds.
@@ -1041,94 +935,6 @@ public class MultiPolygonRelation extends Relation {
 		}
 	}
 
-
-	/**
-	 * Check the roles of polygons against the actual findings in containsMatrix. Not sure what this does so far.
-	 * @param currentPolygon the current polygon
-	 * @param unfinishedPolygons might be modified 
-	 * @param nestedOuterPolygons might be modified
-	 * @param nestedInnerPolygons might be modified
-	 * @return set of polygon indexes which are considered as holes of the current polygon  
-	 */
-	protected BitSet checkRoleAgainstGeometry(PolygonStatus currentPolygon, BitSet unfinishedPolygons,
-			BitSet nestedOuterPolygons, BitSet nestedInnerPolygons) {
-		BitSet polygonContains = new BitSet();
-		polygonContains.or(containsMatrix.get(currentPolygon.index));
-		// use only polygon that are contained by the polygon
-		polygonContains.and(unfinishedPolygons);
-		// polygonContains is the intersection of the unfinished and
-		// the contained polygons
-
-		// get the holes
-		// these are all polygons that are in the current polygon
-		// and that are not contained by any other polygon
-		boolean holesOk;
-		BitSet holeIndexes;
-		do {
-			holeIndexes = findOutmostPolygons(polygonContains);
-			holesOk = true;
-
-			if (currentPolygon.outer) {
-				// for role=outer only role=inner is allowed
-				if (holeIndexes.intersects(taggedOuterPolygons)) {
-					BitSet addOuterNestedPolygons = new BitSet();
-					addOuterNestedPolygons.or(holeIndexes);
-					addOuterNestedPolygons.and(taggedOuterPolygons);
-					nestedOuterPolygons.or(addOuterNestedPolygons);
-					holeIndexes.andNot(addOuterNestedPolygons);
-					// do not process them
-					unfinishedPolygons.andNot(addOuterNestedPolygons);
-					polygonContains.andNot(addOuterNestedPolygons);
-					
-					// recalculate the holes again to get all inner polygons 
-					// in the nested outer polygons
-					holesOk = false;
-				}
-			} else {
-				// for role=inner both role=inner and role=outer is supported
-				// although inner in inner is not officially allowed
-				if (holeIndexes.intersects(taggedInnerPolygons)) {
-					// process inner in inner but issue a warning later
-					BitSet addInnerNestedPolygons = new BitSet();
-					addInnerNestedPolygons.or(holeIndexes);
-					addInnerNestedPolygons.and(taggedInnerPolygons);
-					nestedInnerPolygons.or(addInnerNestedPolygons);
-				}
-			}
-		} while (!holesOk);
-		return holeIndexes;
-	}
- 
-	/**
-	 * Analyse roles in ways and fill corresponding sets.
-	 */
-	private void analyseRelationRoles() {
-		// create bitsets which polygons belong to the outer and to the inner role
-		innerPolygons = new BitSet();
-		taggedInnerPolygons = new BitSet();
-		outerPolygons = new BitSet();
-		taggedOuterPolygons = new BitSet();
-		
-		int wi = 0;
-		for (JoinedWay jw : polygons) {
-			jw.setFullArea(jw.getFullArea()); // trigger setting area before start cutting...
-			// do like this to disguise function with side effects
-			
-			if (jw.intRole == INT_ROLE_INNER) {
-				innerPolygons.set(wi);
-				taggedInnerPolygons.set(wi);
-			} else if (jw.intRole == INT_ROLE_OUTER) {
-				outerPolygons.set(wi);
-				taggedOuterPolygons.set(wi);
-			} else {
-				// unknown role => it could be both
-				innerPolygons.set(wi);
-				outerPolygons.set(wi);
-			}
-			wi++;
-		}
-	}
-
 	protected double getMaxCloseDist() {
 		return -1; // overwritten in BoundaryRelation
 	}
@@ -1163,76 +969,6 @@ public class MultiPolygonRelation extends Relation {
 			cOfG = null; 
 	}
 	
-	private void runNestedOuterPolygonCheck(BitSet nestedOuterPolygons) {
-		// just print out warnings
-		// the check has been done before
-		nestedOuterPolygons.stream().forEach(idx ->  {
-			JoinedWay outerWay = polygons.get(idx);
-			log.warn("Polygon",	outerWay, "carries role outer but lies inside an outer polygon. Potentially its role should be inner.");
-			logFakeWayDetails(Level.WARNING, outerWay);
-		});
-	}
-	
-	private void runNestedInnerPolygonCheck(BitSet nestedInnerPolygons) {
-		// just print out warnings
-		// the check has been done before
-		nestedInnerPolygons.stream().forEach(idx -> {
-			JoinedWay innerWay = polygons.get(idx);
-			log.warn("Polygon",	innerWay, "carries role", getRole(innerWay), "but lies inside an inner polygon. Potentially its role should be outer.");
-			logFakeWayDetails(Level.WARNING, innerWay);
-		});
-	}	
-	
-	private void runOutmostInnerPolygonCheck(BitSet outmostInnerPolygons) {
-		// just print out warnings
-		// the check has been done before
-		outmostInnerPolygons.stream().forEach(idx -> {
-			JoinedWay innerWay = polygons.get(idx);
-			log.warn("Polygon",	innerWay, "carries role", getRole(innerWay), "but is not inside any other polygon. Potentially it does not belong to this multipolygon.");
-			logFakeWayDetails(Level.WARNING, innerWay);
-		});
-	}
-
-	private void runWrongInnerPolygonCheck(BitSet unfinishedPolygons, BitSet innerPolygons) {
-		// find all unfinished inner polygons that are not contained by any
-		BitSet wrongInnerPolygons = findOutmostPolygons(unfinishedPolygons, innerPolygons);
-		if (log.isDebugEnabled()) {
-			log.debug("unfinished", unfinishedPolygons);
-			log.debug(ROLE_INNER, innerPolygons);
-			// other polygon
-			log.debug("wrong", wrongInnerPolygons);
-		}
-		if (!wrongInnerPolygons.isEmpty()) {
-			// we have an inner polygon that is not contained by any outer polygon
-			// check if
-			wrongInnerPolygons.stream().forEach(wiIndex -> {
-				BitSet containedPolygons = new BitSet();
-				containedPolygons.or(unfinishedPolygons);
-				containedPolygons.and(containsMatrix.get(wiIndex));
-
-				JoinedWay innerWay = polygons.get(wiIndex);
-				if (containedPolygons.isEmpty()) {
-					log.warn("Polygon",	innerWay, "carries role", getRole(innerWay),
-						"but is not inside any outer polygon. Potentially it does not belong to this multipolygon.");
-					logFakeWayDetails(Level.WARNING, innerWay);
-				} else {
-					log.warn("Polygon",	innerWay, "carries role", getRole(innerWay),
-						"but is not inside any outer polygon. Potentially the roles are interchanged with the following",
-						(containedPolygons.cardinality() > 1 ? "ways" : "way"), ".");
-					containedPolygons.stream().forEach(wrIndex -> {
-						logWayURLs(Level.WARNING, "-", polygons.get(wrIndex));
-						unfinishedPolygons.set(wrIndex);
-						wrongInnerPolygons.set(wrIndex);
-					});
-					logFakeWayDetails(Level.WARNING, innerWay);
-				}
-
-				unfinishedPolygons.clear(wiIndex);
-				wrongInnerPolygons.clear(wiIndex);
-			});
-		}
-	}
-
 	protected void cleanup() {
 		mpPolygons = null;
 		containsMatrix = null;
@@ -1248,101 +984,6 @@ public class MultiPolygonRelation extends Relation {
 		
 		largestOuterPolygon = null;
 		commonCoordMap = null;
-	}
-
-	/**
-	 * Creates a matrix which polygon contains which polygon. A polygon does not
-	 * contain itself.
-	 */
-	private void createContainsMatrix() {
-		containsMatrix = new ArrayList<>();
-		for (int i = 0; i < polygons.size(); i++) {
-			containsMatrix.add(new BitSet());
-		}
-
-		long t1 = System.currentTimeMillis();
-
-		if (log.isDebugEnabled())
-			log.debug("createContainsMatrix listSize:", polygons.size());
-
-		// use this matrix to check which matrix element has been
-		// calculated
-		ArrayList<BitSet> finishedMatrix = new ArrayList<>(polygons.size());
-
-		for (int i = 0; i < polygons.size(); i++) {
-			BitSet matrixRow = new BitSet();
-			// a polygon does not contain itself
-			matrixRow.set(i);
-			finishedMatrix.add(matrixRow);
-		}
-		
-		for (int rowIndex = 0; rowIndex < polygons.size(); rowIndex++) {
-			JoinedWay potentialOuterPolygon = polygons.get(rowIndex);
-			BitSet containsColumns = containsMatrix.get(rowIndex);
-			BitSet finishedCol = finishedMatrix.get(rowIndex);
-
-			// get all non calculated columns of the matrix
-			for (int colIndex = finishedCol.nextClearBit(0); colIndex >= 0
-					&& colIndex < polygons.size(); colIndex = finishedCol
-					.nextClearBit(colIndex + 1)) {
-
-				JoinedWay innerPolygon = polygons.get(colIndex);
-
-				if (potentialOuterPolygon.getBounds().intersects(innerPolygon.getBounds())) {
-					boolean contains = calcContains(potentialOuterPolygon, innerPolygon);
-					if (contains) {
-						containsColumns.set(colIndex);
-
-						// we also know that the inner polygon does not contain the
-						// outer polygon
-						// so we can set the finished bit for this matrix
-						// element
-						finishedMatrix.get(colIndex).set(rowIndex);
-
-						// additionally we know that the outer polygon contains all
-						// polygons that are contained by the inner polygon
-						containsColumns.or(containsMatrix.get(colIndex));
-						finishedCol.or(containsColumns);
-					}
-				} else {
-					// both polygons do not intersect
-					// we can flag both matrix elements as finished
-					finishedMatrix.get(colIndex).set(rowIndex);
-					finishedMatrix.get(rowIndex).set(colIndex);
-				}
-				// this matrix element is calculated now
-				finishedCol.set(colIndex);
-			}
-		}
-
-		if (log.isDebugEnabled()) {
-			long t2 = System.currentTimeMillis();
-			log.debug("createMatrix for", polygons.size(), "polygons took", (t2 - t1), "ms");
-
-			log.debug("Containsmatrix:");
-			int i = 0;
-			boolean noContained = true;
-			for (BitSet b : containsMatrix) {
-				if (!b.isEmpty()) {
-					log.debug(i, "contains", b);
-					noContained = false;
-				}
-				i++;
-			}
-			if (noContained) {
-				log.debug("Matrix is empty");
-			}
-		}
-	}
-
-	
-	/**
-	 * Checks if the polygon with polygonIndex1 contains the polygon with polygonIndex2.
-	 * 
-	 * @return true if polygon(polygonIndex1) contains polygon(polygonIndex2)
-	 */
-	private boolean contains(int polygonIndex1, int polygonIndex2) {
-		return containsMatrix.get(polygonIndex1).get(polygonIndex2);
 	}
 
 	/**
@@ -1418,10 +1059,6 @@ public class MultiPolygonRelation extends Relation {
 		double isy = (double) ((width1 * y1My3) - (height1 * x1Mx3)) / denominator;
 
 		return (isy > 0 &&  isy < 1);
-	}
-
-	private List<JoinedWay> getWaysFromPolygonList(BitSet selection) {
-		return selection.stream().mapToObj(polygons::get).collect(Collectors.toList());
 	}
 
 	private static void logWayURLs(Level level, String preMsg, Way way) {
@@ -1888,6 +1525,365 @@ public class MultiPolygonRelation extends Relation {
 		}
 	}
 	
+	/**
+	 * Creates a matrix which polygon contains which polygon. A polygon does not
+	 * contain itself.
+	 */
+	private void createContainsMatrix() {
+		containsMatrix = new ArrayList<>();
+		for (int i = 0; i < polygons.size(); i++) {
+			containsMatrix.add(new BitSet());
+		}
+
+		long t1 = System.currentTimeMillis();
+
+		if (log.isDebugEnabled())
+			log.debug("createContainsMatrix listSize:", polygons.size());
+
+		// use this matrix to check which matrix element has been
+		// calculated
+		ArrayList<BitSet> finishedMatrix = new ArrayList<>(polygons.size());
+
+		for (int i = 0; i < polygons.size(); i++) {
+			BitSet matrixRow = new BitSet();
+			// a polygon does not contain itself
+			matrixRow.set(i);
+			finishedMatrix.add(matrixRow);
+		}
+		
+		for (int rowIndex = 0; rowIndex < polygons.size(); rowIndex++) {
+			JoinedWay potentialOuterPolygon = polygons.get(rowIndex);
+			BitSet containsColumns = containsMatrix.get(rowIndex);
+			BitSet finishedCol = finishedMatrix.get(rowIndex);
+
+			// get all non calculated columns of the matrix
+			for (int colIndex = finishedCol.nextClearBit(0); colIndex >= 0
+					&& colIndex < polygons.size(); colIndex = finishedCol
+					.nextClearBit(colIndex + 1)) {
+
+				JoinedWay innerPolygon = polygons.get(colIndex);
+
+				if (potentialOuterPolygon.getBounds().intersects(innerPolygon.getBounds())) {
+					boolean contains = calcContains(potentialOuterPolygon, innerPolygon);
+					if (contains) {
+						containsColumns.set(colIndex);
+
+						// we also know that the inner polygon does not contain the
+						// outer polygon
+						// so we can set the finished bit for this matrix
+						// element
+						finishedMatrix.get(colIndex).set(rowIndex);
+
+						// additionally we know that the outer polygon contains all
+						// polygons that are contained by the inner polygon
+						containsColumns.or(containsMatrix.get(colIndex));
+						finishedCol.or(containsColumns);
+					}
+				} else {
+					// both polygons do not intersect
+					// we can flag both matrix elements as finished
+					finishedMatrix.get(colIndex).set(rowIndex);
+					finishedMatrix.get(rowIndex).set(colIndex);
+				}
+				// this matrix element is calculated now
+				finishedCol.set(colIndex);
+			}
+		}
+
+		if (log.isDebugEnabled()) {
+			long t2 = System.currentTimeMillis();
+			log.debug("createMatrix for", polygons.size(), "polygons took", (t2 - t1), "ms");
+
+			log.debug("Containsmatrix:");
+			int i = 0;
+			boolean noContained = true;
+			for (BitSet b : containsMatrix) {
+				if (!b.isEmpty()) {
+					log.debug(i, "contains", b);
+					noContained = false;
+				}
+				i++;
+			}
+			if (noContained) {
+				log.debug("Matrix is empty");
+			}
+		}
+	}
+
+	/**
+	 * Analyse roles in ways and fill corresponding sets.
+	 */
+	private void analyseRelationRoles() {
+		// create bitsets which polygons belong to the outer and to the inner role
+		innerPolygons = new BitSet();
+		taggedInnerPolygons = new BitSet();
+		outerPolygons = new BitSet();
+		taggedOuterPolygons = new BitSet();
+		
+		int wi = 0;
+		for (JoinedWay jw : polygons) {
+			jw.setFullArea(jw.getFullArea()); // trigger setting area before start cutting...
+			// do like this to disguise function with side effects
+			
+			if (jw.intRole == INT_ROLE_INNER) {
+				innerPolygons.set(wi);
+				taggedInnerPolygons.set(wi);
+			} else if (jw.intRole == INT_ROLE_OUTER) {
+				outerPolygons.set(wi);
+				taggedOuterPolygons.set(wi);
+			} else {
+				// unknown role => it could be both
+				innerPolygons.set(wi);
+				outerPolygons.set(wi);
+			}
+			wi++;
+		}
+	}
+
+	protected void doReporting(BitSet outmostInnerPolygons, BitSet unfinishedPolygons, BitSet nestedOuterPolygons,
+			BitSet nestedInnerPolygons) {
+		if (log.isLoggable(Level.WARNING) && (outmostInnerPolygons.cardinality() + unfinishedPolygons.cardinality()
+				+ nestedOuterPolygons.cardinality() + nestedInnerPolygons.cardinality() >= 1)) {
+			log.warn("Multipolygon", toBrowseURL(), toTagString(), "contains errors.");
+	
+			BitSet outerUnusedPolys = new BitSet();
+			outerUnusedPolys.or(unfinishedPolygons);
+			outerUnusedPolys.or(outmostInnerPolygons);
+			outerUnusedPolys.or(nestedOuterPolygons);
+			outerUnusedPolys.or(nestedInnerPolygons);
+			outerUnusedPolys.or(unfinishedPolygons);
+			// use only the outer polygons
+			outerUnusedPolys.and(outerPolygons);
+			for (JoinedWay w : getWaysFromPolygonList(outerUnusedPolys)) {
+				outerWaysForLineTagging.addAll(w.getOriginalWays());
+			}
+	
+			runOutmostInnerPolygonCheck(outmostInnerPolygons);
+			runNestedOuterPolygonCheck(nestedOuterPolygons);
+			runNestedInnerPolygonCheck(nestedInnerPolygons);
+			runWrongInnerPolygonCheck(unfinishedPolygons, innerPolygons);
+	
+			// we have at least one polygon that could not be processed
+			// Probably we have intersecting or overlapping polygons
+			// one possible reason is if the relation overlaps the tile
+			// bounds
+			// => issue a warning
+			List<JoinedWay> lostWays = getWaysFromPolygonList(unfinishedPolygons);
+			for (JoinedWay w : lostWays) {
+				log.warn("Polygon", w, "is not processed due to an unknown reason.");
+				logWayURLs(Level.WARNING, "-", w);
+			}
+		}
+	}
+
+	private List<JoinedWay> getWaysFromPolygonList(BitSet selection) {
+		return selection.stream().mapToObj(polygons::get).collect(Collectors.toList());
+	}
+
+	private void runNestedOuterPolygonCheck(BitSet nestedOuterPolygons) {
+		// just print out warnings
+		// the check has been done before
+		nestedOuterPolygons.stream().forEach(idx ->  {
+			JoinedWay outerWay = polygons.get(idx);
+			log.warn("Polygon",	outerWay, "carries role outer but lies inside an outer polygon. Potentially its role should be inner.");
+			logFakeWayDetails(Level.WARNING, outerWay);
+		});
+	}
+
+	private void runNestedInnerPolygonCheck(BitSet nestedInnerPolygons) {
+		// just print out warnings
+		// the check has been done before
+		nestedInnerPolygons.stream().forEach(idx -> {
+			JoinedWay innerWay = polygons.get(idx);
+			log.warn("Polygon",	innerWay, "carries role", getRole(innerWay), "but lies inside an inner polygon. Potentially its role should be outer.");
+			logFakeWayDetails(Level.WARNING, innerWay);
+		});
+	}
+
+	private void runOutmostInnerPolygonCheck(BitSet outmostInnerPolygons) {
+		// just print out warnings
+		// the check has been done before
+		outmostInnerPolygons.stream().forEach(idx -> {
+			JoinedWay innerWay = polygons.get(idx);
+			log.warn("Polygon",	innerWay, "carries role", getRole(innerWay), "but is not inside any other polygon. Potentially it does not belong to this multipolygon.");
+			logFakeWayDetails(Level.WARNING, innerWay);
+		});
+	}
+
+	private void runWrongInnerPolygonCheck(BitSet unfinishedPolygons, BitSet innerPolygons) {
+		// find all unfinished inner polygons that are not contained by any
+		BitSet wrongInnerPolygons = findOutmostPolygons(unfinishedPolygons, innerPolygons);
+		if (log.isDebugEnabled()) {
+			log.debug("unfinished", unfinishedPolygons);
+			log.debug(ROLE_INNER, innerPolygons);
+			// other polygon
+			log.debug("wrong", wrongInnerPolygons);
+		}
+		if (!wrongInnerPolygons.isEmpty()) {
+			// we have an inner polygon that is not contained by any outer polygon
+			// check if
+			wrongInnerPolygons.stream().forEach(wiIndex -> {
+				BitSet containedPolygons = new BitSet();
+				containedPolygons.or(unfinishedPolygons);
+				containedPolygons.and(containsMatrix.get(wiIndex));
+	
+				JoinedWay innerWay = polygons.get(wiIndex);
+				if (containedPolygons.isEmpty()) {
+					log.warn("Polygon",	innerWay, "carries role", getRole(innerWay),
+						"but is not inside any outer polygon. Potentially it does not belong to this multipolygon.");
+					logFakeWayDetails(Level.WARNING, innerWay);
+				} else {
+					log.warn("Polygon",	innerWay, "carries role", getRole(innerWay),
+						"but is not inside any outer polygon. Potentially the roles are interchanged with the following",
+						(containedPolygons.cardinality() > 1 ? "ways" : "way"), ".");
+					containedPolygons.stream().forEach(wrIndex -> {
+						logWayURLs(Level.WARNING, "-", polygons.get(wrIndex));
+						unfinishedPolygons.set(wrIndex);
+						wrongInnerPolygons.set(wrIndex);
+					});
+					logFakeWayDetails(Level.WARNING, innerWay);
+				}
+	
+				unfinishedPolygons.clear(wiIndex);
+				wrongInnerPolygons.clear(wiIndex);
+			});
+		}
+	}
+
+	/**
+	 * Checks if the polygon with polygonIndex1 contains the polygon with polygonIndex2.
+	 * 
+	 * @return true if polygon(polygonIndex1) contains polygon(polygonIndex2)
+	 */
+	private boolean contains(int polygonIndex1, int polygonIndex2) {
+		return containsMatrix.get(polygonIndex1).get(polygonIndex2);
+	}
+
+	/**
+	 * Find all polygons that are not contained by any other polygon.
+	 * 
+	 * @param candidates
+	 *            all polygons that should be checked
+	 * @param roleFilter
+	 *            an additional filter
+	 * @return all polygon indexes that are not contained by any other polygon
+	 */
+	private BitSet findOutmostPolygons(BitSet candidates, BitSet roleFilter) {
+		BitSet realCandidates = ((BitSet) candidates.clone());
+		realCandidates.and(roleFilter);
+		return findOutmostPolygons(realCandidates);
+	}
+
+	/**
+	 * Finds all polygons that are not contained by any other polygons and that
+	 * match the given role. All polygons with index given by
+	 * <var>candidates</var> are tested.
+	 * 
+	 * @param candidates indexes of the polygons that should be used
+	 * @return set of indexes of all outermost polygons 
+	 */
+	private BitSet findOutmostPolygons(BitSet candidates) {
+		BitSet outmostPolygons = new BitSet();
+
+		// go through all candidates and check if they are contained by any
+		// other candidate
+		candidates.stream().forEach(candidateIndex -> {
+			// check if the candidateIndex polygon is not contained by any
+			// other candidate polygon
+			boolean isOutmost = candidates.stream()
+					.noneMatch(otherCandidateIndex -> contains(otherCandidateIndex, candidateIndex));
+			if (isOutmost) {
+				// this is an outermost polygon
+				// put it to the bitset
+				outmostPolygons.set(candidateIndex);
+			}
+		});
+
+		return outmostPolygons;
+	}
+
+	protected static ArrayList<PolygonStatus> getPolygonStatus(List<JoinedWay> polygons, BitSet outmostPolygons, String defaultRole) {
+		ArrayList<PolygonStatus> polygonStatusList = new ArrayList<>();
+		outmostPolygons.stream().forEach(polyIndex -> {
+			// polyIndex is the polygon that is not contained by any other
+			// polygon
+			JoinedWay polygon = polygons.get(polyIndex);
+			String role = getRole(polygon);
+			// if the role is not explicitly set use the default role
+			if (role == null || "".equals(role)) {
+				role = defaultRole;
+			} 
+			polygonStatusList.add(new PolygonStatus(ROLE_OUTER.equals(role), polyIndex, polygon));
+		});
+		// sort by role and then by number of points, this improves performance
+		// in the routines which add the polygons to areas
+		if (polygonStatusList.size() > 2) {
+			polygonStatusList.sort((o1, o2) -> {
+				if (o1.outer != o2.outer)
+					return (o1.outer) ? -1 : 1;
+				return o1.polygon.getPoints().size() - o2.polygon.getPoints().size();
+			});
+		}
+		return polygonStatusList;
+	}
+
+	/**
+	 * Check the roles of polygons against the actual findings in containsMatrix. Not sure what this does so far.
+	 * @param currentPolygon the current polygon
+	 * @param unfinishedPolygons might be modified 
+	 * @param nestedOuterPolygons might be modified
+	 * @param nestedInnerPolygons might be modified
+	 * @return set of polygon indexes which are considered as holes of the current polygon  
+	 */
+	protected BitSet checkRoleAgainstGeometry(PolygonStatus currentPolygon, BitSet unfinishedPolygons,
+			BitSet nestedOuterPolygons, BitSet nestedInnerPolygons) {
+		BitSet polygonContains = new BitSet();
+		polygonContains.or(containsMatrix.get(currentPolygon.index));
+		// use only polygon that are contained by the polygon
+		polygonContains.and(unfinishedPolygons);
+		// polygonContains is the intersection of the unfinished and
+		// the contained polygons
+
+		// get the holes
+		// these are all polygons that are in the current polygon
+		// and that are not contained by any other polygon
+		boolean holesOk;
+		BitSet holeIndexes;
+		do {
+			holeIndexes = findOutmostPolygons(polygonContains);
+			holesOk = true;
+
+			if (currentPolygon.outer) {
+				// for role=outer only role=inner is allowed
+				if (holeIndexes.intersects(taggedOuterPolygons)) {
+					BitSet addOuterNestedPolygons = new BitSet();
+					addOuterNestedPolygons.or(holeIndexes);
+					addOuterNestedPolygons.and(taggedOuterPolygons);
+					nestedOuterPolygons.or(addOuterNestedPolygons);
+					holeIndexes.andNot(addOuterNestedPolygons);
+					// do not process them
+					unfinishedPolygons.andNot(addOuterNestedPolygons);
+					polygonContains.andNot(addOuterNestedPolygons);
+					
+					// recalculate the holes again to get all inner polygons 
+					// in the nested outer polygons
+					holesOk = false;
+				}
+			} else {
+				// for role=inner both role=inner and role=outer is supported
+				// although inner in inner is not officially allowed
+				if (holeIndexes.intersects(taggedInnerPolygons)) {
+					// process inner in inner but issue a warning later
+					BitSet addInnerNestedPolygons = new BitSet();
+					addInnerNestedPolygons.or(holeIndexes);
+					addInnerNestedPolygons.and(taggedInnerPolygons);
+					nestedInnerPolygons.or(addInnerNestedPolygons);
+				}
+			}
+		} while (!holesOk);
+		return holeIndexes;
+	}
+ 
 	private void divideLargest(List<JoinedWay> partition, List<List<JoinedWay>> partitions, int depth) {
 		if (partition.isEmpty())
 			return;
@@ -1946,6 +1942,4 @@ public class MultiPolygonRelation extends Relation {
 		} 
 		partitions.add(partition);
 	}
-
-
 }
