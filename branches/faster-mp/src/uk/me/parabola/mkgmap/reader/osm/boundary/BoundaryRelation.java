@@ -51,8 +51,13 @@ public class BoundaryRelation extends MultiPolygonRelation {
 	}
 
 	/**
-	 * Tile bounds have a different meaning when boundaries are compiled We expect
-	 * either planet or a bbox around a country extract in tile bounds.
+	 * Tile bounds have a different meaning when boundaries are compiled. We expect
+	 * either planet or a bbox around a country extract in tile bounds. A country
+	 * extract typically only contains the complete admin_level boundaries for one
+	 * country but also many incomplete boundaries for neighbouring countries. <br>
+	 * We may either ignore all incomplete boundaries or try to close them using the
+	 * shape ([country].poly) file. The latter should improve LocationHook results
+	 * for data outside the country.  
 	 * 
 	 * @return false
 	 */
