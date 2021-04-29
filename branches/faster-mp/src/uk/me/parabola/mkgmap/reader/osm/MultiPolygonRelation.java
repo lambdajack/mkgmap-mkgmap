@@ -642,21 +642,23 @@ public class MultiPolygonRelation extends Relation {
 				.orElse(null);
 
 		List<List<JoinedWay>> partitions = new ArrayList<>();
-//		polygons.sort((o1,o2) -> Integer.compare(o2.getPoints().size(), o1.getPoints().size()));
-		if (true) // TODO: maybe not always?
-			divideLargest(polygons, partitions, 0);
-		else 
+		if ("boundary".equals(getTag("type"))) {
 			partitions.add(polygons);
-//		log.diagnostic("have " + partitions.size() + " partitions");
-		for (int i = 0; i < partitions.size(); i++) {
-			processPartition(new Partition(partitions.get(i)));
+		} else {	 
+			divideLargest(polygons, partitions, 0);
+//			log.diagnostic("have " + partitions.size() + " partitions");
 		}
+		for (List<JoinedWay> some : partitions) {
+			processPartition(new Partition(some));
+		}
+
 		tagOuterWays();
 		
 		postProcessing();
 		cleanup();
-		long dt = System.currentTimeMillis() - t1;
-//		log.diagnostic("processing MP relation " + this + " took " + dt + " ms with " + partitions.size() + " partitions");
+//		long dt = System.currentTimeMillis() - t1;
+//		if (dt > 10000)
+//			log.diagnostic("processing MP relation " + this + " took " + dt + " ms with " + partitions.size() + " partitions");
 		
 	}
 
@@ -948,11 +950,16 @@ public class MultiPolygonRelation extends Relation {
 		if (!expectedOuter.getBounds().contains(expectedInner.getBounds())) {
 			return false;
 		}
-		//TODO remove hack
-//		if (getId() == 9488835 && expectedOuter.getPoints().size() > 400_000
-//				&& !expectedInner.getOriginalWays().stream().anyMatch(w -> w.getId() == 197301581L))
-//			return true;
-		int	x = IsInUtil.isLineInShape(expectedInner.getPoints(), expectedOuter.getPoints(), expectedInner.getArea());
+		
+//		Coord test = expectedInner.getPointInside();
+//		if (test != null) {
+//			// we know that point test is inside expectedInner
+//			int quick = IsInUtil.isPointInShape(test, expectedOuter.getPoints());
+//			// if point is ON we can assume that a part of the inner is OUT
+//			return quick == IsInUtil.IN;
+//		}
+		
+		int x = IsInUtil.isLineInShape(expectedInner.getPoints(), expectedOuter.getPoints(), expectedInner.getArea());
 		return (x & IsInUtil.OUT) == 0;
 	}
 
@@ -1183,6 +1190,8 @@ public class MultiPolygonRelation extends Relation {
 		private final List<Way> originalWays;
 		private byte intRole;  
 		private boolean closedArtificially;
+		private Coord pointInside;
+		private boolean doPointInsideCalcs = true;
 
 		private int minLat;
 		private int maxLat;
@@ -1273,9 +1282,8 @@ public class MultiPolygonRelation extends Relation {
 				maxLon = lon;
 				bounds = null;
 			}
-
-			
 		}
+		
 		private void updateBounds(Coord point) {
 			updateBounds(point.getLatitude(), point.getLongitude());
 		}
@@ -1450,6 +1458,23 @@ public class MultiPolygonRelation extends Relation {
 
 			this.getPoints().addAll(insIdx, tempCoords);
 			this.addWay(other);
+		}
+
+		/**
+		 * Try to find a point that is inside the polygon and store the result.
+		 * 
+		 * @return null or a point that is inside
+		 */
+		public Coord getPointInside() {
+			if (doPointInsideCalcs) {
+				// TODO: other faster alternatives to find point inside shape
+				doPointInsideCalcs = false;
+				Coord test = super.getCofG();
+				if (IsInUtil.isPointInShape(test, getPoints()) == IsInUtil.IN) {
+					pointInside = test;
+				}
+			}
+			return pointInside;
 		}
 	}
 
