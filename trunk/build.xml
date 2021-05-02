@@ -248,6 +248,7 @@
 				<include name="*.csv"/>
 				<include name="*.properties"/>
 				<include name="*known-hgt.bin"/>
+				<include name="*sea-check.txt"/>
 				<include name="*.xml"/>
 				<include name="**/*.trans"/>
 				<include name="styles/**"/>
@@ -380,6 +381,7 @@
 			<exclude name="**/buildoptions/**"/>
 			<include name="*.csv"/>
 			<include name="known-hgt.bin"/>
+			<include name="*sea-check.txt"/>
 			<include name="*.xml"/>
 			<include name="*.properties"/>
 			<include name="**/*.trans"/>
