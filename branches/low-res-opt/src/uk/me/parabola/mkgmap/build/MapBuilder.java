@@ -155,8 +155,8 @@ public class MapBuilder implements Configurable {
 	private int minSizePolygon;
 	private String polygonSizeLimitsOpt;
 	private TreeMap<Integer,Integer> polygonSizeLimits;
-	private double reducePointError;
-	private double reducePointErrorPolygon;
+	private TreeMap<Integer, Double> dpFilterLineLevelMap = new TreeMap<>(); 
+	private TreeMap<Integer, Double> dpFilterShapeLevelMap = new TreeMap<>(); 
 	private boolean mergeLines;
 	private boolean mergeShapes;
 
@@ -202,10 +202,19 @@ public class MapBuilder implements Configurable {
 		regionAbbr = props.getProperty("region-abbr", null);
  		minSizePolygon = props.getProperty("min-size-polygon", 8);
  		polygonSizeLimitsOpt = props.getProperty("polygon-size-limits", null);
-		reducePointError = props.getProperty("reduce-point-density", 2.6);
- 		reducePointErrorPolygon = props.getProperty("reduce-point-density-polygon", -1);
+ 		// options for DouglasPeuckerFilter
+		double reducePointError = props.getProperty("reduce-point-density", 2.6);
+ 		double reducePointErrorPolygon = props.getProperty("reduce-point-density-polygon", -1);
 		if (reducePointErrorPolygon == -1)
 			reducePointErrorPolygon = reducePointError;
+		String simplifyLineErrorsOpt = props.getProperty("simplify-filter-line-errors", null);
+		String simplifyPolygonErrorsOpt = props.getProperty("simplify-filter-polygon-errors", null);
+		if (simplifyLineErrorsOpt != null && simplifyPolygonErrorsOpt == null)
+			simplifyPolygonErrorsOpt = simplifyLineErrorsOpt;
+		parseLevelOption(dpFilterLineLevelMap, simplifyLineErrorsOpt, "simplify-filter-line-errors", reducePointError);
+		parseLevelOption(dpFilterShapeLevelMap, simplifyPolygonErrorsOpt, "simplify-filter-polygon-errors",
+				reducePointErrorPolygon);
+		
 		mergeLines = props.containsKey("merge-lines");
 
 		// undocumented option - usually used for debugging only
@@ -1190,8 +1199,9 @@ public class MapBuilder implements Configurable {
 		if (enableLineCleanFilters && (res < 24)) {
 			filters.addFilter(new RoundCoordsFilter());
 			filters.addFilter(new SizeFilter(MIN_SIZE_LINE));
-			if(reducePointError > 0)
-				filters.addFilter(new DouglasPeuckerFilter(reducePointError));
+			double errorForRes = dpFilterLineLevelMap.ceilingEntry(res).getValue();
+			if(errorForRes > 0)
+				filters.addFilter(new DouglasPeuckerFilter(errorForRes));
 		}
 		filters.addFilter(new LineSplitterFilter());
 		filters.addFilter(new RemoveEmpty());
@@ -1248,9 +1258,10 @@ public class MapBuilder implements Configurable {
 			if (sizefilterVal > 0)
 				filters.addFilter(new SizeFilter(sizefilterVal));
 			//DouglasPeucker behaves at the moment not really optimal at low zooms, but acceptable.
-			//Is there an similar algorithm for polygons?
-			if(reducePointErrorPolygon > 0)
-				filters.addFilter(new DouglasPeuckerFilter(reducePointErrorPolygon));
+			//Is there a similar algorithm for polygons?
+			double errorForRes = dpFilterShapeLevelMap.ceilingEntry(res).getValue();
+			if(errorForRes > 0)
+				filters.addFilter(new DouglasPeuckerFilter(errorForRes));
 		}
 		filters.addFilter(new RemoveObsoletePointsFilter());
 		filters.addFilter(new RemoveEmpty());
@@ -1347,7 +1358,7 @@ public class MapBuilder implements Configurable {
 
 			for (String s : desc) {
 				String[] keyVal = s.split("[=:]");
-				if (keyVal == null || keyVal.length < 2) {
+				if (keyVal == null || keyVal.length != 2) {
 					throw new ExitException("incorrect polygon-size-limits specification " + polygonSizeLimitsOpt);
 				}
 	
@@ -1368,6 +1379,39 @@ public class MapBuilder implements Configurable {
 		}
 		// return the value for the desired resolution or the next higher one
 		return polygonSizeLimits.ceilingEntry(res).getValue();
+	}
+
+	/**
+	 * Determine the minimum size for a polygon for the given level.
+	 * @param res the resolution
+	 * @return the size filter value
+	 */
+
+	private void parseLevelOption(TreeMap<Integer, Double> levelMap, String option, String optionName, double defaultValue) {
+		if (option != null) {
+			String[] desc = option.split("[, \\t\\n]+");
+
+			for (String s : desc) {
+				String[] keyVal = s.split("[=:]");
+				if (keyVal == null || keyVal.length != 2) {
+					throw new ExitException("incorrect " + optionName + " specification " + option+ " at " + s);
+				}
+
+				try {
+					int key = Integer.parseInt(keyVal[0]);
+					double value = Double.parseDouble(keyVal[1]);
+					Double testDup = levelMap.put(key, value);
+					if (testDup != null) {
+						throw new ExitException(
+								"duplicate resolution value in " + optionName + " specification " + optionName);
+					}
+				} catch (NumberFormatException e) {
+					throw new ExitException(optionName + " specification not all numbers: " + s);
+				}
+			}
+		}
+		if (levelMap.get(24) == null)
+			levelMap.put(24, defaultValue);
 	}
 
 	private static class SourceSubdiv {
