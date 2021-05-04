@@ -1,7 +1,6 @@
 package uk.me.parabola.mkgmap.filters;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -126,10 +125,7 @@ public class LineMergeFilter{
 
 	
 	private static boolean isSimilar(MapLine l1, MapLine l2) {
-		if (l1.isRoad() == l2.isRoad() && l1.getType() == l2.getType() && Objects.equals(l1.getName(), l2.getName())) {
-			return !l1.isRoad() || Arrays.equals(l1.getLabels(), l2.getLabels());
-		}
-		return false;
+		return l1.getType() == l2.getType() && Objects.equals(l1.getName(), l2.getName());
 	}
 }
 
