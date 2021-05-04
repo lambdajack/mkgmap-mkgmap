@@ -48,7 +48,6 @@ public class MapLine extends MapElement {
 		super(orig);
 		direction = orig.direction;
 		skipSizeFilter = orig.skipSizeFilter;
-		//roadDef = orig.roadDef;
 	}
 
 	public MapLine copy() {
@@ -59,6 +58,10 @@ public class MapLine extends MapElement {
 		return points;
 	}
 
+	/**
+	 * set the points, calculate new bounds 
+	 * @param points the points to use
+	 */
 	public void setPoints(List<Coord> points) {
 		if (this.points != null)
 			log.warn("overwriting points");
@@ -66,12 +69,6 @@ public class MapLine extends MapElement {
 		assert !points.isEmpty() : "trying to set points with zero length";
 
 		this.points = points;
-		// preserve first and last point, so that points which are shared by
-		// different ways are kept
-		if (points.size() > 0 && !(this instanceof MapShape)) {
-			points.get(0).preserved(true);
-			points.get(points.size()-1).preserved(true);
-		}
 		testForConsecutivePoints(points);
 	}
 	

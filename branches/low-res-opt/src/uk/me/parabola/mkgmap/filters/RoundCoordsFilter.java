@@ -65,10 +65,12 @@ public class RoundCoordsFilter implements MapFilter {
 				
 				if (p instanceof CoordNode && keepNodes) {
 					newP = new CoordNode(lat, lon, p.getId(), p.getOnBoundary(), p.getOnCountryBorder());
+					newP.preserved(true);
 				} else {
 					newP = new Coord(lat, lon);
-					newP.preserved(p.preserved());
-					newP.setNumberNode(hasNumbers && p.isNumberNode());
+					final boolean keepNumberNode = hasNumbers && p.isNumberNode(); 
+					newP.setNumberNode(keepNumberNode);
+					newP.preserved(p.preserved() || keepNumberNode);
 				}
 				
 				// only add the new point if it has different

@@ -1,7 +1,9 @@
 package uk.me.parabola.mkgmap.filters;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
@@ -24,9 +26,12 @@ public class LineMergeFilter{
 		endPoints.add(points.get(points.size()-1), line);
 	}
 	
+	/**
+	 * Removes the first line, merges the points in the second one.
+	 * @param line1 1st line
+	 * @param line2 2nd line
+	 */
 	private void mergeLines(MapLine line1, MapLine line2) {
-		// Removes the first line,
-		// Merges the points in the second one
 		List<Coord> points1 = line1.getPoints();
 		List<Coord> points2 = line2.getPoints();
 		startPoints.removeMapping(points1.get(0), line1);
@@ -53,15 +58,20 @@ public class LineMergeFilter{
 		endPoints.add(points.get(points.size()-1), line);
 	}
 
-	//TODO: This routine has a side effect: it modifies some of the MapLine instances
-	// instead of creating copies. It seems that this has no bad effect, but it is not clean
-	public List<MapLine> merge(List<MapLine> lines, int res) {
-		linesMerged = new ArrayList<>(lines.size());	//better use LinkedList??
+	/**
+	 * Filter lines which are not visible at the given resolution, merge them if type and name are equal. 
+	 * @param lines the lines to merge 
+	 * @param res the resolution
+	 * @param mergeRoads set to true if roads can be merged, too
+	 * @return list of visible lines, merged as much as possible 
+	 * TODO: Could merge more lines if allowed to reverse directions
+	 */
+	public List<MapLine> merge(List<MapLine> lines, int res, boolean mergeRoads) {
+		linesMerged = new ArrayList<>();
 		for (MapLine line : lines) {
 			if (line.getMinResolution() > res || line.getMaxResolution() < res)
 				continue;
-			
-			if (line.isRoad()){
+			if (line.isRoad() && !mergeRoads) {
 				linesMerged.add(line);
 				continue;
 			}
@@ -72,15 +82,15 @@ public class LineMergeFilter{
 			Coord end = points.get(points.size()-1); 
 
 			// Search for start point in hashlist 
-			// (can the end of current line connected to an existing line?)
+			// (can the end of current line be connected to an existing line?)
 			for (MapLine line2 : startPoints.get(end)) {
-				if (line.isSimilar(line2)) {
+				if (isSimilar(line, line2)) {
 					addPointsAtStart(line2, points);
 					// Search for endpoint in hashlist
 					// (if the other end (=start of line =start of line2) could be connected to an existing line,
 					//  both lines has to be merged and one of them dropped)
 					for (MapLine line1 : endPoints.get(start)) {
-						if (line2.isSimilar(line1)
+						if (isSimilar(line2, line1)
 						 && !line2.equals(line1)) // don't make a closed loop a double loop
 						{
 							mergeLines(line1, line2);
@@ -95,9 +105,9 @@ public class LineMergeFilter{
 				continue;
 
 			// Search for endpoint in hashlist
-			// (can the start of current line connected to an existing line?)
+			// (can the start of current line be connected to an existing line?)
 			for (MapLine line2 : endPoints.get(start)) {
-				if (line.isSimilar(line2)) {
+				if (isSimilar(line, line2)) {
 					addPointsAtEnd(line2, points);
 					isMerged = true;
 					break;
@@ -108,12 +118,18 @@ public class LineMergeFilter{
 
 			// No matching, create a copy of line
 			MapLine l = line.copy();
-			List<Coord> p = new ArrayList<>(line.getPoints());	//use better LinkedList for performance?
-			l.setPoints(p);				
+			l.setPoints(new ArrayList<>(line.getPoints()));				
 			addLine(l);
 		}
 		return linesMerged;
 	}
 
+	
+	private static boolean isSimilar(MapLine l1, MapLine l2) {
+		if (l1.isRoad() == l2.isRoad() && l1.getType() == l2.getType() && Objects.equals(l1.getName(), l2.getName())) {
+			return !l1.isRoad() || Arrays.equals(l1.getLabels(), l2.getLabels());
+		}
+		return false;
+	}
 }
 

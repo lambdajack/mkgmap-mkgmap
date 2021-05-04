@@ -135,7 +135,7 @@ public class MapBuilder implements Configurable {
 	private List<String> mapInfo = new ArrayList<>();
 	private List<String> copyrights = new ArrayList<>();
 
-	private boolean doRoads; 
+	private boolean hasNet; 
 	private Boolean driveOnLeft; // needs to be Boolean for later null test 
 	private Locator locator;
 
@@ -297,7 +297,7 @@ public class MapBuilder implements Configurable {
 		lblFile = map.getLblFile();
 		NETFile netFile = map.getNetFile();
 		
-		doRoads = netFile != null;
+		hasNet = netFile != null;
 		
 		if (routeCenterBoundaryType != 0 && netFile != null && src instanceof MapperBasedMapDataSource) {
 			for (RouteCenter rc : src.getRoadNetwork().getCenters()) {
@@ -908,13 +908,69 @@ public class MapBuilder implements Configurable {
 		div.startDivision();
 
 		processPoints(map, div, points);
-		processLines(map, div, lines);
+
+		final int res = z.getResolution();
+		lines = lines.stream().filter(l -> l.getMinResolution() <= res).collect(Collectors.toList());
+		shapes = shapes.stream().filter(s -> s.getMinResolution() <= res).collect(Collectors.toList());
+		
+		if (mergeLines) {
+			LineMergeFilter merger = new LineMergeFilter();
+			lines = merger.merge(lines, res, !hasNet);
+		}
+
+		if (mergeShapes) {
+			ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea);
+			shapes = shapeMergeFilter.merge(shapes);
+		}
+
+		// recalculate preserved status for all points in lines and shapes
+		shapes.forEach(e -> e.getPoints().forEach(p -> p.preserved(false)));
+		if (z.getLevel() == 0 && hasNet) {
+			lines.forEach(e -> e.getPoints().forEach(p -> p.preserved(p.isNumberNode())));	
+		} else {
+			lines.forEach(e -> e.getPoints().forEach(p -> p.preserved(false)));
+		}
+		preserveFirstLast(lines);
+		if (res < 24) {
+			preserveShared(shapes);
+		}
+		
+		processLines(map, div, lines); 
 		processShapes(map, div, shapes);
 
 		div.endDivision();
 
 		return div;
 	}
+
+	/**
+	 * Mark points as preserved which are used by different shapes or more multiple times in the same shape
+	 * or which are on tile bounds 
+	 * @param the shapes
+	 */
+	private static void preserveShared(List<MapShape> shapes) {
+		Set<Coord> shared = Collections.newSetFromMap(new IdentityHashMap<Coord, Boolean>());
+		for (MapLine l : shapes) {
+			for (Coord p : l.getPoints()) {
+				if (!shared.add(p)) {
+					p.preserved(true); // point is shared, preserve it
+				}
+			}
+		}
+	}
+
+	/**
+	 * Mark points are preserved which are used by different shapes or more multiple times in the same shape
+	 * or which are on tile bounds 
+	 * @param the shapes
+	 */
+	private static void preserveFirstLast(List<MapLine> lines) {
+		for (MapLine l : lines) {
+			l.getPoints().get(0).preserved(true);
+			l.getPoints().get(l.getPoints().size()-1).preserved(true);
+		}
+	}
+
 
 	/**
 	 * Create the overview sections.
@@ -1186,15 +1242,8 @@ public class MapBuilder implements Configurable {
 		FilterConfig config = new FilterConfig();
 		config.setResolution(res);
 		config.setLevel(div.getZoom().getLevel());
-		config.setHasNet(doRoads);
+		config.setHasNet(hasNet);
 
-		//TODO: Maybe this is the wrong place to do merging.
-		// Maybe more efficient if merging before creating subdivisions.
-		if (mergeLines) {
-			LineMergeFilter merger = new LineMergeFilter();
-			lines = merger.merge(lines, res);
-		}
-		
 		LayerFilterChain filters = new LayerFilterChain(config);
 		if (enableLineCleanFilters && (res < 24)) {
 			filters.addFilter(new RoundCoordsFilter());
@@ -1235,20 +1284,13 @@ public class MapBuilder implements Configurable {
 		FilterConfig config = new FilterConfig();
 		config.setResolution(res);
 		config.setLevel(div.getZoom().getLevel());
-		config.setHasNet(doRoads);
-		
-		if (mergeShapes){
-			ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea);
-			List<MapShape> mergedShapes = shapeMergeFilter.merge(shapes);
-			shapes = mergedShapes;
-		}
+		config.setHasNet(hasNet);
 		
 		if (orderByDecreasingArea && shapes.size() > 1) {
 			// sort so that the shape with the largest area is processed first
 			shapes.sort((s1,s2) -> Long.compare(Math.abs(s2.getFullArea()), Math.abs(s1.getFullArea())));
 		}
 
-		preserveHorizontalAndVerticalLines(res, shapes);
 		
 		LayerFilterChain filters = new LayerFilterChain(config);
 		filters.addFilter(new PolygonSplitterFilter());
@@ -1271,55 +1313,6 @@ public class MapBuilder implements Configurable {
 		for (MapShape shape : shapes) {
 			if (shape.getMinResolution() <= res) {
 				filters.startFilter(shape);
-			}
-		}
-	}
-
-	/**
-	 * Preserve shape points which a) lie on the shape boundary or
-	 * b) which appear multiple times in the shape (excluding the start
-	 * point which should always be identical to the end point).
-	 * The preserved points are kept treated specially in the 
-	 * Line-Simplification-Filters, this should avoid artifacts like
-	 * white triangles in the sea for lower resolutions.     
-	 * @param res the current resolution
-	 * @param shapes list of shapes
-	 */
-	private static void preserveHorizontalAndVerticalLines(int res, List<MapShape> shapes) {
-		if (res == 24)
-			return;
-		for (MapShape shape : shapes) {
-			if (shape.getMinResolution() > res)
-				continue;
-			int minLat = shape.getBounds().getMinLat();
-			int maxLat = shape.getBounds().getMaxLat();
-			int minLon = shape.getBounds().getMinLong();
-			int maxLon = shape.getBounds().getMaxLong();
-			
-			List<Coord> points = shape.getPoints();
-			int n = points.size();
-			IdentityHashMap<Coord, Coord> coords = new IdentityHashMap<>(n);
-			Coord prev = points.get(0);
-			Coord last;
-			for (int i = 1; i < n; ++i) {
-				last = points.get(i);
-				// preserve coord instances which are used more than once,
-				// these are typically produced by the ShapeMergerFilter 
-				// to connect holes
-				if (coords.get(last) == null) {
-					coords.put(last, last);
-				} else if (!last.preserved()) {
-					last.preserved(true);
-				}
-
-				// preserve the end points of horizontal and vertical lines that lie
-				// on the bbox of the shape. 
-				if(last.getLatitude() == prev.getLatitude() && (last.getLatitude() == minLat || last.getLatitude() == maxLat) ||
-				   last.getLongitude() == prev.getLongitude() && (last.getLongitude() == minLon || last.getLongitude() == maxLon)) {
-					last.preserved(true);
-					prev.preserved(true);
-				}
-				prev = last;
 			}
 		}
 	}
