@@ -37,6 +37,13 @@ public class CoordPOI extends Coord {
 		super(co);
 	}
 
+	public CoordPOI(Coord pos, CoordPOI other) {
+		super(pos);
+		this.node = other.node;
+		this.used = other.used;
+		this.convertToViaInRouteRestriction = other.convertToViaInRouteRestriction;
+	}
+
 	public Node getNode() {
 		return node;
 	}
