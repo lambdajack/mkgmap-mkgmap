@@ -1244,23 +1244,38 @@ public class MapBuilder implements Configurable {
 		config.setLevel(div.getZoom().getLevel());
 		config.setHasNet(hasNet);
 
-		LayerFilterChain filters = new LayerFilterChain(config);
+		LayerFilterChain normalFilters = new LayerFilterChain(config);
+		LayerFilterChain contourFilters = new LayerFilterChain(config);
 		if (enableLineCleanFilters && (res < 24)) {
-			filters.addFilter(new RoundCoordsFilter());
-			filters.addFilter(new SizeFilter(MIN_SIZE_LINE));
+			MapFilter rounder = new RoundCoordsFilter();
+			MapFilter sizeFilter = new SizeFilter(MIN_SIZE_LINE);
+			normalFilters.addFilter(rounder);
+			normalFilters.addFilter(sizeFilter);
 			double errorForRes = dpFilterLineLevelMap.ceilingEntry(res).getValue();
-			if(errorForRes > 0)
-				filters.addFilter(new DouglasPeuckerFilter(errorForRes));
+			if(errorForRes > 0) {
+				DouglasPeuckerFilter dp = new DouglasPeuckerFilter(errorForRes);
+				normalFilters.addFilter(dp);
+				contourFilters.addFilter(dp);
+			}
+			contourFilters.addFilter(rounder);
+			contourFilters.addFilter(sizeFilter);
 		}
-		filters.addFilter(new LineSplitterFilter());
-		filters.addFilter(new RemoveEmpty());
-		filters.addFilter(new RemoveObsoletePointsFilter());
-		filters.addFilter(new LinePreparerFilter(div));
-		filters.addFilter(new LineAddFilter(div, map));
+		for (MapFilter filter : Arrays.asList(
+				new LineSplitterFilter(), 
+				new RemoveEmpty(),
+				new RemoveObsoletePointsFilter(), 
+				new LinePreparerFilter(div), 
+				new LineAddFilter(div, map))) {
+			normalFilters.addFilter(filter);
+			contourFilters.addFilter(filter);
+		}
 		
 		for (MapLine line : lines) {
 			if (line.getMinResolution() <= res) {
-				filters.startFilter(line);
+				if (GType.isContourLine(line)) 
+					contourFilters.startFilter(line);
+				else 
+					normalFilters.startFilter(line);
 			}
 		}
 	}

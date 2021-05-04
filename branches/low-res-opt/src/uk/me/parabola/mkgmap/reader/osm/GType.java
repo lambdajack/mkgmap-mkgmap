@@ -21,7 +21,9 @@ import java.util.Formatter;
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.LevelInfo;
+import uk.me.parabola.mkgmap.general.MapLine;
 import uk.me.parabola.mkgmap.general.MapPoint;
+import uk.me.parabola.mkgmap.general.MapShape;
 
 /**
  * Holds the garmin type of an element and all the information that
@@ -271,6 +273,10 @@ public class GType {
 	public static String formatType(int type){
 		String s = String.format("%x", type);
 		return (s.length() % 2 != 0 ? "0x0":"0x") + s;
+	}
+
+	public static boolean isContourLine(MapLine line) {
+		return line.getType() >= 0x20 && line.getType() <= 0x22 && !(line instanceof MapShape);
 	}
 	
 }
