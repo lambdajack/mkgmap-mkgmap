@@ -194,15 +194,15 @@ public class WrongAngleFixer {
 								Node rNode = ((CoordPOI) replacement).getNode();
 								if (rNode.getId() != node.getId()) {
 									if (wayPOI.contains("[" + rNode.getId() + "]")) {
-										log.warn("CoordPOI", node.getId(), "replaced by CoordPOI", rNode.getId(),
+										log.warn("link-pois-to-ways: CoordPOI", node.getId(), "replaced by CoordPOI", rNode.getId(),
 												"in way", way.toBrowseURL());
 									} else {
-										log.warn("CoordPOI", node.getId(), "replaced by ignored CoordPOI",
+										log.warn("link-pois-to-ways: CoordPOI", node.getId(), "replaced by ignored CoordPOI",
 												rNode.getId(), "in way", way.toBrowseURL());
 									}
 								}
 							} else {
-								log.warn("CoordPOI", node.getId(), "replaced by simple coord in way",
+								log.warn("link-pois-to-ways: CoordPOI", node.getId(), "replaced by simple coord in way",
 										way.toBrowseURL());
 							}
 						}
@@ -898,12 +898,9 @@ public class WrongAngleFixer {
 			if (toRepl instanceof CoordPOI) {
 				CoordPOI cp = (CoordPOI) toRepl;
 				if (cp.isUsed() ) {
-					replacement = new CoordPOI(replacement);
-					((CoordPOI) replacement).setNode(cp.getNode());
-					((CoordPOI) replacement).setUsed(true);
-					((CoordPOI) replacement).setConvertToViaInRouteRestriction(cp.getConvertToViaInRouteRestriction());
+					replacement = new CoordPOI(replacement, cp);
 					if (!replacement.highPrecEquals(cp.getNode().getLocation())) {
-						log.error("CoordPOI node is replaced with non-equal coordinates at", toRepl.toOSMURL());
+						log.error("link-pois-to-ways: CoordPOI node is replaced with non-equal coordinates at", toRepl.toOSMURL());
 					}
 				}
 			}
