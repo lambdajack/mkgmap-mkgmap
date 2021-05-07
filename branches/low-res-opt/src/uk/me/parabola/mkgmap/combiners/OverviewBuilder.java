@@ -336,6 +336,8 @@ public class OverviewBuilder implements Combiner {
 					continue;
 
 				ml.setType(line.getType());
+				if ((line.getType() & 0x40) != 0)
+					ml.setDirection(true);
 				if (line.getLabel() != null)
 					ml.setName(line.getLabel().getText());
 				ml.setMaxResolution(res); 
