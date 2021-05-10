@@ -637,16 +637,13 @@ public class MultiPolygonRelation extends Relation {
 		}
 		
 		//TODO: trunk uses more complex logic that also takes the inners into account
-		largestOuterPolygon = polygons.stream()
-				.max((o1, o2) -> Double.compare(o1.getSizeOfArea(), o2.getSizeOfArea()))
-				.orElse(null);
-
+		largestOuterPolygon = getLargest(polygons);
+		
 		List<List<JoinedWay>> partitions = new ArrayList<>();
 		if ("boundary".equals(getTag("type"))) {
 			partitions.add(polygons);
 		} else {	 
 			divideLargest(polygons, partitions, 0);
-//			log.diagnostic("have " + partitions.size() + " partitions");
 		}
 		for (List<JoinedWay> some : partitions) {
 			processPartition(new Partition(some));
@@ -660,6 +657,21 @@ public class MultiPolygonRelation extends Relation {
 //		if (dt > 10000)
 //			log.diagnostic("processing MP relation " + this + " took " + dt + " ms with " + partitions.size() + " partitions");
 		
+	}
+
+
+	private static JoinedWay getLargest(List<JoinedWay> polygons) {
+		double maxSize = 0;
+		int maxPos = -1;
+		for (int i = 0; i< polygons.size(); i++) {
+			JoinedWay closed = polygons.get(i);
+			double size = calcAreaSize(closed.getPoints());
+			if (size > maxSize) {
+				maxSize = size;
+				maxPos = i;
+			}
+		}
+		return polygons.get(maxPos);
 	}
 
 
@@ -1383,16 +1395,6 @@ public class MultiPolygonRelation extends Relation {
 			return originalWays;
 		}
 		
-		/**
-		 * Retrieves a measurement of the area covered by this polygon. The 
-		 * returned value has no unit. It is just a rough comparable value
-		 * because it uses a rectangular coordinate system without correction.
-		 * @return size of the covered areas (0 if the way is not closed)
-		 */
-		public double getSizeOfArea() {
-			return MultiPolygonRelation.calcAreaSize(getPoints());
-		}
-
 		@Override
 		public String toString() {
 			final String prefix = getId() + "(" + getPoints().size() + "P)(";
