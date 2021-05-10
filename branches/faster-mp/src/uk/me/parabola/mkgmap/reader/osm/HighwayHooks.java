@@ -137,7 +137,7 @@ public class HighwayHooks implements OsmReadingHooks {
 			// will be processed later
 			way.addTag("mkgmap:way-has-pois", "true");
 			if (log.isInfoEnabled())
-				log.info("Linking POI", currentNodeInWay.toBrowseURL(), "to way at", co.toOSMURL());
+				log.info("link-pois-to-ways: Linking POI", currentNodeInWay.toBrowseURL(), "to way at", co.toOSMURL());
 		}
 	}
 

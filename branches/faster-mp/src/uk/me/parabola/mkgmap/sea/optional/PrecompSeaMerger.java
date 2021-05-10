@@ -196,11 +196,9 @@ class PrecompSeaMerger implements Runnable {
 				// process the polygon ways only
 				// the mp processing also creates line ways which must 
 				// be ignored here
-				if (MultiPolygonRelation.STYLE_FILTER_POLYGON.equals(w.getTag(MultiPolygonRelation.STYLE_FILTER_TAG))) {
-					if (!"sea".equals(w.getTag("natural"))) {
-						// ignore the land polygons - we already have them in our list
-						continue;
-					}
+				if (MultiPolygonRelation.STYLE_FILTER_POLYGON.equals(w.getTag(MultiPolygonRelation.STYLE_FILTER_TAG))
+						&& "sea".equals(w.getTag("natural"))) {
+					// ignore the land polygons - we already have them in our list
 					w.deleteTag(MultiPolygonRelation.STYLE_FILTER_TAG);
 					w.deleteTag(MultiPolygonRelation.TKM_MP_CREATED);
 					ways.add(w);

@@ -92,7 +92,7 @@ class PrecompSeaSaver implements Runnable {
 		while (!saveQueue.isEmpty() || !finished.get()) {
 			Entry<String, List<Way>> tileData = null;
 			try {
-				tileData = saveQueue.poll(1, TimeUnit.MINUTES);
+				tileData = saveQueue.poll(5, TimeUnit.SECONDS);
 			} catch (InterruptedException exp) {
 				exp.printStackTrace();
 			}
@@ -117,6 +117,7 @@ class PrecompSeaSaver implements Runnable {
 		}
 		
 		try {
+			System.out.println("Writing index file");
 			writeIndex();
 		} catch (IOException e) {
 			e.printStackTrace();

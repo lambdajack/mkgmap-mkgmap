@@ -103,6 +103,7 @@ public class StyledConverter implements OsmConverter {
 	private final MultiHashMap<Long, RestrictionRelation> wayRelMap = new MultiHashMap<>();
 	
 	private Map<Node, List<Way>> poiRestrictions = new LinkedHashMap<>();
+	private Map<Node, CoordNode> replacedCoordPoi = new HashMap<>();
 	 
 	// limit line length to avoid problems with portions of really
 	// long lines being assigned to the wrong subdivision
@@ -950,8 +951,9 @@ public class StyledConverter implements OsmConverter {
 		housenumberGenerator = null;
 		
 		if (routable)
-			createRouteRestrictionsFromPOI();
+			poiRestrictions.entrySet().forEach(e -> createRouteRestrictionsFromPOI(e.getKey(), e.getValue()));
 		poiRestrictions = null;
+		replacedCoordPoi = null;
 		if (routable){
 			for (RestrictionRelation rr : restrictions) {
 				rr.addRestriction(collector, nodeIdMap);
@@ -1111,67 +1113,55 @@ public class StyledConverter implements OsmConverter {
 	 * If POI changes access restrictions (e.g. bollards), create corresponding
 	 * route restrictions so that only allowed vehicles/pedestrians are routed
 	 * through this point.
+	 * @param node the node with a CoordPOI
+	 * @param wayList the list of ways in which this node appears
 	 */
-	private void createRouteRestrictionsFromPOI() {
-		Iterator<Map.Entry<Node, List<Way>>> iter = poiRestrictions.entrySet().iterator();
-		while (iter.hasNext()){
-			Map.Entry<Node, List<Way>> entry = iter.next();
-			Node node = entry.getKey();
-			Coord p = node.getLocation();
-			// list of ways that are connected to the poi
-			List<Way> wayList = entry.getValue();
+	private void createRouteRestrictionsFromPOI(Node node, List<Way> wayList) {
+		Coord p = node.getLocation(); 
+		// list of ways that are connected to the poi
 
-			byte exceptMask = AccessTagsAndBits.evalAccessTags(node);
-			Map<Integer,CoordNode> otherNodeIds = new LinkedHashMap<>();
-			CoordNode viaNode = null;
-			boolean viaIsUnique = true;
-			for (Way way : wayList) {
-				CoordNode lastNode = null;
-				for (Coord co: way.getPoints()){
-					// not 100% fail safe: points may have been replaced before
-					if (!(co instanceof CoordNode))
-						continue;
-					CoordNode cn = (CoordNode) co;
-					if (p.highPrecEquals(cn)){
-						if (viaNode == null)
-							viaNode = cn;
-						else if (viaNode != cn){
-							log.error("Found multiple points with equal coords as CoordPOI at " + p.toOSMURL());
-							// if we ever get here we can add code to identify the exact node 
-							viaIsUnique = false;
-						}
-						if (lastNode != null)
-							otherNodeIds.put(lastNode.getId(),lastNode);
-					} else {
-						if (p.highPrecEquals(lastNode))
-							otherNodeIds.put(cn.getId(),cn);
-					}
-					lastNode = cn;
+		byte exceptMask = AccessTagsAndBits.evalAccessTags(node);
+		Map<Integer,CoordNode> otherNodeIds = new LinkedHashMap<>();
+		CoordNode viaNode = null;
+		CoordNode neededNode = nodeIdMap.get(p);
+		if (neededNode == null) {
+			neededNode = replacedCoordPoi.get(node);
+		}
+		if (neededNode == null) {
+			log.error("link-pois-to-ways: Internal error: Did not find CoordPOI node at", p.toOSMURL(), "in ways",
+					wayList);
+			return;
+		}
+		for (Way way : wayList) {
+			CoordNode lastNode = null;
+			for (Coord co : way.getPoints()) {
+				if (!(co instanceof CoordNode))
+					continue;
+				CoordNode cn = (CoordNode) co;
+				if (co == neededNode) {
+					viaNode = cn;
+					if (lastNode != null)
+						otherNodeIds.put(lastNode.getId(), lastNode);
+				} else if (lastNode == neededNode) {
+					otherNodeIds.put(cn.getId(), cn);
 				}
+				lastNode = cn;
 			}
-			if (viaNode == null){
-				log.error("Did not find CoordPOI node at " + p.toOSMURL() + " in ways " + wayList);
-				continue;
-			}
-			if (!viaIsUnique){
-				log.error("Found multiple points with equal coords as CoordPOI at " + p.toOSMURL());
-				continue;
-			}
-			if (otherNodeIds.size() < 2){
-				log.info("Access restriction in POI node " + node.toBrowseURL() + " was ignored, has no effect on any connected way");
-				continue;
-			}
-			GeneralRouteRestriction rr = new GeneralRouteRestriction("no_through", exceptMask, "CoordPOI at " + p.toOSMURL());
-			rr.setViaNodes(Arrays.asList(viaNode));
-			int added = collector.addRestriction(rr);
-			if (added == 0){
-				log.info("Access restriction in POI node " + node.toBrowseURL() + " was ignored, has no effect on any connected way");
-			} else { 
-				log.info("Access restriction in POI node", node.toBrowseURL(), "was translated to",added,"route restriction(s)");
-			}
-			if (wayList.size() > 1 && added > 2){
-				log.warn("Access restriction in POI node", node.toBrowseURL(), "affects routing on multiple ways");
-			}
+		}
+		if (otherNodeIds.size() < 2) {
+			log.info("link-pois-to-ways: Access restriction in POI node", node.toBrowseURL(),
+					"was ignored, has no effect on any connected way");
+			return;
+		}
+		GeneralRouteRestriction rr = new GeneralRouteRestriction("no_through", exceptMask, "link-pois-to-ways: CoordPOI at " + p.toOSMURL());
+		rr.setViaNodes(Arrays.asList(viaNode));
+		int added = collector.addRestriction(rr);
+		log.info("link-pois-to-ways: Access restriction in POI node", node.toBrowseURL(),
+		 ((added == 0) ? " was ignored, has no effect on any connected way"
+				: "was translated to " + added + " route restriction(s)"));
+
+		if (wayList.size() > 1 && added > 2){
+			log.warn("link-pois-to-ways: Access restriction in POI node", node.toBrowseURL(), "affects routing on multiple ways");
 		}
 	}
 
@@ -1426,12 +1416,12 @@ public class StyledConverter implements OsmConverter {
 							}
 							boolean classChanged = cw.recalcRoadClass(node);
 							if (classChanged && log.isInfoEnabled()) {
-								log.info("POI changing road class of", way.toBrowseURL(), "to", cw.getRoadClass(), "at",
+								log.info("link-pois-to-ways: POI is changing road class of", way.toBrowseURL(), "to", cw.getRoadClass(), "at",
 										points.get(0).toOSMURL());
 							}
 							boolean speedChanged = cw.recalcRoadSpeed(node);
 							if (speedChanged && log.isInfoEnabled()) {
-								log.info("POI changing road speed of", way.toBrowseURL(), "to", cw.getRoadSpeed(), "at",
+								log.info("link-pois-to-ways: POI is changing road speed of", way.toBrowseURL(), "to", cw.getRoadSpeed(), "at",
 										points.get(0).toOSMURL());
 							}
 						}
@@ -1906,9 +1896,13 @@ public class StyledConverter implements OsmConverter {
 					coordNode = new CoordNode(p, uniqueId, p.getOnBoundary(), p.getOnCountryBorder());
 					nodeIdMap.put(p, coordNode);
 				}
-				
 				if ((p.getOnBoundary() || p.getOnCountryBorder()) && log.isInfoEnabled()) {
 					log.info("Way", debugWayName + "'s point #" + n, "at", p.toOSMURL(), "is a boundary node");
+				}
+				if (p instanceof CoordPOI && ((CoordPOI) p).getNode().getLocation() != p) {
+					// special case: WrongAngleFixer created a new CoordPOI instance and our node still points to
+					// the old instance
+					replacedCoordPoi.put(((CoordPOI) p).getNode(), coordNode);
 				}
 				points.set(n, coordNode);
 			}
@@ -2293,11 +2287,11 @@ public class StyledConverter implements OsmConverter {
 									usedInThisWay = true;
 									cp.setConvertToViaInRouteRestriction(true);
 								} else {
-									log.info("POI node", node.getId(),
+									log.info("link-pois-to-ways: POI node at", node.toBrowseURL(),
 											"with access restriction is ignored, it is not connected to other routable ways");
 								}
 							} else {
-								log.info("Access restriction in POI node", node.toBrowseURL(), "was ignored for way",
+								log.info("link-pois-to-ways: Access restriction in POI node", node.toBrowseURL(), "was ignored for way",
 										way.toBrowseURL());
 							}
 						}
@@ -2309,7 +2303,7 @@ public class StyledConverter implements OsmConverter {
 				} 
 				if (wayPOI.length() == 0) {
 					way.deleteTag("mkgmap:way-has-pois");
-					log.info("ignoring CoordPOI(s) for way", way.toBrowseURL(), "because routing is not affected.");
+					log.info("link-pois-to-ways: ignoring CoordPOI(s) for way", way.toBrowseURL(), "because routing is not affected.");
 				} else {
 					way.addTag(WAY_POI_NODE_IDS, wayPOI.toString());
 				}
