@@ -18,6 +18,7 @@ package uk.me.parabola.mkgmap.build;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -257,14 +258,16 @@ public class MapArea implements MapDataSource {
 					continue;
 				}
 				int areaIndex = pickArea(mapAreas, e, xbaseHp, ybaseHp, nx, ny, dxHp, dyHp);
-				if ((shapeBounds.getHeight() > maxHeight || shapeBounds.getWidth() > maxWidth) &&
-				    !areas[areaIndex].contains(shapeBounds)) {
+				if (areas[areaIndex].contains(shapeBounds)) {
+					mapAreas[areaIndex].addShape(e);
+				} else if (shapeBounds.getHeight() <= maxHeight && shapeBounds.getWidth() <= maxWidth) {
+					// this polygon is partially outside the subdivision, but won't exceed the allowable offsets
+					mapAreas[areaIndex].addShape(e);
+				} else {
 					MapArea largeObjectArea = new MapArea(shapeBounds, areaResolution, true); // use splitIntoAreas to deal with overflow
 					largeObjectArea.addShape(e);
 					addedAreas.add(largeObjectArea);
-					continue;
 				}
-				mapAreas[areaIndex].addShape(e);
 			}
 		}
 
@@ -816,37 +819,32 @@ public class MapArea implements MapDataSource {
 		if (areasHashMap == null)
 			areasHashMap = new Long2ObjectOpenHashMap<>();
 
-		if (areas.length == 2) { // just divide along the line between the two areas
-			int dividingLine = 0;
-			boolean isLongitude = false;
-			boolean commonLine = true;
-			if (areas[0].getBounds().getMaxLat() == areas[1].getBounds().getMinLat()) {
-				dividingLine = areas[0].getBounds().getMaxLat();
-				isLongitude = false;
-			} else if (areas[0].getBounds().getMaxLong() == areas[1].getBounds().getMinLong()) {
-				dividingLine = areas[0].getBounds().getMaxLong();
-				isLongitude = true;
-			} else {
-				commonLine = false;
-				log.error("Split into 2 expects shared edge between the areas");
-			}
-			if (commonLine) {
-				List<List<Coord>> lessList = new ArrayList<>(), moreList = new ArrayList<>();
-				ShapeSplitter.splitShape(e.getPoints(), dividingLine << Coord.DELTA_SHIFT, isLongitude, lessList, moreList, areasHashMap);
-				for (List<Coord> subShape : lessList) {
-					MapShape s = e.copy();
-					s.setPoints(subShape);
-					s.setClipped(true);
-					areas[0].addShape(s);
+		int stepLat = 0;
+		if (areas[0].getBounds().getMaxLat() == areas[1].getBounds().getMinLat())
+			stepLat = 1;
+		else if (areas[0].getBounds().getMaxLong() == areas[1].getBounds().getMinLong())
+			stepLat = areas.length; // assume single row
+		else
+			log.error("SplitIntoAreas expects shared edge between the subDivs");
+		if (stepLat != 0) {
+			int dimLat = stepLat == 1 ? areas.length : 1;  // preset presuming single row or column
+			// search for conflict with assumption of single row/col to determine grid dimension
+			for (int areaIndex = 2; areaIndex < areas.length; ++areaIndex) {
+				if (stepLat == 1) {
+					if (areas[areaIndex-1].getBounds().getMaxLat() != areas[areaIndex].getBounds().getMinLat()) {
+						dimLat = areaIndex;
+						break;
+					}
+				} else {
+					if (areas[areaIndex-1].getBounds().getMaxLong() != areas[areaIndex].getBounds().getMinLong()) {
+						stepLat = areaIndex;
+						dimLat = areas.length / areaIndex;
+						break;
+					}
 				}
-				for (List<Coord> subShape : moreList) {
-					MapShape s = e.copy();
-					s.setPoints(subShape);
-					s.setClipped(true);
-					areas[1].addShape(s);
-				}
-				return;
 			}
+			splitIntoRows(e, areas, stepLat, dimLat, areasHashMap);
+			return;
 		}
 
 		for (int areaIndex = 0; areaIndex < areas.length; ++areaIndex) {
@@ -857,6 +855,51 @@ public class MapArea implements MapDataSource {
 				s.setClipped(true);
 				areas[areaIndex].addShape(s);
 			}
+		}
+	}
+
+	private static void splitIntoRows(MapShape e, MapArea[] areas, int stepLat, int dimLat, Long2ObjectOpenHashMap<Coord> areasHashMap) {
+		final int dimLong = areas.length / dimLat;
+		final int stepLong = stepLat == 1 ? dimLat : 1;
+		List<List<Coord>> pendList = Collections.singletonList(e.getPoints());
+		for (int inx = 1; inx < dimLat; ++inx) {
+			int areaIndex = inx * stepLat;
+			int dividingLine = areas[areaIndex].getBounds().getMinLat();
+			List<List<Coord>> lessList = new ArrayList<>(), moreList = new ArrayList<>();
+			for (List<Coord> subShape : pendList)
+				ShapeSplitter.splitShape(subShape, dividingLine << Coord.DELTA_SHIFT, false, lessList, moreList, areasHashMap);
+			if (!lessList.isEmpty())
+				splitIntoCols(lessList, areas, areaIndex-stepLat, stepLong, dimLong, areasHashMap, e);
+			if (moreList.isEmpty())
+				return;
+			pendList = moreList;
+		}
+		splitIntoCols(pendList, areas, (dimLat-1)*stepLat, stepLong, dimLong, areasHashMap, e);
+	}
+
+	private static void splitIntoCols(List<List<Coord>> rowList, MapArea[] areas, int startInx, int stepLong, int dimLong, Long2ObjectOpenHashMap<Coord> areasHashMap, MapShape template) {
+		List<List<Coord>> pendList = rowList;
+		for (int inx = 1; inx < dimLong; ++inx) {
+			int areaIndex = startInx + inx * stepLong;
+			int dividingLine = areas[areaIndex].getBounds().getMinLong();
+			List<List<Coord>> lessList = new ArrayList<>(), moreList = new ArrayList<>();
+			for (List<Coord> subShape : pendList)
+				ShapeSplitter.splitShape(subShape, dividingLine << Coord.DELTA_SHIFT, true, lessList, moreList, areasHashMap);
+			if (!lessList.isEmpty())
+				saveParts(lessList, areas[areaIndex-stepLong], template);
+			if (moreList.isEmpty())
+				return;
+			pendList = moreList;
+		}
+		saveParts(pendList, areas[startInx+(dimLong-1)*stepLong], template);
+	}
+
+	private static void saveParts(List<List<Coord>> cellList, MapArea area, MapShape template) {
+		for (List<Coord> subShape : cellList) {
+			MapShape s = template.copy();
+			s.setPoints(subShape);
+			s.setClipped(true);
+			area.addShape(s);
 		}
 	}
 

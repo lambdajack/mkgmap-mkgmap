@@ -151,7 +151,7 @@ public class Main implements ArgumentProcessor {
 				message += "Try using the mkgmap --max-jobs option with a value less than " + mm.maxJobs  + " to reduce the memory requirement, or use the Java -Xmx option to increase the available heap memory.";
 			else
 				message += "Try using the Java -Xmx option to increase the available heap memory.";
-			Logger.defaultLogger.error(message);
+			Logger.defaultLogger.error(message, e);
 		} catch (MapFailedException | ExitException e) {
 			// one of the combiners failed
 			++numExitExceptions;

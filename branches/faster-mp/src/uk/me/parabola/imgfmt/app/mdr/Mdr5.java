@@ -15,7 +15,9 @@ package uk.me.parabola.imgfmt.app.mdr;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
@@ -32,11 +34,15 @@ import uk.me.parabola.imgfmt.app.srt.SortKey;
  * @author Steve Ratcliffe
  */
 public class Mdr5 extends MdrMapSection {
-	private List<Mdr5Record> allCities = new ArrayList<>();
-	private List<Mdr5Record> cities = new ArrayList<>();
+	private ArrayList<Mdr5Record> allCities = new ArrayList<>();
+	private ArrayList<Mdr5Record> cities;
 	private int maxCityIndex;
 	private int localCitySize;
 	private int mdr20PointerSize = 0; // bytes for mdr20 pointer, or 0 if no mdr20
+
+	// We need a common area to save the mdr20 values, since there can be multiple
+	// city records with the same global city index
+	private int[] mdr20s;
 
 	public Mdr5(MdrConfig config) {
 		setConfig(config);
@@ -54,31 +60,42 @@ public class Mdr5 extends MdrMapSection {
 	 */
 	@Override
 	public void preWriteImpl() {
+		allCities.trimToSize();
 		localCitySize = Utils.numberToPointerSize(maxCityIndex + 1);
-
-		List<SortKey<Mdr5Record>> sortKeys = new ArrayList<>(allCities.size());
 		Sort sort = getConfig().getSort();
+		genCitiesAndMdr20s(sort);
+		// calculate positions for the different road indexes
+		calcMdr20SortPos(sort);
+		calcMdr21SortPos(sort);
+		calcMdr22SortPos(sort);
+	}
+
+	private void genCitiesAndMdr20s(Sort sort) {
+		List<SortKey<Mdr5Record>> sortKeys = new ArrayList<>(allCities.size());
+		Map<String, byte[]> regionCache = new HashMap<>();
+		Map<String, byte[]> countryCache = new HashMap<>();
 		for (Mdr5Record m : allCities) {
 			if (m.getName() == null)
 				continue;
 
 			// Sort by city name, region name, country name and map index.
 			SortKey<Mdr5Record> sortKey = sort.createSortKey(m, m.getName());
-			SortKey<Mdr5Record> regionKey = sort.createSortKey(null, m.getRegionName());
-			SortKey<Mdr5Record> countryKey = sort.createSortKey(null, m.getCountryName(), m.getMapIndex());
+			SortKey<Mdr5Record> regionKey = sort.createSortKey(null, m.getRegionName(), 0, regionCache);
+			SortKey<Mdr5Record> countryKey = sort.createSortKey(null, m.getCountryName(), m.getMapIndex(), countryCache);
 			sortKey = new MultiSortKey<>(sortKey, regionKey, countryKey);
 			sortKeys.add(sortKey);
 		}
+		regionCache = null;
+		countryCache = null;
 		sortKeys.sort(null);
 
-		Collator collator = getConfig().getSort().getCollator();
+		cities = new ArrayList<>(sortKeys.size());
+		Collator collator = sort.getCollator();
 
 		int count = 0;
 		Mdr5Record lastCity = null;
 
-		// We need a common area to save the mdr20 values, since there can be multiple
-		// city records with the same global city index
-		int[] mdr20s = new int[sortKeys.size()+1];
+		mdr20s = new int[sortKeys.size()+1];
 		int mdr20count = 0;
 
 		for (SortKey<Mdr5Record> key : sortKeys) {
@@ -99,29 +116,29 @@ public class Mdr5 extends MdrMapSection {
 				lastCity = c;
 			}
 		}
-		// calculate positions for the different road indexes
-		calcMdr20SortPos();
-		calcMdr21SortPos();
-		calcMdr22SortPos();
+		//cities.trimToSize();  // it might be a fraction smaller than allocated, but not worth the cost of reallocation
 	}
-	
+
 	/**
 	 * Calculate a position when sorting by name, region, and country- This is used for MDR20. 
 	 */
-	private void calcMdr20SortPos() {
+	private void calcMdr20SortPos(Sort sort) {
 		List<SortKey<Mdr5Record>> sortKeys = new ArrayList<>(allCities.size());
-		Sort sort = getConfig().getSort();
+		Map<String, byte[]> regionCache = new HashMap<>();
+		Map<String, byte[]> countryCache = new HashMap<>();
 		for (Mdr5Record m : allCities) {
 			if (m.getName() == null)
 				continue;
 
 			// Sort by city name, region name, and country name .
 			SortKey<Mdr5Record> sortKey = sort.createSortKey(m, m.getName());
-			SortKey<Mdr5Record> regionKey = sort.createSortKey(null, m.getRegionName());
-			SortKey<Mdr5Record> countryKey = sort.createSortKey(null, m.getCountryName());
+			SortKey<Mdr5Record> regionKey = sort.createSortKey(null, m.getRegionName(), 0, regionCache);
+			SortKey<Mdr5Record> countryKey = sort.createSortKey(null, m.getCountryName(), 0, countryCache);
 			sortKey = new MultiSortKey<>(sortKey, regionKey, countryKey);
 			sortKeys.add(sortKey);
 		}
+		regionCache = null;
+		countryCache = null;
 		sortKeys.sort(null);
 
 		SortKey<Mdr5Record> lastKey = null;
@@ -138,9 +155,8 @@ public class Mdr5 extends MdrMapSection {
 	/**
 	 * Calculate a position when sorting by region- This is used for MDR21. 
 	 */
-	private void calcMdr21SortPos() {
+	private void calcMdr21SortPos(Sort sort) {
 		List<SortKey<Mdr5Record>> sortKeys = new ArrayList<>(allCities.size());
-		Sort sort = getConfig().getSort();
 		for (Mdr5Record m : allCities) {
 			if (m.getRegionName() == null) 
 				continue;
@@ -165,9 +181,8 @@ public class Mdr5 extends MdrMapSection {
 	 * Calculate a position when sorting by country- This is used for MDR22. 
 	 */
 
-	private void calcMdr22SortPos() {
+	private void calcMdr22SortPos(Sort sort) {
 		List<SortKey<Mdr5Record>> sortKeys = new ArrayList<>(allCities.size());
-		Sort sort = getConfig().getSort();
 		for (Mdr5Record m : allCities) {
 			if (m.getCountryName() == null)
 				continue;
@@ -287,6 +302,7 @@ public class Mdr5 extends MdrMapSection {
 	protected void releaseMemory() {
 		allCities = null;
 		cities = null;
+		mdr20s = null;
 	}
 
 	/**
