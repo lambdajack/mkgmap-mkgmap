@@ -352,6 +352,19 @@ public class StyledConverter implements OsmConverter {
 			cw.setHasDirection(way.tagIsLikeYes(TKM_HAS_DIRECTION));
 			cw.setReversed(wasReversed);
 			if (cw.isRoad()){
+				if (way.getId() == lastRoadId) {
+					for (int i = roads.size() - 1; i >= 0; i--) {
+						ConvertedWay prevRoad = roads.get(i);
+						if (prevRoad.getWay().getId() != lastRoadId)
+							break;
+						if (RoadMerger.isMergeable(way.getFirstPoint(), prevRoad, cw, true)) {
+							log.warn("Ignoring duplicate road", foundType, "for", way.getBasicLogInformation());
+							lineIndex--;
+							return;
+						}
+					}
+				}
+
 				roads.add(cw);
 				numRoads++;
 				// ignore driving side for oneway roads, ferries and roads that
