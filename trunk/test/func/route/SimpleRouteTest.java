@@ -25,7 +25,7 @@ import func.lib.Args;
 import func.lib.RangeMatcher;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert .*;
 
 public class SimpleRouteTest extends Base {
 
@@ -58,7 +58,7 @@ public class SimpleRouteTest extends Base {
 				count++;
 				System.out.println("TRE size " + size);
 				// Size varies depending on svn modified status
-				assertThat("TRE size", size, new RangeMatcher(1427, 2));
+				assertThat("TRE size", size, new RangeMatcher(1414, 2));
 				break;
 			case "LBL":
 				count++;
@@ -66,12 +66,12 @@ public class SimpleRouteTest extends Base {
 				break;
 			case "NET":
 				count++;
-				assertEquals("NET size", 66859, size);
+				assertEquals("NET size", 66591, size);
 				break;
 			case "NOD":
 				count++;
 				System.out.println("NOD size " + size);
-				assertEquals("NOD size", 170201, size);
+				assertEquals("NOD size", 169689, size);
 				break;
 			}
 		}

@@ -37,6 +37,7 @@ public class ConvertedWay {
 	private final Way way;				// with tags after Style processing
 	private final GType gt;
 	private final boolean isRoad;
+	private boolean hasDirection;    // if true way should not be reversed in RoadMerger
 
 	private byte roadClass;			// 0-4
 	private byte roadSpeed;			// 0-7
@@ -79,6 +80,7 @@ public class ConvertedWay {
 		this.mkgmapAccess = other.mkgmapAccess;
 		this.routeFlags = other.routeFlags;
 		this.overlay = other.overlay;
+		this.hasDirection = other.hasDirection;
 	}
 	
 	public int getIndex(){
@@ -281,5 +283,12 @@ public class ConvertedWay {
 
 	public boolean isOverlay() {
 		return overlay;
+	}
+
+	public void setHasDirection(boolean b) {
+		hasDirection = b;
+	}
+	public boolean hasDirection() {
+		return hasDirection;
 	}
 }
