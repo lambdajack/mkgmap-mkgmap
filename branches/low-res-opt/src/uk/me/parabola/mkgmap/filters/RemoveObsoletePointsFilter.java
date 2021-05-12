@@ -130,6 +130,19 @@ public class RemoveObsoletePointsFilter implements MapFilter {
 				if (nPoints == newPoints.size())
 					break;
 			}
+		} else if (!checkPreserved && newPoints.size() > 2) {
+			// check for special case that line goes a-b-a or a-b-c-b-a or ... and cut in the middle
+			// typical for dual-carriage ways at low resolutions
+			int lenDup = 0;
+			while (newPoints.get(lenDup).equals(newPoints.get(newPoints.size() - 1 - lenDup))) {
+				lenDup++;
+				if (lenDup > newPoints.size() - 1 - lenDup)
+					break;
+			}
+			if (lenDup > 1 ) {
+				// line starts and ends with the same sequence of points, remove one sequence
+				newPoints = newPoints.subList(0, newPoints.size() + 1 - lenDup);
+			}
 		}
 		
 		if (newPoints.size() != line.getPoints().size()){

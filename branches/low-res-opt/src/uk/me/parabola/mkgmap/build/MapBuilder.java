@@ -176,6 +176,7 @@ public class MapBuilder implements Configurable {
 	private short demOutsidePolygonHeight;
 	private java.awt.geom.Area demPolygon;
 	private HGTConverter.InterpolationMethod demInterpolationMethod;
+	private boolean reverseAllowed;
 	
 
 	/**
@@ -216,6 +217,7 @@ public class MapBuilder implements Configurable {
 				reducePointErrorPolygon);
 		
 		mergeLines = props.containsKey("merge-lines");
+		reverseAllowed = props.getProperty("force-reverse-merge", false); 
 
 		// undocumented option - usually used for debugging only
 		mergeShapes = !props.getProperty("no-mergeshapes", false);
@@ -915,7 +917,7 @@ public class MapBuilder implements Configurable {
 		
 		if (mergeLines) {
 			LineMergeFilter merger = new LineMergeFilter();
-			lines = merger.merge(lines, res, !hasNet);
+			lines = merger.merge(lines, res, !hasNet, reverseAllowed);
 		}
 
 		if (mergeShapes) {
