@@ -122,10 +122,10 @@ public class LineMergeFilter{
 		}
 		return linesMerged;
 	}
-
 	
 	private static boolean isSimilar(MapLine l1, MapLine l2) {
-		return l1.getType() == l2.getType() && Objects.equals(l1.getName(), l2.getName());
+		return l1.getType() == l2.getType() && l1.isDirection() == l2.isDirection()
+				&& Objects.equals(l1.getName(), l2.getName());
 	}
 }
 
