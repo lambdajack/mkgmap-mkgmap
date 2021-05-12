@@ -58,11 +58,11 @@ public class RoundCoordsFilter implements MapFilter {
 			int endIndex = coords.size() -1;
 
 			Coord lastP = null;
-			boolean hasNumbers = level == 0 && line.isRoad() && ((MapRoad) line).getRoadDef().hasHouseNumbers();
+			boolean hasNumbers = keepNodes && line.isRoad() && ((MapRoad) line).getRoadDef().hasHouseNumbers();
 			boolean isContourLine = GType.isContourLine(line);
 			for(int i = 0; i <= endIndex; i++) {
 				Coord p = coords.get(i);
-				if (level > 0 && p.isAddedNumberNode()) {
+				if (!keepNodes && p.isAddedNumberNode()) {
 					// ignore nodes added by housenumber processing for levels > 0   
 					continue;
 				}
