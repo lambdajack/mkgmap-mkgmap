@@ -188,7 +188,7 @@ public class ActionRule implements Rule {
 
 	@Override
 	public boolean containsAction(String action) {
-		return actions.toString().contains(action);
+		return actions.stream().anyMatch(a -> a.toString().contains(action));
 	}
 	
 	@Override

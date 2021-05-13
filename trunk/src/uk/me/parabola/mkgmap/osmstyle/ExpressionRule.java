@@ -119,7 +119,7 @@ public class ExpressionRule implements Rule {
 	
 	@Override
 	public boolean containsAction(String action) {
-		return finalizeRule != null && finalizeRule.containsAction(action);
+		return false; // no action in ExpressionRules
 	}
 
 	@Override
