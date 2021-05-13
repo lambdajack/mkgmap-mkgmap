@@ -188,7 +188,8 @@ public class StyledConverter implements OsmConverter {
 		if (lineRules.containsExpression("$mkgmap:dest_hint='true'")){
 			log.error("At least one 'lines' rule in the style contains the expression mkgmap:dest_hint=true, it should be changed to mkgmap:dest_hint=*");
 		}
-		styleSetsDirection = lineRules.containsExpression("$mkgmap:has-direction='true'");
+		styleSetsDirection = lineRules.containsAction("set mkgmap:has-direction=true")
+				|| lineRules.containsAction("add mkgmap:has-direction=true");
 		housenumberGenerator = new HousenumberGenerator(props);
 		
 		driveOn = props.getProperty("drive-on", null);
@@ -349,7 +350,7 @@ public class StyledConverter implements OsmConverter {
 				}
 			}
 			ConvertedWay cw = new ConvertedWay(lineIndex++, way, foundType);
-			cw.setHasDirection(way.tagIsLikeYes(TKM_HAS_DIRECTION));
+			cw.setHasDirection(way.tagIsLikeYes(TKM_HAS_DIRECTION) || cw.isOneway());
 			cw.setReversed(wasReversed);
 			if (cw.isRoad()){
 				if (way.getId() == lastRoadId) {
@@ -891,7 +892,7 @@ public class StyledConverter implements OsmConverter {
 	 */
 	private void mergeRoads() {
 		if (mergeRoads) {
-			// transfer any hasDirection flag to all lines concerning the same way
+			// collect ways with direction flag 
 			Set<Long> waysWithDirection = new HashSet<>();
 			if (styleSetsDirection) {
 				for (List<ConvertedWay> list : Arrays.asList(lines, roads)) {

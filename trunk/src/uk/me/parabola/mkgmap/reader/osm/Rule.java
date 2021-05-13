@@ -59,6 +59,8 @@ public interface Rule {
 
 	boolean containsExpression(String exp);
 
+	boolean containsAction(String action);
+
 	default void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {}
 
 }
