@@ -67,6 +67,6 @@ public class AddTagAction extends ValueBuildedAction {
 	}
 
 	public String toString() {
-		return modify ? "set " : "add " + tag + "=" + calcValueBuildersString() + ";";
+		return (modify ? "set " : "add ") + tag + "=" + calcValueBuildersString() + ";";
 	}
 }

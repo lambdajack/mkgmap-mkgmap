@@ -81,6 +81,6 @@ public class AddAccessAction extends ValueBuildedAction {
 	}
 
 	public String toString() {
-		return  modify ? "setaccess " : "addaccess " + calcValueBuildersString() + ";";
+		return  (modify ? "setaccess " : "addaccess ") + calcValueBuildersString() + ";";
 	}
 }
