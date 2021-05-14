@@ -296,7 +296,7 @@ public class RoadMerger {
 	 * 	{@code false} the roads cannot be merged at {@code mergePoint}
 	 */
 	public static boolean isMergeable(Coord mergePoint, ConvertedWay road1, ConvertedWay road2, boolean reverseAllowed) {
-		if(road1 == road2)
+		if(road1 == road2  || road1.hasDirection() != road2.hasDirection())
 			return false;
 		// check if basic road attributes match
 		if (road1.getRoadClass() != road2.getRoadClass() || road1.getRoadSpeed() != road2.getRoadSpeed()) {

@@ -51,6 +51,7 @@ public class ConvertedWay {
 		this.index = index;
 		this.way = way;
 		this.gt = type;
+		routeFlags = evalRouteTags(way);
 		// note that the gt.getType() may not be a routable type when overlays are used
 		if (type.isRoad() && !MapObject.hasExtendedType(gt.getType())) {
 			this.roadClass = (byte) gt.getRoadClass();
@@ -58,13 +59,11 @@ public class ConvertedWay {
 			recalcRoadClass(way);
 			recalcRoadSpeed(way);
 			mkgmapAccess = evalAccessTags(way);
-			routeFlags = evalRouteTags(way);
 			isRoad = true;
 		} else {
 			roadClass = 0;
 			roadSpeed = 0;
 			mkgmapAccess = 0;
-			routeFlags = 0;
 			isRoad = false;
 		}
 	}
@@ -239,7 +238,12 @@ public class ConvertedWay {
 	}
 	
 	public boolean isOneway(){
-		return (routeFlags & R_ONEWAY) != 0;
+		boolean r1 = (routeFlags & R_ONEWAY) != 0;
+		boolean r2 = way.tagIsLikeYes("oneway");
+		if (r2 && !r1) {
+			long dd = 4;
+		}
+		return r1;
 	}
 
 	public boolean isRoundabout(){
