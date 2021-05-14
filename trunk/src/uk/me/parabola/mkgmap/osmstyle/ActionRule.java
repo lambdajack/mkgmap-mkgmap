@@ -187,14 +187,8 @@ public class ActionRule implements Rule {
 	}
 
 	@Override
-	public boolean containsAction(String action) {
-		return actions.stream().anyMatch(a -> a.toString().contains(action));
-	}
-	
-	@Override
 	public void augmentWith(uk.me.parabola.mkgmap.reader.osm.ElementSaver elementSaver) {
 		expression.augmentWith(elementSaver);
 	}
-
 
 }

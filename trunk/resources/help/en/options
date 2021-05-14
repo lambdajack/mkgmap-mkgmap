@@ -446,6 +446,19 @@ filename
     speed at low zoom levels. Default is enabled, use --no-merge-lines to
     disable.
 
+--allow-reverse-merge
+    Use this option to allow the reversing of lines and roads to get even
+    better results from line merging. Reversing is only done when oneway
+    attribute allows it and the type has no direction. See
+    --line-types-with-direction for further details.
+
+--line-types-with-direction=type[,type ...]
+    Use this option to tell mkgmap which line types should never be reversed.
+    If your TYP file renders certain line types with a direction even if the
+    way has no oneway attribute you must list those types here to prevent
+    reversing.
+    Example usage: --line-types-with-direction=0x26,0x10005,0x10006
+
 --min-size-polygon=NUM
     Removes all polygons smaller than NUM from the map. This reduces map size
     and speeds up redrawing of maps. Recommended value is 8 to 15, default is

@@ -296,20 +296,6 @@ public class RuleSet implements Rule, Iterable<Rule> {
 		return finalizeRule != null && finalizeRule.containsExpression(exp);
 	}
 
-	@Override
-	public boolean containsAction(String action) {
-		if (rules == null) {
-			// this method must be called after prepare() is called so
-			// that we have rules to which the finalize rules can be applied
-			throw new IllegalStateException("First call prepare() before setting the finalize rules");
-		}
-		for (Rule rule : rules) {
-			if (rule.containsAction(action))
-				return true;
-		}
-		return finalizeRule != null && finalizeRule.containsAction(action);
-	}
-
 	public BitSet getRules(Element el) {
 		if (!compiled || cacheId == Integer.MAX_VALUE)
 			compile();

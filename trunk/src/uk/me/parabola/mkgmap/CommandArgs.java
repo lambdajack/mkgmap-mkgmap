@@ -26,7 +26,8 @@ public class CommandArgs {
 		// verify options which expect a comma-separated list
 		for (String listOpt : Arrays.asList("mdr7-excl", "mdr7-del", "poi-excl-index", "location-autofill",
 				"overview-levels", "levels", "name-tag-list", "polygon-size-limits", "dem", "dem-dists", "drive-on",
-				"dead-ends", "add-pois-to-lines", "coastlinefile", "generate-sea", "nearby-poi-rules")) {
+				"dead-ends", "add-pois-to-lines", "coastlinefile", "generate-sea", "nearby-poi-rules",
+				"line-types-with-direction")) {
 			stringToList(get(listOpt,  null), listOpt);
 		}
 	}

@@ -18,6 +18,7 @@ package uk.me.parabola.mkgmap.general;
 
 import java.awt.Rectangle;
 import java.util.List;
+import java.util.Objects;
 
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
@@ -175,4 +176,13 @@ public class MapLine extends MapElement {
 	public Rectangle getRect(){
 		return new Rectangle(minLong, minLat, maxLong-minLong, maxLat-minLat);
 	}
+	
+	public boolean isSimilar(MapLine other) {
+		return direction == other.direction
+				&& getMinResolution() == other.getMinResolution()
+				&& getMaxResolution() == other.getMaxResolution() 
+				&& getType() == other.getType() 
+				&& Objects.equals(getName(), other.getName());
+	}
+
 }

@@ -697,20 +697,6 @@ public class StyleTester implements OsmConverter {
 				}
 				return getFinalizeRule()!= null && getFinalizeRule().containsExpression(exp);
 			}
-
-			@Override
-			public boolean containsAction(String action) {
-				if (rules.isEmpty()) {
-					// this method must be called after prepare() is called so
-					// that we have rules to which the finalize rules can be applied
-					throw new IllegalStateException("First call prepare() before setting the finalize rules");
-				}
-				for (Rule rule : rules){
-					if (rule.containsAction(action))
-						return true;
-				}
-				return getFinalizeRule()!= null && getFinalizeRule().containsAction(action);
-			}
 		}
 
 		/**

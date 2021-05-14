@@ -46,6 +46,7 @@ import uk.me.parabola.imgfmt.app.net.RoadDef;
 import uk.me.parabola.imgfmt.app.trergn.ExtTypeAttributes;
 import uk.me.parabola.imgfmt.app.trergn.MapObject;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.CommandArgs;
 import uk.me.parabola.mkgmap.build.LocatorConfig;
 import uk.me.parabola.mkgmap.filters.LineSizeSplitterFilter;
 import uk.me.parabola.mkgmap.filters.LineSplitterFilter;
@@ -158,7 +159,9 @@ public class StyledConverter implements OsmConverter {
 	private int reportDeadEnds; 
 	private final boolean linkPOIsToWays;
 	private final boolean mergeRoads;
-	private final boolean forceReverseMerge;
+	private final boolean allowReverseMerge;
+	private final Set<Integer> lineTypesWithDirection = new HashSet<>();
+
 	private final boolean routable;
 	private boolean forceEndNodesRoutingNodes; 
 	private final Tags styleOptionTags;
@@ -168,7 +171,6 @@ public class StyledConverter implements OsmConverter {
 	
 	private LineAdder lineAdder;
 	private NearbyPoiHandler nearbyPoiHandler;
-	private boolean styleSetsDirection;
 
 	static List<String> unusedStyleOptions = new ArrayList<>();
 	static List<String> duplicateKeys = new ArrayList<>();
@@ -188,8 +190,6 @@ public class StyledConverter implements OsmConverter {
 		if (lineRules.containsExpression("$mkgmap:dest_hint='true'")){
 			log.error("At least one 'lines' rule in the style contains the expression mkgmap:dest_hint=true, it should be changed to mkgmap:dest_hint=*");
 		}
-		styleSetsDirection = lineRules.containsAction("set mkgmap:has-direction=true")
-				|| lineRules.containsAction("add mkgmap:has-direction=true");
 		housenumberGenerator = new HousenumberGenerator(props);
 		
 		driveOn = props.getProperty("drive-on", null);
@@ -233,7 +233,19 @@ public class StyledConverter implements OsmConverter {
 		
 		// undocumented option - usually used for debugging only
 		mergeRoads = !props.getProperty("no-mergeroads", false);
-		forceReverseMerge = props.getProperty("force-reverse-merge", false);
+		allowReverseMerge = props.getProperty("allow-reverse-merge", false);
+		if (allowReverseMerge) {
+			final String typesOption = "line-types-with-direction";
+			String typeList = props.getProperty(typesOption, "");
+			if (typeList.isEmpty())
+				typeList = style.getOption(typesOption);
+			List<String> types = CommandArgs.stringToList(typeList, typesOption);
+			for (String type :types) {
+				if (!type.isEmpty()) {
+					lineTypesWithDirection.add(Integer.decode(type));
+				}
+			}
+		}
 		routable = props.containsKey("route");
 		String styleOption= props.getProperty("style-option",null);
 		styleOptionTags = parseStyleOption(styleOption);
@@ -340,7 +352,9 @@ public class StyledConverter implements OsmConverter {
 					wasReversed = true;
 					way.addTag(TK_ONEWAY, "yes");
 				}
-
+				if ("1".equals(way.getTag(TK_ONEWAY))) {
+					long dd = 4;
+				}
 				if (way.tagIsLikeYes(TK_ONEWAY)) {
 					way.addTag(TK_ONEWAY, "yes");
 					if (foundType.isRoad() && hasSkipDeadEndCheckNode(way))
@@ -350,8 +364,14 @@ public class StyledConverter implements OsmConverter {
 				}
 			}
 			ConvertedWay cw = new ConvertedWay(lineIndex++, way, foundType);
-			cw.setHasDirection(way.tagIsLikeYes(TKM_HAS_DIRECTION) || cw.isOneway());
 			cw.setReversed(wasReversed);
+
+			if (cw.isOneway() || way.tagIsLikeYes(TKM_HAS_DIRECTION)
+					|| lineTypesWithDirection.contains(foundType.getType()))
+				cw.setHasDirection(true);
+			if (way.tagIsLikeNo(TKM_HAS_DIRECTION)) 
+				cw.setHasDirection(false);
+			
 			if (cw.isRoad()){
 				if (way.getId() == lastRoadId) {
 					for (int i = roads.size() - 1; i >= 0; i--) {
@@ -892,20 +912,7 @@ public class StyledConverter implements OsmConverter {
 	 */
 	private void mergeRoads() {
 		if (mergeRoads) {
-			// collect ways with direction flag 
-			Set<Long> waysWithDirection = new HashSet<>();
-			if (styleSetsDirection) {
-				for (List<ConvertedWay> list : Arrays.asList(lines, roads)) {
-					list.stream().filter(cw -> cw.hasDirection() && cw.isValid())
-					.forEach(cw -> waysWithDirection.add(cw.getWay().getId()));
-				}
-			}
-			// set direction flag for roads which have overlay lines with direction
-			roads.stream().filter(cw -> waysWithDirection.contains(cw.getWay().getId()))
-					.forEach(cw -> cw.setHasDirection(true));
-					
-			RoadMerger merger = new RoadMerger(styleSetsDirection || forceReverseMerge);
-			roads = merger.merge(roads, restrictions);
+			roads = new RoadMerger(allowReverseMerge).merge(roads, restrictions);
 		} else {
 			log.info("Merging roads is disabled");
 		}
@@ -965,9 +972,9 @@ public class StyledConverter implements OsmConverter {
 		resetHighwayCounts();
 		setHighwayCounts();
 		
-		for (ConvertedWay cw : lines){
+		for (ConvertedWay cw : lines) {
 			if (cw.isValid())
-				addLine(cw.getWay(), cw.getGType());
+				addLine(cw);
 		}
 		lines = null;
 		if (roadLog.isInfoEnabled()) {
@@ -1234,12 +1241,12 @@ public class StyledConverter implements OsmConverter {
 		}
 	}
 	
-	private void addLine(Way way, GType gt) {
-		addLine(way, gt, -1);
+	private void addLine(ConvertedWay cw) {
+		addLine(cw, -1);
 	}
 	
-	private void addLine(Way way, GType gt, int replType) {
-		List<Coord> wayPoints = way.getPoints();
+	private void addLine(ConvertedWay cw, int replType) {
+		List<Coord> wayPoints = cw.getPoints();
 		List<Coord> points = new ArrayList<>(wayPoints.size());
 		double lineLength = 0;
 		Coord lastP = null;
@@ -1252,8 +1259,8 @@ public class StyledConverter implements OsmConverter {
 				lineLength += p.distance(lastP);
 				if(lineLength >= MAX_LINE_LENGTH) {
 					if (log.isInfoEnabled())
-						log.info("Splitting line", way.toBrowseURL(), "at", p.toOSMURL(), "to limit its length to", (long)lineLength + "m");
-					addLine(way, gt, replType, points);
+						log.info("Splitting line", cw.getWay().toBrowseURL(), "at", p.toOSMURL(), "to limit its length to", (long)lineLength + "m");
+					addLine(cw, replType, points);
 					points = new ArrayList<>(wayPoints.size() - points.size() + 1);
 					points.add(p);
 					lineLength = 0;
@@ -1263,17 +1270,17 @@ public class StyledConverter implements OsmConverter {
 		}
 
 		if(points.size() > 1)
-			addLine(way, gt, replType, points);
+			addLine(cw, replType, points);
 	}
 
-	private void addLine(Way way, GType gt, int replType, List<Coord> points) {
+	private void addLine(ConvertedWay cw, int replType, List<Coord> points) {
 		MapLine line = new MapLine();
-		elementSetup(line, gt, way);
+		elementSetup(line, cw.getGType(), cw.getWay());
 		if (replType >= 0)
 			line.setType(replType);
 		line.setPoints(points);
 
-		if (way.tagIsLikeYes(TK_ONEWAY) || way.tagIsLikeYes(TKM_HAS_DIRECTION))
+		if (cw.isOneway() || cw.hasDirection())
 			line.setDirection(true);
 
 		clipper.clipLine(line, lineAdder);
@@ -1881,7 +1888,7 @@ public class StyledConverter implements OsmConverter {
 		if (cw.isOneway()) {
 			road.setOneway();
 		}
-		road.setDirection(cw.isOneway() || way.tagIsLikeYes(TKM_HAS_DIRECTION));
+		road.setDirection(cw.isOneway() || cw.hasDirection());
 
 		road.setAccess(cw.getAccess());
 		
@@ -2182,7 +2189,7 @@ public class StyledConverter implements OsmConverter {
 		}
 		if (replType != -1) {
 			log.info(sb.toString(), "added as line with type", replTypeString);
-			addLine(way, cw.getGType(), replType);
+			addLine(cw, replType);
 		} else {
 			log.info(sb.toString(), "but replacement type is invalid. Was dropped");
 		}
