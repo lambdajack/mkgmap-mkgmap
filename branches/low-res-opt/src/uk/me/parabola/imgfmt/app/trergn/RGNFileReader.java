@@ -50,7 +50,8 @@ public class RGNFileReader extends ImgReader {
 	private final RGNHeader rgnHeader;
 	private LBLFileReader lblFile;
 	private NETFileReader netFile;
-
+	private static final int FLAG_DIR = 0x40;
+	
 	public RGNFileReader(ImgChannel chan) {
 		rgnHeader = new RGNHeader();
 		setHeader(rgnHeader);
@@ -262,7 +263,7 @@ public class RGNFileReader extends ImgReader {
 			line.setType(type & 0x7f);
 		else {
 			line.setType(type & 0x3f);
-			line.setDirection((type & 0x40) != 0);
+			line.setDirection((type & FLAG_DIR) != 0);
 		}
 		int labelOffset = reader.get3u();
 		// Extra bit (for bit stream)
@@ -308,6 +309,9 @@ public class RGNFileReader extends ImgReader {
 		int b1 = reader.get1u();
 		boolean hasExtraBytes = (b1 & 0x80) != 0;
 		boolean hasLabel = (b1 & 0x20) != 0;
+		if (!(line instanceof Polygon)) {
+			line.setDirection((b1 & FLAG_DIR) != 0);
+		}
 		type |= 0x10000 + (b1 & 0x1f);
 		line.setType(type);
 		line.setDeltaLong(reader.get2s());
