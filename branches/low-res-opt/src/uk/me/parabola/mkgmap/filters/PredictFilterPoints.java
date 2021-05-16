@@ -18,7 +18,6 @@ package uk.me.parabola.mkgmap.filters;
 import java.util.List;
 
 import uk.me.parabola.imgfmt.app.Coord;
-import uk.me.parabola.imgfmt.app.CoordNode;
 
 /**
  * Not actually a real filter, but estimates the number of points that would be left in
