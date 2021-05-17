@@ -934,7 +934,7 @@ public class MapBuilder implements Configurable {
 		}
 		preserveFirstLast(lines);
 		if (res < 24) {
-			preserveShared(shapes);
+			preserveHorizontalAndVerticalLines(res, shapes);
 		}
 		
 		processLines(map, div, lines); 
@@ -946,25 +946,8 @@ public class MapBuilder implements Configurable {
 	}
 
 	/**
-	 * Mark points as preserved which are used by different shapes or more multiple times in the same shape
-	 * or which are on tile bounds 
-	 * @param the shapes
-	 */
-	private static void preserveShared(List<MapShape> shapes) {
-		Set<Coord> shared = Collections.newSetFromMap(new IdentityHashMap<Coord, Boolean>());
-		for (MapLine l : shapes) {
-			for (Coord p : l.getPoints()) {
-				if (!shared.add(p)) {
-					p.preserved(true); // point is shared, preserve it
-				}
-			}
-		}
-	}
-
-	/**
-	 * Mark points are preserved which are used by different shapes or more multiple times in the same shape
-	 * or which are on tile bounds 
-	 * @param the shapes
+	 * Mark first and last point of each line as preserved 
+	 * @param the lines 
 	 */
 	private static void preserveFirstLast(List<MapLine> lines) {
 		for (MapLine l : lines) {
@@ -1333,6 +1316,55 @@ public class MapBuilder implements Configurable {
 			}
 		}
 	}
+
+	/**
+	 * Preserve shape points which a) lie on the shape boundary or
+	 * b) which appear multiple times in the shape (excluding the start
+	 * point which should always be identical to the end point).
+	 * The preserved points are kept treated specially in the 
+	 * Line-Simplification-Filters, this should avoid artifacts like
+	 * white triangles in the sea for lower resolutions.     
+	 * @param res the current resolution
+	 * @param shapes list of shapes
+	 */
+	private static void preserveHorizontalAndVerticalLines(int res, List<MapShape> shapes) {
+		if (res == 24)
+			return;
+		for (MapShape shape : shapes) {
+			if (shape.getMinResolution() > res)
+				continue;
+			int minLat = shape.getBounds().getMinLat();
+			int maxLat = shape.getBounds().getMaxLat();
+			int minLon = shape.getBounds().getMinLong();
+			int maxLon = shape.getBounds().getMaxLong();
+			
+			List<Coord> points = shape.getPoints();
+			int n = points.size();
+			IdentityHashMap<Coord, Coord> coords = new IdentityHashMap<>(n);
+			Coord prev = points.get(0);
+			Coord last;
+			for (int i = 1; i < n; ++i) {
+				last = points.get(i);
+				// preserve coord instances which are used more than once,
+				// these are typically produced by the ShapeMergerFilter 
+				// to connect holes
+				if (coords.get(last) == null) {
+					coords.put(last, last);
+				} else if (!last.preserved()) {
+					last.preserved(true);
+				}
+
+				// preserve the end points of horizontal and vertical lines that lie
+				// on the bbox of the shape. 
+				if(last.getLatitude() == prev.getLatitude() && (last.getLatitude() == minLat || last.getLatitude() == maxLat) ||
+				   last.getLongitude() == prev.getLongitude() && (last.getLongitude() == minLon || last.getLongitude() == maxLon)) {
+					last.preserved(true);
+					prev.preserved(true);
+				}
+				prev = last;
+			}
+		}
+	} 
 
 	/**
 	 * It is not possible to represent large maps at the 24 bit resolution.  This
