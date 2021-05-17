@@ -240,16 +240,14 @@ public class StyledConverter implements OsmConverter {
 		// undocumented option - usually used for debugging only
 		mergeRoads = !props.getProperty("no-mergeroads", false);
 		allowReverseMerge = props.getProperty("allow-reverse-merge", false);
-		if (allowReverseMerge) {
-			final String typesOption = "line-types-with-direction";
-			String typeList = props.getProperty(typesOption, "");
-			if (typeList.isEmpty())
-				typeList = style.getOption(typesOption);
-			List<String> types = CommandArgs.stringToList(typeList, typesOption);
-			for (String type :types) {
-				if (!type.isEmpty()) {
-					lineTypesWithDirection.add(Integer.decode(type));
-				}
+		final String typesOption = "line-types-with-direction";
+		String typeList = props.getProperty(typesOption, "");
+		if (typeList.isEmpty())
+			typeList = style.getOption(typesOption);
+		List<String> types = CommandArgs.stringToList(typeList, typesOption);
+		for (String type :types) {
+			if (!type.isEmpty()) {
+				lineTypesWithDirection.add(Integer.decode(type));
 			}
 		}
 		routable = props.containsKey("route");
@@ -357,9 +355,6 @@ public class StyledConverter implements OsmConverter {
 					way.reverse();
 					wasReversed = true;
 					way.addTag(TK_ONEWAY, "yes");
-				}
-				if ("1".equals(way.getTag(TK_ONEWAY))) {
-					long dd = 4;
 				}
 				if (way.tagIsLikeYes(TK_ONEWAY)) {
 					way.addTag(TK_ONEWAY, "yes");
