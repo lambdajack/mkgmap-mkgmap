@@ -364,7 +364,7 @@ public class StyledConverter implements OsmConverter {
 					way.deleteTag(TK_ONEWAY);
 				}
 			}
-			ConvertedWay cw = new ConvertedWay(lineIndex++, way, foundType);
+			ConvertedWay cw = new ConvertedWay(way, foundType);
 			cw.setReversed(wasReversed);
 
 			// evaluate special tag and list, list has lower priority 
@@ -381,7 +381,6 @@ public class StyledConverter implements OsmConverter {
 							break;
 						if (RoadMerger.isMergeable(way.getFirstPoint(), prevRoad, cw, true)) {
 							log.warn("Ignoring duplicate road", foundType, "for", way.getBasicLogInformation());
-							lineIndex--;
 							return;
 						}
 					}
@@ -582,7 +581,6 @@ public class StyledConverter implements OsmConverter {
 		return false;
 	}
 
-	private int lineIndex = 0;
 	private static final short TK_ONEWAY = TagDict.getInstance().xlate("oneway"); 
 
 	/** One type result for nodes to avoid recreating one for each node. */ 

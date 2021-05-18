@@ -33,7 +33,6 @@ import static uk.me.parabola.imgfmt.app.net.AccessTagsAndBits.*;
  */
 public class ConvertedWay {
 	private static final Logger log = Logger.getLogger(ConvertedWay.class);
-	private final int index;
 	private final Way way;				// with tags after Style processing
 	private final GType gt;
 	private final boolean isRoad;
@@ -47,8 +46,7 @@ public class ConvertedWay {
 	private boolean overlay;		// this is a non-routable overlay line that for a road 
 	
 
-	public ConvertedWay(int index, Way way, GType type) {
-		this.index = index;
+	public ConvertedWay(Way way, GType type) {
 		this.way = way;
 		this.gt = type;
 		routeFlags = evalRouteTags(way);
@@ -71,7 +69,6 @@ public class ConvertedWay {
 	public ConvertedWay(ConvertedWay other, Way way){
 		this.way = way;
 		// copy all other attributes
-		this.index = other.index;
 		this.gt = other.gt;
 		this.isRoad	 = other.isRoad;
 		this.roadClass = other.roadClass;
@@ -80,10 +77,6 @@ public class ConvertedWay {
 		this.routeFlags = other.routeFlags;
 		this.overlay = other.overlay;
 		this.hasDirection = other.hasDirection;
-	}
-	
-	public int getIndex(){
-		return index;
 	}
 	
 	public GType getGType(){
@@ -238,12 +231,7 @@ public class ConvertedWay {
 	}
 	
 	public boolean isOneway(){
-		boolean r1 = (routeFlags & R_ONEWAY) != 0;
-		boolean r2 = way.tagIsLikeYes("oneway");
-		if (r2 && !r1) {
-			long dd = 4;
-		}
-		return r1;
+		return (routeFlags & R_ONEWAY) != 0;
 	}
 
 	public boolean isRoundabout(){
