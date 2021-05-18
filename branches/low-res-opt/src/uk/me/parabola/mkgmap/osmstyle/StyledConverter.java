@@ -220,7 +220,7 @@ public class StyledConverter implements OsmConverter {
 		lineAdder = line -> {
 			if (line instanceof MapRoad) {
 				prefixSuffixFilter.filter((MapRoad) line);
-				if (line.isRoad() && !line.isDirection() && ((MapRoad) line).getRoadDef().isOneway()) {
+				if (!line.isDirection() && ((MapRoad) line).getRoadDef().isOneway()) {
 					// we want to set the direction flag for oneway roads because Garmin maps also do it 
 					// do this very late so that overlays are not modified 
 					line.setDirection(true); 
