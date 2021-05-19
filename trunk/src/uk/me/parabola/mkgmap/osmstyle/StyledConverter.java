@@ -234,16 +234,14 @@ public class StyledConverter implements OsmConverter {
 		// undocumented option - usually used for debugging only
 		mergeRoads = !props.getProperty("no-mergeroads", false);
 		allowReverseMerge = props.getProperty("allow-reverse-merge", false);
-		if (allowReverseMerge) {
-			final String typesOption = "line-types-with-direction";
-			String typeList = props.getProperty(typesOption, "");
-			if (typeList.isEmpty())
-				typeList = style.getOption(typesOption);
-			List<String> types = CommandArgs.stringToList(typeList, typesOption);
-			for (String type :types) {
-				if (!type.isEmpty()) {
-					lineTypesWithDirection.add(Integer.decode(type));
-				}
+		final String typesOption = "line-types-with-direction";
+		String typeList = props.getProperty(typesOption, "");
+		if (typeList.isEmpty())
+			typeList = style.getOption(typesOption);
+		List<String> types = CommandArgs.stringToList(typeList, typesOption);
+		for (String type :types) {
+			if (!type.isEmpty()) {
+				lineTypesWithDirection.add(Integer.decode(type));
 			}
 		}
 		routable = props.containsKey("route");
@@ -363,13 +361,18 @@ public class StyledConverter implements OsmConverter {
 			ConvertedWay cw = new ConvertedWay(way, foundType);
 			cw.setReversed(wasReversed);
 
-			if (cw.isOneway() || way.tagIsLikeYes(TKM_HAS_DIRECTION)
-					|| lineTypesWithDirection.contains(foundType.getType()))
-				cw.setHasDirection(true);
-			if (way.tagIsLikeNo(TKM_HAS_DIRECTION)) 
-				cw.setHasDirection(false);
-			
-			if (cw.isRoad()){
+			boolean hasDirection = cw.isOneway(); // overwritten if not road
+			if (way.tagIsLikeYes(TKM_HAS_DIRECTION))
+				hasDirection = true;
+			else if (way.tagIsLikeNo(TKM_HAS_DIRECTION))
+				hasDirection = false;
+			else if (lineTypesWithDirection.contains(foundType.getType()))
+				hasDirection = true;
+			else if (!cw.isRoad()) // ignore oneway setting
+				hasDirection = false;
+			cw.setHasDirection(hasDirection);
+
+			if (cw.isRoad()) {
 				if (way.getId() == lastRoadId) {
 					for (int i = roads.size() - 1; i >= 0; i--) {
 						ConvertedWay prevRoad = roads.get(i);
@@ -1275,8 +1278,7 @@ public class StyledConverter implements OsmConverter {
 			line.setType(replType);
 		line.setPoints(points);
 
-		if (cw.isOneway() || cw.hasDirection())
-			line.setDirection(true);
+		line.setDirection(cw.hasDirection());
 
 		clipper.clipLine(line, lineAdder);
 	}
@@ -1883,7 +1885,7 @@ public class StyledConverter implements OsmConverter {
 		if (cw.isOneway()) {
 			road.setOneway();
 		}
-		road.setDirection(cw.isOneway() || cw.hasDirection());
+		road.setDirection(cw.hasDirection());
 
 		road.setAccess(cw.getAccess());
 		
