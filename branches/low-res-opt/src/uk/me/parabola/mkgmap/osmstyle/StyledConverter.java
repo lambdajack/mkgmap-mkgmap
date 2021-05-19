@@ -220,12 +220,6 @@ public class StyledConverter implements OsmConverter {
 		lineAdder = line -> {
 			if (line instanceof MapRoad) {
 				prefixSuffixFilter.filter((MapRoad) line);
-				if (!line.isDirection() && ((MapRoad) line).getRoadDef().isOneway()) {
-					// we want to set the direction flag for oneway roads because Garmin maps also do it 
-					// do this very late so that overlays are not modified 
-					line.setDirection(true); 
-				}
-								
 				collector.addRoad((MapRoad) line);
 			} else {
 				collector.addLine(line);
@@ -367,12 +361,17 @@ public class StyledConverter implements OsmConverter {
 			ConvertedWay cw = new ConvertedWay(way, foundType);
 			cw.setReversed(wasReversed);
 
-			// evaluate special tag and list, list has lower priority 
-			if (way.tagIsLikeYes(TKM_HAS_DIRECTION)
-					|| (!way.tagIsLikeNo(TKM_HAS_DIRECTION) && lineTypesWithDirection.contains(foundType.getType()))) {
-				cw.setHasDirection(true);
-			}
-			
+			boolean hasDirection = cw.isOneway(); // overwritten if not road
+			if (way.tagIsLikeYes(TKM_HAS_DIRECTION))
+				hasDirection = true;
+			else if (way.tagIsLikeNo(TKM_HAS_DIRECTION))
+				hasDirection = false;
+			else if (lineTypesWithDirection.contains(foundType.getType()))
+				hasDirection = true;
+			else if (!cw.isRoad()) // ignore oneway setting
+				hasDirection = false;
+			cw.setHasDirection(hasDirection);
+
 			if (cw.isRoad()) {
 				if (way.getId() == lastRoadId) {
 					for (int i = roads.size() - 1; i >= 0; i--) {
@@ -1279,7 +1278,7 @@ public class StyledConverter implements OsmConverter {
 			line.setType(replType);
 		line.setPoints(points);
 
-		line.setDirection(cw.hasDirection()); // used to check oneway as well
+		line.setDirection(cw.hasDirection());
 
 		clipper.clipLine(line, lineAdder);
 	}
@@ -1886,7 +1885,7 @@ public class StyledConverter implements OsmConverter {
 		if (cw.isOneway()) {
 			road.setOneway();
 		}
-		road.setDirection(cw.hasDirection()); // ignore oneway here 
+		road.setDirection(cw.hasDirection());
 
 		road.setAccess(cw.getAccess());
 		
