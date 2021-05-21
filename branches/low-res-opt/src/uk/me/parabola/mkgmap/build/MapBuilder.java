@@ -1629,8 +1629,6 @@ public class MapBuilder implements Configurable {
 							points = points.subList(i, j);
 						p0.decHighwayCount();
 						break;
-					} else {
-						log.diagnostic("hole too large");
 					}
 				}
 			}
