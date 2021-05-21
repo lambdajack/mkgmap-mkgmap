@@ -55,7 +55,7 @@ public class ShapeMergeFilter{
 		this.resolution = resolution;
 		this.orderByDecreasingArea = orderByDecreasingArea;
 		if (resolution < 24)
-			maxPoints = Integer.MAX_VALUE; // let ShapeSplitter split if too complex
+			maxPoints = 16 * 1024 * 1024; // let ShapeSplitter split if too complex
 		else 
 			maxPoints = PolygonSplitterFilter.MAX_POINT_IN_ELEMENT;
 	}
@@ -113,12 +113,31 @@ public class ShapeMergeFilter{
 			mergedShapes.addAll(similar);
 			return;
 		}
+		
+		final int partSize = 8192;
+		if (similar.size() > partSize) {
+			similar.sort((o1,o2) -> o1.getBounds().getCenter().getLatitude() - o2.getBounds().getCenter().getLatitude());
+		}
 		List<ShapeHelper> list = new ArrayList<>();
 		MapShape s1 = similar.get(0);
 		for (MapShape ms : similar) {
 			ShapeHelper sh = new ShapeHelper(ms.getPoints());
 			sh.id = ms.getOsmid();
 			list.add(sh);
+		}
+		
+		while (list.size() > partSize) {
+			int oldSize = list.size();
+			List<ShapeHelper> nextList = new ArrayList<>();
+			for (int part = 0; part < list.size(); part += partSize) {
+				List<ShapeHelper> lower = new ArrayList<>(list.subList(part, Math.min(part+partSize, list.size())));
+				tryMerge(s1, lower);
+				nextList.addAll(lower);
+			}
+			list.clear();
+			list.addAll(nextList);
+			if(list.size() == oldSize)
+				break;
 		}
 		tryMerge(s1, list);
 		for (ShapeHelper sh : list) {
@@ -202,7 +221,7 @@ public class ShapeMergeFilter{
 			// nothing to do
 			return;
 		}
-		
+		coord2Shape.clear();
 		List<ShapeHelper> next = new ArrayList<>();
 		boolean merged = false;
 		BitSet done = new BitSet();
@@ -244,9 +263,11 @@ public class ShapeMergeFilter{
 				noMerge.add(similarShapes.get(i));
 			}
 		}
+		delayed.clear();
 		similarShapes.clear();
 		similarShapes.addAll(noMerge);
-		
+		candidates = null;
+		toMerge.clear();
 		if (merged) 
 			tryMerge(pattern, next);
 		
