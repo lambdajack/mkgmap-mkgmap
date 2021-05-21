@@ -42,10 +42,22 @@ public class ShapeMergeFilter{
 	private final int resolution;
 	private static final ShapeHelper DUP_SHAPE = new ShapeHelper(new ArrayList<>(0)); 
 	private final boolean orderByDecreasingArea;
+	private final int maxPoints;
 
+	/**
+	 * Create the shape filter with the given attributes. It will ignore shapes
+	 * which are not displayed at the given resolution.
+	 * 
+	 * @param resolution            the resolution
+	 * @param orderByDecreasingArea if true, only certain shapes are merged
+	 */
 	public ShapeMergeFilter(int resolution, boolean orderByDecreasingArea) {
 		this.resolution = resolution;
 		this.orderByDecreasingArea = orderByDecreasingArea;
+		if (resolution < 24)
+			maxPoints = Integer.MAX_VALUE; // let ShapeSplitter split if too complex
+		else 
+			maxPoints = PolygonSplitterFilter.MAX_POINT_IN_ELEMENT;
 	}
 
 	/**
@@ -160,7 +172,7 @@ public class ShapeMergeFilter{
 					sharedPoints.add(c);
 				}
 			}
-			if (sharedPoints.isEmpty() || sh0.getPoints().size() - sharedPoints.size()> PolygonSplitterFilter.MAX_POINT_IN_ELEMENT) {
+			if (sharedPoints.isEmpty() || (sh0.getPoints().size() - sharedPoints.size() > maxPoints)) {
 				// merge will not work 
 				noMerge.add(sh0);
 				continue;
@@ -265,7 +277,7 @@ public class ShapeMergeFilter{
 			if (mergeRes == shOld){
 				result.add(shOld);
 				continue;
-			} else if (mergeRes != null){
+			} else {
 				shNew = mergeRes;
 			}
 			if (shNew == DUP_SHAPE){
@@ -273,9 +285,9 @@ public class ShapeMergeFilter{
 				return list; // nothing to do
 			}
 		}
-		if (shNew != null && shNew != DUP_SHAPE)
+		if (shNew != DUP_SHAPE)
 			result.add(shNew);
-		if (result.size() > list.size()+1 )
+		if (result.size() > list.size() + 1)
 			log.error("result list size is wrong", list.size(), "->", result.size());
 		return result;
 	}
@@ -287,7 +299,7 @@ public class ShapeMergeFilter{
 	 * @return merged shape or 1st shape if no common point found or {@code dupShape} 
 	 * if both shapes describe the same area. 
 	 */
-	private static ShapeHelper tryMerge(ShapeHelper sh1, ShapeHelper sh2) {
+	private ShapeHelper tryMerge(ShapeHelper sh1, ShapeHelper sh2) {
 		
 		// both clockwise or both ccw ?
 		boolean sameDir = sh1.areaTestVal > 0 && sh2.areaTestVal > 0 || sh1.areaTestVal < 0 && sh2.areaTestVal < 0;
@@ -317,40 +329,36 @@ public class ShapeMergeFilter{
 				return DUP_SHAPE;
 			}
 		}
-		List<Coord> merged = null; 
-		if (points1.size() + points2.size() - 2*sh1PositionsToCheck.size() < PolygonSplitterFilter.MAX_POINT_IN_ELEMENT){
+		List<Coord> merged = null;
+		if (points1.size() + points2.size() - 2 * sh1PositionsToCheck.size() < maxPoints) {
 			merged = mergeLongestSequence(points1, points2, sh1PositionsToCheck, sh2PositionsToCheck, sameDir);
+			if (merged == null)
+				return sh1;
 			if (merged.isEmpty())
 				return DUP_SHAPE;
-			if (merged.get(0) != merged.get(merged.size()-1))
+			if (merged.get(0) != merged.get(merged.size() - 1))
 				merged = null;
-			else if (merged.size() > PolygonSplitterFilter.MAX_POINT_IN_ELEMENT){
-				// don't merge because merged polygon would be split again
+			else if (merged.size() > maxPoints) {
+				// don't merge because merged polygon would probably be split again
 				log.info("merge rejected: merged shape has too many points " + merged.size());
 				merged = null;
 			}
 		}
-		ShapeHelper shm = null;
-		if (merged != null){
-			shm = new ShapeHelper(merged);
-			if (Math.abs(shm.areaTestVal) != Math.abs(sh1.areaTestVal) + Math.abs(sh2.areaTestVal)){
-				log.warn("merging shapes skipped for shapes near", points1.get(sh1PositionsToCheck.getInt(0)).toOSMURL(), 
-						"(maybe overlapping shapes?)");
-				merged = null;
-				shm = null;
-			} else {
-				if (log.isInfoEnabled()){
-					log.info("merge of shapes near",points1.get(sh1PositionsToCheck.getInt(0)).toOSMURL(), 
-							"reduces number of points from",(points1.size()+points2.size()),
-							"to",merged.size());
-				}
-			}
-		}
-		if (shm != null)
-			return shm;
 		if (merged == null)
 			return sh1;
-		return null;
+		ShapeHelper shm = new ShapeHelper(merged);
+		if (Math.abs(shm.areaTestVal) != Math.abs(sh1.areaTestVal) + Math.abs(sh2.areaTestVal)){
+			log.warn("merging shapes skipped for shapes near", points1.get(sh1PositionsToCheck.getInt(0)).toOSMURL(), 
+					"(maybe overlapping shapes?)");
+			return sh1;
+		} else {
+			if (log.isInfoEnabled()){
+				log.info("merge of shapes near",points1.get(sh1PositionsToCheck.getInt(0)).toOSMURL(), 
+						"reduces number of points from",(points1.size()+points2.size()),
+						"to",merged.size());
+			}
+		}
+		return shm;
 	}
 
 	/**

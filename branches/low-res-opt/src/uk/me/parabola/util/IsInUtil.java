@@ -175,10 +175,15 @@ public class IsInUtil {
 			status |= ON;
 		if (status == ON) {
 			// found no intersection and first point is on boundary
-			if (onBoundary.cardinality() != n) {
+			while (onBoundary.cardinality() != n) {
+				int pos = onBoundary.nextClearBit(0);
 				// return result for first point which is not on boundary
-				Coord pTest = lineToTest.get(onBoundary.nextClearBit(0));
+				Coord pTest = lineToTest.get(pos);
 				status |= isPointInShape(pTest, shape);
+				if (status == ON) {
+					onBoundary.set(pos);
+					continue;
+				}
 				return status;
 			}
 			status |= checkAllOn(lineToTest, shape);

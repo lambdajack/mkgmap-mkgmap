@@ -816,6 +816,9 @@ public class MapBuilder implements Configurable {
 			Zoom zoom = map.createZoom(linfo.getLevel(), linfo.getBits());
 
 			for (SourceSubdiv srcDivPair : srcList) {
+				if (mergeShapes && isOverviewComponent) {
+					mergeShapesFirst(srcDivPair, zoom);
+				}
 
 				MapSplitter splitter = new MapSplitter(srcDivPair.getSource(), zoom);
 				MapArea[] areas = splitter.split(orderByDecreasingArea);
@@ -1356,8 +1359,8 @@ public class MapBuilder implements Configurable {
 
 				// preserve the end points of horizontal and vertical lines that lie
 				// on the bbox of the shape. 
-				if(last.getLatitude() == prev.getLatitude() && (last.getLatitude() == minLat || last.getLatitude() == maxLat) ||
-				   last.getLongitude() == prev.getLongitude() && (last.getLongitude() == minLon || last.getLongitude() == maxLon)) {
+				if(last.getHighPrecLat() == prev.getHighPrecLat() && (last.getLatitude() == minLat || last.getLatitude() == maxLat) ||
+				   last.getHighPrecLon() == prev.getHighPrecLon() && (last.getLongitude() == minLon || last.getLongitude() == maxLon)) {
 					last.preserved(true);
 					prev.preserved(true);
 				}
@@ -1547,4 +1550,91 @@ public class MapBuilder implements Configurable {
 			map.addMapObject(pg);
 		}
 	}
+
+	/**
+	 * Merge shapes and remove holes which are too small at the given zoom level.
+	 * May increase the minimum resolution of existing shapes and add new (merged)
+	 * for the given resolution. 
+	 * 
+	 * @param srcDivPair the map source
+	 * @param zoom       the zoom
+	 */
+	private void mergeShapesFirst(SourceSubdiv srcDivPair, Zoom zoom) {
+		final int res = zoom.getResolution();
+		final int minSize = getMinSizePolygonForResolution(res) * (1 << zoom.getShiftValue());
+		
+		MapDataSource mapSource = srcDivPair.getSource();
+		List<MapShape> shapesThisLevel = mapSource.getShapes().stream()
+				.filter(s -> s.getMinResolution() <= res && s.getMaxResolution()>= res)
+				.collect(Collectors.toList());
+		List<MapShape> copies = new ArrayList<>(shapesThisLevel.size());
+		for (MapShape s : shapesThisLevel) {
+			MapShape copy = s.copy();
+			copy.setPoints(s.getPoints());
+			s.setMinResolution(res+1);
+			copy.setMaxResolution(res);
+			copies.add(copy);
+		}
+		for (MapShape s : copies) {
+			removeTooSmallHoles(s.getPoints(), minSize);
+		}
+		ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea);
+		List<MapShape> merged = shapeMergeFilter.merge(copies);
+		mapSource.getShapes().addAll(merged);
+		
+	}
+
+	public static void removeTooSmallHoles(List<Coord> points , int minSize) {
+		// possibly rotate shape so that start point is on the boundary -> not part of a hole 
+		int minLatHp = Integer.MAX_VALUE;
+		int rotate = -1;
+		for (int i = 0; i < points.size(); i++) {
+			int latHp = points.get(i).getHighPrecLat();
+			if (latHp < minLatHp) {
+				minLatHp = latHp;
+				rotate = i;
+			}
+		}
+		if (rotate > 0) {
+			points.remove(points.size() - 1);
+			Collections.rotate(points, -rotate);
+			points.add(points.get(0));
+		}
+		Area bbox = Area.getBBox(points);
+		
+		points.forEach(Coord::resetHighwayCount);
+		points.forEach(Coord::incHighwayCount);
+		
+		for (int i = 0; i < points.size(); i++) {
+			Coord p0 = points.get(i);
+			if (p0.getHighwayCount() <= 1)
+				continue;
+			if (i == points.size() - 1)
+				return;
+			for (int j = points.size() - 2; j > i; j--) {
+				if (p0 == points.get(j)) {
+					List<Coord> hole = points.subList(i, j + 1);
+					Area bboxHole = Area.getBBox(hole);
+					boolean outer = false;
+					if (bboxHole.equals(bbox)) {
+						// we travelled along the outer shape, the rest must be the hole
+						hole = points.subList(j, points.size());
+						bboxHole = Area.getBBox(hole);
+						outer = true;
+					}
+					if (bboxHole.getMaxDimension() < minSize) {
+						if (!outer)
+							points.subList(i, j).clear(); 
+						else
+							points = points.subList(i, j);
+						p0.decHighwayCount();
+						break;
+					} else {
+						log.diagnostic("hole too large");
+					}
+				}
+			}
+		}
+	}
+
 }

@@ -38,6 +38,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.util.Java2DConverter;
@@ -72,6 +73,7 @@ public class MultiPolygonRelation extends Relation {
 	
 	protected double largestSize;
 	protected JoinedWay largestOuterPolygon;
+	private Long2ObjectOpenHashMap<Coord> commonCoordMap = new Long2ObjectOpenHashMap<>(); 
 	
 	protected Set<Way> outerWaysForLineTagging;
 	protected Map<String, String> outerTags;
@@ -972,7 +974,7 @@ public class MultiPolygonRelation extends Relation {
 						innerWays.add(polygonHoleStatus.polygon);
 					}
 
-					MultiPolygonCutter cutter = new MultiPolygonCutter(this, tileArea);
+					MultiPolygonCutter cutter = new MultiPolygonCutter(this, tileArea, commonCoordMap);
 					singularOuterPolygons = cutter.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
 				}
 				
