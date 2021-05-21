@@ -39,6 +39,7 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.imgfmt.MapFailedException;
@@ -701,6 +702,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		List<java.awt.geom.Area> landOnlyAreas = new ArrayList<>();
 		
 		PrecompData pd = precompIndex.get();
+ 		Long2ObjectOpenHashMap<Coord> commonCoordMap = new Long2ObjectOpenHashMap<>();
 
 		for (String precompKey : getPrecompKeyNames()) {
 			String tileName = getTileName(precompKey);
@@ -725,15 +727,16 @@ public class SeaGenerator implements OsmReadingHooks {
 				}
 			} else {
 				distinctTilesOnly = false;
-				loadMixedTile(pd, tileName, landWays, seaWays);
+				loadMixedTile(pd, tileName, landWays, seaWays, commonCoordMap);
 			}
 		}
- 		landWays.addAll(areaToWays(landOnlyAreas,"land"));
- 		seaWays.addAll(areaToWays(seaOnlyAreas,"sea"));
- 		return distinctTilesOnly;
+		landWays.addAll(areaToWays(landOnlyAreas, "land", commonCoordMap));
+		seaWays.addAll(areaToWays(seaOnlyAreas, "sea", commonCoordMap));
+		return distinctTilesOnly;
 	}
 
-	private static void loadMixedTile(PrecompData pd, String tileName, List<Way> landWays, List<Way> seaWays) {
+	private static void loadMixedTile(PrecompData pd, String tileName, List<Way> landWays, List<Way> seaWays,
+			Long2ObjectOpenHashMap<Coord> commonCoordMap) {
 		try {
 			InputStream is = null;
 			if (pd.zipFile != null) {
@@ -753,6 +756,21 @@ public class SeaGenerator implements OsmReadingHooks {
 					log.debug(seaPrecompWays.size(), "precomp sea ways from", tileName, "loaded.");
 
 				for (Way w : seaPrecompWays) {
+					int n = w.getPoints().size();
+					for (int i = 0; i < n; i++) {
+						Coord p = w.getPoints().get(i);
+						if (p.getLatitude() % PRECOMP_RASTER == 0 || p.getLongitude() % PRECOMP_RASTER == 0) {
+							long key = Utils.coord2Long(p);
+							Coord replacement = commonCoordMap.get(key);
+							if (replacement == null)
+								commonCoordMap.put(key, p);
+							else {
+								assert p.highPrecEquals(replacement);
+								w.getPoints().set(i, replacement);
+							}
+						}
+					}
+					
 					// set a new id to be sure that the precompiled ids do not
 					// interfere with the ids of this run
 					w.markAsGeneratedFrom(w);
@@ -811,13 +829,26 @@ public class SeaGenerator implements OsmReadingHooks {
 	/**
 	 * @param area
 	 * @param type
+	 * @param commonCoordMap
 	 * @return
 	 */
-	private static List<Way> areaToWays(List<java.awt.geom.Area> areas, String type) {
+	private static List<Way> areaToWays(List<java.awt.geom.Area> areas, String type,
+			Long2ObjectOpenHashMap<Coord> commonCoordMap) {
 		List<Way> ways = new ArrayList<>();
 		for (java.awt.geom.Area area : areas) {
 			List<List<Coord>> shapes = Java2DConverter.areaToShapes(area);
 			for (List<Coord> points : shapes) {
+				for (int i = 0; i < points.size(); i++) {
+					Coord p = points.get(i);
+					long key = Utils.coord2Long(p);
+					Coord replacement = commonCoordMap.get(key);
+					if (replacement == null)
+						commonCoordMap.put(key, p);
+					else {
+						assert p.highPrecEquals(replacement);
+						points.set(i, replacement);
+					}
+				}
 				Way w = new Way(FakeIdGenerator.makeFakeId(), points);
 				w.addTag("natural", type);
 				ways.add(w);
