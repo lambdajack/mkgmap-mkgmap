@@ -1269,6 +1269,7 @@ public class MultiPolygonRelation extends Relation {
 
 	protected void cleanup() {
 		mpPolygons = null;
+		commonCoordMap = null;
 		roleMap.clear();
 		containsMatrix = null;
 		polygons = null;
