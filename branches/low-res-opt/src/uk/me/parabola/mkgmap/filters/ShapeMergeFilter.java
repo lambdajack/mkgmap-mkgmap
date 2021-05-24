@@ -115,9 +115,8 @@ public class ShapeMergeFilter{
 		}
 		
 		final int partSize = 8192;
-		if (similar.size() > partSize) {
-			similar.sort((o1,o2) -> o1.getBounds().getCenter().getLatitude() - o2.getBounds().getCenter().getLatitude());
-		}
+		// sorting is meant to reduce the self intersections created by merging
+//		similar.sort((o1,o2) -> o1.getBounds().getCenter().getLatitude() - o2.getBounds().getCenter().getLatitude());
 		List<ShapeHelper> list = new ArrayList<>();
 		MapShape s1 = similar.get(0);
 		for (MapShape ms : similar) {
