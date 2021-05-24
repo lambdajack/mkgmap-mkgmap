@@ -1628,8 +1628,8 @@ public class MapBuilder implements Configurable {
 						else
 							points = points.subList(i, j);
 						p0.decHighwayCount();
-						break;
 					}
+					break;
 				}
 			}
 		}
