@@ -270,7 +270,7 @@ public class RouteNode implements Comparable<RouteNode> {
 		// mark the node as having been discarded
 		flags |= F_DISCARDED;
 		if (isBoundary()) {
-			log.error("intermal error? boundary node at",coord.toDegreeString(), "is discarded");
+			log.error("intermal error? boundary node at", coord, "is discarded");
 		}
 	}
 
@@ -283,13 +283,13 @@ public class RouteNode implements Comparable<RouteNode> {
 			// return something so that the program can continue
 			return 0;
 		}
-		assert offsetNod1 != -1: "failed for node " + coord.getId() + " at " + coord.toDegreeString();
+		assert offsetNod1 != -1: "failed for node " + coord.getId() + " at " + coord;
 		return offsetNod1;
 	}
 
 	public void setOffsets(Coord centralPoint) {
 		if(log.isDebugEnabled())
-			log.debug("center", centralPoint, ", coord", coord.toDegreeString());
+			log.debug("center", centralPoint, ", coord", coord);
 		setLatOff(coord.getLatitude() - centralPoint.getLatitude());
 		setLonOff(coord.getLongitude() - centralPoint.getLongitude());
 	}

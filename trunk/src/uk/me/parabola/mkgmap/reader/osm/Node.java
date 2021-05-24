@@ -38,7 +38,7 @@ public class Node extends Element {
 
 	@Override
 	public String toString() {
-		return super.toString() + " @ " + (location == null ? "unknown" : location.toDegreeString());
+		return super.toString() + " @ " + (location == null ? "unknown" : location);
 	}
 
 	@Override

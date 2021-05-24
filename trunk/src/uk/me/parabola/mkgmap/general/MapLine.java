@@ -81,7 +81,7 @@ public class MapLine extends MapElement {
 		for (Coord co : points) {
 			if (last != null && last.equals(co)) {
 				if (log.isInfoEnabled())
-					log.info("Line", getName() , "has consecutive equal points at" , co.toDegreeString());
+					log.info("Line", getName() , "has consecutive equal points at" , co);
 			} else {
 				addToBounds(co);
 				last = co;

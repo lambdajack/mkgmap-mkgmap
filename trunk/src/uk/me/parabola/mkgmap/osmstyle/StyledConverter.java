@@ -841,14 +841,14 @@ public class StyledConverter implements OsmConverter {
 								if (!pw1.getOnCountryBorder()) {
 									++countChg;
 									if (!pw1.getOnBoundary())
-										log.info("road intersects admin boundary, changing existing node to external routing node at",pw1.toDegreeString());
+										log.info("road intersects admin boundary, changing existing node to external routing node at", pw1);
 								}
 								pw1.setOnCountryBorder(true);
 							} else if (dist2 < dist1 && dist2 < 1) {
 								if (!pw2.getOnCountryBorder()) {
 									++countChg;
 									if (!pw2.getOnBoundary())
-										log.info("road intersects admin boundary, changing existing node to external routing node at",pw2.toDegreeString());
+										log.info("road intersects admin boundary, changing existing node to external routing node at", pw2);
 								}
 								pw2.setOnCountryBorder(true);
 							} else {
@@ -861,7 +861,7 @@ public class StyledConverter implements OsmConverter {
 									is = replacement;
 								}
 								is.setOnCountryBorder(true);
-								log.info("road intersects admin boundary, adding external routing node at",is.toDegreeString());
+								log.info("road intersects admin boundary, adding external routing node at", is);
 								
 								way.getPoints().add(pos, is);
 								changed = true;

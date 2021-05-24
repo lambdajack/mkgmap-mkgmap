@@ -455,14 +455,14 @@ public class POIGeneratorHook implements OsmReadingHooks {
 								if (relName.equals(pName)){
 									adminCentre = (Node) el;
 									if (log.isDebugEnabled())
-										log.debug("using admin_centre node as location for POI for rel",r.getId(),relName,"at",((Node) el).getLocation().toDegreeString());
+										log.debug("using admin_centre node as location for POI for rel",r.getId(),relName,"at",((Node) el).getLocation());
 								}
 							}
 						} else if ("label".equals(role)){
 							String label = nameFinder.getName(el);
 							if (relName.equals(label)){
 								labelPOI = (Node) el;
-								log.debug("using label node as location for POI for rel",r.getId(),relName,"at",((Node) el).getLocation().toDegreeString());
+								log.debug("using label node as location for POI for rel", r.getId(), relName, "at", ((Node) el).getLocation());
 								break;
 							} else {
 								log.warn("rel",r.toBrowseURL(),",node with role label is ignored because it has a different name");
