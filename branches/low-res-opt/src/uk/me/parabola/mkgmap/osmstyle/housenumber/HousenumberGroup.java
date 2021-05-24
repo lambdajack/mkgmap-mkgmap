@@ -161,7 +161,7 @@ public class HousenumberGroup {
 			else {
 				if (log.isInfoEnabled()){
 					double distLine = pointToUse.distToLineSegment(c1.getDisplayedCoord(), c2.getDisplayedCoord());
-					log.info("adding number nodes at",pointToUse.toDegreeString(),"to optimize address search", "dist to line is", HousenumberGenerator.formatLen(distLine));
+					log.info("adding number nodes at", pointToUse, "to optimize address search", "dist to line is", HousenumberGenerator.formatLen(distLine));
 				}
 				timesToAdd = 2;
 			}

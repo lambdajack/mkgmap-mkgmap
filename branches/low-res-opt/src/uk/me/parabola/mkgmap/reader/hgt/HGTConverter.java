@@ -175,7 +175,7 @@ public class HGTConverter {
 			double lon = lon32 * FACTOR;
 			double lat = lat32 * FACTOR;
 			Coord c = new Coord(lat, lon);
-			log.warn("height interpolation returns void at", c.toDegreeString());
+			log.warn("height interpolation returns void at", c);
 		}
 		return h;
 	}

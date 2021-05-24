@@ -170,8 +170,7 @@ public class NOD1Part {
 		}
 
 		public String toString() {
-			return "BBox[" + new Coord(minLat,minLon).toDegreeString()
-				+ ", " + new Coord(maxLat,maxLon).toDegreeString() + "]";
+			return "BBox[" + new Coord(minLat, minLon) + ", " + new Coord(maxLat, maxLon) + "]";
 		}
 	}
 

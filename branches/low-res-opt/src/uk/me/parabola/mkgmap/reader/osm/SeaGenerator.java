@@ -424,7 +424,7 @@ public class SeaGenerator implements OsmReadingHooks {
 						int minLat = -1 * (PRECOMP_RASTER * h - MAX_LAT);
 						int minLon = -1 * (PRECOMP_RASTER * w - MAX_LON);
 						Coord c = new Coord(minLat + PRECOMP_RASTER / 2, minLon + PRECOMP_RASTER / 2);
-						log.error("Precomp sea data seems to be wrong, " + err + " around " + c.toDegreeString()
+						log.error("Precomp sea data seems to be wrong, " + err + " around " + c
 								+ ", index key is " + minLat + "_" + minLon);
 					}
 				}
@@ -1492,7 +1492,7 @@ public class SeaGenerator implements OsmReadingHooks {
 				thisStatus = +1;
 			}
 			if (thisStatus == lastStatus)
-				log.error("Adjacent coastlines hit tile edge in same direction at", getPoint(tileBounds, lastHit).toDegreeString(), "and", getPoint(tileBounds, aHit).toDegreeString(), segment);
+				log.error("Adjacent coastlines hit tile edge in same direction at", getPoint(tileBounds, lastHit), "and", getPoint(tileBounds, aHit), segment);
 			lastStatus = thisStatus;
 			lastHit = aHit;
 		}

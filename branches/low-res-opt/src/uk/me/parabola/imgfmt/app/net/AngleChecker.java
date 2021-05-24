@@ -195,7 +195,7 @@ public class AngleChecker {
 				float angleBetween = arc2.getInitialHeading() - ag.initialHeading;
 				if (angleBetween < 1) {
 					if (arc1.getDest() != arc2.getDest() && arc1.getRoadDef().getId() != arc2.getRoadDef().getId())
-						log.warn("sharp angle < 1° at",node.getCoord().toDegreeString(),",maybe duplicated OSM way with bearing",getCompassBearing(arc1.getInitialHeading()));
+						log.warn("sharp angle < 1° at", node.getCoord(), ",maybe duplicated OSM way with bearing", getCompassBearing(arc1.getInitialHeading()));
 					ag.addArc(arc2);
 				} else {
 					if (angleBetween < minAngle)
@@ -301,7 +301,7 @@ public class AngleChecker {
 			}
 			if (ignoredReason != null){
 				if (log.isInfoEnabled()){
-					log.info("sharp angle", aa.angle, "° at", node.getCoord().toDegreeString(),
+					log.info("sharp angle", aa.angle, "° at", node.getCoord(),
 							 "headings", getCompassBearing(ag1.getInitialHeading()), getCompassBearing(ag2.getInitialHeading()),
 							 "speeds", ag1.maxRoadSpeed, ag2.maxRoadSpeed);
 					log.info("ignoring", ignoredReason);
@@ -320,7 +320,7 @@ public class AngleChecker {
 			ArcGroup ag1 = arcGroups.get(i);
 			ArcGroup ag2 = arcGroups.get(i+1 < n ? i+1 : 0);
 			if (log.isInfoEnabled()){
-				log.info("sharp angle", aa.angle, "° at", node.getCoord().toDegreeString(),
+				log.info("sharp angle", aa.angle, "° at", node.getCoord(),
 						 "headings", getCompassBearing(ag1.getInitialHeading()), getCompassBearing(ag2.getInitialHeading()),
 						 "speeds", ag1.maxRoadSpeed, ag2.maxRoadSpeed,
 						 "classes",ag1.maxRoadClass, ag2.maxRoadClass);
@@ -427,7 +427,7 @@ public class AngleChecker {
 		} // else angle == 0 and can't widen as don't know which way around to do it
 		if (extra != 0) {
 			if (log.isInfoEnabled())
-				log.info("join angle", angle, "° at", node.getCoord().toDegreeString(), "increased by", extra);
+				log.info("join angle", angle, "° at", node.getCoord(), "increased by", extra);
 			arc1.modInitialHeading(+extra/2);
 			arc2.modInitialHeading(-extra/2);
 		}

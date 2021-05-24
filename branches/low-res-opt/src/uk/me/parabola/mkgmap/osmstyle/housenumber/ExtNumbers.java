@@ -644,7 +644,7 @@ public class ExtNumbers {
 				if (log.isDebugEnabled()){
 					log.debug("solution: split segment with length",formatLen(segmentLength),"at",formatLen(usedFraction * segmentLength));
 					double distToLine = toAdd.getDisplayedCoord().distToLineSegment(c1.getDisplayedCoord(), c2.getDisplayedCoord());					
-					log.info("adding number node at",toAdd.toDegreeString(),"to split, dist to line is",formatLen(distToLine));
+					log.info("adding number node at", toAdd, "to split, dist to line is", formatLen(distToLine));
 				}
 				doSplit = true;
 				splitSegment = seg+1;
@@ -889,7 +889,7 @@ public class ExtNumbers {
 				return this;
 			}
 			if (log.isInfoEnabled())
-				log.info("adding number node at",toAdd.toDegreeString(),"to split, dist to line is",formatLen(bestDist));
+				log.info("adding number node at", toAdd, "to split, dist to line is", formatLen(bestDist));
 			action = "add";
 			this.endInRoad = addAsNumberNode(startInRoad + 1, toAdd);
 			int forcedSegment = - 1;

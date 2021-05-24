@@ -174,26 +174,20 @@ public class Way extends Element {
 	public String toString() {
 		StringBuilder sb = new StringBuilder(super.toString());
 		if (getName() != null) {
-			sb.append(' ');
-			sb.append(getName());
+			sb.append(' ').append(getName());
 		}
 		if (points.isEmpty())
 			sb.append(" empty");
 		else {
 			Coord coord = getFirstPoint();
 			if (hasEqualEndPoints()) {
-				sb.append(" starting and ending at ");
-				sb.append(coord.toDegreeString());
+				sb.append(" starting and ending at ").append(coord);
 			}
 			else {
-				sb.append(" starting at ");
-				sb.append(coord.toDegreeString());
-				sb.append(" and ending at ");
-				sb.append(getLastPoint().toDegreeString());
+				sb.append(" starting at ").append(coord).append(" and ending at ").append(getLastPoint());
 			}
 		}
-		sb.append(' ');
-		sb.append(toTagString());
+		sb.append(' ').append(toTagString());
 		return sb.toString();
 	}
 

@@ -151,8 +151,7 @@ public class RoadNetwork {
 		
 		if(log.isDebugEnabled()) {
 			log.debug("lastId = " + lastId + " curId = " + currId);
-			log.debug("from " + prevNode.toDegreeString() 
-					  + " to " + currNode.toDegreeString());
+			log.debug("from " + prevNode + " to " + currNode);
 			log.debug("arclength=" + arcLength + " roadlength=" + roadLength);
 		}
 
@@ -360,7 +359,7 @@ public class RoadNetwork {
 			Set<RoadDef> visitedRoads = new HashSet<>();
 			long sumOfRoadLengths = calcIslandSize(island, nodeToRoadMap, visitedRoads);
 			if (reportRoutingIslands)
-				log.diagnostic("Routing island " + visitedRoads.iterator().next() +  " at " + island.get(0).getCoord().toDegreeString() + " with " + island.size() +
+				log.diagnostic("Routing island " + visitedRoads.iterator().next() +  " at " + island.get(0).getCoord() + " with " + island.size() +
 					" routing node(s) and total length of " + sumOfRoadLengths + "m");
 			if (sumOfRoadLengths < maxSumRoadLengths) {
 				// set discarded flag for all nodes of the island

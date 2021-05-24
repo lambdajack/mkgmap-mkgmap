@@ -124,7 +124,7 @@ public class RoadMerger {
 		Way way1 = road1.getWay();
 		Way way2 = road2.getWay();
 		if (way1.getFirstPoint() == mergePoint) {
-			assert reverseAllowed : "bad reverse at " + mergePoint.toDegreeString();
+			assert reverseAllowed : "bad reverse at " + mergePoint;
 			Collections.reverse(way1.getPoints());
 			
 		}
@@ -241,7 +241,7 @@ public class RoadMerger {
 						double angle = getAngle(mergePoint, road1.getWay(), road2.getWay());
 						if (log.isDebugEnabled()) {
 							log.debug("Road", road1.getWay().getId(), "and road", road2.getWay().getId(),
-									"are mergeable with angle", angle, "at", mergePoint.toDegreeString());
+									"are mergeable with angle", angle, "at", mergePoint);
 						}
 						if (angle < bestAngle) {
 							mergeRoad1 = road1;
@@ -261,7 +261,7 @@ public class RoadMerger {
 				// yes!! => merge them
 				if (log.isDebugEnabled()) {
 					log.debug("Merging", mergeRoad1.getWay().getId(), "and", mergeRoad2.getWay().getId(), "at",
-							mergePoint.toDegreeString(), "with angle", bestAngle);
+							mergePoint, "with angle", bestAngle);
 				}
 				mergeRoads(mergePoint, mergeRoad1, mergeRoad2);
 				numMerges++;

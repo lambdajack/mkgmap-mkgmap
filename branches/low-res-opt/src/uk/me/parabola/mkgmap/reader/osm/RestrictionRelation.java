@@ -361,7 +361,7 @@ public class RestrictionRelation extends Relation {
 			else if (way.getLastPoint() == v)
 				v2 = way.getFirstPoint();
 			else {
-				log.warn(msgPrefix, "'via' way", way.toBrowseURL(), "doesn't start or end at", v.toDegreeString());
+				log.warn(msgPrefix, "'via' way", way.toBrowseURL(), "doesn't start or end at", v);
 				valid = false;
 			}
 			viaPoints.add(v2);
