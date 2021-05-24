@@ -1336,11 +1336,6 @@ public class MapBuilder implements Configurable {
 		for (MapShape shape : shapes) {
 			if (shape.getMinResolution() > res)
 				continue;
-			int minLat = shape.getBounds().getMinLat();
-			int maxLat = shape.getBounds().getMaxLat();
-			int minLon = shape.getBounds().getMinLong();
-			int maxLon = shape.getBounds().getMaxLong();
-			
 			List<Coord> points = shape.getPoints();
 			int n = points.size();
 			IdentityHashMap<Coord, Coord> coords = new IdentityHashMap<>(n);
@@ -1357,10 +1352,9 @@ public class MapBuilder implements Configurable {
 					last.preserved(true);
 				}
 
-				// preserve the end points of horizontal and vertical lines that lie
-				// on the bbox of the shape. 
-				if(last.getHighPrecLat() == prev.getHighPrecLat() && (last.getLatitude() == minLat || last.getLatitude() == maxLat) ||
-				   last.getHighPrecLon() == prev.getHighPrecLon() && (last.getLongitude() == minLon || last.getLongitude() == maxLon)) {
+				// preserve the end points of horizontal and vertical lines 
+				// they are very likely produced by cutting 
+				if(last.getHighPrecLat() == prev.getHighPrecLat() || last.getHighPrecLon() == prev.getHighPrecLon()) {
 					last.preserved(true);
 					prev.preserved(true);
 				}
@@ -1582,7 +1576,7 @@ public class MapBuilder implements Configurable {
 		List<MapShape> merged = shapeMergeFilter.merge(copies);
 		mapSource.getShapes().addAll(merged);
 		
-	}
+		}
 
 	public static void removeTooSmallHoles(List<Coord> points , int minSize) {
 		// possibly rotate shape so that start point is on the boundary -> not part of a hole 
