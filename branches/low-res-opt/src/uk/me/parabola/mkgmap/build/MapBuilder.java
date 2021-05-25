@@ -923,7 +923,7 @@ public class MapBuilder implements Configurable {
 			lines = merger.merge(lines, res, !hasNet, allowReverseMerge);
 		}
 
-		if (mergeShapes) {
+		if (mergeShapes && !isOverviewComponent) {
 			ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea);
 			shapes = shapeMergeFilter.merge(shapes);
 		}
