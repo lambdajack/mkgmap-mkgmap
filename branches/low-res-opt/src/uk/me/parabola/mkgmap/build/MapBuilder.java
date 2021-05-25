@@ -1622,6 +1622,9 @@ public class MapBuilder implements Configurable {
 						else
 							points = points.subList(i, j);
 						p0.decHighwayCount();
+						if (p0.getHighwayCount() == 1) {
+							points.remove(i);
+						}
 					}
 					break;
 				}
