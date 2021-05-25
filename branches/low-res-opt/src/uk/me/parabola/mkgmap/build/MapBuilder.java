@@ -1564,19 +1564,16 @@ public class MapBuilder implements Configurable {
 		List<MapShape> copies = new ArrayList<>(shapesThisLevel.size());
 		for (MapShape s : shapesThisLevel) {
 			MapShape copy = s.copy();
-			copy.setPoints(s.getPoints());
+			copy.setPoints(new ArrayList<>(s.getPoints()));
 			s.setMinResolution(res+1);
 			copy.setMaxResolution(res);
+			removeTooSmallHoles(copy.getPoints(), minSize);
 			copies.add(copy);
-		}
-		for (MapShape s : copies) {
-			removeTooSmallHoles(s.getPoints(), minSize);
 		}
 		ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea);
 		List<MapShape> merged = shapeMergeFilter.merge(copies);
 		mapSource.getShapes().addAll(merged);
-		
-		}
+	}
 
 	public static void removeTooSmallHoles(List<Coord> points , int minSize) {
 		// possibly rotate shape so that start point is on the boundary -> not part of a hole 
