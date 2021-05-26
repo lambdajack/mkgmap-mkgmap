@@ -380,7 +380,7 @@ Eventually maybe can be used instead of some of the above and elsewhere
 					if (thisLine.direction == 0)
 						thisLine.direction = areaDirection * Long.signum(thisLine.areaToLine);
 		}
-		if (diagMsg != "") {
+		if (!diagMsg.isEmpty()) {
 			log.warn(diagMsg, "Probably self-intersecting polygon", fullAreaSign, someDirectionsNotSet, areaDirection);
 			for (MergeCloseHelper thisLine : lineInfo) {
 				log.warn(thisLine);
@@ -471,7 +471,9 @@ Eventually maybe can be used instead of some of the above and elsewhere
 				return cmp;
 			// case where when have same start & end
 			// return the shape as lower than the hole, to handle first
-			cmp = other.areaOrHole - this.areaOrHole;
+//			cmp = other.areaOrHole - this.areaOrHole;
+			// Above is not reliable, there might be an earlier shape. try doing larger area first
+			cmp = Long.compare(this.areaToLine * this.areaOrHole, other.areaToLine * other.areaOrHole);
 			if (cmp != 0)
 				return cmp;
 			log.warn("Lines hit divider at same points and have same area sign", "this:", this, "other:", other);
@@ -644,6 +646,9 @@ Eventually maybe can be used instead of some of the above and elsewhere
 			trailAlong = leadAlong;
 			trailRel = leadRel;
 		} // for leadCoord
+		if (log.isDebugEnabled()) {
+			log.debug("initSplit #points", coords.size(), "on", dividingLine, isLongitude, "Area", runningArea, "#newLess", newLess.size(), "#newMore", newMore.size());
+		}
 		processLineList(newLess, lessList, runningArea);
 		processLineList(newMore, moreList, runningArea);
 	} // splitShape
