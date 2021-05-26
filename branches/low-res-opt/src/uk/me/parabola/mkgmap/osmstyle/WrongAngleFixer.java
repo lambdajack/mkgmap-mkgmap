@@ -1351,14 +1351,11 @@ public class WrongAngleFixer {
 
 	/**
 	 * Remove obsolete points on straight lines and spikes
-	 * and some wrong angles caused by rounding errors.  
-	 * TODO: optimise by moving 
 	 * @param points list of coordinates that form a shape
 	 * @return reduced list 
 	 */
 	public static List<Coord> fixAnglesInShape(List<Coord> points) {
 		List<Coord> modifiedPoints = new ArrayList<>(points.size());
-		double maxErrorDistance = calcMaxErrorDistance(points.get(0));
 		
 		int n = points.size();
 		// scan through the way's points looking for points which are
@@ -1387,16 +1384,33 @@ public class WrongAngleFixer {
 			if (straightTest == Utils.STRICTLY_STRAIGHT || straightTest == Utils.STRAIGHT_SPIKE) {
 				continue;
 			}
-			double realAngle = Utils.getAngle(c1, cm, c2);
-			if (Math.abs(realAngle) < MAX_DIFF_ANGLE_STRAIGHT_LINE) {
-				double distance = cm.distToLineSegment(c1, c2);
-				if (distance < maxErrorDistance)
-					continue;
-			}
 			modifiedPoints.add(cm);
 		}
 		if (modifiedPoints.size() > 1 && modifiedPoints.get(0) != modifiedPoints.get(modifiedPoints.size() - 1))
 			modifiedPoints.add(modifiedPoints.get(0));
+		// Check special cases caused by the fact that the first and last point 
+		// in a shape are identical. 
+		while (modifiedPoints.size() > 3) {
+			int nPoints = modifiedPoints.size();
+			switch (Utils.isHighPrecStraight(modifiedPoints.get(modifiedPoints.size() - 2), modifiedPoints.get(0),
+					modifiedPoints.get(1))) {
+			case Utils.STRAIGHT_SPIKE:
+				log.debug("removing closing spike");
+				modifiedPoints.remove(0);
+				modifiedPoints.set(modifiedPoints.size() - 1, modifiedPoints.get(0));
+				if (modifiedPoints.get(modifiedPoints.size() - 2)
+						.highPrecEquals(modifiedPoints.get(modifiedPoints.size() - 1)))
+					modifiedPoints.remove(modifiedPoints.size() - 1);
+				break;
+			case Utils.STRICTLY_STRAIGHT:
+				log.debug("removing straight line across closing");
+				modifiedPoints.remove(modifiedPoints.size() - 1);
+				modifiedPoints.set(0, modifiedPoints.get(modifiedPoints.size() - 1));
+				break;
+			}
+			if (nPoints == modifiedPoints.size())
+				break;
+		}
 		return modifiedPoints;
 	}
 	
