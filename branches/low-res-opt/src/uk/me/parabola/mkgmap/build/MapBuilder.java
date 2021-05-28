@@ -924,7 +924,7 @@ public class MapBuilder implements Configurable {
 		}
 
 		if (mergeShapes && !isOverviewComponent) {
-			ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea);
+			ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea, -1);
 			shapes = shapeMergeFilter.merge(shapes);
 		}
 
@@ -1570,38 +1570,32 @@ public class MapBuilder implements Configurable {
 			removeTooSmallHoles(copy.getPoints(), minSize);
 			copies.add(copy);
 		}
-		ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea);
+		ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea, minSize);
 		List<MapShape> merged = shapeMergeFilter.merge(copies);
 		mapSource.getShapes().addAll(merged);
 	}
 
 	public static void removeTooSmallHoles(List<Coord> points , int minSize) {
-		// possibly rotate shape so that start point is on the boundary -> not part of a hole 
-		int minLatHp = Integer.MAX_VALUE;
-		int rotate = -1;
-		for (int i = 0; i < points.size(); i++) {
-			int latHp = points.get(i).getHighPrecLat();
-			if (latHp < minLatHp) {
-				minLatHp = latHp;
-				rotate = i;
-			}
-		}
-		if (rotate > 0) {
-			points.remove(points.size() - 1);
-			Collections.rotate(points, -rotate);
-			points.add(points.get(0));
-		}
+		if (minSize <= 0)
+			return;
+
 		Area bbox = Area.getBBox(points);
-		
 		points.forEach(Coord::resetHighwayCount);
 		points.forEach(Coord::incHighwayCount);
-		
+		long numSpecial = points.stream().filter(p -> p.getHighwayCount() > 1).count();
+		if (numSpecial <= 2)
+			return; 
+		boolean modified = false;
 		for (int i = 0; i < points.size(); i++) {
 			Coord p0 = points.get(i);
 			if (p0.getHighwayCount() <= 1)
 				continue;
-			if (i == points.size() - 1)
-				return;
+			if (i == points.size() - 1) {
+				if (modified)
+					removeTooSmallHoles(points, minSize);
+				return; 
+			}
+			// search the other way around, skip closing point
 			for (int j = points.size() - 2; j > i; j--) {
 				if (p0 == points.get(j)) {
 					List<Coord> hole = points.subList(i, j + 1);
@@ -1609,18 +1603,30 @@ public class MapBuilder implements Configurable {
 					boolean outer = false;
 					if (bboxHole.equals(bbox)) {
 						// we travelled along the outer shape, the rest must be the hole
-						hole = points.subList(j, points.size());
+						hole = new ArrayList<>(points.subList(j, points.size()));
+						hole.addAll(points.subList(0, i+1));
 						bboxHole = Area.getBBox(hole);
 						outer = true;
 					}
 					if (bboxHole.getMaxDimension() < minSize) {
-						if (!outer)
-							points.subList(i, j).clear(); 
-						else
-							points = points.subList(i, j);
-						p0.decHighwayCount();
-						if (p0.getHighwayCount() == 1) {
-							points.remove(i);
+						if (!outer) {
+							modified = true;
+							points.subList(i, j).clear();
+							p0.decHighwayCount();
+							if (p0.getHighwayCount() == 1) {
+								points.remove(i);
+							}
+						} else {
+							points.subList(j, points.size()).clear();
+							points.subList(0, i+1).clear();
+							if(points.get(0) != points.get(points.size()-1)) {
+								points.add(points.get(0));
+								points.get(0).incHighwayCount();
+							}
+							if (points.size() <= 3 || points.get(0) != points.get(points.size()-1))
+								throw new MapFailedException("Error while removing hole");
+							removeTooSmallHoles(points, minSize);
+							return;
 						}
 					}
 					break;

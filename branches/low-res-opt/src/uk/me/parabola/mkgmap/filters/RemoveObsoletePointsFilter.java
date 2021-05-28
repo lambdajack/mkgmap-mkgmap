@@ -119,7 +119,7 @@ public class RemoveObsoletePointsFilter implements MapFilter {
 					newPoints.remove(0);
 					newPoints.set(newPoints.size()-1, newPoints.get(0));
 					if (newPoints.get(newPoints.size()-2).equals(newPoints.get(newPoints.size()-1)))
-						newPoints.remove(newPoints.size()-1);
+						newPoints.remove(newPoints.size()-2);
 					break;
 				case Utils.STRICTLY_STRAIGHT:
 					log.debug("removing straight line across closing");

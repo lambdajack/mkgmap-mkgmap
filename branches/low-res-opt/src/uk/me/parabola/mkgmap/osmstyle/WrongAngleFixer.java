@@ -24,6 +24,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
@@ -1400,7 +1401,7 @@ public class WrongAngleFixer {
 				modifiedPoints.set(modifiedPoints.size() - 1, modifiedPoints.get(0));
 				if (modifiedPoints.get(modifiedPoints.size() - 2)
 						.highPrecEquals(modifiedPoints.get(modifiedPoints.size() - 1)))
-					modifiedPoints.remove(modifiedPoints.size() - 1);
+					modifiedPoints.remove(modifiedPoints.size() - 2);
 				break;
 			case Utils.STRICTLY_STRAIGHT:
 				log.debug("removing straight line across closing");
@@ -1412,6 +1413,71 @@ public class WrongAngleFixer {
 				break;
 		}
 		return modifiedPoints;
+	}
+	
+	/**
+	 * Like fixAnglesInShape, but removes only spikes 
+	 * @param points list of coordinates that form a shape
+	 * @return reduced list 
+	 */
+	public static List<Coord> removeSpikeInShape(List<Coord> points) {
+		int numPoints = points.size();
+		if (numPoints <= 1) {
+			return points; 
+		}
+		final int requiredPoints = 4; 
+		List<Coord> newPoints = new ArrayList<>(numPoints);
+		while (true){
+			boolean removedSpike = false;
+			numPoints = points.size();
+
+			Coord lastP = points.get(0);
+			newPoints.add(lastP);
+			for (int i = 1; i < numPoints; i++) {
+				Coord newP = points.get(i);
+				int last = newPoints.size() - 1;
+				lastP = newPoints.get(last);
+				if (newPoints.size() > 1
+						&& Utils.STRAIGHT_SPIKE == Utils.isHighPrecStraight(newPoints.get(last - 1), lastP, newP)) {
+					log.debug("removing spike");
+					newPoints.remove(last);
+					removedSpike = true;
+					if (newPoints.get(last - 1).highPrecEquals(newP)) {
+						newPoints.remove(last - 1);
+					}
+				}
+				newPoints.add(newP);
+			}
+			if (!removedSpike || newPoints.size() < requiredPoints)
+				break;
+			points = newPoints;
+			newPoints = new ArrayList<>(points.size());
+		}
+		if (newPoints.get(0) != newPoints.get(newPoints.size() - 1)) {
+//			GpxCreator.createGpx("e:/ld/open", newPoints);
+			throw new MapFailedException("shape is no longer closed");
+		}
+		// Check special cases caused by the fact that the first and last point
+		// in a shape are identical.
+		while (newPoints.size() > 3) {
+			int nPoints = newPoints.size();
+			if (Utils.STRAIGHT_SPIKE == Utils.isHighPrecStraight(newPoints.get(newPoints.size() - 2), newPoints.get(0),
+					newPoints.get(1))) {
+				log.debug("removing closing spike");
+				newPoints.remove(0);
+				newPoints.set(newPoints.size() - 1, newPoints.get(0));
+				if (newPoints.get(newPoints.size() - 2).highPrecEquals(newPoints.get(newPoints.size() - 1)))
+					newPoints.remove(newPoints.size() - 2);
+			}
+			if (nPoints == newPoints.size())
+				break;
+		}
+		if (newPoints.get(0) != newPoints.get(newPoints.size() - 1)) {
+//			GpxCreator.createGpx("e:/ld/open", newPoints);
+			throw new MapFailedException("shape is no longer closed");
+		}
+		
+		return newPoints;
 	}
 	
 	/**
