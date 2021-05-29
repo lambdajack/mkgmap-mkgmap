@@ -233,7 +233,7 @@ public class ShapeMergeFilterTest {
 			getPoint(20,55),
 			getPoint(30,55)); // close
 
-		testVariants("test-fill-hole", points1, points2, 1, 6); // expect 8 points if spike is not removed  
+		testVariants("test-fill-hole", points1, points2, 1, 5); // expect 8 points if spike is not removed  
 	}
 
 	@Test
@@ -351,7 +351,7 @@ public class ShapeMergeFilterTest {
 	}
 	
 	void testOneVariant(String testId, MapShape s1, MapShape s2, int expectedNumShapes, int expectedNumPoints){
-		ShapeMergeFilter smf = new ShapeMergeFilter(24, false);
+		ShapeMergeFilter smf = new ShapeMergeFilter(24, false, 0);
 		List<MapShape> res = smf.merge(Arrays.asList(s1,s2));
 		assertTrue(testId, res != null);
 		assertEquals(testId,expectedNumShapes, res.size() );
