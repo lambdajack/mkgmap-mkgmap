@@ -1389,6 +1389,7 @@ public class WrongAngleFixer {
 		}
 		if (modifiedPoints.size() > 1 && modifiedPoints.get(0) != modifiedPoints.get(modifiedPoints.size() - 1))
 			modifiedPoints.add(modifiedPoints.get(0));
+		
 		// Check special cases caused by the fact that the first and last point 
 		// in a shape are identical. 
 		while (modifiedPoints.size() > 3) {
@@ -1412,6 +1413,7 @@ public class WrongAngleFixer {
 			if (nPoints == modifiedPoints.size())
 				break;
 		}
+		
 		return modifiedPoints;
 	}
 	
@@ -1460,17 +1462,15 @@ public class WrongAngleFixer {
 		// Check special cases caused by the fact that the first and last point
 		// in a shape are identical.
 		while (newPoints.size() > 3) {
-			int nPoints = newPoints.size();
-			if (Utils.STRAIGHT_SPIKE == Utils.isHighPrecStraight(newPoints.get(newPoints.size() - 2), newPoints.get(0),
+			if (Utils.STRAIGHT_SPIKE != Utils.isHighPrecStraight(newPoints.get(newPoints.size() - 2), newPoints.get(0),
 					newPoints.get(1))) {
-				log.debug("removing closing spike");
-				newPoints.remove(0);
-				newPoints.set(newPoints.size() - 1, newPoints.get(0));
-				if (newPoints.get(newPoints.size() - 2).highPrecEquals(newPoints.get(newPoints.size() - 1)))
-					newPoints.remove(newPoints.size() - 2);
-			}
-			if (nPoints == newPoints.size())
 				break;
+			}
+			log.debug("removing closing spike");
+			newPoints.remove(0);
+			newPoints.set(newPoints.size() - 1, newPoints.get(0));
+			if (newPoints.get(newPoints.size() - 2).highPrecEquals(newPoints.get(newPoints.size() - 1)))
+				newPoints.remove(newPoints.size() - 2);
 		}
 		if (newPoints.get(0) != newPoints.get(newPoints.size() - 1)) {
 //			GpxCreator.createGpx("e:/ld/open", newPoints);
