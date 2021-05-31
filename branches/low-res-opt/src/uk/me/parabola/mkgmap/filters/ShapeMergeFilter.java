@@ -28,14 +28,11 @@ import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
-import uk.me.parabola.mkgmap.build.MapBuilder;
 import uk.me.parabola.mkgmap.general.MapShape;
 import uk.me.parabola.mkgmap.osmstyle.WrongAngleFixer;
 import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
 import uk.me.parabola.mkgmap.reader.osm.GType;
-import uk.me.parabola.util.GpxCreator;
 import uk.me.parabola.util.Java2DConverter;
-import uk.me.parabola.util.ShapeSplitter;
 
 
 /**
@@ -50,8 +47,6 @@ public class ShapeMergeFilter{
 	private static final ShapeHelper DUP_SHAPE = new ShapeHelper(new ArrayList<>(0)); 
 	private final boolean orderByDecreasingArea;
 	private final int maxPoints;
-	private final int minSize;
-	private final int shift;
 
 	/**
 	 * Create the shape filter with the given attributes. It will ignore shapes
@@ -60,15 +55,10 @@ public class ShapeMergeFilter{
 	 * @param resolution            the resolution
 	 * @param orderByDecreasingArea if true, only certain shapes are merged
 	 */
-	public ShapeMergeFilter(int resolution, boolean orderByDecreasingArea, int minSize) {
+	public ShapeMergeFilter(int resolution, boolean orderByDecreasingArea) {
 		this.resolution = resolution;
 		this.orderByDecreasingArea = orderByDecreasingArea;
-		if (resolution < 24)
-			maxPoints = PolygonSplitterFilter.MAX_POINT_IN_ELEMENT * (1 << (24-resolution));
-		else 
-			maxPoints = PolygonSplitterFilter.MAX_POINT_IN_ELEMENT;
-		this.minSize = minSize;
-		shift = 24 - resolution;		
+		maxPoints = PolygonSplitterFilter.MAX_POINT_IN_ELEMENT;
 	}
 
 	/**
@@ -111,6 +101,9 @@ public class ShapeMergeFilter{
 		}
 		if (p1 < usableShapes.size())
 			mergeSimilar(usableShapes.subList(p1, usableShapes.size()), mergedShapes);
+//		for (int i = 0; i < mergedShapes.size(); i++) {
+//			testSplit(mergedShapes.get(i));
+//		}
 		return mergedShapes;
 	}
 	
@@ -159,17 +152,19 @@ public class ShapeMergeFilter{
 			}
 			if (sh.id == 0) {
 				// this shape is the result of a merge
-				List<Coord> optimizedPoints = WrongAngleFixer.fixAnglesInShape(sh.getPoints());
+//				if (minSize > 0 && sh.getPoints().size() > PolygonSplitterFilter.MAX_POINT_IN_ELEMENT) {
+//					long t1 = System.currentTimeMillis();
+//					filterSmallHoles(sh.getPoints(), pattern, mergedShapes);
+//					long dt = System.currentTimeMillis() - t1;
+//					if (dt > 1000)
+//						log.diagnostic("filterSmallHoles for " + GType.formatType(pattern.getType()) + " at res " + resolution + " took " + dt + " ms");
+//					continue;
+//				}
+				List<Coord> optimizedPoints = sh.getPoints();
+				optimizedPoints = WrongAngleFixer.fixAnglesInShape(optimizedPoints);
 				if (optimizedPoints.isEmpty())
 					continue;
-				if (resolution < 24 && minSize > 0) {
-					MapBuilder.removeTooSmallHoles(optimizedPoints, minSize);
-				}
-				if (optimizedPoints.isEmpty())
-					continue;
-//				MapShape test = pattern.copy();
-//				test.setPoints(optimizedPoints);
-//				testSplit(test);
+
 				newShape.setPoints(optimizedPoints);
 				newShape.setOsmid(FakeIdGenerator.makeFakeId());
 			} else {
@@ -276,6 +271,7 @@ public class ShapeMergeFilter{
 						if (opt.size() < before ) {
 //							if (print) {
 //								GpxCreator.createGpx("e:/ld/opt_" + k, opt);
+								long dd = 4;
 //							}
 							ShapeHelper shm = new ShapeHelper(opt);
 							result.set(k, shm);
@@ -294,6 +290,18 @@ public class ShapeMergeFilter{
 			done.or(all);
 			next.addAll(result);
 		}
+		
+//		if (merged && resolution < 24 && minSize > 0) {
+//			for (int k = 0; k < next.size(); k++) {
+//				List<Coord> opt = MapBuilder.removeTooSmallHoles(next.get(k).points, minSize);
+//				if (opt.size() < next.get(k).points.size()) {
+////					GpxCreator.createGpx("e:/ld/b_" + k, next.get(k).points);
+////					GpxCreator.createGpx("e:/ld/o_" + k, opt);
+//					ShapeHelper shm = new ShapeHelper(opt);
+//					next.set(k, shm);
+//				}
+//			}
+//		}
 		
 		delayed.andNot(done);
 		if (!delayed.isEmpty()) {
@@ -713,60 +721,34 @@ public class ShapeMergeFilter{
 		}
 	}
 
-	// copied from PolygonSplitterFilter to test possible splits TODO: unit test
-	private void testSplit(MapShape shape) {
-		List<MapShape> outputs = new ArrayList<>();
-		split(shape, outputs); // split in half
-		
-		double eps = 0.0001;
-		long testVal = Math.abs(ShapeMergeFilter.calcAreaSizeTestVal(shape.getPoints()));
-		long sumSplit = outputs.stream()
-				.mapToLong(s -> Math.abs(ShapeMergeFilter.calcAreaSizeTestVal(s.getPoints())))
-				.sum();
-		double ratio = (double) testVal / sumSplit;
-
-		if (ratio < 1 - eps || ratio > 1 + eps) {
-			String path = "e:/ld/";
-			log.error("testing  split shape", GType.formatType(shape.getType()), "at shift", shift);
-			List<Coord> merged = shape.getPoints();
-			merged.forEach(Coord::resetHighwayCount);
-			merged.forEach(Coord::incHighwayCount);
-			List<Coord> many = merged.stream().filter(p -> p.getHighwayCount() > 1).collect(Collectors.toList());
-			GpxCreator.createGpx(path + "o", merged, many);
-			for (int i = 0; i < outputs.size(); i++) {
-				GpxCreator.createGpx(path + "s_" + i, outputs.get(i).getPoints());
-			}
-			
-			log.error("split failed?, ratio:", ratio);
-		}
-
-	}
-
-	/**
-	 * Split the given shape and place the resulting shapes in the outputs list.
-	 * @param shape The original shape (that is too big).
-	 * @param outputs The output list.
-	 */
-	private void split(MapShape shape, List<MapShape> outputs) {
-		int dividingLine = 0;
-		boolean isLongitude = false;
-		Area bounds = shape.getBounds();
-		if (bounds.getWidth() > bounds.getHeight()) {
-			isLongitude = true;
-			Area[] tmpAreas = bounds.split(2, 1, shift);
-			dividingLine = tmpAreas != null ? tmpAreas[0].getMaxLong() : (bounds.getMinLong() + bounds.getWidth() / 2);
-		} else {
-			Area[] tmpAreas = bounds.split(1, 2, shift);
-			dividingLine = tmpAreas != null ? tmpAreas[0].getMaxLat() : (bounds.getMinLat() + bounds.getHeight() / 2);
-		}
-		List<List<Coord>> subShapePoints = new ArrayList<>();
-		ShapeSplitter.splitShape(shape.getPoints(), dividingLine << Coord.DELTA_SHIFT, isLongitude, subShapePoints, subShapePoints, null);
-		for (List<Coord> subShape : subShapePoints) {
-			MapShape s = shape.copy();
-			s.setPoints(subShape);
-			outputs.add(s);
-		}
-	}
-
+//	private void testSplit(MapShape shape) {
+//		if (shape.getPoints().size() < PolygonSplitterFilter.MAX_POINT_IN_ELEMENT)
+//			return;
+//		PolygonSplitterFilter splitter = new PolygonSplitterFilter();
+//		final long testVal = Math.abs(ShapeMergeFilter.calcAreaSizeTestVal(shape.getPoints()));
+//		for (int myShift = 0; myShift <= shift; myShift ++) {
+//			List<MapShape> outputs = splitter.testSplit(shape, myShift);
+//
+//			long sumSplit = outputs.stream()
+//					.mapToLong(s -> Math.abs(ShapeMergeFilter.calcAreaSizeTestVal(s.getPoints())))
+//					.sum();
+//			long delta = testVal - sumSplit;
+//			double ratio = (double) testVal / sumSplit; 
+//			if (Math.abs(delta) > SINGLE_POINT_AREA * 2 && Math.abs(ratio-1) > 0.001) {
+//				String path = "e:/ld/";
+//				log.error("testing  split shape", GType.formatType(shape.getType()), "at shift", myShift);
+//				List<Coord> merged = shape.getPoints();
+//				merged.forEach(Coord::resetHighwayCount);
+//				merged.forEach(Coord::incHighwayCount);
+//				List<Coord> many = merged.stream().filter(p -> p.getHighwayCount() > 2).collect(Collectors.toList());
+//				GpxCreator.createGpx(path + "o", merged, many);
+//				for (int i = 0; i < outputs.size(); i++) {
+//					GpxCreator.createGpx(path + "s_" + i, outputs.get(i).getPoints());
+//				}
+//				log.error("split failed?, ratio:", ratio);
+//				long dd = 4;
+//			}
+//		}
+//	}
 }
 

@@ -94,4 +94,12 @@ public class PolygonSplitterFilter implements MapFilter {
 			}
 		}
 	}
+
+	// used for testing
+	public List<MapShape> testSplit(MapShape shape, int shift) {
+		this.shift = shift;
+		List<MapShape> outputs = new ArrayList<>();
+		split(shape, outputs); // split in half
+		return outputs;
+	}
 }

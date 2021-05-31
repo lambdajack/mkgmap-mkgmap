@@ -177,7 +177,6 @@ public class MapBuilder implements Configurable {
 	private java.awt.geom.Area demPolygon;
 	private HGTConverter.InterpolationMethod demInterpolationMethod;
 	private boolean allowReverseMerge;
-	
 
 	/**
 	 * Construct a new MapBuilder.
@@ -816,10 +815,6 @@ public class MapBuilder implements Configurable {
 			Zoom zoom = map.createZoom(linfo.getLevel(), linfo.getBits());
 
 			for (SourceSubdiv srcDivPair : srcList) {
-				if (mergeShapes && isOverviewComponent) {
-					mergeShapesFirst(srcDivPair, zoom);
-				}
-
 				MapSplitter splitter = new MapSplitter(srcDivPair.getSource(), zoom);
 				MapArea[] areas = splitter.split(orderByDecreasingArea);
 				log.info("Map region", srcDivPair.getSource().getBounds(), "split into", areas.length, "areas at resolution", zoom.getResolution());
@@ -924,7 +919,7 @@ public class MapBuilder implements Configurable {
 		}
 
 		if (mergeShapes && !isOverviewComponent) {
-			ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea, -1);
+			ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea);
 			shapes = shapeMergeFilter.merge(shapes);
 		}
 
@@ -1544,95 +1539,4 @@ public class MapBuilder implements Configurable {
 			map.addMapObject(pg);
 		}
 	}
-
-	/**
-	 * Merge shapes and remove holes which are too small at the given zoom level.
-	 * May increase the minimum resolution of existing shapes and add new (merged)
-	 * for the given resolution. 
-	 * 
-	 * @param srcDivPair the map source
-	 * @param zoom       the zoom
-	 */
-	private void mergeShapesFirst(SourceSubdiv srcDivPair, Zoom zoom) {
-		final int res = zoom.getResolution();
-		final int minSize = getMinSizePolygonForResolution(res) * (1 << zoom.getShiftValue());
-		
-		MapDataSource mapSource = srcDivPair.getSource();
-		List<MapShape> shapesThisLevel = mapSource.getShapes().stream()
-				.filter(s -> s.getMinResolution() <= res && s.getMaxResolution()>= res)
-				.collect(Collectors.toList());
-		List<MapShape> copies = new ArrayList<>(shapesThisLevel.size());
-		for (MapShape s : shapesThisLevel) {
-			MapShape copy = s.copy();
-			copy.setPoints(new ArrayList<>(s.getPoints()));
-			s.setMinResolution(res+1);
-			copy.setMaxResolution(res);
-			removeTooSmallHoles(copy.getPoints(), minSize);
-			copies.add(copy);
-		}
-		ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea, minSize);
-		List<MapShape> merged = shapeMergeFilter.merge(copies);
-		mapSource.getShapes().addAll(merged);
-	}
-
-	public static void removeTooSmallHoles(List<Coord> points , int minSize) {
-		if (minSize <= 0)
-			return;
-
-		Area bbox = Area.getBBox(points);
-		points.forEach(Coord::resetHighwayCount);
-		points.forEach(Coord::incHighwayCount);
-		long numSpecial = points.stream().filter(p -> p.getHighwayCount() > 1).count();
-		if (numSpecial <= 2)
-			return; 
-		boolean modified = false;
-		for (int i = 0; i < points.size(); i++) {
-			Coord p0 = points.get(i);
-			if (p0.getHighwayCount() <= 1)
-				continue;
-			if (i == points.size() - 1) {
-				if (modified)
-					removeTooSmallHoles(points, minSize);
-				return; 
-			}
-			// search the other way around, skip closing point
-			for (int j = points.size() - 2; j > i; j--) {
-				if (p0 == points.get(j)) {
-					List<Coord> hole = points.subList(i, j + 1);
-					Area bboxHole = Area.getBBox(hole);
-					boolean outer = false;
-					if (bboxHole.equals(bbox)) {
-						// we travelled along the outer shape, the rest must be the hole
-						hole = new ArrayList<>(points.subList(j, points.size()));
-						hole.addAll(points.subList(0, i+1));
-						bboxHole = Area.getBBox(hole);
-						outer = true;
-					}
-					if (bboxHole.getMaxDimension() < minSize) {
-						if (!outer) {
-							modified = true;
-							points.subList(i, j).clear();
-							p0.decHighwayCount();
-							if (p0.getHighwayCount() == 1) {
-								points.remove(i);
-							}
-						} else {
-							points.subList(j, points.size()).clear();
-							points.subList(0, i+1).clear();
-							if(points.get(0) != points.get(points.size()-1)) {
-								points.add(points.get(0));
-								points.get(0).incHighwayCount();
-							}
-							if (points.size() <= 3 || points.get(0) != points.get(points.size()-1))
-								throw new MapFailedException("Error while removing hole");
-							removeTooSmallHoles(points, minSize);
-							return;
-						}
-					}
-					break;
-				}
-			}
-		}
-	}
-
 }
