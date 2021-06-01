@@ -474,7 +474,12 @@ public class RGNFileReader extends ImgReader {
 			boolean isnode = false;
 			if (extra)
 				isnode = br.get1();
-
+			
+			// sometimes some 0 bits at the end of the bitstream are interpreted as an additional node
+			// skip it
+			if (!isnode && dx == 0 && dy == 0)
+				continue;
+			
 			currLat += dy << (24 - div.getResolution());
 			currLon += dx << (24 - div.getResolution());
 			Coord coord;
@@ -485,7 +490,7 @@ public class RGNFileReader extends ImgReader {
 
 			line.addCoord(coord);
 		}
-		if (line instanceof Polygon){
+		if (line instanceof Polygon) {
 			// make sure that polygon is closed
 			line.addCoord(line.getPoints().get(0));
 		}
