@@ -12,6 +12,7 @@
  */
 package uk.me.parabola.mkgmap.filters;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
@@ -58,7 +59,7 @@ public class ShapeMergeFilter{
 	public ShapeMergeFilter(int resolution, boolean orderByDecreasingArea) {
 		this.resolution = resolution;
 		this.orderByDecreasingArea = orderByDecreasingArea;
-		maxPoints = PolygonSplitterFilter.MAX_POINT_IN_ELEMENT;
+			maxPoints = PolygonSplitterFilter.MAX_POINT_IN_ELEMENT;
 	}
 
 	/**
@@ -152,14 +153,6 @@ public class ShapeMergeFilter{
 			}
 			if (sh.id == 0) {
 				// this shape is the result of a merge
-//				if (minSize > 0 && sh.getPoints().size() > PolygonSplitterFilter.MAX_POINT_IN_ELEMENT) {
-//					long t1 = System.currentTimeMillis();
-//					filterSmallHoles(sh.getPoints(), pattern, mergedShapes);
-//					long dt = System.currentTimeMillis() - t1;
-//					if (dt > 1000)
-//						log.diagnostic("filterSmallHoles for " + GType.formatType(pattern.getType()) + " at res " + resolution + " took " + dt + " ms");
-//					continue;
-//				}
 				List<Coord> optimizedPoints = sh.getPoints();
 				optimizedPoints = WrongAngleFixer.fixAnglesInShape(optimizedPoints);
 				if (optimizedPoints.isEmpty())
@@ -264,20 +257,6 @@ public class ShapeMergeFilter{
 //					long dd = 4;
 //				}
 				if (result.size() < oldSize + 1) {
-					for (int k = 0; k < result.size(); k++) {
-						List<Coord> res = result.get(k).points;
-						int before = res.size();
-						List<Coord> opt = WrongAngleFixer.removeSpikeInShape(res);
-						if (opt.size() < before ) {
-//							if (print) {
-//								GpxCreator.createGpx("e:/ld/opt_" + k, opt);
-								long dd = 4;
-//							}
-							ShapeHelper shm = new ShapeHelper(opt);
-							result.set(k, shm);
-						}
-						
-					}
 					merged = true;
 					if (log.isDebugEnabled()) {
 						log.debug("shape with id", sh.id, "was merged", (oldSize + 1 - result.size()),
@@ -290,18 +269,6 @@ public class ShapeMergeFilter{
 			done.or(all);
 			next.addAll(result);
 		}
-		
-//		if (merged && resolution < 24 && minSize > 0) {
-//			for (int k = 0; k < next.size(); k++) {
-//				List<Coord> opt = MapBuilder.removeTooSmallHoles(next.get(k).points, minSize);
-//				if (opt.size() < next.get(k).points.size()) {
-////					GpxCreator.createGpx("e:/ld/b_" + k, next.get(k).points);
-////					GpxCreator.createGpx("e:/ld/o_" + k, opt);
-//					ShapeHelper shm = new ShapeHelper(opt);
-//					next.set(k, shm);
-//				}
-//			}
-//		}
 		
 		delayed.andNot(done);
 		if (!delayed.isEmpty()) {
@@ -444,7 +411,7 @@ public class ShapeMergeFilter{
 		}
 		List<Coord> merged = null;
 		if (points1.size() + points2.size() - 2 * sh1PositionsToCheck.size() < maxPoints) {
-			merged = mergeLongestSequence(points1, points2, sh1PositionsToCheck, sh2PositionsToCheck, sameDir);
+			merged = findBestMerge(points1, points2, sh1PositionsToCheck, sh2PositionsToCheck, sameDir);
 			if (merged == null)
 				return sh1;
 			if (merged.isEmpty())
@@ -466,39 +433,6 @@ public class ShapeMergeFilter{
 					"(maybe overlapping shapes?)");
 			return sh1;
 		} else {
-//			merged.forEach(Coord::resetHighwayCount);
-//			merged.forEach(Coord::incHighwayCount);
-////			List<Coord> twice = x.stream().filter(p -> p.getHighwayCount() > 1).collect(Collectors.toList());
-//			List<Coord> many = merged.stream().filter(p -> p.getHighwayCount() > 2).collect(Collectors.toList());
-//			if (!many.isEmpty()) {
-//				int before = merged.size();
-//				merged = WrongAngleFixer.removeSpikeInShape(merged);
-//				if (merged.size() == before) {
-////					GpxCreator.createGpx("e:/ld/rej", merged, many);
-////					log.error("merge rejected, corner?");
-//					return sh1;
-//				} else {
-//					merged.forEach(Coord::resetHighwayCount);
-//					merged.forEach(Coord::incHighwayCount);
-//					many = merged.stream().filter(p -> p.getHighwayCount() > 2).collect(Collectors.toList());
-//					if (!many.isEmpty())
-//						return sh1;
-//				}
-//			}
-//			while (true) {
-//				merged.forEach(Coord::resetHighwayCount);
-//				merged.forEach(Coord::incHighwayCount);
-//				List<Coord> many = merged.stream().filter(p -> p.getHighwayCount() > 2).collect(Collectors.toList());
-//				if (!many.isEmpty()) {
-//					int before = merged.size();
-//					merged = WrongAngleFixer.fixAnglesInShape(merged);
-//					if (merged.size() == before)
-//						break;
-//					shm = new ShapeHelper(merged);
-//				} else {
-//					break;
-//				}
-//			}
 			if (log.isInfoEnabled()){
 				log.info("merge of shapes near",points1.get(sh1PositionsToCheck.getInt(0)).toOSMURL(), 
 						"reduces number of points from",(points1.size()+points2.size()),
@@ -557,87 +491,143 @@ public class ShapeMergeFilter{
 	} 	
 	
 	/**
-	 * Finds the longest sequence of common points in two shapes.
+	 * Merges two shapes if possible and removes the longest common sequence of points
 	 * @param points1 list of Coord instances that describes the 1st shape 
 	 * @param points2 list of Coord instances that describes the 2nd shape
 	 * @param sh1PositionsToCheck positions in the 1st shape that are common
 	 * @param sh2PositionsToCheck positions in the 2nd shape that are common
-	 * @param sameDir true if both shapes are clockwise or both are ccw
-	 * @return the merged shape or null if no points are common.
+	 * @param sameDir set to true if both shapes are clockwise or both are counter-clockwise
+	 * @return the shape with the shortest overall length
 	 */
-	private static List<Coord> mergeLongestSequence(List<Coord> points1, List<Coord> points2, IntArrayList sh1PositionsToCheck,
+	private static List<Coord> findBestMerge(List<Coord> points1, List<Coord> points2, IntArrayList sh1PositionsToCheck,
 			IntArrayList sh2PositionsToCheck, boolean sameDir) {
 		if (sh1PositionsToCheck.isEmpty())
-			return null;
+			throw new IllegalArgumentException("nothing to merge");
 		int s1Size = points1.size(); 
 		int s2Size = points2.size();
 		int longestSequence = 0;
-		int startOfLongestSequence = 0;
 		int length = 0;
 		int start = -1;
 		int n1 = sh1PositionsToCheck.size();
-		
+		List<Map.Entry<Integer, Integer>> possibleCombinations = new ArrayList<>();
 		assert sh2PositionsToCheck.size() == n1;
 		boolean inSequence = false;
-		for (int i = 0; i+1 < n1; i++){
+		for (int i = 0; i + 1 < n1; i++) {
 			int pred1 = sh1PositionsToCheck.getInt(i);
-			int succ1 = sh1PositionsToCheck.getInt(i+1);
-			if (Math.abs(succ1-pred1) == 1 || pred1+2 == s1Size && succ1 == 0 || succ1+2 == s1Size && pred1 == 0 ){
+			int succ1 = sh1PositionsToCheck.getInt(i + 1);
+			if (Math.abs(succ1 - pred1) == 1 || pred1 + 2 == s1Size && succ1 == 0 || succ1 + 2 == s1Size && pred1 == 0) {
 				// found sequence in s1
 				int pred2 = sh2PositionsToCheck.getInt(i);
-				int succ2 = sh2PositionsToCheck.getInt(i+1);
-				if (Math.abs(succ2-pred2) == 1 || pred2+2 == s2Size && succ2 == 0 || succ2+2 == s2Size && pred2 == 0 ){
+				int succ2 = sh2PositionsToCheck.getInt(i + 1);
+				if (Math.abs(succ2 - pred2) == 1 || pred2 + 2 == s2Size && succ2 == 0 || succ2 + 2 == s2Size && pred2 == 0) {
 					// found common sequence
 					if (start < 0)
 						start = i;
 					inSequence = true;
-					length++; 
+					length++;
 				} else {
 					inSequence = false;
 				}
 			} else {
 				inSequence = false;
 			}
-			if (!inSequence){
-				if (length > longestSequence){
+			if (!inSequence) {
+				if (length > longestSequence) 
 					longestSequence = length;
-					startOfLongestSequence = start;
-				}
+				possibleCombinations.add(new AbstractMap.SimpleEntry<>(start < 0 ? i : start, length));
 				length = 0;
 				start = -1;
 			}
 		}
-		if (length > longestSequence){
+		if (length > longestSequence) 
 			longestSequence = length;
-			startOfLongestSequence = start;
+		possibleCombinations.add(new AbstractMap.SimpleEntry<>(start < 0 ? n1 - 1 : start, length));
+
+		// now collect the alternative merge results,
+		List<List<Coord>> results = new ArrayList<>();
+		for (Map.Entry<Integer, Integer> combi : possibleCombinations) {
+			int len = combi.getValue();
+			if (len < longestSequence)
+				continue;
+			int pos = combi.getKey();
+			List<Coord> merged = combine(points1, points2, sh1PositionsToCheck.get(pos + len),
+					sh2PositionsToCheck.get(pos), sameDir, len);
+			if (merged.get(0) == merged.get(merged.size() - 1))
+				results.add(merged);
 		}
-		// now merge the shapes. The longest sequence of common points is removed.
+
+		return filterBest(results);
+	}
+ 	
+	private static List<Coord> filterBest(List<List<Coord>> allMerged) {
+		// if we have more than one result, use the one that produced the shortest line
+		// so that connection lines to holes are shortest. 
+		List<Coord> best = null;
+		double bestLen = Double.MAX_VALUE;
+		for (List<Coord> merged : allMerged) {
+			if (best == null)
+				best = merged;
+			else {
+				if (bestLen == Double.MAX_VALUE) {
+					bestLen = getSumLengthSquared(best);
+				} 
+				double len = getSumLengthSquared(merged);
+				if (len < bestLen) {
+					best = merged;
+					bestLen = len;
+				}
+			}
+		}
+		return best;
+	}
+	
+	private static List<Coord> combine(List<Coord> points1, List<Coord> points2, final int s1PosInit,
+			final int s2PosInit, boolean sameDir, int lengthOfSequence) {
+		int s1Size = points1.size();
+		int s2Size = points2.size();
+		// merge the shapes with the parts given
 		// The remaining points are connected in the direction of the 1st shape.
-		int remaining = s1Size + s2Size - 2*longestSequence -1;
+		int remaining = s1Size + s2Size - 2 * lengthOfSequence - 1;
 		if (remaining < 3) {
 			return Collections.emptyList(); // may happen with self-intersecting duplicated shapes
 		}
 		List<Coord> merged = new ArrayList<>(remaining);
-		int s1Pos = sh1PositionsToCheck.getInt(startOfLongestSequence+longestSequence);
-		for (int i = 0; i < s1Size - longestSequence - 1; i++){
+		int s1Pos = s1PosInit;
+		for (int i = 0; i < s1Size - lengthOfSequence - 1; i++) {
 			merged.add(points1.get(s1Pos));
 			s1Pos++;
-			if (s1Pos+1 >= s1Size)
+			if (s1Pos + 1 >= s1Size)
 				s1Pos = 0;
 		}
-		int s2Pos = sh2PositionsToCheck.getInt(startOfLongestSequence);
-		int s2Step = sameDir ? 1:-1;
-		for (int i = 0; i < s2Size - longestSequence; i++){
+		int s2Pos = s2PosInit;
+		int s2Step = sameDir ? 1 : -1;
+		for (int i = 0; i < s2Size - lengthOfSequence; i++) {
 			merged.add(points2.get(s2Pos));
 			s2Pos += s2Step;
-			if (s2Pos < 0) 
-				s2Pos = s2Size-2;
-			else if (s2Pos+1 >= s2Size)
+			if (s2Pos < 0)
+				s2Pos = s2Size - 2;
+			else if (s2Pos + 1 >= s2Size)
 				s2Pos = 0;
 		}
+		if (merged.get(0) == merged.get(merged.size()-1))
+			merged = WrongAngleFixer.removeSpikeInShape(merged); 
 		return merged;
 	}
- 	
+	
+	public static double getSumLengthSquared(final List<Coord> points) {
+		double length = 0;
+		Iterator<Coord> iter = points.iterator();
+		Coord p0 = null;
+		while (iter.hasNext()) {
+			final Coord p1 = iter.next();
+			if (p0 != null) {
+				length += p0.distanceInHighPrecSquared(p1);
+			}
+			p0 = p1;
+		}
+		return length;
+	}
+
 	private static class ShapeHelper {
 		private final List<Coord> points;
 		long id;
