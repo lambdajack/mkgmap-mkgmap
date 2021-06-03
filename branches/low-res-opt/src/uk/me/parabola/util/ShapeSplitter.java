@@ -287,6 +287,10 @@ public class ShapeSplitter {
 
 	private boolean multSameLow; // lineInfo.sort(comparator) might set this
 
+	// following are for processAwkward...
+	private MergeCloseHelper forwardLine, backwardLine;
+	private int directionBalance;
+
 	private void logMsg(Object ... olist) {
 		detectedProblems = true;
 		log.warn(olist);
@@ -411,12 +415,14 @@ public class ShapeSplitter {
 		//  Multiple hole balloons from the same point
 		//  Balloon(s) that share the same point as dLoops
 		boolean haveBalloons = false;
-		
+
 		// Duplicate dLoops in same direction can be removed / opposite direction cancel each other out.
 		// Do this before Balloon processing as dLoop removal can make some problems go away.
 		List<MergeCloseHelper> newList = new ArrayList<>(lineInfo.size());
-		MergeCloseHelper forwardLine = null, backwardLine = null, lastLine = null;
-		int directionBalance = 0;
+		MergeCloseHelper lastLine = null;
+		forwardLine = null;
+		backwardLine = null;
+		directionBalance = 0;
 		boolean grouping = false;
 		for (MergeCloseHelper thisLine : lineInfo) {
 			if (lastLine != null) {
@@ -424,40 +430,14 @@ public class ShapeSplitter {
 					thisLine.lowPoint == lastLine.lowPoint &&
 					thisLine.highPoint == lastLine.highPoint &&
 					Math.abs(thisLine.areaToLine) == Math.abs(lastLine.areaToLine);
-				if (grouping || sameAsLast) {
-					grouping = true;
-					if (lastLine.direction > 0) {
-						forwardLine = lastLine;
-						++directionBalance;
-					} else {
-						backwardLine = lastLine;
-						--directionBalance;
-					}
-				}
-				if (!sameAsLast) { // flush previous
-					if (grouping) {
-						if (directionBalance > 0)
-							newList.add(forwardLine);
-						else if (directionBalance < 0)
-							newList.add(backwardLine);
-						directionBalance = 0;
-						grouping = false;
-					} else
-						newList.add(lastLine);
-				}
+				fixDups(newList, lastLine, sameAsLast, grouping);
+				grouping = sameAsLast;
 			}
 			lastLine = thisLine;
 			if (thisLine.lowPoint == thisLine.highPoint)
 				haveBalloons = true;
 		}
-		// flush last
-		if (grouping) {
-			if (directionBalance > 0)
-				newList.add(forwardLine);
-			else if (directionBalance < 0)
-				newList.add(backwardLine);
-		} else
-			newList.add(lastLine);
+		fixDups(newList, lastLine, false, grouping);
 
 		if (newList.size() < lineInfo.size()) {
 			lineInfo.clear();
@@ -466,7 +446,7 @@ public class ShapeSplitter {
 
 		if (!haveBalloons)
 			return;
-		
+
 		// Balloons will be sorted earlier than dLoops that share the same lowPoint,
 		// but those that form a shape must be within a hole and those that form a hole must be within
 		// a shape and so might need moving.
@@ -486,29 +466,12 @@ public class ShapeSplitter {
 		for (MergeCloseHelper thisLine : lineInfo) {
 			if (lastLine != null) {
 				boolean sameAsLast = thisLine.lowPoint == lastLine.lowPoint;
-				if (grouping || sameAsLast) {
-					grouping = true;
-					if (lastLine.lowPoint != lastLine.highPoint)
-						dLoops.add(lastLine);
-					else if (lastLine.areaOrHole == 1)
-						shapes.add(lastLine);
-					else
-						holes.add(lastLine);
-				}
-				if (!sameAsLast) {
-					if (grouping) {
-						reordered |= fixOrder(newList, dLoops, shapes, holes);
-						grouping = false;
-					} else
-						newList.add(lastLine);
-				}
+				reordered |= fixOrder(newList, lastLine, sameAsLast, grouping, dLoops, shapes, holes);
+				grouping = sameAsLast;
 			}
 			lastLine = thisLine;
 		}
-		if (grouping)
-			reordered |= fixOrder(newList, dLoops, shapes, holes);
-		else
-			newList.add(lastLine);
+		reordered |= fixOrder(newList, lastLine, false, grouping, dLoops, shapes, holes);
 
 		if (reordered) {
 			lineInfo.clear();
@@ -516,8 +479,48 @@ public class ShapeSplitter {
 		}
 	} // processAwkward
 
-	private boolean fixOrder(List<MergeCloseHelper> newList, List<MergeCloseHelper> dLoops,
-							 List<MergeCloseHelper> shapes, List<MergeCloseHelper> holes) {
+	private void fixDups(List<MergeCloseHelper> newList, MergeCloseHelper lastLine, boolean sameAsLast, boolean grouping) {
+		if (grouping || sameAsLast) {
+			if (lastLine.direction > 0) {
+				forwardLine = lastLine;
+				++directionBalance;
+			} else {
+				backwardLine = lastLine;
+				--directionBalance;
+			}
+		}
+		if (sameAsLast)
+			return;
+		// flush previous
+		if (!grouping) {
+			newList.add(lastLine);
+			return;
+		}
+		if (directionBalance > 0)
+			newList.add(forwardLine);
+		else if (directionBalance < 0)
+			newList.add(backwardLine);
+		directionBalance = 0;
+	} // fixDups
+
+	private boolean fixOrder(List<MergeCloseHelper> newList, MergeCloseHelper lastLine, boolean sameAsLast, boolean grouping,
+							 List<MergeCloseHelper> dLoops, List<MergeCloseHelper> shapes, List<MergeCloseHelper> holes) {
+		if (grouping || sameAsLast) {
+			if (lastLine.lowPoint != lastLine.highPoint)
+				dLoops.add(lastLine);
+			else if (lastLine.areaOrHole == 1)
+				shapes.add(lastLine);
+			else
+				holes.add(lastLine);
+		}
+		if (sameAsLast)
+			return false;
+		// flush previous
+		if (!grouping) {
+			newList.add(lastLine);
+			return false;
+		}
+
 		if (holes.size() > 1)
 			logMsg("Multiple holes at same point - shapeSplitter might cause self-intersection");
 			// logMsg triggers "split failed" and diags, but this is really a warning so maybe downgrade later
@@ -548,6 +551,7 @@ public class ShapeSplitter {
 			}
 		}
 
+		// there is still a flaw here, a highpoint could also be in this position. Need to have another structure to track this
 		if (dLoops.size() > 1)
 			logMsg("Possible ambiguous balloon allocation. Dloops:", dLoops.size(), "shapes:", shapes.size(), "holes:", holes.size());
 		// if 2 dividors hole>space | space>hole then, as only place for holes is middle, can avoid this warning
@@ -741,7 +745,7 @@ public class ShapeSplitter {
 					  "Possibly a self-intersecting polygon");
 		}
 	} // split
-		
+
 	private void formLoops(List<Coord> coords, int dividingLine, boolean isLongitude,
 						   boolean wantLess, boolean wantMore, Long2ObjectOpenHashMap<Coord> coordPool) {
 		List<Coord> lessPoly = null, morePoly = null;
