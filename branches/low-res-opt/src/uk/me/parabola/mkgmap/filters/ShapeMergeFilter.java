@@ -59,7 +59,7 @@ public class ShapeMergeFilter{
 	public ShapeMergeFilter(int resolution, boolean orderByDecreasingArea) {
 		this.resolution = resolution;
 		this.orderByDecreasingArea = orderByDecreasingArea;
-			maxPoints = PolygonSplitterFilter.MAX_POINT_IN_ELEMENT;
+		maxPoints = PolygonSplitterFilter.MAX_POINT_IN_ELEMENT;
 	}
 
 	/**
@@ -197,8 +197,8 @@ public class ShapeMergeFilter{
 		for (int i = 0; i < numCandidates; i++) {
 			byNum.add(new SortHelper(i, candidates.get(i)));
 		}
-		// sort so that shapes with more neighbours come first
-		byNum.sort((o1, o2) -> o2.all.cardinality() - o1.all.cardinality());
+		// sort so that shapes with more neighbours come 
+		byNum.sort((o1, o2) -> o1.all.cardinality() - o2.all.cardinality());
 		for (SortHelper helper : byNum) {
 			final int pos = helper.pos;
 			BitSet all = helper.all;
@@ -716,15 +716,14 @@ public class ShapeMergeFilter{
 //			return;
 //		PolygonSplitterFilter splitter = new PolygonSplitterFilter();
 //		final long testVal = Math.abs(ShapeMergeFilter.calcAreaSizeTestVal(shape.getPoints()));
-//		for (int myShift = 0; myShift <= shift; myShift ++) {
+//		for (int myShift = 0; myShift <= 24 - resolution; myShift++) {
 //			List<MapShape> outputs = splitter.testSplit(shape, myShift);
 //
 //			long sumSplit = outputs.stream()
-//					.mapToLong(s -> Math.abs(ShapeMergeFilter.calcAreaSizeTestVal(s.getPoints())))
-//					.sum();
+//					.mapToLong(s -> Math.abs(ShapeMergeFilter.calcAreaSizeTestVal(s.getPoints()))).sum();
 //			long delta = testVal - sumSplit;
-//			double ratio = (double) testVal / sumSplit; 
-//			if (Math.abs(delta) > SINGLE_POINT_AREA * 2 && Math.abs(ratio-1) > 0.001) {
+//			double ratio = (double) testVal / sumSplit;
+//			if (Math.abs(delta) > SINGLE_POINT_AREA * 2 && Math.abs(ratio - 1) > 0.001) {
 //				String path = "e:/ld/";
 //				log.error("testing  split shape", GType.formatType(shape.getType()), "at shift", myShift);
 //				List<Coord> merged = shape.getPoints();
