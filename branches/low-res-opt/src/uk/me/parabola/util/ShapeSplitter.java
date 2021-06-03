@@ -275,10 +275,22 @@ public class ShapeSplitter {
 		return pointsToPath2D(outputList, countVals);
 	}
 
-/* Dec16/Jan17. Ticker Berkin. New implementation for splitting shapes.
+// Dec16/Jan17. Ticker Berkin. New implementation for splitting shapes and clipping
 
-Eventually maybe can be used instead of some of the above and elsewhere
-*/
+	private boolean detectedProblems;
+	private List<MergeCloseHelper> newLess, newMore;
+	private String gpxDirectory;
+	private long fullArea;
+
+	private List<MergeCloseHelper> lineInfo; // for the side we are working on
+	private List<List<Coord>> origList; // ditto
+
+	private boolean multSameLow; // lineInfo.sort(comparator) might set this
+
+	private void logMsg(Object ... olist) {
+		detectedProblems = true;
+		log.warn(olist);
+	}
 
 	/**
 	 * Service routine for processLineList. Processes a nested list of holes within a shape or
@@ -290,11 +302,8 @@ Eventually maybe can be used instead of some of the above and elsewhere
 	 * @param endEnclosed point where starting line ends on dividing line.
 	 * @param addHolesToThis if not null, then called from a shape and subtract holes from it
 	 * otherwise new shapes within a hole.
-	 * @param lineInfo list of lines.
-	 * @param origList list of shapes to which we append new shapes.
 	 */
-	private static int doLines(int startInx, int endEnclosed, MergeCloseHelper addHolesToThis,
-				   List<MergeCloseHelper> lineInfo, List<List<Coord>> origList) {
+	private int doLines(int startInx, int endEnclosed, MergeCloseHelper addHolesToThis) {
 		int inx = startInx;
 		final boolean calledFromHole = addHolesToThis == null;
 		while (inx < lineInfo.size()) {
@@ -304,9 +313,9 @@ Eventually maybe can be used instead of some of the above and elsewhere
 			if (thisLine.lowPoint == endEnclosed && thisLine.highPoint == endEnclosed) // consider carefully
 				if (calledFromHole == (thisLine.areaOrHole == -1))
 					break; // stop if same type
-			inx = doLines(inx+1, thisLine.highPoint, calledFromHole ? thisLine : null, lineInfo, origList);
+			inx = doLines(inx+1, thisLine.highPoint, calledFromHole ? thisLine : null);
 			if (calledFromHole) // handling list of shapes
-				thisLine.closeAppend(origList, true);
+				thisLine.closeAppend(true);
 			else // handling list of holes
 				addHolesToThis.addHole(thisLine);
 		}
@@ -317,17 +326,17 @@ Eventually maybe can be used instead of some of the above and elsewhere
 	 * Service routine for splitShape. Takes list of lines and appends distinct shapes
 	 * @param lineInfo list of lines that start and end on the dividing line (or orig startPoint)
 	 * @param origList list of shapes to which we append new shapes formed from above
-	 * @param fullArea of orig polygon. used for sign and handling of last line segment
 	 */
-	private static int processLineList(List<MergeCloseHelper> lineInfo, List<List<Coord>> origList, long fullArea) {
-		int errorCount = 0;
+	private void processLineList(List<MergeCloseHelper> lineInfo, List<List<Coord>> origList) {
+		this.lineInfo = lineInfo;
+		this.origList = origList;
 		if (origList == null) // never wanted this side
-			return errorCount;
+			return;
 		MergeCloseHelper firstLine = lineInfo.get(0);
 		if (lineInfo.size() == 1) { // single shape that never crossed line
 			if (!firstLine.points.isEmpty()) // all on this side
-				firstLine.closeAppend(origList, false);
-			return errorCount;
+				firstLine.closeAppend(false);
+			return;
 		}
 		// look at last item in list of lines
 		MergeCloseHelper lastLine = lineInfo.get(lineInfo.size()-1);
@@ -335,14 +344,14 @@ Eventually maybe can be used instead of some of the above and elsewhere
 			lineInfo.remove(lineInfo.size()-1);
 		else { // ended up on this side and must have crossed the line
 			// so first element is really the end of the last
-			lastLine.combineFirstIntoLast(firstLine, fullArea);
+			lastLine.combineFirstIntoLast(firstLine);
 			lineInfo.remove(0);
 			firstLine = lineInfo.get(0);
 		}
 		if (lineInfo.size() == 1) { // simple poly that crossed once and back
 			firstLine.setMoreInfo(0);
-			firstLine.closeAppend(origList, true);
-			return errorCount;
+			firstLine.closeAppend(true);
+			return;
 		}
 		// Above were the simple cases - probably 99% of calls.
 
@@ -358,7 +367,6 @@ Eventually maybe can be used instead of some of the above and elsewhere
 		// check and set any missing directions based on signs of full/area
 		boolean someDirectionsNotSet = false;
 		int areaDirection = 0;
-		String diagMsg = "";
 		for (MergeCloseHelper thisLine : lineInfo) {
 			thisLine.setMoreInfo(fullAreaSign);
 			if (thisLine.direction == 0)
@@ -368,85 +376,215 @@ Eventually maybe can be used instead of some of the above and elsewhere
 				if (areaDirection == 0)
 					areaDirection = tmpAreaDirection;
 				else if (areaDirection != tmpAreaDirection)
-					diagMsg += "Direction/Area conflict.";
+					logMsg("Direction/Area conflict", fullAreaSign, areaDirection, tmpAreaDirection);
 			}
 		}
 		if (someDirectionsNotSet) {
 			if (areaDirection == 0)
-				diagMsg += "Cant deduce direction/Area mapping.";
+				logMsg("Can't deduce direction/Area mapping", fullAreaSign);
 			else
 				for (MergeCloseHelper thisLine : lineInfo)
 					if (thisLine.direction == 0)
 						thisLine.direction = areaDirection * Long.signum(thisLine.areaToLine);
 		}
-		if (!diagMsg.isEmpty()) {
-			log.warn(diagMsg, "Probably self-intersecting polygon", fullAreaSign, someDirectionsNotSet, areaDirection);
-			++errorCount;
-		}
 
+		multSameLow = false;
 		lineInfo.sort(null);
-		errorCount += processDups(lineInfo);
+		if (multSameLow)
+			processAwkward();
+//		if (log.isDebugEnabled()) { // can be useful to have raw loop data, basic ordered, but before shape/hole processing
+//			int fInx = 0;
+//			for (MergeCloseHelper thisLine : lineInfo) {
+//				++fInx;
+//				uk.me.parabola.util.GpxCreator.createGpx(gpxDirectory + (lineInfo == newLess ? "N" : "P") + fInx, thisLine.points);
+//			}
+//		}
 
-		int dummy = doLines(0, Integer.MAX_VALUE, null, lineInfo, origList);
+		int dummy = doLines(0, Integer.MAX_VALUE, null);
 		assert dummy == lineInfo.size();
-		for (MergeCloseHelper thisLine : lineInfo)
-			errorCount += thisLine.errorCount;
-		return errorCount;
 	} // processLineList
 
-	private static int processDups(List<MergeCloseHelper> lineInfo) {
-		// find groups of duplicates, drop equal numbers of different direction (ie keep just 1)
-		int errorCount = 0; // shouldn't be any
+	private void processAwkward() {
+		// Where a loop has lowPoint==highPoint, let us call it a "balloon", otherwise call it a Dloop.
+		// Awkward cases are:
+		//  Dloops with same low/high/area, For this to be true they must follow the same path (or intersect)
+		//  Multiple hole balloons from the same point
+		//  Balloon(s) that share the same point as dLoops
+		boolean haveBalloons = false;
+		
+		// Duplicate dLoops in same direction can be removed / opposite direction cancel each other out.
+		// Do this before Balloon processing as dLoop removal can make some problems go away.
 		List<MergeCloseHelper> newList = new ArrayList<>(lineInfo.size());
-		MergeCloseHelper forwardLine = null, backwardLine = null, lastIfDup = null;
+		MergeCloseHelper forwardLine = null, backwardLine = null, lastLine = null;
 		int directionBalance = 0;
+		boolean grouping = false;
 		for (MergeCloseHelper thisLine : lineInfo) {
-			if (lastIfDup != null && (!thisLine.isDup || (thisLine.lowPoint != lastIfDup.lowPoint ||
-														  thisLine.highPoint != lastIfDup.highPoint ||
-														  Math.abs(thisLine.areaToLine) != Math.abs(lastIfDup.areaToLine)))) {
-				if (directionBalance > 0)
-					newList.add(forwardLine);
-				else if (directionBalance < 0)
-					newList.add(backwardLine);
-				directionBalance = 0;
-			}
-			if (thisLine.isDup) {
-				if (thisLine.direction > 0) {
-					forwardLine = thisLine;
-					++directionBalance;
-				} else {
-					backwardLine = thisLine;
-					--directionBalance;
+			if (lastLine != null) {
+				boolean sameAsLast = thisLine.lowPoint != thisLine.highPoint &&
+					thisLine.lowPoint == lastLine.lowPoint &&
+					thisLine.highPoint == lastLine.highPoint &&
+					Math.abs(thisLine.areaToLine) == Math.abs(lastLine.areaToLine);
+				if (grouping || sameAsLast) {
+					grouping = true;
+					if (lastLine.direction > 0) {
+						forwardLine = lastLine;
+						++directionBalance;
+					} else {
+						backwardLine = lastLine;
+						--directionBalance;
+					}
 				}
-				lastIfDup = thisLine;
-			} else {
-				newList.add(thisLine);
-				lastIfDup = null;
+				if (!sameAsLast) { // flush previous
+					if (grouping) {
+						if (directionBalance > 0)
+							newList.add(forwardLine);
+						else if (directionBalance < 0)
+							newList.add(backwardLine);
+						directionBalance = 0;
+						grouping = false;
+					} else
+						newList.add(lastLine);
+				}
+			}
+			lastLine = thisLine;
+			if (thisLine.lowPoint == thisLine.highPoint)
+				haveBalloons = true;
+		}
+		// flush last
+		if (grouping) {
+			if (directionBalance > 0)
+				newList.add(forwardLine);
+			else if (directionBalance < 0)
+				newList.add(backwardLine);
+		} else
+			newList.add(lastLine);
+
+		if (newList.size() < lineInfo.size()) {
+			lineInfo.clear();
+			lineInfo.addAll(newList);
+		}
+
+		if (!haveBalloons)
+			return;
+		
+		// Balloons will be sorted earlier than dLoops that share the same lowPoint,
+		// but those that form a shape must be within a hole and those that form a hole must be within
+		// a shape and so might need moving.
+		// A single dLoop defines a transition and so we can get balloons on the correct side of it.
+		// Multiple dLoops might suggest more than 1 place where +ve or -ve balloons can go and
+		// this isn't possible to resolve without much more complex analysis of the geometry away from the cut-point.
+		// The ordering of multiple +ve balloons doesn't matter - they will become individual shapes.
+		// The ordering of multiple -ve balloons does matter - in the wrong order a crossing will be generated
+		// at the cut-point - again this isn't possible to solve without analysis of the geometry
+		newList = new ArrayList<>(lineInfo.size());
+		List<MergeCloseHelper> dLoops = new ArrayList<>();
+		List<MergeCloseHelper> shapes = new ArrayList<>();
+		List<MergeCloseHelper> holes  = new ArrayList<>();
+		boolean reordered = false;
+		lastLine = null;
+		grouping = false;
+		for (MergeCloseHelper thisLine : lineInfo) {
+			if (lastLine != null) {
+				boolean sameAsLast = thisLine.lowPoint == lastLine.lowPoint;
+				if (grouping || sameAsLast) {
+					grouping = true;
+					if (lastLine.lowPoint != lastLine.highPoint)
+						dLoops.add(lastLine);
+					else if (lastLine.areaOrHole == 1)
+						shapes.add(lastLine);
+					else
+						holes.add(lastLine);
+				}
+				if (!sameAsLast) {
+					if (grouping) {
+						reordered |= fixOrder(newList, dLoops, shapes, holes);
+						grouping = false;
+					} else
+						newList.add(lastLine);
+				}
+			}
+			lastLine = thisLine;
+		}
+		if (grouping)
+			reordered |= fixOrder(newList, dLoops, shapes, holes);
+		else
+			newList.add(lastLine);
+
+		if (reordered) {
+			lineInfo.clear();
+			lineInfo.addAll(newList);
+		}
+	} // processAwkward
+
+	private boolean fixOrder(List<MergeCloseHelper> newList, List<MergeCloseHelper> dLoops,
+							 List<MergeCloseHelper> shapes, List<MergeCloseHelper> holes) {
+		if (holes.size() > 1)
+			logMsg("Multiple holes at same point - shapeSplitter might cause self-intersection");
+			// logMsg triggers "split failed" and diags, but this is really a warning so maybe downgrade later
+		if (dLoops.isEmpty()) {
+			if (shapes.isEmpty()) {
+				newList.addAll(holes);
+				holes.clear();
+				return false;
+			} else if (holes.isEmpty()) {
+				newList.addAll(shapes);
+				shapes.clear();
+				return false;
+			}
+			// they must be nested - have lost original sort which would have been good, so redo:
+			// !!! there could be other reasons for this... need to look at highPoint of others...
+			log.warn("possible nested balloons");
+			shapes.addAll(holes);
+			holes.clear();
+			shapes.sort((o1, o2) -> Long.compare(Math.abs(o2.areaToLine), Math.abs(o1.areaToLine)));
+			newList.addAll(shapes);
+			shapes.clear();
+			return true;
+		} else {
+			if (shapes.isEmpty() && holes.isEmpty()) {
+				newList.addAll(dLoops);
+				dLoops.clear();
+				return false;
 			}
 		}
-		if (directionBalance > 0)
-			newList.add(forwardLine);
-		else if (directionBalance < 0)
-			newList.add(backwardLine);
-		if (newList.size() < lineInfo.size())
-			lineInfo = newList;
-		return errorCount;
-	} // removeDups
 
-	private static List<Coord> startLine(List<MergeCloseHelper> lineInfo) {
+		if (dLoops.size() > 1)
+			logMsg("Possible ambiguous balloon allocation. Dloops:", dLoops.size(), "shapes:", shapes.size(), "holes:", holes.size());
+		// if 2 dividors hole>space | space>hole then, as only place for holes is middle, can avoid this warning
+		// might be able to do a few more limitations based on areas
+		if (dLoops.get(0).areaOrHole == 1) {
+			newList.addAll(shapes);
+			newList.add(dLoops.get(0));
+			newList.addAll(holes);
+		} else {
+			newList.addAll(holes);
+			newList.add(dLoops.get(0));
+			newList.addAll(shapes);
+		}
+		dLoops.remove(0);
+		if (!dLoops.isEmpty()) {
+			newList.addAll(dLoops);
+			dLoops.clear();
+		}
+		shapes.clear();
+		holes.clear();
+		return true;
+	} // fixOrder
+
+	private List<Coord> startLine(List<MergeCloseHelper> lineInfo) {
 		MergeCloseHelper thisLine = new MergeCloseHelper();
 		lineInfo.add(thisLine);
 		return thisLine.points;
 	} // startLine
 
-	private static void openLine(List<MergeCloseHelper> lineInfo, Coord lineCoord, int lineAlong, long currentArea) {
+	private void openLine(List<MergeCloseHelper> lineInfo, Coord lineCoord, int lineAlong, long currentArea) {
 		MergeCloseHelper thisLine = lineInfo.get(lineInfo.size()-1);
 		thisLine.points.add(lineCoord);
 		thisLine.firstPoint = lineAlong;
 		thisLine.startingArea = currentArea;
 	} // openLine
 
-	private static List<Coord> closeLine(List<MergeCloseHelper> lineInfo, Coord lineCoord, int lineAlong, long currentArea) {
+	private List<Coord> closeLine(List<MergeCloseHelper> lineInfo, Coord lineCoord, int lineAlong, long currentArea) {
 		MergeCloseHelper thisLine = lineInfo.get(lineInfo.size()-1);
 		thisLine.points.add(lineCoord);
 		thisLine.lastPoint = lineAlong;
@@ -458,10 +596,8 @@ Eventually maybe can be used instead of some of the above and elsewhere
 	 * Helper class for splitShape. Holds information about line.
 	 * Sorts array/list of itself according to lowest point on dividing line.
 	 */
-	private static class MergeCloseHelper implements Comparable<MergeCloseHelper> {
+	private class MergeCloseHelper implements Comparable<MergeCloseHelper> {
 
-		int errorCount = 0;
-		boolean isDup;
 		List<Coord> points;
 		int firstPoint, lastPoint;
 		long startingArea, endingArea; // from runningArea
@@ -494,7 +630,7 @@ Eventually maybe can be used instead of some of the above and elsewhere
 			this.areaOrHole = fullAreaSign * Long.signum(this.areaToLine);
 		} // setMoreInfo
 
-		void combineFirstIntoLast(MergeCloseHelper other, long fullArea) {
+		void combineFirstIntoLast(MergeCloseHelper other) {
 			this.points.addAll(other.points);
 			this.lastPoint = other.lastPoint;
 			this.endingArea = fullArea + other.endingArea;
@@ -504,6 +640,8 @@ Eventually maybe can be used instead of some of the above and elsewhere
 			int cmp = this.lowPoint - other.lowPoint;
 			if (cmp != 0)
 				return cmp;
+			// If loops share the same lowPoint then maybe dups to remove and balloons to position correctly
+			multSameLow = true;
 			// for same lowPoint, sort highPoint other way around to enclose as much as possible
 			cmp = other.highPoint - this.highPoint;
 			if (cmp != 0)
@@ -513,10 +651,6 @@ Eventually maybe can be used instead of some of the above and elsewhere
 			if (cmp != 0)
 				return cmp;
 			// multiple lines appear to follow same path, some can be dropped after sort
-			this.isDup = true;
-			other.isDup = true;
-			// maybe don't need this, if good fix
-			//log.warn("Lines hit divider at same points and have same area", this);
 			// after this, don't think anything else possible, but, for stability
 			return this.direction - other.direction;
 		} // compareTo
@@ -525,13 +659,11 @@ Eventually maybe can be used instead of some of the above and elsewhere
 			if (other.areaToLine == 0)
 				return; // spike into this area. cf. closeAppend()
 			// shapes must have opposite directions.
-			if (this.direction == 0 && other.direction == 0) {
-				log.warn("Direction of shape and hole indeterminate; probably self-intersecting polygon", "this:", this, "other:", other);
-				++errorCount;
-			} else if (this.direction != 0 && other.direction != 0 && this.direction == other.direction) {
-				log.warn("Direction of shape and hole conflict; probably self-intersecting polygon", "this:", this, "other:", other);
-				++errorCount;
-			} else if (this.direction < 0 || other.direction > 0) {
+			if (this.direction == 0 && other.direction == 0)
+				logMsg("Direction of shape and hole indeterminate.", "shape:", this, "hole:", other);
+			else if (this.direction != 0 && other.direction != 0 && this.direction == other.direction)
+				logMsg("Direction of shape and hole conflict.", "shape:", this, "hole:", other);
+			else if (this.direction < 0 || other.direction > 0) {
 				this.points.addAll(other.points);
 				if (this.direction == 0)
 					this.direction = -1;
@@ -552,10 +684,9 @@ Eventually maybe can be used instead of some of the above and elsewhere
 		 * if there is a single point just across the dividing line and the two intersecting
 		 * points ended up being the same or an edge runs back on itself exactly.
 		 *
-		 * @param origList list of shapes to which we append new shapes.
 		 * @param onDividingLine if false, shape not cut so don't assume/care much about it
 		 */
-		void closeAppend(List<List<Coord>> origList, boolean onDividingLine) {
+		void closeAppend(boolean onDividingLine) {
 			final Coord firstCoord = points.get(0);
 			final int lastPointInx = points.size()-1;
 			if (firstCoord.highPrecEquals(points.get(lastPointInx))) { // by chance, ends up closed
@@ -570,14 +701,6 @@ Eventually maybe can be used instead of some of the above and elsewhere
 			} else
 				points.add(firstCoord); // close it
 			if (onDividingLine) { // otherwise just one shape untouched by chopping
-/* this is quite expensive! and drastic if there is a problem
-				assert Math.abs(this.areaToLine) == Math.abs(uk.me.parabola.mkgmap.filters.ShapeMergeFilter.calcAreaSizeTestVal(points))
-					: "Split calcAreaSize differs";
-// this is less drastic, only ever happens after SplitShape has already detected problem
-				long stdFuncSize = uk.me.parabola.mkgmap.filters.ShapeMergeFilter.calcAreaSizeTestVal(points);
-				if (Math.abs(this.areaToLine) != Math.abs(stdFuncSize))
-					log.warn("Split calcAreaSize differs; probably self-intersecting polygon", stdFuncSize, this);
-*/
 				if (this.areaToLine == 0)
 					return;
 			}
@@ -596,27 +719,37 @@ Eventually maybe can be used instead of some of the above and elsewhere
 	 * @param coordPool if not null, hashmap for created coordinates. Will all be on the line.
 	 */
 	public static void splitShape(List<Coord> coords, int dividingLine, boolean isLongitude,
-				      List<List<Coord>> lessList, List<List<Coord>> moreList,
-				      Long2ObjectOpenHashMap<Coord> coordPool) {
+								  List<List<Coord>> lessList, List<List<Coord>> moreList,
+								  Long2ObjectOpenHashMap<Coord> coordPool) {
+		ShapeSplitter ss = new ShapeSplitter();
+		ss.split(coords, dividingLine, isLongitude, lessList, moreList, coordPool);
+	} // splitShape
 
-		int errorCount = 0;
-		List<MergeCloseHelper> newLess = null, newMore = null;
-		List<Coord> lessPoly = null, morePoly = null;
-		if (log.isDebugEnabled()) { // force it to generate both sides
-			if (lessList == null)
-				lessList = new ArrayList<>();
-			if (moreList == null)
-				moreList = new ArrayList<>();
-			if (!coords.get(0).highPrecEquals(coords.get(coords.size()-1))) {
-				log.warn("Shape not closed");
-				++errorCount;
-			}
+	private void split(List<Coord> coords, int dividingLine, boolean isLongitude,
+					   List<List<Coord>> lessList, List<List<Coord>> moreList,
+					   Long2ObjectOpenHashMap<Coord> coordPool) {
+		if (log.isDebugEnabled()) {
+			gpxDirectory = (isLongitude ? "V" : "H") + dividingLine + "_" +
+				(isLongitude ? coords.get(0).getLatitude() : coords.get(0).getLongitude()) + "/";
 		}
-		if (lessList != null) {
+		formLoops(coords, dividingLine, isLongitude, lessList != null, moreList != null, coordPool);
+		processLineList(newLess, lessList);
+		processLineList(newMore, moreList);
+		if (detectedProblems) {
+			logDiagInfo(coords, lessList, moreList);
+			log.error(isLongitude ? "Vertical" : "Horizontal", "split", dividingLine, "failed on shape at", coords.get(0).toOSMURL(),
+					  "Possibly a self-intersecting polygon");
+		}
+	} // split
+		
+	private void formLoops(List<Coord> coords, int dividingLine, boolean isLongitude,
+						   boolean wantLess, boolean wantMore, Long2ObjectOpenHashMap<Coord> coordPool) {
+		List<Coord> lessPoly = null, morePoly = null;
+		if (wantLess) {
 			newLess = new ArrayList<>();
 			lessPoly = startLine(newLess);
 		}
-		if (moreList != null) {
+		if (wantMore) {
 			newMore = new ArrayList<>();
 			morePoly = startLine(newMore);
 		}
@@ -673,7 +806,7 @@ Eventually maybe can be used instead of some of the above and elsewhere
 					extraArea = (long)(lineAlong + leadAlong) * (dividingLine - leadAway);
 				}
 
-				if (lessList != null) {
+				if (wantLess) {
 					if (leadRel < 0) { // this point required
 						if (trailRel >= 0) // previous not on this side, add line point
 							openLine(newLess, lineCoord, lineAlong, runningArea);
@@ -683,7 +816,7 @@ Eventually maybe can be used instead of some of the above and elsewhere
 				}
 
 				// identical to above except other way around
-				if (moreList != null) {
+				if (wantMore) {
 					if (leadRel > 0) { // this point required
 						if (trailRel <= 0) // previous not on this side, add line point
 							openLine(newMore, lineCoord, lineAlong, runningArea);
@@ -699,47 +832,38 @@ Eventually maybe can be used instead of some of the above and elsewhere
 			trailAlong = leadAlong;
 			trailRel = leadRel;
 		} // for leadCoord
-		errorCount += processLineList(newLess, lessList, runningArea);
-		errorCount += processLineList(newMore, moreList, runningArea);
-		if (errorCount > 0) {
-			int lowestPoint = newLess.get(0).lowPoint;
-			log.error("splitErrors:", errorCount, "on", dividingLine, isLongitude, "points", coords.size(), "area", runningArea, "lowest", lowestPoint, coords.get(0).toOSMURL());
-			for (MergeCloseHelper thisLine : newLess)
-				log.warn("LessLoop", thisLine.lowPoint-lowestPoint, thisLine.highPoint-lowestPoint, thisLine.direction, thisLine.areaOrHole, thisLine.areaToLine, thisLine.points.size());
-			for (MergeCloseHelper thisLine : newMore)
-				log.warn("MoreLoop", thisLine.lowPoint-lowestPoint, thisLine.highPoint-lowestPoint, thisLine.direction, thisLine.areaOrHole, thisLine.areaToLine, thisLine.points.size());
-//			if (log.isDebugEnabled()) {
-//				String fileName = (isLongitude ? "V" : "H") + dividingLine + "_" + lowestPoint;
-//				GpxCreator.createGpx(fileName + "/S", coords);  // original shape
-//				int fInx = 0;
-//				for (MergeCloseHelper thisLine : newLess) {
-//					++fInx;
-//					GpxCreator.createGpx(fileName + "/N" + fInx, thisLine.points);
-//				}
-//				fInx = 0;
-//				for (MergeCloseHelper thisLine : newMore) {
-//					++fInx;
-//					GpxCreator.createGpx(fileName + "/P" + fInx, thisLine.points);
-//				}
-//				// NB: lessList/moreList could be non-existent (but debugEnabled stops this),
-//				// then same object or have already have contents
-//				fInx = 0;
-//				String filePrefix = lessList == moreList ? "/B" : "/L";
-//				for (List<Coord> fragment : lessList) {
-//					++fInx;
-//					GpxCreator.createGpx(fileName + filePrefix + fInx, fragment);
-//				}
-//				if (lessList != moreList) {
-//					fInx = 0;
-//					for (List<Coord> fragment : moreList) {
-//						++fInx;
-//						GpxCreator.createGpx(fileName + "/M" + fInx, fragment);
-//					}
-//				}
-//			}
-		}
-	} // splitShape
+		fullArea = runningArea;
+	} // formLoops
 
+	void logDiagInfo(List<Coord> coords, List<List<Coord>> lessList, List<List<Coord>> moreList) {
+		int lowestPoint = newLess != null ? newLess.get(0).lowPoint : (newMore != null ? newMore.get(0).lowPoint : 0); // easier with small numbers
+		log.info("#points:", coords.size(), "fullArea:", fullArea, "lowest:", lowestPoint, "gpxDir:", gpxDirectory);
+		if (newLess != null)
+			for (MergeCloseHelper thisLine : newLess)
+				log.info("LessLoop", thisLine.lowPoint-lowestPoint, thisLine.highPoint-lowestPoint, thisLine.direction, thisLine.areaOrHole, thisLine.areaToLine, thisLine.points.size());
+		if (newMore != null)
+			for (MergeCloseHelper thisLine : newMore)
+				log.info("MoreLoop", thisLine.lowPoint-lowestPoint, thisLine.highPoint-lowestPoint, thisLine.direction, thisLine.areaOrHole, thisLine.areaToLine, thisLine.points.size());
+		if (log.isDebugEnabled()) {
+			uk.me.parabola.util.GpxCreator.createGpx(gpxDirectory + "S", coords);  // original shape
+			int fInx = 0;
+			// NB: lessList/moreList could be non-existent, the same object or have already have contents
+			String filePrefix = lessList == moreList ? "B" : "L";
+			if (lessList != null)
+				for (List<Coord> fragment : lessList) {
+					++fInx;
+					uk.me.parabola.util.GpxCreator.createGpx(gpxDirectory + filePrefix + fInx, fragment);
+				}
+			fInx = 0;
+			if (moreList != null && lessList != moreList)
+				for (List<Coord> fragment : moreList) {
+					++fInx;
+					uk.me.parabola.util.GpxCreator.createGpx(gpxDirectory + "M" + fInx, fragment);
+				}
+		}
+	} // logDiagInfo
+
+	// end of splitShape components
 
 	/**
 	 * clip a shape with a rectangle
