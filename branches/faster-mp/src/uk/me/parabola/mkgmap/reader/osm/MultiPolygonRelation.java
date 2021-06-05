@@ -661,7 +661,7 @@ public class MultiPolygonRelation extends Relation {
 
 
 	private static JoinedWay getLargest(List<JoinedWay> polygons) {
-		double maxSize = 0;
+		double maxSize = -1;
 		int maxPos = -1;
 		for (int i = 0; i< polygons.size(); i++) {
 			JoinedWay closed = polygons.get(i);
