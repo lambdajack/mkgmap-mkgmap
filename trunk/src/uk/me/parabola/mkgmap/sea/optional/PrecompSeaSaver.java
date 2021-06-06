@@ -148,12 +148,12 @@ class PrecompSeaSaver implements Runnable {
 				pbfWay.addTag(tag.getKey(), tag.getValue());
 			}
 			for (Coord c : w.getPoints()) {
-				Node n = new Node();
 				long key = Utils.coord2Long(c);
 				Long nodeId = coordIds.get(key);
 				if (nodeId == null) {
 					nodeId = maxNodeId++;
 					coordIds.put(key, nodeId);
+					Node n = new Node();
 					n.set(nodeId, c.getLatDegrees(), c.getLonDegrees());
 					writer.write(n);
 				}
