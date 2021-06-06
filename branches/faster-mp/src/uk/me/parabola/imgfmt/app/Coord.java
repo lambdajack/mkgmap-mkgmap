@@ -616,18 +616,23 @@ public class Coord implements Comparable<Coord> {
 	}			
 
 	/**
-	 * Returns a string representation of the object.
+	 * Returns a string representation of the object in degrees.
 	 *
-	 * @return a string representation of the object.
+	 * @return a string representation of the object in degrees
 	 */
 	public String toString() {
-		return (latitude) + "/" + (longitude);
+		return String.format(Locale.ENGLISH, "%.6f,%.6f",
+				getLatDegrees(),
+				getLonDegrees());
 	}
 
-	public String toDegreeString() {
-		return String.format(Locale.ENGLISH, "%.6f,%.6f",
-			getLatDegrees(),
-			getLonDegrees());
+	/**
+	 * Returns a string representation of the object showing Garmin units
+	 *
+	 * @return a string representation of the object showing Garmin units
+	 */
+	public String toGarminString() {
+		return (latitude) + "/" + (longitude);
 	}
 
 	protected String toOSMURL(int zoom) {

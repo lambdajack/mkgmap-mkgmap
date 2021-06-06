@@ -189,7 +189,7 @@ class AllElements {
 
 				if (configProps.containsKey("verbose"))
 					System.out.println("Generated POI " + GType.formatType(type) + " at "
-							+ point.getLocation().toDegreeString() + " " + point.getName());
+							+ point.getLocation() + " " + point.getName());
 				mapper.addToBounds(point.getLocation()); // XXX shouldn't be needed.
 			}
 		}
@@ -216,7 +216,7 @@ class AllElements {
 				coords.add(co);
 				mapper.addToBounds(co);
 				if (configProps.containsKey("verbose"))
-					System.out.println("Generated line " + GType.formatType(type) + " at " + co.toDegreeString() + " " + line.getName());
+					System.out.println("Generated line " + GType.formatType(type) + " at " + co + " " + line.getName());
 
 				co = new Coord(baseLat + ELEMENT_SIZE, baseLong + ELEMENT_SIZE);
 				coords.add(co);
@@ -261,7 +261,7 @@ class AllElements {
 				coords.add(co);
 				mapper.addToBounds(co);
 				if (configProps.containsKey("verbose"))
-					System.out.println("Generated polygon " + GType.formatType(type) + " at " + co.toDegreeString() + " " + shape.getName());
+					System.out.println("Generated polygon " + GType.formatType(type) + " at " + co + " " + shape.getName());
 				
 				co = new Coord(baseLat + ELEMENT_SIZE, baseLong);
 				coords.add(co);

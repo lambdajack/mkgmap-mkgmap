@@ -50,7 +50,7 @@ public class RouteCenter {
 		this.tabB = tabB;
 		this.tabC = new TableC(tabA);
 
-		log.info("new RouteCenter at " + centralPoint.toDegreeString() +
+		log.info("new RouteCenter at " + centralPoint +
 				 ", nodes: " + nodes.size()	+ " tabA: " + tabA.size() +
 				 " tabB: " + tabB.size());
 	}

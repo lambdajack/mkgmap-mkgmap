@@ -16,7 +16,6 @@
 package uk.me.parabola.mkgmap.general;
 
 import java.util.Arrays;
-import java.util.Objects;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.imgfmt.app.trergn.ExtTypeAttributes;
@@ -193,17 +192,6 @@ public abstract class MapElement {
 
 	public void setType(int type) {
 		this.type = type;
-	}
-
-	public boolean isSimilar(MapElement other) {
-		if (this.minResolution != other.minResolution)
-			return false;
-		if (this.maxResolution != other.maxResolution)
-			return false;
-		if (this.type != other.type)
-			return false;
-
-		return Objects.equals(getName(), other.getName());
 	}
 
 	public boolean hasExtendedType() {

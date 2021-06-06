@@ -198,7 +198,7 @@ public class HousenumberRoad {
 			if (group.findSegment(streetName, groups)){
 				nodesAdded = true;
 				if (log.isDebugEnabled())
-					log.debug("added",getRoad().getPoints().size() - oldNumPoints,"number node(s) at",group.linkNode.toDegreeString(),"for group",group,"in road",getRoad());
+					log.debug("added",getRoad().getPoints().size() - oldNumPoints,"number node(s) at",group.linkNode,"for group",group,"in road",getRoad());
 				oldNumPoints = getRoad().getPoints().size();
 				int minSeg = group.minSeg;
 				for (HousenumberMatch house : this.houseNumbers){
@@ -209,7 +209,7 @@ public class HousenumberRoad {
 			} else {
 				if(group.linkNode != null){
 					if (log.isDebugEnabled())
-						log.debug("used existing zero-length-segment at",group.linkNode.toDegreeString(),"for group",group,"in road",getRoad());
+						log.debug("used existing zero-length-segment at",group.linkNode,"for group",group,"in road",getRoad());
 				}
 			}
 		}

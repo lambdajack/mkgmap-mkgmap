@@ -422,7 +422,7 @@ public class WrongAngleFixer {
 					Coord p = points.get(i);
 					if (p.isToRemove()) {
 						if (pass >= maxPass - 1) {
-							log.warn("removed point in last pass.", way.getBasicLogInformation(), p.toDegreeString());
+							log.warn("removed point in last pass.", way.getBasicLogInformation(), p);
 						}
 						points.remove(i);
 						anotherPassRequired = true;
@@ -446,7 +446,7 @@ public class WrongAngleFixer {
 					}
 					p = replacement;
 					if (pass >= maxPass - 1) {
-						log.warn("changed point in last pass.", way.getBasicLogInformation(), p.toDegreeString());
+						log.warn("changed point in last pass.", way.getBasicLogInformation(), p);
 					}
 					// replace point in way
 					points.set(i, p);
@@ -675,7 +675,7 @@ public class WrongAngleFixer {
 					} else if (c1.equals(c2)) {
 						// spike / overlap
 						log.debug("pass", pass, "roads=" + (cw.isRoad()),
-								"extra remove to remove spike or overlap near", cm.toDegreeString());
+								"extra remove to remove spike or overlap near", cm);
 						keepThis = false;
 
 					}
@@ -685,8 +685,8 @@ public class WrongAngleFixer {
 					continue;
 				}
 				if (log.isDebugEnabled()) {
-					log.debug("removing obsolete point on almost straight segment in", way.getBasicLogInformation(), "at",
-							cm.toDegreeString());
+					log.debug("removing obsolete point on almost straight segment in", way.getBasicLogInformation(),
+							"at", cm);
 				}
 				if (DEBUG_PATH != null) {
 					obsoletePoints.add(cm);
@@ -814,7 +814,7 @@ public class WrongAngleFixer {
 
 		@Override
 		public String toString() {
-			return "CenterOfAngle [id=" + id + " " + center.toString() + " " + center.toDegreeString() + ", wasMerged="
+			return "CenterOfAngle [id=" + id + " " + center.toString() + " " + center + ", wasMerged="
 					+ wasMerged + ", num Neighbours=" + neighbours.size() + "]";
 		}
 
@@ -978,7 +978,7 @@ public class WrongAngleFixer {
 					for (Coord altCenter : altPositions) {
 						if (dupCheck.contains(altCenter)) {
 							log.debug("pass", pass, 
-									"extra move to remove spike or overlap near", currentCenter.toDegreeString());
+									"extra move to remove spike or overlap near", currentCenter);
 							replaceCoord(currentCenter, altCenter, replacements);
 							return true;
 						}

@@ -72,7 +72,7 @@ public class StyleImpl implements Style {
 
 	// General options just have a value and don't need any special processing.
 	private static final Collection<String> OPTION_LIST = new ArrayList<>(
-			Arrays.asList("levels", "overview-levels", "extra-used-tags"));
+			Arrays.asList("levels", "overview-levels", "extra-used-tags", "line-types-with-direction"));
 
 	// File names
 	private static final String FILE_VERSION = "version";
@@ -437,11 +437,11 @@ public class StyleImpl implements Style {
 	 * @see #mergeRules(StyleImpl)
 	 */
 	private void mergeOptions(StyleImpl other) {
-	for (Entry<String, String> ent : other.generalOptions.entrySet()) {
+		for (Entry<String, String> ent : other.generalOptions.entrySet()) {
 			String opt = ent.getKey();
 			String val = ent.getValue();
 			if (OPTION_LIST.contains(opt)) {
-				// Simple options that have string value.  Perhaps we should allow
+				// Simple options that have string value. Perhaps we should allow
 				// anything here?
 				generalOptions.put(opt, val);
 			}

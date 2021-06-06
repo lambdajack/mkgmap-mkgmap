@@ -1135,9 +1135,9 @@ public class HousenumberGenerator {
 						double distToOld = old.getLocation().distance(house.getLocation()); 
 						if (distToOld > MAX_DISTANCE_SAME_NUM) {
 							if (old.isInterpolated())
-								log.info("conflict caused by addr:interpolation way",streetName,hivl,"and interpolated address",old,"at",old.getLocation().toDegreeString());
+								log.info("conflict caused by addr:interpolation way", streetName, hivl, "and interpolated address", old, "at", old.getLocation());
 							else 
-								log.info("conflict caused by addr:interpolation way",streetName,hivl,"and address element",old,"at",old.getLocation().toDegreeString());
+								log.info("conflict caused by addr:interpolation way", streetName, hivl, "and address element", old, "at", old.getLocation());
 							dupCount++;
 							if (!ignoreGenOnly) {
 								old.setIgnored(true);

@@ -415,7 +415,7 @@ public class StyleTester implements OsmConverter {
 
 		sb.append(' ');
 		for (Coord co : el.getPoints())
-			sb.append(String.format("(%s),", co));
+			sb.append(String.format("(%s),", co.toGarminString()));
 
 		return sb.toString();
 	}
