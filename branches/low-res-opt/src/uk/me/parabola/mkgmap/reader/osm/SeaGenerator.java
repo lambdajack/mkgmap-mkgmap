@@ -13,6 +13,7 @@
 package uk.me.parabola.mkgmap.reader.osm;
 
 import java.awt.Rectangle;
+import java.awt.geom.Path2D;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,6 +27,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -85,7 +87,9 @@ public class SeaGenerator implements OsmReadingHooks {
 
 	private String[] coastlineFilenames;
 	private StyleImpl fbRules;
-	
+
+	private boolean improveOverview;
+
 	/** The size (lat and long) of the precompiled sea tiles */
 	public static final int PRECOMP_RASTER = 1 << 15;
 	
@@ -131,6 +135,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		
 		boolean failOnIndexCheck = props.getProperty("check-precomp-sea", true);
 		precompSea = props.getProperty("precomp-sea", null);
+		improveOverview = props.getProperty("improve-overview", false);
 		if (precompSea != null) {
 			synchronized (checkedPrecomp) {
 				initPrecompSeaIndex(precompSea, failOnIndexCheck);	
@@ -732,6 +737,62 @@ public class SeaGenerator implements OsmReadingHooks {
 		}
 		landWays.addAll(areaToWays(landOnlyAreas, "land", commonCoordMap));
 		seaWays.addAll(areaToWays(seaOnlyAreas, "sea", commonCoordMap));
+
+		if (improveOverview) {
+			// create a single multipolygon from all land ways(inner) and planet as sea(outer)
+			// is used to improve sea shapes at lower resolutions
+			Map<Long, Way> wayMap = new LinkedHashMap<>();
+
+			Way seaWay = new Way(FakeIdGenerator.makeFakeId(), uk.me.parabola.imgfmt.app.Area.PLANET.toCoords());
+			wayMap.put(seaWay.getId(), seaWay);
+			// TODO: this simple solution doesn't work, produces large flooded rectangles. 
+			// Probably a problem with the insideness calculation in MultipolygonRelation  
+//			for (Way w : landWays) {
+//				wayMap.put(w.getId(), w);
+//			}
+			
+			// join the land polygons
+			landWays.forEach(w->w.getPoints().forEach(Coord::resetHighwayCount));
+			landWays.forEach(w->w.getPoints().forEach(Coord::incHighwayCount));
+			landWays.forEach(w->w.getPoints().get(0).decHighwayCount());
+			Path2D.Double path = new Path2D.Double();
+			for (Way w : landWays) {
+				if (w.getPoints().stream().anyMatch(c -> c.getHighwayCount() > 1)) {
+					path.append(Java2DConverter.createPath2D(w.getPoints()), false);
+				} else {
+					wayMap.put(w.getId(), w);
+				}
+			}
+			List<List<Coord>> shapes = Java2DConverter.areaToShapes(new java.awt.geom.Area(path));
+			for (List<Coord>points: shapes) {
+				if (Way.clockwise(points)) {
+					Way w = new Way(FakeIdGenerator.makeFakeId(), points);
+					wayMap.put(w.getId(), w);
+				} 
+			}
+			Relation gr = new GeneralRelation(FakeIdGenerator.makeFakeId());
+			for (Way w : wayMap.values()) {
+				w.setClosedInOSM(true);
+				gr.addElement((w == seaWay ? "outer" : "inner"), w);
+			}
+
+			MultiPolygonRelation mpr = new MultiPolygonRelation(gr, wayMap, tileBounds) {
+				@Override
+				public Way getLargestOuterRing() {
+					if (largestOuterPolygon == null) {
+						for (JoinedWay w : getRings()) {
+							if (w.getOriginalWays().contains(seaWay)) {
+								largestOuterPolygon = w;
+								break;
+							}
+						}
+					}
+					return largestOuterPolygon;
+				}
+			};
+			// link all sea ways with the multipolygon, we don't call processShapes for this relation!
+			seaWays.forEach(w -> w.setMpRel(mpr));
+		}
 		return distinctTilesOnly;
 	}
 
@@ -847,6 +908,7 @@ public class SeaGenerator implements OsmReadingHooks {
 					else {
 						assert p.highPrecEquals(replacement);
 						points.set(i, replacement);
+						
 					}
 				}
 				Way w = new Way(FakeIdGenerator.makeFakeId(), points);

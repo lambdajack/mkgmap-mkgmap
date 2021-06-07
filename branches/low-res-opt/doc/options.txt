@@ -438,6 +438,10 @@ Time and date substitutions use the local date and time formats.
 All entries of all maps will be merged in the overview map.
 
 === Optimization options ===
+;--improve-overview
+: 	Tells mkgmap to use a more complex method to calculate the outlines of
+complex multipolygons which are visible in the overview map. This reduces
+the size of the overview map and it improves especially complex coastline areas.
 
 ;--reduce-point-density=NUM
 : 	Simplifies the ways with the Douglas Peucker algorithm.

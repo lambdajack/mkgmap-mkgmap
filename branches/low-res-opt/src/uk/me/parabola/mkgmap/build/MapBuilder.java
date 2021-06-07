@@ -27,7 +27,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.UnaryOperator;
@@ -104,11 +106,16 @@ import uk.me.parabola.mkgmap.reader.MapperBasedMapDataSource;
 import uk.me.parabola.mkgmap.reader.hgt.HGTConverter;
 import uk.me.parabola.mkgmap.reader.hgt.HGTConverter.InterpolationMethod;
 import uk.me.parabola.mkgmap.reader.hgt.HGTReader;
+import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
 import uk.me.parabola.mkgmap.reader.osm.GType;
+import uk.me.parabola.mkgmap.reader.osm.GeneralRelation;
+import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
+import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.mkgmap.reader.overview.OverviewMapDataSource;
 import uk.me.parabola.util.Configurable;
 import uk.me.parabola.util.EnhancedProperties;
 import uk.me.parabola.util.Java2DConverter;
+import uk.me.parabola.util.ShapeSplitter;
 
 /**
  * This is the core of the code to translate from the general representation
@@ -155,8 +162,8 @@ public class MapBuilder implements Configurable {
 	private int minSizePolygon;
 	private String polygonSizeLimitsOpt;
 	private TreeMap<Integer,Integer> polygonSizeLimits;
-	private TreeMap<Integer, Double> dpFilterLineLevelMap = new TreeMap<>(); 
-	private TreeMap<Integer, Double> dpFilterShapeLevelMap = new TreeMap<>(); 
+	private TreeMap<Integer, Double> dpFilterLineResMap = new TreeMap<>(); 
+	private TreeMap<Integer, Double> dpFilterShapeResMap = new TreeMap<>(); 
 	private boolean mergeLines;
 	private boolean mergeShapes;
 
@@ -177,6 +184,7 @@ public class MapBuilder implements Configurable {
 	private java.awt.geom.Area demPolygon;
 	private HGTConverter.InterpolationMethod demInterpolationMethod;
 	private boolean allowReverseMerge;
+	private boolean improveOverview;
 
 	/**
 	 * Construct a new MapBuilder.
@@ -211,8 +219,8 @@ public class MapBuilder implements Configurable {
 		String simplifyPolygonErrorsOpt = props.getProperty("simplify-filter-polygon-errors", null);
 		if (simplifyLineErrorsOpt != null && simplifyPolygonErrorsOpt == null)
 			simplifyPolygonErrorsOpt = simplifyLineErrorsOpt;
-		parseLevelOption(dpFilterLineLevelMap, simplifyLineErrorsOpt, "simplify-filter-line-errors", reducePointError);
-		parseLevelOption(dpFilterShapeLevelMap, simplifyPolygonErrorsOpt, "simplify-filter-polygon-errors",
+		parseLevelOption(dpFilterLineResMap, simplifyLineErrorsOpt, "simplify-filter-line-errors", reducePointError);
+		parseLevelOption(dpFilterShapeResMap, simplifyPolygonErrorsOpt, "simplify-filter-polygon-errors",
 				reducePointErrorPolygon);
 		
 		mergeLines = props.containsKey("merge-lines");
@@ -220,7 +228,8 @@ public class MapBuilder implements Configurable {
 
 		// undocumented option - usually used for debugging only
 		mergeShapes = !props.getProperty("no-mergeshapes", false);
-
+		improveOverview = props.getProperty("improve-overview", false);
+		
 		makePOIIndex = props.getProperty("make-poi-index", false);
 
 		if(props.getProperty("poi-address") != null)
@@ -807,6 +816,10 @@ public class MapBuilder implements Configurable {
 
 		// We start with one map data source.
 		List<SourceSubdiv> srcList = Collections.singletonList(new SourceSubdiv(src, topdiv));
+		if (mergeShapes && improveOverview && isOverviewComponent) {
+			recalcMultipolygons(src, levels);
+		}
+		src.getShapes().forEach(s -> s.setMpRel(null)); // free memory for MultipolygonRelations
 
 		// Now the levels filled with features.
 		for (LevelInfo linfo : levels) {
@@ -1234,7 +1247,7 @@ public class MapBuilder implements Configurable {
 			MapFilter sizeFilter = new SizeFilter(MIN_SIZE_LINE);
 			normalFilters.addFilter(rounder);
 			normalFilters.addFilter(sizeFilter);
-			double errorForRes = dpFilterLineLevelMap.ceilingEntry(res).getValue();
+			double errorForRes = dpFilterLineResMap.ceilingEntry(res).getValue();
 			if(errorForRes > 0) {
 				DouglasPeuckerFilter dp = new DouglasPeuckerFilter(errorForRes);
 				normalFilters.addFilter(dp);
@@ -1299,7 +1312,7 @@ public class MapBuilder implements Configurable {
 				filters.addFilter(new SizeFilter(sizefilterVal));
 			//DouglasPeucker behaves at the moment not really optimal at low zooms, but acceptable.
 			//Is there a similar algorithm for polygons?
-			double errorForRes = dpFilterShapeLevelMap.ceilingEntry(res).getValue();
+			double errorForRes = dpFilterShapeResMap.ceilingEntry(res).getValue();
 			if(errorForRes > 0)
 				filters.addFilter(new DouglasPeuckerFilter(errorForRes));
 		}
@@ -1537,6 +1550,102 @@ public class MapBuilder implements Configurable {
 				}
 			}
 			map.addMapObject(pg);
+		}
+	}
+
+	/**
+	 * Find out shapes visible in the overview map which were created from a single multipolygon.
+	 * Typically this is the sea polygon. Create a simplified version for each. 
+	 * @param src the map source
+	 * @param levels levels for the overview map
+	 */
+	private void recalcMultipolygons(LoadableMapDataSource src, LevelInfo[] levels) {
+		final LevelInfo maxLevel = levels[levels.length - 1];
+		java.util.Map<MultiPolygonRelation, List<MapShape>> mpShapes = new LinkedHashMap<>();
+		src.getShapes().stream().filter(s -> s.getMpRel() != null && s.getMinResolution() < maxLevel.getBits())
+				.forEach(s -> mpShapes.computeIfAbsent(s.getMpRel(), k -> new ArrayList<>()).add(s));
+		if (mpShapes.isEmpty())
+			return;
+		for (Entry<MultiPolygonRelation, List<MapShape>> e : mpShapes.entrySet()) {
+			long diffMax = e.getValue().stream().mapToInt(MapShape::getMaxResolution).distinct().count();
+			long diffMin = e.getValue().stream().mapToInt(MapShape::getMinResolution).distinct().count();
+			long diffNam = e.getValue().stream().map(MapShape::getName).distinct().count();
+			if (diffMax == 1 && diffMin == 1 && diffNam == 1) {
+				// all shapes from the multipolygon are similar, we can use the original rings
+				MapShape pattern = e.getValue().get(0);
+				if (pattern.getMinResolution() <= maxLevel.getBits()) {
+					buildMPRing(src, maxLevel.getBits(), pattern, e.getKey());
+				}
+				e.getValue().forEach(s -> s.setMinResolution(maxLevel.getBits() + 1));
+			}
+		}
+	}
+
+	/**
+	 * Re-Render the multipolygon for the given max. resolution and create new
+	 * shapes with this value as maxResolution.
+	 * 
+	 * @param src     the map source
+	 * @param res     the wanted maximum resolution
+	 * @param pattern pattern for the new shapes
+	 * @param origMp  the multipolygon relation that contains the rings at full
+	 *                resolution
+	 */
+	private void buildMPRing(LoadableMapDataSource src, int res, MapShape pattern, MultiPolygonRelation origMp) {
+		List<? extends Way> rings = origMp.getRings();
+		Way largest = origMp.getLargestOuterRing();
+		int shift = 24 - res;
+		int minSize = getMinSizePolygonForResolution(res) * (1 << shift) / 2;
+		GeneralRelation gr = new GeneralRelation(FakeIdGenerator.makeFakeId());
+		java.util.Map<Long, Way> wayMap = new LinkedHashMap<>();
+
+		final double dpError = dpFilterShapeResMap.ceilingEntry(res).getValue() * (1 << shift);
+		for (int i = 0; i < rings.size(); i++) {
+			List<Coord> poly = new ArrayList<>(rings.get(i).getPoints());
+			boolean mustUseIt = largest == rings.get(i) && pattern.isSkipSizeFilter();
+			if (!mustUseIt && minSize > 0 && Area.getBBox(poly).getMaxDimension() < minSize)
+				continue;
+			if (dpError > 0 && !mustUseIt) {
+				DouglasPeuckerFilter.douglasPeucker(poly, 0, poly.size() - 1, dpError);
+			}
+			if (poly.size() > 3) {
+				Way w = new Way(FakeIdGenerator.makeFakeId(), poly);
+				wayMap.put(w.getId(), w);
+				gr.addElement("", w);
+			}
+		}
+		List<List<Coord>> list = new ArrayList<>();
+		if (gr.getElements().isEmpty()) {
+			return;
+		} else if (gr.getElements().size() == 1) {
+			list.add(largest.getPoints());
+		} else {
+			final String codeValue = GType.formatType(pattern.getType());
+			gr.addTag("code", codeValue);
+			MultiPolygonRelation mp = new MultiPolygonRelation(gr, wayMap, src.getBounds());
+			mp.processElements();
+			for (Way w : wayMap.values()) {
+				if (MultiPolygonRelation.STYLE_FILTER_POLYGON.equals(w.getTag(MultiPolygonRelation.STYLE_FILTER_TAG))
+						&& codeValue.equals(w.getTag("code"))) {
+					if (src.getBounds().contains(Area.getBBox(w.getPoints()))) {
+						list.add(w.getPoints());
+					} else {
+						// we must clip to tile bounds
+						list.addAll(ShapeSplitter.clipToBounds(w.getPoints(), src.getBounds(), null));
+					}
+				}
+			}
+		}
+
+		for (int i = 0; i < list.size(); i++) {
+			List<Coord> poly = list.get(i);
+			MapShape newShape = pattern.copy();
+
+			newShape.setPoints(poly);
+			newShape.setOsmid(FakeIdGenerator.makeFakeId());
+			newShape.setMaxResolution(res);
+			newShape.setMpRel(null);
+			src.getShapes().add(newShape);
 		}
 	}
 }

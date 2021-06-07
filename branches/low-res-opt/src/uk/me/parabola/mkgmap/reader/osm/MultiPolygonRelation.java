@@ -67,8 +67,8 @@ public class MultiPolygonRelation extends Relation {
 	private Map<Long, Way> mpPolygons = new LinkedHashMap<>();
 	
 	
-	protected ArrayList<BitSet> containsMatrix;
-	protected ArrayList<JoinedWay> polygons;
+	protected List<BitSet> containsMatrix;
+	protected List<JoinedWay> polygons;
 	protected Set<JoinedWay> intersectingPolygons;
 	
 	protected double largestSize;
@@ -373,7 +373,7 @@ public class MultiPolygonRelation extends Relation {
 	 * @param maxCloseDist max distance between ends for artificial close
 	 * 
 	 */
-	protected void closeWays(ArrayList<JoinedWay> wayList, double maxCloseDist) {
+	protected void closeWays(List<JoinedWay> wayList, double maxCloseDist) {
 		for (JoinedWay way : wayList) {
 			if (way.hasIdenticalEndPoints() || way.getPoints().size() < 3) {
 				continue;
@@ -562,7 +562,7 @@ public class MultiPolygonRelation extends Relation {
 	 * @param wayList
 	 *            list of ways
 	 */
-	protected void removeUnclosedWays(ArrayList<JoinedWay> wayList) {
+	protected void removeUnclosedWays(List<JoinedWay> wayList) {
 		Iterator<JoinedWay> it = wayList.iterator();
 		boolean firstWarn = true;
 		while (it.hasNext()) {
@@ -599,7 +599,7 @@ public class MultiPolygonRelation extends Relation {
 	 * This reduces error messages from problems on the tile bounds.
 	 * @param wayList list of ways
 	 */
-	protected void removeWaysOutsideBbox(ArrayList<JoinedWay> wayList) {
+	protected void removeWaysOutsideBbox(List<JoinedWay> wayList) {
 		ListIterator<JoinedWay> wayIter = wayList.listIterator();
 		while (wayIter.hasNext()) {
 			JoinedWay w = wayIter.next();
@@ -766,46 +766,10 @@ public class MultiPolygonRelation extends Relation {
 	public void processElements() {
 		log.info("Processing multipolygon", toBrowseURL());
 		
-		List<Way> allWays = getSourceWays();
-		
-		// check if it makes sense to process the mp 
-		if (!isMpProcessable(allWays)) {
-			log.info("Do not process multipolygon", getId(), "because it has no style relevant tags.");
+		polygons = buildRings();
+		if (polygons.isEmpty())
 			return;
-		}
-
 		
-		// join all single ways to polygons, try to close ways and remove non closed ways 
-		polygons = joinWays(allWays);
-		
-		outerWaysForLineTagging = new HashSet<>();
-		outerTags = new HashMap<>();
-		
-		do {
-			closeWays(polygons, getMaxCloseDist());
-		} while (connectUnclosedWays(polygons));
-
-		removeUnclosedWays(polygons);
-
-		// now only closed ways are left => polygons only
-
-		// check if we have at least one polygon left
-		boolean hasPolygons = !polygons.isEmpty();
-
-		removeWaysOutsideBbox(polygons);
-
-		if (polygons.isEmpty()) {
-			// do nothing
-			if (log.isInfoEnabled()) {
-				log.info("Multipolygon", toBrowseURL(),
-						hasPolygons ? "is completely outside the bounding box. It is not processed."
-								: "does not contain a closed polygon.");
-			}
-			tagOuterWays();
-			cleanup();
-			return;
-		}
-
 		// the intersectingPolygons marks all intersecting/overlapping polygons
 		intersectingPolygons = new HashSet<>();
 		
@@ -976,6 +940,7 @@ public class MultiPolygonRelation extends Relation {
 
 					MultiPolygonCutter cutter = new MultiPolygonCutter(this, tileArea, commonCoordMap);
 					singularOuterPolygons = cutter.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
+					singularOuterPolygons.forEach(s -> s.setMpRel(this));
 				}
 				
 				if (!singularOuterPolygons.isEmpty()) {
@@ -1115,6 +1080,49 @@ public class MultiPolygonRelation extends Relation {
 		cleanup();
 	}
 	
+	private List<JoinedWay> buildRings() {
+		List<Way> allWays = getSourceWays();
+		
+		// check if it makes sense to process the mp 
+		if (!isMpProcessable(allWays)) {
+			log.info("Do not process multipolygon", getId(), "because it has no style relevant tags.");
+			return Collections.emptyList();
+		}
+
+		
+		// join all single ways to polygons, try to close ways and remove non closed ways 
+		polygons = joinWays(allWays);
+		
+		outerWaysForLineTagging = new HashSet<>();
+		outerTags = new HashMap<>();
+		
+		do {
+			closeWays(polygons, getMaxCloseDist());
+		} while (connectUnclosedWays(polygons));
+
+		removeUnclosedWays(polygons);
+
+		// now only closed ways are left => polygons only
+
+		// check if we have at least one polygon left
+		boolean hasPolygons = !polygons.isEmpty();
+
+		removeWaysOutsideBbox(polygons);
+		
+		if (polygons.isEmpty()) {
+			// do nothing
+			if (log.isInfoEnabled()) {
+				log.info("Multipolygon", toBrowseURL(),
+						hasPolygons ? "is completely outside the bounding box. It is not processed."
+								: "does not contain a closed polygon.");
+			}
+			tagOuterWays();
+			cleanup();
+		}
+
+		return polygons;
+	}
+
 	protected double getMaxCloseDist() {
 		return -1; // 
 	}
@@ -1272,7 +1280,7 @@ public class MultiPolygonRelation extends Relation {
 		commonCoordMap = null;
 		roleMap.clear();
 		containsMatrix = null;
-		polygons = null;
+//		polygons = null;
 		tileArea = null;
 		intersectingPolygons = null;
 		outerWaysForLineTagging = null;
@@ -1284,7 +1292,7 @@ public class MultiPolygonRelation extends Relation {
 		outerPolygons = null;
 		taggedOuterPolygons = null;
 		
-		largestOuterPolygon = null;
+//		largestOuterPolygon = null;
 	}
 
 	/**
@@ -2186,4 +2194,16 @@ public class MultiPolygonRelation extends Relation {
 			return polygon + "_" + outer;
 		}
 	}
+
+	public Way getLargestOuterRing() {
+		return largestOuterPolygon;
+	}
+	
+	public List<JoinedWay> getRings() {
+		if (polygons== null)
+			polygons = buildRings();
+		return polygons;
+	}
+
+
 }

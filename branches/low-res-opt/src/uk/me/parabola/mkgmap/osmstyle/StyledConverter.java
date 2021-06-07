@@ -451,7 +451,7 @@ public class StyledConverter implements OsmConverter {
 			if (areaVal == 0)
 				areaVal = way.getFullArea();
 			shape.setFullArea(areaVal);
-
+			shape.setMpRel(way.getMpRel());
 			clipper.clipShape(shape, collector);
 		}
 
