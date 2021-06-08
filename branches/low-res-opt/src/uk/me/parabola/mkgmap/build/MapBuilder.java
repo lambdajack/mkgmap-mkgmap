@@ -1618,7 +1618,7 @@ public class MapBuilder implements Configurable {
 		if (gr.getElements().isEmpty()) {
 			return;
 		} else if (gr.getElements().size() == 1) {
-			list.add(largest.getPoints());
+			list.addAll(ShapeSplitter.clipToBounds(largest.getPoints(), src.getBounds(), null));
 		} else {
 			final String codeValue = GType.formatType(pattern.getType());
 			gr.addTag("code", codeValue);
