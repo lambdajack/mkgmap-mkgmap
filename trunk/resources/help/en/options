@@ -625,24 +625,25 @@ Messages produced by the diagnostic options are directed to stderr when no
 logging configuration file is in use. When using a logging configuration file,
 they are logged with custom level DIAGNOSTIC (1100).
 
---check-roundabouts
-    Check that roundabouts have the expected direction (clockwise when vehicles
-    drive on the left). Roundabouts that are complete loops and have the wrong
-    direction are reversed. Also checks that the roundabouts do not fork or
-    overlap other roundabouts and that no more than one connecting highway
-    joins at each node.
+--report-roundabout-issues[=all|loop|direction|overlap|junctions|flares[,...]]
+    Report on various types of roundabout issue:
 
---check-roundabout-flares
-    Check that roundabout flare roads point in the correct direction, are
-    one-way and don't extend too far.
+    * all - report on all the types of issue. This is the default if
+    --report-roundabout-issues is specified without a value.
+    * loop - check that each roundabout is formed from a single loop with no
+    forks or gaps
+    * direction - check the direction of travel around the roundabout, see also
+    --fix-roundabout-direction
+    * overlap - check that highways do not overlap the roundabout
+    * junctions - check that no more than one connecting highway joins at each
+    node
+    * flares - check that roundabout flare roads are one-way, are in the right
+    direction, and don't extend beyond the flare
 
---max-flare-length-ratio=NUM
-    When checking flare roads, ignore roads whose length is greater than NUM
-    (an integer) times the distance between the nodes on the roundabout that
-    the flare roads connect to. Using this option with a value of at least 5
-    will cut down the number of legitimate roads that are flagged as flare road
-    problems. Default value is 0 (disabled) because it's not a completely
-    reliable heuristic.
+--roundabout-flare-rules-config=filename
+    Provide a configuration file containing the rules to be used with the
+    --check-roundabouts=flares option in determining whether a pair of roads
+    joining a roundabout should be considered to be flares.
 
 --report-routing-islands
     Routing islands are small road networks which are not connected to other
@@ -990,7 +991,31 @@ they are logged with custom level DIAGNOSTIC (1100).
     --report-routing-islands.
     This option seems to cause routing problems in BaseCamp.
 
+--fix-roundabout-direction
+    Reverse the direction of travel around roundabouts that do not have the
+    expected direction (clockwise when vehicles drive on the left). See also
+    --report-roundabout-issues=direction.
+
 === Deprecated and Obsolete Options ===
+
+--check-roundabouts
+    Deprecated; use --report-roundabout-issues and/or
+    --fix-roundabout-direction instead. Check that roundabouts have the
+    expected direction (clockwise when vehicles drive on the left). Roundabouts
+    that are complete loops and have the wrong direction are reversed. Also
+    checks that the roundabouts do not fork or overlap other roundabouts and
+    that no more than one connecting highway joins at each node.
+
+--check-roundabout-flares
+    Deprecated; use --report-roundabout-issues=flares instead. Check that
+    roundabout flare roads point in the correct direction, are one-way and
+    don't extend too far.
+
+--max-flare-length-ratio=NUM
+    Deprecated; use --roundabout-flare-rules-config instead. When checking
+    roundabout flares, ignore roads whose length is greater than NUM (an
+    integer) times the distance between the nodes on the roundabout that the
+    flare roads connect to.
 
 --check-routing-island-len=integer
     Deprecated; use --report-routing-islands and --max-routing-island-len
