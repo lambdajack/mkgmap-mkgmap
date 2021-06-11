@@ -739,61 +739,66 @@ public class SeaGenerator implements OsmReadingHooks {
 		seaWays.addAll(areaToWays(seaOnlyAreas, "sea", commonCoordMap));
 
 		if (improveOverview) {
-			// create a single multipolygon from all land ways(inner) and planet as sea(outer)
-			// is used to improve sea shapes at lower resolutions
-			Map<Long, Way> wayMap = new LinkedHashMap<>();
-
-			Way seaWay = new Way(FakeIdGenerator.makeFakeId(), uk.me.parabola.imgfmt.app.Area.PLANET.toCoords());
-			wayMap.put(seaWay.getId(), seaWay);
-			// TODO: this simple solution doesn't work, produces large flooded rectangles. 
-			// Probably a problem with the insideness calculation in MultipolygonRelation  
-//			for (Way w : landWays) {
-//				wayMap.put(w.getId(), w);
-//			}
-			
-			// join the land polygons
-			landWays.forEach(w->w.getPoints().forEach(Coord::resetHighwayCount));
-			landWays.forEach(w->w.getPoints().forEach(Coord::incHighwayCount));
-			landWays.forEach(w->w.getPoints().get(0).decHighwayCount());
-			Path2D.Double path = new Path2D.Double();
-			for (Way w : landWays) {
-				if (w.getPoints().stream().anyMatch(c -> c.getHighwayCount() > 1)) {
-					path.append(Java2DConverter.createPath2D(w.getPoints()), false);
-				} else {
-					wayMap.put(w.getId(), w);
-				}
-			}
-			List<List<Coord>> shapes = Java2DConverter.areaToShapes(new java.awt.geom.Area(path));
-			for (List<Coord>points: shapes) {
-				if (Way.clockwise(points)) {
-					Way w = new Way(FakeIdGenerator.makeFakeId(), points);
-					wayMap.put(w.getId(), w);
-				} 
-			}
-			Relation gr = new GeneralRelation(FakeIdGenerator.makeFakeId());
-			for (Way w : wayMap.values()) {
-				w.setClosedInOSM(true);
-				gr.addElement((w == seaWay ? "outer" : "inner"), w);
-			}
-
-			MultiPolygonRelation mpr = new MultiPolygonRelation(gr, wayMap, tileBounds) {
-				@Override
-				public Way getLargestOuterRing() {
-					if (largestOuterPolygon == null) {
-						for (JoinedWay w : getRings()) {
-							if (w.getOriginalWays().contains(seaWay)) {
-								largestOuterPolygon = w;
-								break;
-							}
-						}
-					}
-					return largestOuterPolygon;
-				}
-			};
-			// link all sea ways with the multipolygon, we don't call processShapes for this relation!
-			seaWays.forEach(w -> w.setMpRel(mpr));
+			createSeaMP(landWays, seaWays, tileBounds);
 		}
 		return distinctTilesOnly;
+	}
+
+	/**
+	 * Create a single multipolygon from all land ways(inner) and planet as sea(outer)
+	 * It is used to improve sea shapes at lower resolutions.
+	 * @param landWays
+	 * @param seaWays
+	 * @param tileBounds
+	 */
+	private static void createSeaMP(List<Way> landWays, List<Way> seaWays, Area tileBounds) {
+		Map<Long, Way> wayMap = new LinkedHashMap<>();
+		Way seaWay = new Way(FakeIdGenerator.makeFakeId(), uk.me.parabola.imgfmt.app.Area.PLANET.toCoords());
+		wayMap.put(seaWay.getId(), seaWay);
+
+		// join the land polygons, gives better results than simply adding the land ways
+		landWays.forEach(w -> w.getPoints().forEach(Coord::resetHighwayCount));
+		landWays.forEach(w -> w.getPoints().forEach(Coord::incHighwayCount));
+		landWays.forEach(w -> w.getPoints().get(0).decHighwayCount());
+		Path2D.Double path = new Path2D.Double();
+		for (Way w : landWays) {
+			if (w.getPoints().stream().anyMatch(c -> c.getHighwayCount() > 1)) {
+				path.append(Java2DConverter.createPath2D(w.getPoints()), false);
+			} else {
+				wayMap.put(w.getId(), w);
+			}
+		}
+		// could probably also use ShapeMergeFilter here, it is a bit faster
+		List<List<Coord>> shapes = Java2DConverter.areaToShapes(new java.awt.geom.Area(path));
+		for (List<Coord> points : shapes) {
+			if (Way.clockwise(points)) {
+				Way w = new Way(FakeIdGenerator.makeFakeId(), points);
+				wayMap.put(w.getId(), w);
+			}
+		}
+		Relation gr = new GeneralRelation(FakeIdGenerator.makeFakeId());
+		for (Way w : wayMap.values()) {
+			w.setClosedInOSM(true);
+			gr.addElement((w == seaWay ? "outer" : "inner"), w);
+		}
+
+		MultiPolygonRelation mpr = new MultiPolygonRelation(gr, wayMap, tileBounds) {
+			@Override
+			public Way getLargestOuterRing() {
+				if (largestOuterPolygon == null) {
+					for (JoinedWay w : getRings()) {
+						if (w.getOriginalWays().contains(seaWay)) {
+							largestOuterPolygon = w;
+							break;
+						}
+					}
+				}
+				return largestOuterPolygon;
+			}
+		};
+		// link all sea ways with the multipolygon, we don't call processShapes for this
+		// relation!
+		seaWays.forEach(w -> w.setMpRel(mpr));
 	}
 
 	private static void loadMixedTile(PrecompData pd, String tileName, List<Way> landWays, List<Way> seaWays,
