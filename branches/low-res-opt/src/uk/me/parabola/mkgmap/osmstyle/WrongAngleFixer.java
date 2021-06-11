@@ -1450,6 +1450,13 @@ public class WrongAngleFixer {
 				}
 				newPoints.add(newP);
 			}
+			if (newPoints.get(0) != newPoints.get(newPoints.size() - 1)) {
+				// handle possible special case when multiple highPrecEqual points appear in sequence   
+				while (newPoints.get(0).highPrecEquals(newPoints.get(newPoints.size() - 1))) {
+					newPoints.remove(newPoints.size()-1);
+				}
+				newPoints.add(newPoints.get(0));
+			}
 			if (!removedSpike || newPoints.size() < requiredPoints)
 				break;
 			points = newPoints;
@@ -1461,7 +1468,7 @@ public class WrongAngleFixer {
 		}
 		// Check special cases caused by the fact that the first and last point
 		// in a shape are identical.
-		while (newPoints.size() > 3) {
+		while (newPoints.size() >= requiredPoints) {
 			if (Utils.STRAIGHT_SPIKE != Utils.isHighPrecStraight(newPoints.get(newPoints.size() - 2), newPoints.get(0),
 					newPoints.get(1))) {
 				break;
