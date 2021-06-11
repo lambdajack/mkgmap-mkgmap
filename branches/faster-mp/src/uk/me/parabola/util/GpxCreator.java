@@ -104,7 +104,7 @@ public class GpxCreator {
 	}
 
 	public static void createGpx(String name, List<Coord> points) {
-		for (int i = 1; i < 2; i++){ //TODO: revert 
+		for (int i = 0; i < 2; i++){
 			String fname = name + (i==0 ? "_mu":"_hp");
 			try {
 				File f = new File(fname);

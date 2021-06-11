@@ -223,13 +223,14 @@ public class MapSplitter {
 		 * Some map sources might not set getBounds().
 		 * If there are no elements, getFullBounds isEmpty.
 		*/
-		Area bounds = mapArea.getBounds(); 
-		if (bounds.isEmpty()) // ??? think this func is wrong for single point/horiz/vert/line
-			bounds = mapArea.getFullBounds(); 
+		int shift = zoom.getShiftValue();
+		Area bounds = mapArea.getBounds();
+		if (bounds.isEmpty() || (!mapArea.getFullBounds().isEmpty()
+				&& (mapArea.getFullBounds().getMaxDimension() >> shift) > MAX_DIVISION_SIZE))
+			bounds = mapArea.getFullBounds();
 		if (bounds.isEmpty())
 			return null;
 
-		int shift = zoom.getShiftValue();
 		int width = bounds.getWidth() >> shift;
 		int height = bounds.getHeight() >> shift;
 

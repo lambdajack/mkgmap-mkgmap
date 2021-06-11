@@ -55,10 +55,8 @@ public class RoadNetwork {
 	private final List<RoadDef> roadDefs = new ArrayList<>();
 	private List<RouteCenter> centers = new ArrayList<>();
 	private AngleChecker angleChecker = new AngleChecker();
+	private RoundaboutCheck roundaboutCheck = new RoundaboutCheck();
 
-	private boolean checkRoundabouts;
-	private boolean checkRoundaboutFlares;
-	private int maxFlareLengthRatio ;
 	private boolean reportSimilarArcs;
 	private boolean routable;
 	private boolean reportRoutingIslands;
@@ -67,9 +65,6 @@ public class RoadNetwork {
 	private int visitId;  
 
 	public void config(EnhancedProperties props) {
-		checkRoundabouts = props.getProperty("check-roundabouts", false);
-		checkRoundaboutFlares = props.getProperty("check-roundabout-flares", false);
-		maxFlareLengthRatio = props.getProperty("max-flare-length-ratio", 0);
 		reportSimilarArcs = props.getProperty("report-similar-arcs", false);
 		int checkRoutingIslandLengths = props.getProperty("check-routing-island-len", -1);
 		if (checkRoutingIslandLengths >= 0) {
@@ -81,6 +76,7 @@ public class RoadNetwork {
 		reportRoutingIslands = props.getProperty("report-routing-islands", false);
 		routable = props.containsKey("route");
 		angleChecker.config(props);
+		roundaboutCheck.config(props);
 	}
 
 	public void addRoad(RoadDef roadDef, List<Coord> coordList) {
@@ -271,10 +267,7 @@ public class RoadNetwork {
 
 	private void performChecks(RouteNode node) {
 		if(!node.isBoundary()) {
-			if(checkRoundabouts)
-				node.checkRoundabouts();
-			if(checkRoundaboutFlares)
-				node.checkRoundaboutFlares(maxFlareLengthRatio);
+			roundaboutCheck.check(node);
 			if(reportSimilarArcs)
 				node.reportSimilarArcs();
 		}

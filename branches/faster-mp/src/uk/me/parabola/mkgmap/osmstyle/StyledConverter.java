@@ -155,8 +155,9 @@ public class StyledConverter implements OsmConverter {
 	
 	private String countryAbbr;
 
-	private final boolean checkRoundabouts;
-	private int reportDeadEnds; 
+	private final boolean checkRoundaboutDirections;
+	private final boolean fixRoundaboutDirections;
+	private final int reportDeadEnds; 
 	private final boolean linkPOIsToWays;
 	private final boolean mergeRoads;
 	private final boolean allowReverseMerge;
@@ -207,13 +208,29 @@ public class StyledConverter implements OsmConverter {
 		case "detect,right":
 			break;
 		default:
-			throw new ExitException("invalid parameters for option drive-on:"+driveOn);
+			throw new ExitException("invalid parameters for option drive-on:" + driveOn);
 		}
 		countryAbbr = props.getProperty("country-abbr", null);
 		if (countryAbbr != null)
 			countryAbbr = countryAbbr.toUpperCase();
-			
-		checkRoundabouts = props.getProperty("check-roundabouts",false);
+
+		if (props.getProperty("check-roundabouts", false)) {//deprecated
+			checkRoundaboutDirections = log.isLoggable(Level.WARNING);
+			fixRoundaboutDirections = true;
+		} else {
+			String checkRoundaboutsOption = props.getProperty("report-roundabout-issues");
+			boolean check = false;
+			if (checkRoundaboutsOption != null) {
+				if ("".equals(checkRoundaboutsOption))
+					check = true;
+				for (String option : checkRoundaboutsOption.split(",")) {
+					if ("all".equals(option) || "direction".equals(option))
+						check = true;
+				}
+			}
+			checkRoundaboutDirections = check;
+			fixRoundaboutDirections = props.getProperty("fix-roundabout-direction",false);
+		}
 		reportDeadEnds = (props.getProperty("report-dead-ends") != null) ? props.getProperty("report-dead-ends", 1) : 0;  
 		prefixSuffixFilter = new PrefixSuffixFilter(props);
 
@@ -407,7 +424,7 @@ public class StyledConverter implements OsmConverter {
 						numDriveOnSideUnknown++;
 					}
 				}
-				if (cw.isRoundabout() && wasReversed && checkRoundabouts) {
+				if (cw.isRoundabout() && wasReversed && checkRoundaboutDirections) {
 					log.diagnostic("Roundabout " + way.getId() +
 							" has reverse oneway tag (" + way.getFirstPoint().toOSMURL() + ")");
 				}
@@ -1094,7 +1111,7 @@ public class StyledConverter implements OsmConverter {
 		// if roundabout checking is enabled and roundabout has at
 		// least 3 points and it has not been marked as "don't
 		// check", check its direction
-		if (checkRoundabouts && points.size() > 2
+		if ((checkRoundaboutDirections || fixRoundaboutDirections) && points.size() > 2
 				&& !way.tagIsLikeYes("mkgmap:no-dir-check")
 				&& !way.tagIsLikeNo("mkgmap:dir-check")) {
 			Coord centre = way.getCofG();
@@ -1133,13 +1150,16 @@ public class StyledConverter implements OsmConverter {
 				if (points.get(0) == points.get(points.size() - 1)) {
 					// roundabout is a loop
 					if (dirIsWrong) {
-						log.diagnostic("Roundabout " + way.getId() + " direction is wrong - reversing it (see "
-								+ centre.toOSMURL() + ")");
-						way.reverse();
+						if (checkRoundaboutDirections)
+							log.diagnostic("Roundabout " + way.getId() + " direction is wrong " + (fixRoundaboutDirections ? "- reversing it " : "") +
+								"(see " + centre.toOSMURL() + ")");
+						if (fixRoundaboutDirections)
+							way.reverse();
 					}
 				} else if (dirIsWrong) {
 					// roundabout is a line
-					log.diagnostic("Roundabout segment " + way.getId() + " direction looks wrong (see "
+					if (checkRoundaboutDirections)
+						log.diagnostic("Roundabout segment " + way.getId() + " direction looks wrong (see "
 							+ points.get(0).toOSMURL() + ")");
 				}
 			}

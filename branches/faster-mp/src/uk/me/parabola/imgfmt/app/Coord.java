@@ -817,8 +817,11 @@ public class Coord implements Comparable<Coord> {
 	 * @return perpendicular distance in m.
 	 */
 	public double distToLineSegment(Coord a, Coord b){
-		double ap = a.distance(this);
 		double ab = a.distance(b);
+		double ap = a.distance(this);
+		if (ab == 0) {
+			return ap;
+		}
 		double bp = b.distance(this);
 		if (ap == 0 || bp == 0)
 			return 0;
@@ -831,7 +834,7 @@ public class Coord implements Comparable<Coord> {
 			double b_ab = a.bearingToOnRhumbLine(b, true);
 			Coord x = a.destOnRhumbLine(ap, b_ab);
 			// this dist between these two points is not exactly 
-			// the perpendicul distance, but close enough
+			// the perpendicular distance, but close enough
 			dist = x.distance(this);
 		}
 		else 
@@ -848,27 +851,28 @@ public class Coord implements Comparable<Coord> {
 	public double shortestDistToLineSegment(Coord a, Coord b){
 		int aLon = a.getHighPrecLon();
 		int bLon = b.getHighPrecLon();
-		int pLon = this.getHighPrecLon();
 		int aLat = a.getHighPrecLat();
 		int bLat = b.getHighPrecLat();
-		int pLat = this.getHighPrecLat();
 		
-		double deltaLon = bLon - aLon;
-		double deltaLat = bLat - aLat;
+		double deltaLon = (bLon - aLon);
+		double deltaLat = (bLat - aLat);
 
 		double frac;
 		if (deltaLon == 0 && deltaLat == 0){ 
 			frac = 0; 
 		}
 		else {
+			int pLon = this.getHighPrecLon();
+			int pLat = this.getHighPrecLat();
 			// scale for longitude deltas by cosine of average latitude
 			double scale = Math.cos(Coord.hpToRadians((aLat + bLat + pLat) / 3) );
-			double deltaLonAP = scale * (pLon - aLon);
 			deltaLon = scale * deltaLon;
 			if (deltaLon == 0 && deltaLat == 0)
 				frac = 0;
-			else 
+			else { 
+				double deltaLonAP = scale * (pLon - aLon);
 				frac = (deltaLonAP * deltaLon + (pLat - aLat) * deltaLat) / (deltaLon * deltaLon + deltaLat * deltaLat);
+			}
 		}
 
 		double distance;
