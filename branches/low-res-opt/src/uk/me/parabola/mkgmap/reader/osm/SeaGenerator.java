@@ -752,6 +752,8 @@ public class SeaGenerator implements OsmReadingHooks {
 	 * @param tileBounds
 	 */
 	private static void createSeaMP(List<Way> landWays, List<Way> seaWays, Area tileBounds) {
+		if (landWays.isEmpty())
+			return;
 		Map<Long, Way> wayMap = new LinkedHashMap<>();
 		Way seaWay = new Way(FakeIdGenerator.makeFakeId(), uk.me.parabola.imgfmt.app.Area.PLANET.toCoords());
 		wayMap.put(seaWay.getId(), seaWay);

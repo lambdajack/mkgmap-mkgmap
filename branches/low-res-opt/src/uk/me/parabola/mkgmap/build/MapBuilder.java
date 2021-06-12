@@ -1562,7 +1562,7 @@ public class MapBuilder implements Configurable {
 	private void recalcMultipolygons(LoadableMapDataSource src, LevelInfo[] levels) {
 		final LevelInfo maxLevel = levels[levels.length - 1];
 		java.util.Map<MultiPolygonRelation, List<MapShape>> mpShapes = new LinkedHashMap<>();
-		src.getShapes().stream().filter(s -> s.getMpRel() != null && s.getMinResolution() < maxLevel.getBits())
+		src.getShapes().stream().filter(s -> s.getMpRel() != null && s.getMinResolution() <= maxLevel.getBits())
 				.forEach(s -> mpShapes.computeIfAbsent(s.getMpRel(), k -> new ArrayList<>()).add(s));
 		if (mpShapes.isEmpty())
 			return;
@@ -1573,9 +1573,7 @@ public class MapBuilder implements Configurable {
 			if (diffMax == 1 && diffMin == 1 && diffNam == 1) {
 				// all shapes from the multipolygon are similar, we can use the original rings
 				MapShape pattern = e.getValue().get(0);
-				if (pattern.getMinResolution() <= maxLevel.getBits()) {
-					buildMPRing(src, maxLevel.getBits(), pattern, e.getKey());
-				}
+				buildMPRing(src, maxLevel.getBits(), pattern, e.getKey());
 				e.getValue().forEach(s -> s.setMinResolution(maxLevel.getBits() + 1));
 			}
 		}
