@@ -217,8 +217,6 @@ public class MapBuilder implements Configurable {
 			reducePointErrorPolygon = reducePointError;
 		String simplifyLineErrorsOpt = props.getProperty("simplify-filter-line-errors", null);
 		String simplifyPolygonErrorsOpt = props.getProperty("simplify-filter-polygon-errors", null);
-		if (simplifyLineErrorsOpt != null && simplifyPolygonErrorsOpt == null)
-			simplifyPolygonErrorsOpt = simplifyLineErrorsOpt;
 		parseLevelOption(dpFilterLineResMap, simplifyLineErrorsOpt, "simplify-filter-line-errors", reducePointError);
 		parseLevelOption(dpFilterShapeResMap, simplifyPolygonErrorsOpt, "simplify-filter-polygon-errors",
 				reducePointErrorPolygon);
