@@ -18,6 +18,7 @@ import java.awt.geom.PathIterator;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -282,14 +283,16 @@ public class ShapeSplitter {
 	private String gpxDirectory;
 	private long fullArea;
 
-	private List<MergeCloseHelper> lineInfo; // for the side we are working on
+	private List<LoopEndPoint> endPoints; // for the side we are working on
 	private List<List<Coord>> origList; // ditto
 
-	private boolean multSameLow; // lineInfo.sort(comparator) might set this
+	private boolean multSamePoint; // .sort(comparator) might set this
 
 	// following are for processAwkward...
-	private MergeCloseHelper forwardLine, backwardLine;
+	private LoopEndPoint forwardLine, backwardLine;
 	private int directionBalance;
+	private List<LoopEndPoint> dLoops, shapes, holes;
+	private boolean droppedEmpty;
 
 	private void logMsg(Object ... olist) {
 		detectedProblems = true;
@@ -303,27 +306,28 @@ public class ShapeSplitter {
 	 * Recurses to check for and handle the opposite of what has been called to process.
 	 *
 	 * @param startInx starting point in list.
-	 * @param endEnclosed point where starting line ends on dividing line.
+	 * @param endInx index of highPoint of enclosing hole/shape.
 	 * @param addHolesToThis if not null, then called from a shape and subtract holes from it
 	 * otherwise new shapes within a hole.
 	 */
-	private int doLines(int startInx, int endEnclosed, MergeCloseHelper addHolesToThis) {
+	private void doLines(int startInx, int endInx, MergeCloseHelper addHolesToThis) {
 		int inx = startInx;
 		final boolean calledFromHole = addHolesToThis == null;
-		while (inx < lineInfo.size()) {
-			MergeCloseHelper thisLine = lineInfo.get(inx);
-			if (thisLine.highPoint > endEnclosed) // only do enclosed items
-				break; // simple - fully enclosed
-			if (thisLine.lowPoint == endEnclosed && thisLine.highPoint == endEnclosed) // consider carefully
-				if (calledFromHole == (thisLine.areaOrHole == -1))
-					break; // stop if same type
-			inx = doLines(inx+1, thisLine.highPoint, calledFromHole ? thisLine : null);
+		while (inx < endInx) {
+			LoopEndPoint lowElem = endPoints.get(inx);
+			int otherEndInx = lowElem.otherEnd.ownIndex;
+			MergeCloseHelper thisLine = lowElem.theLoop;
+			if (lowElem.lowEnd != 1) {
+				logMsg("Wrong end of shape/hole encountered", inx, startInx, endInx, calledFromHole);
+				return;
+			}
+			doLines(inx+1, otherEndInx, calledFromHole ? thisLine : null);
+			inx = otherEndInx + 1;
 			if (calledFromHole) // handling list of shapes
 				thisLine.closeAppend(true);
 			else // handling list of holes
 				addHolesToThis.addHole(thisLine);
 		}
-		return inx;
 	} // doLines
 
 	/**
@@ -332,7 +336,6 @@ public class ShapeSplitter {
 	 * @param origList list of shapes to which we append new shapes formed from above
 	 */
 	private void processLineList(List<MergeCloseHelper> lineInfo, List<List<Coord>> origList) {
-		this.lineInfo = lineInfo;
 		this.origList = origList;
 		if (origList == null) // never wanted this side
 			return;
@@ -360,8 +363,8 @@ public class ShapeSplitter {
 		// Above were the simple cases - probably 99% of calls.
 
 		// splitShape has generated a list of lines that start and end on the dividing line.
-		// These lines don't cross. Order them by their lowest point on the divider, but note which
-		// direction they go. The first (and last) line must define a shape. Starting with this
+		// These lines don't cross. Order their end-points by their lowest point on the divider and note which
+		// direction they go. The first (and last) point must define a shape. Starting with this
 		// shape; the next line up, if it is within this shape, must define a hole and
 		// so is added to the list of points for the shape. For the hole, recurse to
 		// handle any shapes enclosed. Repeat until we reach the end of the enclosing
@@ -371,6 +374,8 @@ public class ShapeSplitter {
 		// check and set any missing directions based on signs of full/area
 		boolean someDirectionsNotSet = false;
 		int areaDirection = 0;
+		// and build list of all endpoints
+		endPoints = new ArrayList<>(lineInfo.size()*2);
 		for (MergeCloseHelper thisLine : lineInfo) {
 			thisLine.setMoreInfo(fullAreaSign);
 			if (thisLine.direction == 0)
@@ -382,6 +387,13 @@ public class ShapeSplitter {
 				else if (areaDirection != tmpAreaDirection)
 					logMsg("Direction/Area conflict", fullAreaSign, areaDirection, tmpAreaDirection);
 			}
+			// create endPoint elements
+			LoopEndPoint lep1 = new LoopEndPoint(thisLine.lowPoint,  +1, thisLine);
+			LoopEndPoint lep2 = new LoopEndPoint(thisLine.highPoint, -1, thisLine);
+			lep1.otherEnd = lep2;
+			lep2.otherEnd = lep1;
+			endPoints.add(lep1);
+			endPoints.add(lep2);
 		}
 		if (someDirectionsNotSet) {
 			if (areaDirection == 0)
@@ -392,11 +404,12 @@ public class ShapeSplitter {
 						thisLine.direction = areaDirection * Long.signum(thisLine.areaToLine);
 		}
 
-		multSameLow = false;
-		lineInfo.sort(null);
-		if (multSameLow)
-			processAwkward();
-//		if (log.isDebugEnabled()) { // can be useful to have raw loop data, basic ordered, but before shape/hole processing
+		Comparator<LoopEndPoint> comparator = new EndPointComparator();
+		multSamePoint = false;
+		endPoints.sort(comparator);
+		if (multSamePoint)
+			processAwkward(comparator);
+//		if (log.isDebugEnabled()) { // can be useful to have raw loop data before shape/hole processing
 //			int fInx = 0;
 //			for (MergeCloseHelper thisLine : lineInfo) {
 //				++fInx;
@@ -404,11 +417,20 @@ public class ShapeSplitter {
 //			}
 //		}
 
-		int dummy = doLines(0, Integer.MAX_VALUE, null);
-		assert dummy == lineInfo.size();
+		// set ownIndex in each element after sorting
+		int ownIndex = 0;
+		for (LoopEndPoint endPoint : endPoints) {
+			endPoint.ownIndex = ownIndex;
+			++ownIndex;
+		}
+		doLines(0, endPoints.size(), null);
+		if (detectedProblems && log.isDebugEnabled())
+			for (LoopEndPoint endPoint : endPoints)
+				log.warn("ep", endPoint.ownIndex, endPoint.thePoint, endPoint.lowEnd, System.identityHashCode(endPoint),
+						 System.identityHashCode(endPoint.otherEnd), endPoint.theLoop);
 	} // processLineList
 
-	private void processAwkward() {
+	private void processAwkward(Comparator<LoopEndPoint> comparator) {
 		// Where a loop has lowPoint==highPoint, let us call it a "balloon", otherwise call it a Dloop.
 		// Awkward cases are:
 		//  Dloops with same low/high/area, For this to be true they must follow the same path (or intersect)
@@ -418,36 +440,33 @@ public class ShapeSplitter {
 
 		// Duplicate dLoops in same direction can be removed / opposite direction cancel each other out.
 		// Do this before Balloon processing as dLoop removal can make some problems go away.
-		List<MergeCloseHelper> newList = new ArrayList<>(lineInfo.size());
-		MergeCloseHelper lastLine = null;
-		forwardLine = null;
-		backwardLine = null;
-		directionBalance = 0;
+		List<LoopEndPoint> newList = new ArrayList<>(endPoints.size());
+		LoopEndPoint prevElem = null;
 		boolean grouping = false;
-		for (MergeCloseHelper thisLine : lineInfo) {
-			if (lastLine != null) {
-				boolean sameAsLast = thisLine.lowPoint != thisLine.highPoint &&
-					thisLine.lowPoint == lastLine.lowPoint &&
-					thisLine.highPoint == lastLine.highPoint &&
-					Math.abs(thisLine.areaToLine) == Math.abs(lastLine.areaToLine);
-				fixDups(newList, lastLine, sameAsLast, grouping);
-				grouping = sameAsLast;
+		for (LoopEndPoint thisElem : endPoints) {
+			if (prevElem != null) {
+				boolean sameAsPrev = comparator.compare(thisElem, prevElem) == 0;
+				// balloons won't break up the list because they will be inside the dLoops
+				// The two ends of the balloon don't compare equal
+				fixDups(newList, prevElem, sameAsPrev, grouping);
+				grouping = sameAsPrev;
 			}
-			lastLine = thisLine;
-			if (thisLine.lowPoint == thisLine.highPoint)
+			prevElem = thisElem;
+			if (thisElem.theLoop.lowPoint == thisElem.theLoop.highPoint)
 				haveBalloons = true;
 		}
-		fixDups(newList, lastLine, false, grouping);
+		fixDups(newList, prevElem, false, grouping);
 
-		if (newList.size() < lineInfo.size()) {
-			lineInfo.clear();
-			lineInfo.addAll(newList);
+		if (newList.size() < endPoints.size()) {
+			log.debug("Reduced dLoops from", endPoints.size(), "to", newList.size());
+			endPoints.clear();
+			endPoints.addAll(newList);
 		}
 
 		if (!haveBalloons)
 			return;
 
-		// Balloons will be sorted earlier than dLoops that share the same lowPoint,
+		// Balloons will be sorted within the dLoops that share the same lowPoint or highPoint,
 		// but those that form a shape must be within a hole and those that form a hole must be within
 		// a shape and so might need moving.
 		// A single dLoop defines a transition and so we can get balloons on the correct side of it.
@@ -456,74 +475,93 @@ public class ShapeSplitter {
 		// The ordering of multiple +ve balloons doesn't matter - they will become individual shapes.
 		// The ordering of multiple -ve balloons does matter - in the wrong order a crossing will be generated
 		// at the cut-point - again this isn't possible to solve without analysis of the geometry
-		newList = new ArrayList<>(lineInfo.size());
-		List<MergeCloseHelper> dLoops = new ArrayList<>();
-		List<MergeCloseHelper> shapes = new ArrayList<>();
-		List<MergeCloseHelper> holes  = new ArrayList<>();
+		newList = new ArrayList<>(endPoints.size());
+		dLoops = new ArrayList<>();
+		shapes = new ArrayList<>();
+		holes  = new ArrayList<>();
+		droppedEmpty = false;
 		boolean reordered = false;
-		lastLine = null;
+		prevElem = null;
 		grouping = false;
-		for (MergeCloseHelper thisLine : lineInfo) {
-			if (lastLine != null) {
-				boolean sameAsLast = thisLine.lowPoint == lastLine.lowPoint;
-				reordered |= fixOrder(newList, lastLine, sameAsLast, grouping, dLoops, shapes, holes);
-				grouping = sameAsLast;
+		for (LoopEndPoint thisElem : endPoints) {
+			if (prevElem != null) {
+				boolean sameAsPrev = thisElem.thePoint == prevElem.thePoint;
+				reordered |= fixOrder(newList, prevElem, sameAsPrev, grouping, comparator);
+				grouping = sameAsPrev;
 			}
-			lastLine = thisLine;
+			prevElem = thisElem;
 		}
-		reordered |= fixOrder(newList, lastLine, false, grouping, dLoops, shapes, holes);
+		reordered |= fixOrder(newList, prevElem, false, grouping, comparator);
 
-		if (reordered) {
-			lineInfo.clear();
-			lineInfo.addAll(newList);
+		if (reordered || droppedEmpty) {
+			log.debug("Reordered endPoints or droppedEmpty", droppedEmpty);
+			endPoints.clear();
+			endPoints.addAll(newList);
 		}
 	} // processAwkward
 
-	private void fixDups(List<MergeCloseHelper> newList, MergeCloseHelper lastLine, boolean sameAsLast, boolean grouping) {
-		if (grouping || sameAsLast) {
-			if (lastLine.direction > 0) {
-				forwardLine = lastLine;
-				++directionBalance;
-			} else {
-				backwardLine = lastLine;
-				--directionBalance;
+	private void fixDups(List<LoopEndPoint> newList, LoopEndPoint prevElem, boolean sameAsPrev, boolean grouping) {
+		if (grouping || sameAsPrev) {
+			if (prevElem.lowEnd == 1) {
+				if (!grouping) { // start of a group
+					forwardLine = null;
+					backwardLine = null;
+					directionBalance = 0;
+				}
+				if (prevElem.theLoop.direction > 0) {
+					forwardLine = prevElem;
+					++directionBalance;
+				} else {
+					backwardLine = prevElem;
+					--directionBalance;
+				}
+				prevElem.theLoop.removedDloop = true; // mark removed so can remove other end
+			} else { // the high end, just keep the undelete ones
+				if (!prevElem.theLoop.removedDloop)
+					newList.add(prevElem);
 			}
 		}
-		if (sameAsLast)
+		if (sameAsPrev)
 			return;
 		// flush previous
 		if (!grouping) {
-			newList.add(lastLine);
+			newList.add(prevElem);
 			return;
 		}
-		if (directionBalance > 0)
-			newList.add(forwardLine);
-		else if (directionBalance < 0)
-			newList.add(backwardLine);
-		directionBalance = 0;
+		if (prevElem.lowEnd == 1) {
+			if (directionBalance > 0) {
+				newList.add(forwardLine);
+				forwardLine.theLoop.removedDloop = false; // undelete
+			} else if (directionBalance < 0) {
+				newList.add(backwardLine);
+				backwardLine.theLoop.removedDloop = false; // undelete
+			}
+		}
 	} // fixDups
 
-	private boolean fixOrder(List<MergeCloseHelper> newList, MergeCloseHelper lastLine, boolean sameAsLast, boolean grouping,
-							 List<MergeCloseHelper> dLoops, List<MergeCloseHelper> shapes, List<MergeCloseHelper> holes) {
-		if (grouping || sameAsLast) {
-			if (lastLine.lowPoint != lastLine.highPoint)
-				dLoops.add(lastLine);
-			else if (lastLine.areaOrHole == 1)
-				shapes.add(lastLine);
-			else
-				holes.add(lastLine);
+	private boolean fixOrder(List<LoopEndPoint> newList, LoopEndPoint prevElem, boolean sameAsPrev, boolean grouping,
+							 Comparator<LoopEndPoint> comparator) {
+		if (grouping || sameAsPrev) {
+			if (prevElem.theLoop.lowPoint != prevElem.theLoop.highPoint)
+				dLoops.add(prevElem);
+			else if (prevElem.theLoop.areaOrHole == 1)
+				shapes.add(prevElem);
+			else if (prevElem.theLoop.areaOrHole == -1)
+				holes.add(prevElem);
+			else // zero area, can't tell if shape or hole and could end in wrong place if left
+				droppedEmpty = true;
 		}
-		if (sameAsLast)
+		if (sameAsPrev)
 			return false;
 		// flush previous
 		if (!grouping) {
-			newList.add(lastLine);
+			newList.add(prevElem);
 			return false;
 		}
 
-		if (holes.size() > 1)
-			logMsg("Multiple holes at same point - shapeSplitter might cause self-intersection");
-			// logMsg triggers "split failed" and diags, but this is really a warning so maybe downgrade later
+		if (holes.size() > 2) // NB: each hole/shape has 2 ends at this point
+			log.warn("Cutting", holes.size()/2, "holes at same point might cause self-intersection",
+					 holes.get(0).theLoop.points.get(0).toOSMURL());
 		if (dLoops.isEmpty()) {
 			if (shapes.isEmpty()) {
 				newList.addAll(holes);
@@ -534,12 +572,14 @@ public class ShapeSplitter {
 				shapes.clear();
 				return false;
 			}
-			// they must be nested - have lost original sort which would have been good, so redo:
-			// !!! there could be other reasons for this... need to look at highPoint of others...
-			log.warn("possible nested balloons");
+			// single hole and single shape must be nested. Already warned for mult holes
+			if (shapes.size() > 2)
+				log.warn("Cutting hole and ", shapes.size()/2, "shapes at same point is problematic",
+						 shapes.get(0).theLoop.points.get(0).toOSMURL());
+			// assume nested - have lost original sort which would have been good, so redo:
 			shapes.addAll(holes);
 			holes.clear();
-			shapes.sort((o1, o2) -> Long.compare(Math.abs(o2.areaToLine), Math.abs(o1.areaToLine)));
+			shapes.sort(comparator);
 			newList.addAll(shapes);
 			shapes.clear();
 			return true;
@@ -551,12 +591,8 @@ public class ShapeSplitter {
 			}
 		}
 
-		// there is still a flaw here, a highpoint could also be in this position. Need to have another structure to track this
-		if (dLoops.size() > 1)
-			logMsg("Possible ambiguous balloon allocation. Dloops:", dLoops.size(), "shapes:", shapes.size(), "holes:", holes.size());
-		// if 2 dividors hole>space | space>hole then, as only place for holes is middle, can avoid this warning
 		// might be able to do a few more limitations based on areas
-		if (dLoops.get(0).areaOrHole == 1) {
+		if (dLoops.get(0).theLoop.areaOrHole == dLoops.get(0).lowEnd) { // lowEnd of area or highEnd of hole
 			newList.addAll(shapes);
 			newList.add(dLoops.get(0));
 			newList.addAll(holes);
@@ -567,6 +603,9 @@ public class ShapeSplitter {
 		}
 		dLoops.remove(0);
 		if (!dLoops.isEmpty()) {
+			// if 2 dividors hole>area | areae>hole then, as only place for holes is middle, can avoid this warning
+			log.warn("Possible ambiguous balloon allocation at", dLoops.get(0).theLoop.points.get(0).toOSMURL(),
+					 "Dloops:", dLoops.size(), "shapes:", shapes.size()/2, "holes:", holes.size()/2);
 			newList.addAll(dLoops);
 			dLoops.clear();
 		}
@@ -600,7 +639,7 @@ public class ShapeSplitter {
 	 * Helper class for splitShape. Holds information about line.
 	 * Sorts array/list of itself according to lowest point on dividing line.
 	 */
-	private class MergeCloseHelper implements Comparable<MergeCloseHelper> {
+	private class MergeCloseHelper {
 
 		List<Coord> points;
 		int firstPoint, lastPoint;
@@ -609,6 +648,7 @@ public class ShapeSplitter {
 		int lowPoint, highPoint;
 		long areaToLine;
 		int areaOrHole; // +1/-1
+		boolean removedDloop; // so can remove both ends of the same one
 
 		MergeCloseHelper() {
 			points = new ArrayList<>();
@@ -639,25 +679,6 @@ public class ShapeSplitter {
 			this.lastPoint = other.lastPoint;
 			this.endingArea = fullArea + other.endingArea;
 		} // combineFirstIntoLast
-
-		public int compareTo(MergeCloseHelper other) {
-			int cmp = this.lowPoint - other.lowPoint;
-			if (cmp != 0)
-				return cmp;
-			// If loops share the same lowPoint then maybe dups to remove and balloons to position correctly
-			multSameLow = true;
-			// for same lowPoint, sort highPoint other way around to enclose as much as possible
-			cmp = other.highPoint - this.highPoint;
-			if (cmp != 0)
-				return cmp;
-			// have same start & end. larger area first
-			cmp = Long.compare(Math.abs(other.areaToLine), Math.abs(this.areaToLine));
-			if (cmp != 0)
-				return cmp;
-			// multiple lines appear to follow same path, some can be dropped after sort
-			// after this, don't think anything else possible, but, for stability
-			return this.direction - other.direction;
-		} // compareTo
 
 		void addHole(MergeCloseHelper other) {
 			if (other.areaToLine == 0)
@@ -693,7 +714,8 @@ public class ShapeSplitter {
 		void closeAppend(boolean onDividingLine) {
 			final Coord firstCoord = points.get(0);
 			final int lastPointInx = points.size()-1;
-			if (firstCoord.highPrecEquals(points.get(lastPointInx))) { // by chance, ends up closed
+			if (lastPointInx >= 3 &&
+				firstCoord.highPrecEquals(points.get(lastPointInx))) { // by chance, ends up closed
 				// There is no need to close the shape along the line, but am finding, for shapes that never crossed the
 				// dividing line, quite a few that, after splitShapes has rotating the shape by 1, have first and last
 				// points highPrecEquals but they are different objects.
@@ -704,7 +726,7 @@ public class ShapeSplitter {
 					points.set(lastPointInx, firstCoord); // quietly replace with first point
 			} else
 				points.add(firstCoord); // close it
-			if (onDividingLine) { // otherwise just one shape untouched by chopping
+			if (onDividingLine) { // if not, just one shape untouched by chopping
 				if (this.areaToLine == 0)
 					return;
 			}
@@ -712,6 +734,61 @@ public class ShapeSplitter {
 		} // closeAppend
 
 	} // MergeCloseHelper
+
+	private class LoopEndPoint {
+
+		int thePoint;
+		int lowEnd; // +1 if thePoint is lowPoint, -1 otherwise
+		MergeCloseHelper theLoop;
+		LoopEndPoint otherEnd;
+		int ownIndex; // set after sort
+
+		LoopEndPoint(int thePoint, int lowEnd, MergeCloseHelper theLoop) {
+			this.thePoint = thePoint;
+			this.lowEnd = lowEnd;
+			this.theLoop = theLoop;
+		} // LoopEndPoint
+
+	} // LoopEndPoint
+
+	private class EndPointComparator implements Comparator<LoopEndPoint> {
+
+		@Override
+		public int compare(LoopEndPoint lep1, LoopEndPoint lep2) {
+			int cmp;
+			// sort in ascending thePoint order
+			cmp = lep1.thePoint - lep2.thePoint;
+			if (cmp != 0)
+				return cmp;
+			multSamePoint = true;
+
+			MergeCloseHelper mch1 = lep1.theLoop;
+			MergeCloseHelper mch2 = lep2.theLoop;
+			if (mch1 == mch2) // same object - get ends in correct order
+				return lep2.lowEnd;
+
+			if (lep1.lowEnd == 1)
+				if (lep2.lowEnd == 1)
+					cmp	= mch2.highPoint - mch1.highPoint;
+				else // low == high
+					return +1;
+			else // high
+				if (lep2.lowEnd == 1) // high == low
+					return -1;
+				else
+					cmp	= mch2.lowPoint - mch1.lowPoint;
+			if (cmp != 0)
+				return cmp;
+
+			// have same start & end (and orientation), widen by area (ie lowEnd down, highEnd up)
+			cmp = Long.compare(Math.abs(mch2.areaToLine), Math.abs(mch1.areaToLine));
+			if (cmp != 0)
+				return cmp * lep1.lowEnd;
+			// for same low/high/area must return equal/0 for duplicate detection and removal
+			return 0;
+		} // compare
+
+	} // EndPointComparator
 
 	/**
 	 * split a shape with a line
@@ -849,7 +926,7 @@ public class ShapeSplitter {
 			for (MergeCloseHelper thisLine : newMore)
 				log.info("MoreLoop", thisLine.lowPoint-lowestPoint, thisLine.highPoint-lowestPoint, thisLine.direction, thisLine.areaOrHole, thisLine.areaToLine, thisLine.points.size());
 		if (log.isDebugEnabled()) {
-			uk.me.parabola.util.GpxCreator.createGpx(gpxDirectory + "S", coords);  // original shape
+			uk.me.parabola.util.GpxCreator.createGpx(gpxDirectory + "S", coords); // original shape
 			int fInx = 0;
 			// NB: lessList/moreList could be non-existent, the same object or have already have contents
 			String filePrefix = lessList == moreList ? "B" : "L";
