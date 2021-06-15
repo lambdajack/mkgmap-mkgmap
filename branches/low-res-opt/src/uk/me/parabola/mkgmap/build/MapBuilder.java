@@ -859,9 +859,10 @@ public class MapBuilder implements Configurable {
 			int n = points.size();
 			for (int i = 0; i < n; i++) {
 				Coord co = points.get(i);
-				Coord repl = coordMap.get(Utils.coord2Long(co));
+				long key = Utils.coord2Long(co);
+				Coord repl = coordMap.get(key);
 				if (repl == null)
-					coordMap.put(Utils.coord2Long(co), co);
+					coordMap.put(key, co);
 				else
 					points.set(i, repl);
 			}
