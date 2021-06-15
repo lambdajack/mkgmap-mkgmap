@@ -48,6 +48,7 @@ public class ShapeMergeFilter{
 	private static final ShapeHelper DUP_SHAPE = new ShapeHelper(new ArrayList<>(0)); 
 	private final boolean orderByDecreasingArea;
 	private final int maxPoints;
+	private final boolean ignoreRes;
 
 	/**
 	 * Create the shape filter with the given attributes. It will ignore shapes
@@ -57,9 +58,13 @@ public class ShapeMergeFilter{
 	 * @param orderByDecreasingArea if true, only certain shapes are merged
 	 */
 	public ShapeMergeFilter(int resolution, boolean orderByDecreasingArea) {
+		ignoreRes = resolution < 0;
 		this.resolution = resolution;
 		this.orderByDecreasingArea = orderByDecreasingArea;
-		maxPoints = PolygonSplitterFilter.MAX_POINT_IN_ELEMENT;
+		if (ignoreRes)
+			maxPoints = Integer.MAX_VALUE;
+		else 
+			maxPoints = PolygonSplitterFilter.MAX_POINT_IN_ELEMENT;
 	}
 
 	/**
@@ -73,7 +78,7 @@ public class ShapeMergeFilter{
 		List<MapShape> mergedShapes = new ArrayList<>();
 		List<MapShape> usableShapes = new ArrayList<>();
 		for (MapShape shape: shapes) {
-			if (shape.getMinResolution() > resolution || shape.getMaxResolution() < resolution)
+			if (!ignoreRes && (shape.getMinResolution() > resolution || shape.getMaxResolution() < resolution))
 				continue;
 			if (shape.getPoints().get(0) != shape.getPoints().get(shape.getPoints().size()-1)){
 				// should not happen here
@@ -154,10 +159,11 @@ public class ShapeMergeFilter{
 			if (sh.id == 0) {
 				// this shape is the result of a merge
 				List<Coord> optimizedPoints = sh.getPoints();
-				optimizedPoints = WrongAngleFixer.fixAnglesInShape(optimizedPoints);
+				if (!ignoreRes)  {
+					optimizedPoints = WrongAngleFixer.fixAnglesInShape(optimizedPoints);
+				}
 				if (optimizedPoints.isEmpty())
 					continue;
-
 				newShape.setPoints(optimizedPoints);
 				newShape.setOsmid(FakeIdGenerator.makeFakeId());
 			} else {
@@ -610,7 +616,7 @@ public class ShapeMergeFilter{
 				s2Pos = 0;
 		}
 		if (merged.get(0) == merged.get(merged.size()-1))
-			merged = WrongAngleFixer.removeSpikeInShape(merged); 
+			merged = WrongAngleFixer.removeSpikeInShape(merged);
 		return merged;
 	}
 	

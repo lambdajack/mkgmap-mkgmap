@@ -26,7 +26,6 @@ import java.util.ListIterator;
 import java.util.Queue;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.util.Java2DConverter;
@@ -186,20 +185,6 @@ public class MultiPolygonCutter {
 			Way w = singularAreaToWay(area, rel.getOriginalId());
 			if (w != null) {
 				w.markAsGeneratedFrom(rel);
-				// make sure that equal coords are changed to identical coord instances
-				// this allows merging in the ShapeMerger
-				int n = w.getPoints().size();
-				for (int i = 0; i < n; i++){
-					Coord p = w.getPoints().get(i);
-					long key = Utils.coord2Long(p);
-					Coord replacement = commonCoordMap.get(key);
-					if (replacement == null)
-						commonCoordMap.put(key, p);
-					else {
-						assert p.highPrecEquals(replacement);
-						w.getPoints().set(i, replacement);
-					}
-				}
 				w.copyTags(outerPolygon);
 				cuttedOuterPolygon.add(w);
 				if (log.isDebugEnabled()) {
@@ -345,7 +330,9 @@ public class MultiPolygonCutter {
 	 * @return a new mkgmap way
 	 */
 	private Way singularAreaToWay(Area area, long wayId) {
-		List<Coord> points = Java2DConverter.singularAreaToPoints(area);
+		// make sure that equal coords are changed to identical coord instances
+		// this allows merging in the ShapeMerger
+		List<Coord> points = Java2DConverter.singularAreaToPoints(area, commonCoordMap);
 		if (points == null || points.isEmpty()) {
 			if (log.isDebugEnabled()) {
 				log.debug("Empty area", wayId + ".", rel.toBrowseURL());

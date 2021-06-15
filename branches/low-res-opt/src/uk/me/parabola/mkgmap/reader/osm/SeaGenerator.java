@@ -49,7 +49,9 @@ import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.filters.ShapeMergeFilter;
 import uk.me.parabola.mkgmap.general.LineClipper;
+import uk.me.parabola.mkgmap.general.MapShape;
 import uk.me.parabola.mkgmap.osmstyle.StyleImpl;
 import uk.me.parabola.util.EnhancedProperties;
 import uk.me.parabola.util.Java2DConverter;
@@ -739,21 +741,24 @@ public class SeaGenerator implements OsmReadingHooks {
 		seaWays.addAll(areaToWays(seaOnlyAreas, "sea", commonCoordMap));
 
 		if (improveOverview) {
-			createSeaMP(landWays, seaWays, tileBounds);
+			createSeaMP(landWays, seaWays, tileBounds, commonCoordMap);
 		}
 		return distinctTilesOnly;
 	}
 
 	/**
-	 * Create a single multipolygon from all land ways(inner) and planet as sea(outer)
-	 * It is used to improve sea shapes at lower resolutions.
-	 * @param landWays
-	 * @param seaWays
-	 * @param tileBounds
+	 * Create a single multipolygon from all land ways(inner) and planet as
+	 * sea(outer) It is used to improve sea shapes at lower resolutions.
+	 * 
+	 * @param landWays       the land areas
+	 * @param seaWays        the sea areas
+	 * @param tileBounds     the boundary of the tile
+	 * @param commonCoordMap map to produce unique Coord instances
 	 */
-	private static void createSeaMP(List<Way> landWays, List<Way> seaWays, Area tileBounds) {
-		if (landWays.isEmpty())
+	private static void createSeaMP(List<Way> landWays, List<Way> seaWays, Area tileBounds, Long2ObjectOpenHashMap<Coord> commonCoordMap) {
+		if (landWays.isEmpty() || seaWays.isEmpty())
 			return;
+		log.info("improve-overview: re-creating multipolygon from", landWays.size(), "land areas");
 		Map<Long, Way> wayMap = new LinkedHashMap<>();
 		Way seaWay = new Way(FakeIdGenerator.makeFakeId(), uk.me.parabola.imgfmt.app.Area.PLANET.toCoords());
 		wayMap.put(seaWay.getId(), seaWay);
@@ -762,20 +767,33 @@ public class SeaGenerator implements OsmReadingHooks {
 		landWays.forEach(w -> w.getPoints().forEach(Coord::resetHighwayCount));
 		landWays.forEach(w -> w.getPoints().forEach(Coord::incHighwayCount));
 		landWays.forEach(w -> w.getPoints().get(0).decHighwayCount());
-		Path2D.Double path = new Path2D.Double();
-		for (Way w : landWays) {
+		List<MapShape> landShapesToMerge = new ArrayList<>();
+		for (int i = 0; i < landWays.size(); i++) {
+			Way w = landWays.get(i);
 			if (w.getPoints().stream().anyMatch(c -> c.getHighwayCount() > 1)) {
-				path.append(Java2DConverter.createPath2D(w.getPoints()), false);
+				MapShape ms = new MapShape(w.getId());
+				ms.setType(1);
+				ms.setPoints(w.getPoints());
+				landShapesToMerge.add(ms);
 			} else {
 				wayMap.put(w.getId(), w);
 			}
 		}
-		// could probably also use ShapeMergeFilter here, it is a bit faster
-		List<List<Coord>> shapes = Java2DConverter.areaToShapes(new java.awt.geom.Area(path));
-		for (List<Coord> points : shapes) {
-			if (Way.clockwise(points)) {
-				Way w = new Way(FakeIdGenerator.makeFakeId(), points);
-				wayMap.put(w.getId(), w);
+		ShapeMergeFilter mergeFilter = new ShapeMergeFilter(-1, false);
+		List<MapShape> merged = mergeFilter.merge(landShapesToMerge);
+		for (MapShape s : merged) {
+			//TODO: use shapes directly once merger doesn't produce self-intersecting shapes 
+//			Way w = new Way(FakeIdGenerator.makeFakeId(), s.getPoints());
+//			wayMap.put(w.getId(), w);
+
+			Path2D path = Java2DConverter.createPath2D(s.getPoints());
+			path.setWindingRule(Path2D.WIND_EVEN_ODD);
+			List<List<Coord>> shapes = Java2DConverter.areaToShapes(new java.awt.geom.Area(path), commonCoordMap);
+			for (List<Coord> points : shapes) {
+				if (Way.clockwise(points)) {
+					Way w = new Way(FakeIdGenerator.makeFakeId(), points);
+					wayMap.put(w.getId(), w);
+				}
 			}
 		}
 		Relation gr = new GeneralRelation(FakeIdGenerator.makeFakeId());
@@ -904,20 +922,8 @@ public class SeaGenerator implements OsmReadingHooks {
 			Long2ObjectOpenHashMap<Coord> commonCoordMap) {
 		List<Way> ways = new ArrayList<>();
 		for (java.awt.geom.Area area : areas) {
-			List<List<Coord>> shapes = Java2DConverter.areaToShapes(area);
+			List<List<Coord>> shapes = Java2DConverter.areaToShapes(area, commonCoordMap);
 			for (List<Coord> points : shapes) {
-				for (int i = 0; i < points.size(); i++) {
-					Coord p = points.get(i);
-					long key = Utils.coord2Long(p);
-					Coord replacement = commonCoordMap.get(key);
-					if (replacement == null)
-						commonCoordMap.put(key, p);
-					else {
-						assert p.highPrecEquals(replacement);
-						points.set(i, replacement);
-						
-					}
-				}
 				Way w = new Way(FakeIdGenerator.makeFakeId(), points);
 				w.addTag("natural", type);
 				ways.add(w);
@@ -1444,7 +1450,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		}
 		log.debug("addCorners", hFrom, hTo, direction, startEdge, endEdge, toCorner);
 		while (startEdge != endEdge) {
-			Coord p = getPoint(tileBounds, startEdge + toCorner);
+			Coord p = getPoint(tileBounds, (startEdge + toCorner));
 			w.addPointIfNotEqualToLastPoint(p);
 			startEdge += direction;
 		}

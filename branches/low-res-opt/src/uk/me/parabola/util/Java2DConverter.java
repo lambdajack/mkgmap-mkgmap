@@ -25,6 +25,7 @@ import java.util.List;
 
 import org.openstreetmap.osmosis.core.filter.common.PolygonFileReader;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
@@ -186,9 +187,21 @@ public class Java2DConverter {
 	 * singular. Otherwise only the first non-empty part of the area is converted.
 	 * 
 	 * @param area the area
-	 * @return a new mkgmap way
+	 * @return list of points
 	 */
 	public static List<Coord> singularAreaToPoints(Area area) {
+		return singularAreaToPoints(area, null);
+	}
+	
+	/**
+	 * Convert an area to an mkgmap way. The caller must ensure that the area is
+	 * singular. Otherwise only the first non-empty part of the area is converted.
+	 * 
+	 * @param area the area
+	 * @param coordPool the map for unique Coord instances, can be null
+	 * @return list of points
+	 */
+	public static List<Coord> singularAreaToPoints(Area area, Long2ObjectOpenHashMap<Coord> coordPool) {
 		if (area.isEmpty()) {
 			return null;
 		}
@@ -211,13 +224,12 @@ public class Java2DConverter {
 				if (points != null)
 					log.error("area not singular");
 				points = new ArrayList<>();
-				points.add(Coord.makeHighPrecCoord(latHp, lonHp));
+				points.add(Coord.makeHighPrecCoord(latHp, lonHp, coordPool));
 				break;
 			case PathIterator.SEG_LINETO:
 				assert points != null;
-				if (prevLatHp != latHp || prevLongHp != lonHp) {
-					points.add(Coord.makeHighPrecCoord(latHp, lonHp));
-				}
+				if (prevLatHp != latHp || prevLongHp != lonHp) 
+					points.add(Coord.makeHighPrecCoord(latHp, lonHp, coordPool));
 				break;
 			case PathIterator.SEG_CLOSE:
 				assert points != null;
@@ -248,7 +260,6 @@ public class Java2DConverter {
 		}
 		return points;
 	}
-
 	/**
 	 * Convert the area back into a list of polygons each represented by a list
 	 * of coords. It is possible that the area contains multiple discontinuous
@@ -257,10 +268,24 @@ public class Java2DConverter {
 	 * holes in the polygon have counterclockwise order. 
 	 * 
 	 * @param area The area to be converted.
-	 * @param useHighPrec false: round coordinates to map units
 	 * @return a list of closed polygons
 	 */
 	public static List<List<Coord>> areaToShapes(java.awt.geom.Area area) {
+		return areaToShapes(area, null);
+	}
+	
+	/**
+	 * Convert the area back into a list of polygons each represented by a list
+	 * of coords. It is possible that the area contains multiple discontinuous
+	 * polygons, so you may append more than one shape to the output list.<br/>
+	 * <b>Attention:</b> The outline of the polygon is has clockwise order whereas
+	 * holes in the polygon have counterclockwise order. 
+	 * 
+	 * @param area The area to be converted.
+	 * @param coordPool map to produce unique Coord instances 
+	 * @return a list of closed polygons
+	 */
+	public static List<List<Coord>> areaToShapes(java.awt.geom.Area area, Long2ObjectOpenHashMap<Coord> coordPool) {
 		List<List<Coord>> outputs = new ArrayList<>(4);
 
 		double[] res = new double[6];
@@ -280,8 +305,8 @@ public class Java2DConverter {
 			switch (type) {
 			case PathIterator.SEG_LINETO:
 				if (prevLatHp != latHp || prevLongHp != lonHp) 
-					coords.add(Coord.makeHighPrecCoord(latHp, lonHp));
-
+					coords.add(Coord.makeHighPrecCoord(latHp, lonHp, coordPool));
+				
 				prevLatHp = latHp;
 				prevLongHp = lonHp;
 				break;
@@ -302,7 +327,7 @@ public class Java2DConverter {
 				}
 				if (type == PathIterator.SEG_MOVETO){
 					coords = new ArrayList<>();
-					coords.add(Coord.makeHighPrecCoord(latHp, lonHp));
+					coords.add(Coord.makeHighPrecCoord(latHp, lonHp, coordPool));
 					prevLatHp = latHp;
 					prevLongHp = lonHp;
 				} else {
