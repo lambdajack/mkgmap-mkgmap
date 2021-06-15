@@ -53,7 +53,7 @@ public class LinePreparerFilter implements MapFilter {
 		MapLine line = (MapLine) element;
 
 		int numPoints = line.getPoints().size();
-		if (line instanceof MapShape && numPoints >= PolygonSplitterFilter.MAX_POINT_IN_ELEMENT)
+		if (line instanceof MapShape && numPoints > PolygonSplitterFilter.MAX_POINT_IN_ELEMENT)
 			throw new MustSplitException();
 
 		boolean first = true;
