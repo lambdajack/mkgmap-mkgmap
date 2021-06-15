@@ -782,17 +782,29 @@ public class SeaGenerator implements OsmReadingHooks {
 		ShapeMergeFilter mergeFilter = new ShapeMergeFilter(-1, false);
 		List<MapShape> merged = mergeFilter.merge(landShapesToMerge);
 		for (MapShape s : merged) {
-			//TODO: use shapes directly once merger doesn't produce self-intersecting shapes 
-//			Way w = new Way(FakeIdGenerator.makeFakeId(), s.getPoints());
-//			wayMap.put(w.getId(), w);
-
-			Path2D path = Java2DConverter.createPath2D(s.getPoints());
-			path.setWindingRule(Path2D.WIND_EVEN_ODD);
-			List<List<Coord>> shapes = Java2DConverter.areaToShapes(new java.awt.geom.Area(path), commonCoordMap);
-			for (List<Coord> points : shapes) {
-				if (Way.clockwise(points)) {
-					Way w = new Way(FakeIdGenerator.makeFakeId(), points);
-					wayMap.put(w.getId(), w);
+			s.getPoints().forEach(Coord::resetHighwayCount);
+			s.getPoints().forEach(Coord::incHighwayCount);
+			s.getPoints().get(0).decHighwayCount();
+			int n = s.getPoints().size();
+			boolean isSimple = true;
+			for (int i = 0; i < n; i++) {
+				int count = s.getPoints().get(i).getHighwayCount();
+				if (count > 2 || (count > 1 && i != 0 && i != n - 1)) {
+					isSimple = false;
+				}
+			}
+			if (isSimple) {
+				Way w = new Way(FakeIdGenerator.makeFakeId(), s.getPoints());
+				wayMap.put(w.getId(), w);
+			} else {
+				Path2D path = Java2DConverter.createPath2D(s.getPoints());
+				path.setWindingRule(Path2D.WIND_EVEN_ODD);
+				List<List<Coord>> shapes = Java2DConverter.areaToShapes(new java.awt.geom.Area(path), commonCoordMap);
+				for (List<Coord> points : shapes) {
+					if (Way.clockwise(points)) {
+						Way w = new Way(FakeIdGenerator.makeFakeId(), points);
+						wayMap.put(w.getId(), w);
+					}
 				}
 			}
 		}
