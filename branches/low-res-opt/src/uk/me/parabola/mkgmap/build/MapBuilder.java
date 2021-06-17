@@ -1599,10 +1599,13 @@ public class MapBuilder implements Configurable {
 		final double dpError = dpFilterShapeResMap.ceilingEntry(res).getValue() * (1 << shift);
 		for (int i = 0; i < rings.size(); i++) {
 			List<Coord> poly = new ArrayList<>(rings.get(i).getPoints());
-			boolean mustUseIt = largest == rings.get(i) && pattern.isSkipSizeFilter();
-			if (!mustUseIt && minSize > 0 && Area.getBBox(poly).getMaxDimension() < minSize)
+			boolean isLargest = largest == rings.get(i);
+			boolean tooSmall = minSize > 0 && Area.getBBox(poly).getMaxDimension() < minSize;
+			if (isLargest && tooSmall && !pattern.isSkipSizeFilter())
+				return;
+			if (tooSmall)
 				continue;
-			if (dpError > 0 && !mustUseIt) {
+			if (dpError > 0 && !isLargest) {
 				DouglasPeuckerFilter.douglasPeucker(poly, 0, poly.size() - 1, dpError);
 			}
 			if (poly.size() > 3) {
