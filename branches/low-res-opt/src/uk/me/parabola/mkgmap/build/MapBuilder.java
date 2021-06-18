@@ -1240,7 +1240,7 @@ public class MapBuilder implements Configurable {
 		config.setHasNet(hasNet);
 
 		LayerFilterChain normalFilters = new LayerFilterChain(config);
-		LayerFilterChain contourFilters = new LayerFilterChain(config);
+		LayerFilterChain keepParallelFilters = new LayerFilterChain(config);
 		if (enableLineCleanFilters && (res < 24)) {
 			MapFilter rounder = new RoundCoordsFilter();
 			MapFilter sizeFilter = new SizeFilter(MIN_SIZE_LINE);
@@ -1250,10 +1250,10 @@ public class MapBuilder implements Configurable {
 			if(errorForRes > 0) {
 				DouglasPeuckerFilter dp = new DouglasPeuckerFilter(errorForRes);
 				normalFilters.addFilter(dp);
-				contourFilters.addFilter(dp);
+				keepParallelFilters.addFilter(dp);
 			}
-			contourFilters.addFilter(rounder);
-			contourFilters.addFilter(sizeFilter);
+			keepParallelFilters.addFilter(rounder);
+			keepParallelFilters.addFilter(sizeFilter);
 		}
 		for (MapFilter filter : Arrays.asList(
 				new LineSplitterFilter(), 
@@ -1262,13 +1262,13 @@ public class MapBuilder implements Configurable {
 				new LinePreparerFilter(div), 
 				new LineAddFilter(div, map))) {
 			normalFilters.addFilter(filter);
-			contourFilters.addFilter(filter);
+			keepParallelFilters.addFilter(filter);
 		}
 		
 		for (MapLine line : lines) {
 			if (line.getMinResolution() <= res) {
-				if (GType.isContourLine(line)) 
-					contourFilters.startFilter(line);
+				if (GType.isContourLine(line) || isOverviewComponent) 
+					keepParallelFilters.startFilter(line);
 				else 
 					normalFilters.startFilter(line);
 			}
