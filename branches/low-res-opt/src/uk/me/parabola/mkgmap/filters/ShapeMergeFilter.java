@@ -107,9 +107,6 @@ public class ShapeMergeFilter{
 		}
 		if (p1 < usableShapes.size())
 			mergeSimilar(usableShapes.subList(p1, usableShapes.size()), mergedShapes);
-//		for (int i = 0; i < mergedShapes.size(); i++) {
-//			testSplit(mergedShapes.get(i));
-//		}
 		return mergedShapes;
 	}
 	
@@ -153,7 +150,6 @@ public class ShapeMergeFilter{
 		for (ShapeHelper sh : list) {
 			MapShape newShape = pattern.copy();
 			if (sh.getPoints().get(0) != sh.getPoints().get(sh.getPoints().size() - 1)) {
-//				GpxCreator.createGpx("e:/ld/open", sh.getPoints());
 				throw new MapFailedException("shape is no longer closed");
 			}
 			if (sh.id == 0) {
@@ -223,14 +219,6 @@ public class ShapeMergeFilter{
 			if (all.isEmpty())
 				continue;
 			
-			
-//			final boolean print = false &&"{0, 1, 2, 3, 5, 7, 11, 12, 13, 15, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38}".equals(all.toString()); 
-
-//			if (print) {
-//				for (int j = all.nextSetBit(0); j >= 0; j = all.nextSetBit(j + 1)) {
-//					GpxCreator.createGpx("e:/ld/c_" + j, similarShapes.get(j).points);
-//				}
-//			}
 			IntArrayList byCenter = new IntArrayList();
 			byCenter.add(pos);
 			all.stream().filter(k -> k != pos).forEach(byCenter::add);
@@ -246,22 +234,8 @@ public class ShapeMergeFilter{
 			List<ShapeHelper> result = Collections.emptyList();
 			for (int j : byCenter) {
 				ShapeHelper sh = similarShapes.get(j);
-//				if (print) {
-//					GpxCreator.createGpx("e:/ld/sh0_" + j, sh.points);
-//					for (int k = 0; k < result.size(); k++) {
-//						GpxCreator.createGpx("e:/ld/r0_" + k, result.get(k).points);
-//					}
-//					long dd = 4;
-//				}
-				
 				int oldSize = result.size();
 				result = addWithConnectedHoles(result, sh, pattern.getType());
-//				if (print) {
-//					for (int k = 0; k < result.size(); k++) {
-//						GpxCreator.createGpx("e:/ld/r1_" + k, result.get(k).points);
-//					}
-//					long dd = 4;
-//				}
 				if (result.size() < oldSize + 1) {
 					merged = true;
 					if (log.isDebugEnabled()) {
@@ -292,7 +266,6 @@ public class ShapeMergeFilter{
 		// this will find a few more merges but is still slow for maps with lots of islands 
 		similarShapes.addAll(next);
 	}
-
 
 	/**
 	 * Calculate matrix of shapes which share node
@@ -670,7 +643,6 @@ public class ShapeMergeFilter{
 			log.error("shape is not closed");
 			return 0;
 		}
-		long test = Long.MAX_VALUE / 2; 
 		Iterator<Coord> polyIter = points.iterator();
 		Coord c2 = polyIter.next();
 		long signedAreaSize = 0;
@@ -679,9 +651,6 @@ public class ShapeMergeFilter{
 			c2 = polyIter.next();
 			signedAreaSize += (long) (c2.getHighPrecLon() + c1.getHighPrecLon())
 					* (c1.getHighPrecLat() - c2.getHighPrecLat());
-			if (signedAreaSize > test || signedAreaSize < -test) {
-				assert false : "overflow alarm";
-			}
 		}
 		if (Math.abs(signedAreaSize) < SINGLE_POINT_AREA && log.isDebugEnabled()) {
 			log.debug("very small shape near", points.get(0).toOSMURL(), "signed area in high prec map units:", signedAreaSize );
@@ -716,34 +685,5 @@ public class ShapeMergeFilter{
 			return n1.compareTo(n2);
 		}
 	}
-
-//	private void testSplit(MapShape shape) {
-//		if (shape.getPoints().size() < PolygonSplitterFilter.MAX_POINT_IN_ELEMENT)
-//			return;
-//		PolygonSplitterFilter splitter = new PolygonSplitterFilter();
-//		final long testVal = Math.abs(ShapeMergeFilter.calcAreaSizeTestVal(shape.getPoints()));
-//		for (int myShift = 0; myShift <= 24 - resolution; myShift++) {
-//			List<MapShape> outputs = splitter.testSplit(shape, myShift);
-//
-//			long sumSplit = outputs.stream()
-//					.mapToLong(s -> Math.abs(ShapeMergeFilter.calcAreaSizeTestVal(s.getPoints()))).sum();
-//			long delta = testVal - sumSplit;
-//			double ratio = (double) testVal / sumSplit;
-//			if (Math.abs(delta) > SINGLE_POINT_AREA * 2 && Math.abs(ratio - 1) > 0.001) {
-//				String path = "e:/ld/";
-//				log.error("testing  split shape", GType.formatType(shape.getType()), "at shift", myShift);
-//				List<Coord> merged = shape.getPoints();
-//				merged.forEach(Coord::resetHighwayCount);
-//				merged.forEach(Coord::incHighwayCount);
-//				List<Coord> many = merged.stream().filter(p -> p.getHighwayCount() > 2).collect(Collectors.toList());
-//				GpxCreator.createGpx(path + "o", merged, many);
-//				for (int i = 0; i < outputs.size(); i++) {
-//					GpxCreator.createGpx(path + "s_" + i, outputs.get(i).getPoints());
-//				}
-//				log.error("split failed?, ratio:", ratio);
-//				long dd = 4;
-//			}
-//		}
-//	}
 }
 
