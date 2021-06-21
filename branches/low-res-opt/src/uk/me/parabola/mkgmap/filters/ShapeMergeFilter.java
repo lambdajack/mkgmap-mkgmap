@@ -94,7 +94,7 @@ public class ShapeMergeFilter{
 			return mergedShapes;
 		}
 		
-		Comparator<MapShape> comparator = new MapShapeComparator();
+		Comparator<MapShape> comparator = new MapShapeComparator(orderByDecreasingArea);
 		usableShapes.sort(comparator);
 		int p1 = 0;
 		MapShape s1 = usableShapes.get(0);
@@ -658,7 +658,16 @@ public class ShapeMergeFilter{
 		return signedAreaSize;
 	}
 	
-	private class MapShapeComparator implements Comparator<MapShape> {
+	public static class MapShapeComparator implements Comparator<MapShape> {
+		
+		private boolean orderByDecreasingArea;
+		
+
+		public MapShapeComparator(boolean orderByDecreasingArea) {
+			this.orderByDecreasingArea = orderByDecreasingArea;
+		}
+
+
 		@Override
 		public int compare(MapShape o1, MapShape o2) {
 			int d = Integer.compare(o1.getType(), o2.getType());
@@ -668,7 +677,7 @@ public class ShapeMergeFilter{
 			if (d != 0)
 				return d;
 			// XXX wasClipped() is ignored here, might be needed if later filters need it  
-			if (orderByDecreasingArea) {
+			if (this.orderByDecreasingArea) {
 				d = Long.compare(o1.getFullArea(), o2.getFullArea());
 				if (d != 0)
 					return d;

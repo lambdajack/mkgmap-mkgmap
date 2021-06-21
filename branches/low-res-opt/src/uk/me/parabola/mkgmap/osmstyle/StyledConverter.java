@@ -506,6 +506,8 @@ public class StyledConverter implements OsmConverter {
 	private long lastRoadId = 0; 
 	private int lineCacheId = 0;
 	private BitSet routingWarningWasPrinted = new BitSet();
+	
+	@Override
 	public void convertWay(final Way way) {
 		if (way.getPoints().size() < 2 || way.getTagCount() == 0){
 			// no tags or no points => nothing to convert
@@ -548,6 +550,10 @@ public class StyledConverter implements OsmConverter {
 		if (!wayTypeResult.isMatched()) {
 			// no match found but we have to keep it for house number processing
 			housenumberGenerator.addWay(way);
+			if (way.getMpRel() != null) {
+				// not all polygons for the multipolygon are rendered
+				way.getMpRel().setNoRecalc(true);
+			}
 		}
 		if (cycleWay != null){
 			wayTypeResult.setWay(cycleWay);
@@ -676,6 +682,7 @@ public class StyledConverter implements OsmConverter {
 	 *
 	 * @param node The node to convert.
 	 */
+	@Override
 	public void convertNode(final Node node) {
 		if (node.getTagCount() == 0) {
 			// no tags => nothing to convert
@@ -773,6 +780,7 @@ public class StyledConverter implements OsmConverter {
 	 *
 	 * @param bbox The bounding area, must not be null.
 	 */
+	@Override
 	public void setBoundingBox(Area bbox) {
 		this.clipper = new AreaClipper(bbox);
 		this.bbox = bbox;
@@ -933,6 +941,7 @@ public class StyledConverter implements OsmConverter {
 		}
 	}
 	
+	@Override
 	public void end() {
 		style.reportStats();
 		driveOnLeft = calcDrivingSide();
@@ -1230,6 +1239,7 @@ public class StyledConverter implements OsmConverter {
 	 *
 	 * @param relation The relation to convert.
 	 */
+	@Override
 	public void convertRelation(Relation relation) {
 		if (relation.getTagCount() == 0) {
 			// no tags => nothing to convert

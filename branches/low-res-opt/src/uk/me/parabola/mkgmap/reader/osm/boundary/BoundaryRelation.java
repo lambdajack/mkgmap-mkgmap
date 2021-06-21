@@ -416,11 +416,4 @@ public class BoundaryRelation extends MultiPolygonRelation {
 		}
 
 	}
-
-	@Override
-	protected void cleanup() {
-		super.cleanup();
-		this.getElements().clear();
-		((ArrayList<?>)this.getElements()).trimToSize();
-	}
 }

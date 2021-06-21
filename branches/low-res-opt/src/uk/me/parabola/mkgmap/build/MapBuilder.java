@@ -91,6 +91,7 @@ import uk.me.parabola.mkgmap.filters.RemoveObsoletePointsFilter;
 import uk.me.parabola.mkgmap.filters.RoundCoordsFilter;
 import uk.me.parabola.mkgmap.filters.ShapeMergeFilter;
 import uk.me.parabola.mkgmap.filters.SizeFilter;
+import uk.me.parabola.mkgmap.filters.ShapeMergeFilter.MapShapeComparator;
 import uk.me.parabola.mkgmap.general.CityInfo;
 import uk.me.parabola.mkgmap.general.LevelInfo;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
@@ -1487,6 +1488,7 @@ public class MapBuilder implements Configurable {
 			this.map = map;
 		}
 
+		@Override
 		public void doFilter(MapElement element, MapFilterChain next) {
 			MapLine line = (MapLine) element;
 			assert line.getPoints().size() < 255 : "too many points";
@@ -1532,6 +1534,7 @@ public class MapBuilder implements Configurable {
 			this.map = map;
 		}
 
+		@Override
 		public void doFilter(MapElement element, MapFilterChain next) {
 			MapShape shape = (MapShape) element;
 			assert shape.getPoints().size() < 255 : "too many points";
@@ -1559,21 +1562,29 @@ public class MapBuilder implements Configurable {
 	 * @param levels levels for the overview map
 	 */
 	private void recalcMultipolygons(LoadableMapDataSource src, LevelInfo[] levels) {
-		final LevelInfo maxLevel = levels[levels.length - 1];
+		final int maxRes = levels[levels.length - 1].getBits();
 		java.util.Map<MultiPolygonRelation, List<MapShape>> mpShapes = new LinkedHashMap<>();
-		src.getShapes().stream().filter(s -> s.getMpRel() != null && s.getMinResolution() <= maxLevel.getBits())
+		src.getShapes().stream().filter(s -> s.getMpRel() != null && s.getMinResolution() <= maxRes)
 				.forEach(s -> mpShapes.computeIfAbsent(s.getMpRel(), k -> new ArrayList<>()).add(s));
 		if (mpShapes.isEmpty())
 			return;
+		MapShapeComparator comparator = new MapShapeComparator(orderByDecreasingArea);
 		for (Entry<MultiPolygonRelation, List<MapShape>> e : mpShapes.entrySet()) {
-			long diffMax = e.getValue().stream().mapToInt(MapShape::getMaxResolution).distinct().count();
-			long diffMin = e.getValue().stream().mapToInt(MapShape::getMinResolution).distinct().count();
-			long diffNam = e.getValue().stream().map(MapShape::getName).distinct().count();
-			if (diffMax == 1 && diffMin == 1 && diffNam == 1) {
-				// all shapes from the multipolygon are similar, we can use the original rings
-				MapShape pattern = e.getValue().get(0);
-				buildMPRing(src, maxLevel.getBits(), pattern, e.getKey());
-				e.getValue().forEach(s -> s.setMinResolution(maxLevel.getBits() + 1));
+			if (e.getKey().isNoRecalc())
+				continue;
+			MapShape pattern = e.getValue().get(0);
+			boolean matches = true;
+			for (MapShape s : e.getValue()) {
+				if (s.getMinResolution() != pattern.getMinResolution()
+						|| s.getMaxResolution() != pattern.getMaxResolution() 
+						|| comparator.compare(s, pattern) != 0) {
+					matches = false;
+					break;
+				}
+			}
+			if (matches) {
+				buildMPRing(src, maxRes, pattern, e.getKey());
+				e.getValue().forEach(s -> s.setMinResolution(maxRes + 1));
 			}
 		}
 	}

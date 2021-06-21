@@ -759,6 +759,8 @@ public class MultiPolygonRelation extends Relation {
 	protected BitSet outerPolygons;
 	protected BitSet taggedOuterPolygons;
 
+	private boolean noRecalc;
+
 	/**
 	 * Process the ways in this relation. Joins way with the role "outer" Adds
 	 * ways with the role "inner" to the way with the role "outer"
@@ -940,7 +942,9 @@ public class MultiPolygonRelation extends Relation {
 
 					MultiPolygonCutter cutter = new MultiPolygonCutter(this, tileArea, commonCoordMap);
 					singularOuterPolygons = cutter.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
-					singularOuterPolygons.forEach(s -> s.setMpRel(this));
+					if (currentPolygon.outer) {
+						singularOuterPolygons.forEach(s -> s.setMpRel(this));
+					}
 				}
 				
 				if (!singularOuterPolygons.isEmpty()) {
@@ -1291,6 +1295,10 @@ public class MultiPolygonRelation extends Relation {
 		taggedInnerPolygons = null;
 		outerPolygons = null;
 		taggedOuterPolygons = null;
+		getElements().clear();
+		if (getElements() instanceof ArrayList) {
+			((ArrayList<?>) getElements()).trimToSize();
+		}
 		
 //		largestOuterPolygon = null;
 	}
@@ -2205,6 +2213,15 @@ public class MultiPolygonRelation extends Relation {
 		if (polygons== null)
 			polygons = buildRings();
 		return polygons;
+	}
+
+
+	public void setNoRecalc(boolean b) {
+		this.noRecalc = b;
+	}
+
+	public boolean isNoRecalc() {
+		return noRecalc;
 	}
 
 
