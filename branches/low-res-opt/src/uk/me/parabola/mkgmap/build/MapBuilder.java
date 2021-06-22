@@ -163,8 +163,8 @@ public class MapBuilder implements Configurable {
 	private int minSizePolygon;
 	private String polygonSizeLimitsOpt;
 	private TreeMap<Integer,Integer> polygonSizeLimits;
-	private TreeMap<Integer, Double> dpFilterLineResMap = new TreeMap<>(); 
-	private TreeMap<Integer, Double> dpFilterShapeResMap = new TreeMap<>(); 
+	private TreeMap<Integer, Double> dpFilterLineResMap; 
+	private TreeMap<Integer, Double> dpFilterShapeResMap; 
 	private boolean mergeLines;
 	private boolean mergeShapes;
 
@@ -216,11 +216,8 @@ public class MapBuilder implements Configurable {
  		double reducePointErrorPolygon = props.getProperty("reduce-point-density-polygon", -1);
 		if (reducePointErrorPolygon == -1)
 			reducePointErrorPolygon = reducePointError;
-		String simplifyLineErrorsOpt = props.getProperty("simplify-filter-line-errors", null);
-		String simplifyPolygonErrorsOpt = props.getProperty("simplify-filter-polygon-errors", null);
-		parseLevelOption(dpFilterLineResMap, simplifyLineErrorsOpt, "simplify-filter-line-errors", reducePointError);
-		parseLevelOption(dpFilterShapeResMap, simplifyPolygonErrorsOpt, "simplify-filter-polygon-errors",
-				reducePointErrorPolygon);
+		dpFilterLineResMap = parseLevelOption(props, "simplify-lines", reducePointError);
+		dpFilterShapeResMap = parseLevelOption(props, "simplify-polygons", reducePointErrorPolygon);
 		
 		mergeLines = props.containsKey("merge-lines");
 		allowReverseMerge = props.getProperty("allow-reverse-merge", false); 
@@ -744,7 +741,8 @@ public class MapBuilder implements Configurable {
 				String description = "";
 				if(atts.length > 3)
 					description = atts[3];
-				boolean last = true; // FIXME - handle multiple facilities?
+				boolean last = true;
+				// FIXME - handle multiple facilities?
 				ExitFacility ef = lbl.createExitFacility(type, direction, facilities, description, last);
 
 				exit.addFacility(ef);
@@ -756,8 +754,7 @@ public class MapBuilder implements Configurable {
 				exit.setDescription(ed);
 			}
 			poimap.put(mep, r);
-			// FIXME - set bottom bits of
-			// type to reflect facilities available?
+			// FIXME - set bottom bits of type to reflect facilities available?
 		}
 	}
 
@@ -1429,19 +1426,25 @@ public class MapBuilder implements Configurable {
 	}
 
 	/**
-	 * Determine the minimum size for a polygon for the given level.
-	 * @param res the resolution
-	 * @return the size filter value
+	 * Parse an option with pairs of resolution and double values.
+	 * 
+	 * @param props        the properties
+	 * @param optionName   the option name
+	 * @param defaultValue the default value for all resolutions if the option is
+	 *                     not given
+	 * @return the map
 	 */
-
-	private void parseLevelOption(TreeMap<Integer, Double> levelMap, String option, String optionName, double defaultValue) {
+	private TreeMap<Integer, Double> parseLevelOption(EnhancedProperties props, String optionName,
+			double defaultValue) {
+		String option = props.getProperty(optionName);
+		TreeMap<Integer, Double> levelMap = new TreeMap<>();
 		if (option != null) {
 			String[] desc = option.split("[, \\t\\n]+");
 
 			for (String s : desc) {
 				String[] keyVal = s.split("[=:]");
 				if (keyVal == null || keyVal.length != 2) {
-					throw new ExitException("incorrect " + optionName + " specification " + option+ " at " + s);
+					throw new ExitException("incorrect " + optionName + " specification " + option + " at " + s);
 				}
 
 				try {
@@ -1459,6 +1462,7 @@ public class MapBuilder implements Configurable {
 		}
 		if (levelMap.get(24) == null)
 			levelMap.put(24, defaultValue);
+		return levelMap;
 	}
 
 	private static class SourceSubdiv {
