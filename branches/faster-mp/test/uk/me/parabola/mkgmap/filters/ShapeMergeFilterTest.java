@@ -233,7 +233,7 @@ public class ShapeMergeFilterTest {
 			getPoint(20,55),
 			getPoint(30,55)); // close
 
-		testVariants("test-fill-hole", points1, points2, 1, 6); // expect 8 points if spike is not removed  
+		testVariants("test-fill-hole", points1, points2, 1, 5); // expect 8 points if spike is not removed  
 	}
 
 	@Test
@@ -347,7 +347,6 @@ public class ShapeMergeFilterTest {
 				}
 			}
 		}
-		return;
 	}
 	
 	void testOneVariant(String testId, MapShape s1, MapShape s2, int expectedNumShapes, int expectedNumPoints){
@@ -363,4 +362,28 @@ public class ShapeMergeFilterTest {
 		assert co != null;
 		return co;
 	}
+	
+	@Test
+	public void testRepeatedWithDifferentId(){
+		Coord copy = new Coord(getPoint(25,20));
+		List<Coord> points1 = Arrays.asList(
+				getPoint(35,15),
+				getPoint(25,20),
+				copy,
+				getPoint(15,10),
+				getPoint(25,5),
+				getPoint(35,15)); // close
+			
+			List<Coord> points2 = Arrays.asList(
+					getPoint(30,20),
+					getPoint(25,25),
+					getPoint(20,20),
+					copy,
+					new Coord(copy),
+					getPoint(25,20),
+					getPoint(30,20)); // close
+			
+		testVariants("test-repeated-different", points1, points2, 1, 9);   
+	}
+
 }

@@ -12,16 +12,21 @@
  */
 package uk.me.parabola.mkgmap.filters;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import uk.me.parabola.imgfmt.MapFailedException;
+import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.MapShape;
@@ -42,10 +47,24 @@ public class ShapeMergeFilter{
 	private final int resolution;
 	private static final ShapeHelper DUP_SHAPE = new ShapeHelper(new ArrayList<>(0)); 
 	private final boolean orderByDecreasingArea;
+	private final int maxPoints;
+	private final boolean ignoreRes;
 
+	/**
+	 * Create the shape filter with the given attributes. It will ignore shapes
+	 * which are not displayed at the given resolution.
+	 * 
+	 * @param resolution            the resolution
+	 * @param orderByDecreasingArea if true, only certain shapes are merged
+	 */
 	public ShapeMergeFilter(int resolution, boolean orderByDecreasingArea) {
+		ignoreRes = resolution < 0;
 		this.resolution = resolution;
 		this.orderByDecreasingArea = orderByDecreasingArea;
+		if (ignoreRes)
+			maxPoints = Integer.MAX_VALUE;
+		else 
+			maxPoints = PolygonSplitterFilter.MAX_POINT_IN_ELEMENT;
 	}
 
 	/**
@@ -59,7 +78,7 @@ public class ShapeMergeFilter{
 		List<MapShape> mergedShapes = new ArrayList<>();
 		List<MapShape> usableShapes = new ArrayList<>();
 		for (MapShape shape: shapes) {
-			if (shape.getMinResolution() > resolution || shape.getMaxResolution() < resolution)
+			if (!ignoreRes && (shape.getMinResolution() > resolution || shape.getMaxResolution() < resolution))
 				continue;
 			if (shape.getPoints().get(0) != shape.getPoints().get(shape.getPoints().size()-1)){
 				// should not happen here
@@ -75,7 +94,7 @@ public class ShapeMergeFilter{
 			return mergedShapes;
 		}
 		
-		Comparator<MapShape> comparator = new MapShapeComparator();
+		Comparator<MapShape> comparator = new MapShapeComparator(orderByDecreasingArea);
 		usableShapes.sort(comparator);
 		int p1 = 0;
 		MapShape s1 = usableShapes.get(0);
@@ -101,21 +120,44 @@ public class ShapeMergeFilter{
 			mergedShapes.addAll(similar);
 			return;
 		}
+		
+		final int partSize = 8192;
+		// sorting is meant to reduce the self intersections created by merging
+		similar.sort((o1,o2) -> o1.getBounds().getCenter().compareTo(o2.getBounds().getCenter()));
 		List<ShapeHelper> list = new ArrayList<>();
-		MapShape s1 = similar.get(0);
+		MapShape pattern = similar.get(0);
 		for (MapShape ms : similar) {
 			ShapeHelper sh = new ShapeHelper(ms.getPoints());
 			sh.id = ms.getOsmid();
 			list.add(sh);
 		}
-		tryMerge(s1, list);
+		
+		// if list is very large use partitions to reduce BitSet sizes in called methods 
+		while (list.size() > partSize) {
+			int oldSize = list.size();
+			List<ShapeHelper> nextList = new ArrayList<>();
+			for (int part = 0; part < list.size(); part += partSize) {
+				List<ShapeHelper> lower = new ArrayList<>(list.subList(part, Math.min(part+partSize, list.size())));
+				tryMerge(pattern, lower);
+				nextList.addAll(lower);
+			}
+			list.clear();
+			list.addAll(nextList);
+			if(list.size() == oldSize)
+				break;
+		}
+		tryMerge(pattern, list);
 		for (ShapeHelper sh : list) {
-			MapShape newShape = s1.copy();
-
-			assert sh.getPoints().get(0) == sh.getPoints().get(sh.getPoints().size() - 1);
+			MapShape newShape = pattern.copy();
+			if (sh.getPoints().get(0) != sh.getPoints().get(sh.getPoints().size() - 1)) {
+				throw new MapFailedException("shape is no longer closed");
+			}
 			if (sh.id == 0) {
 				// this shape is the result of a merge
-				List<Coord> optimizedPoints = WrongAngleFixer.fixAnglesInShape(sh.getPoints());
+				List<Coord> optimizedPoints = sh.getPoints();
+				if (!ignoreRes)  {
+					optimizedPoints = WrongAngleFixer.fixAnglesInShape(optimizedPoints);
+				}
 				if (optimizedPoints.isEmpty())
 					continue;
 				newShape.setPoints(optimizedPoints);
@@ -137,87 +179,69 @@ public class ShapeMergeFilter{
 	private void tryMerge(MapShape pattern, List<ShapeHelper> similarShapes) {
 		if (similarShapes.size() <= 1)
 			return;
-
-		List<ShapeHelper> noMerge = new ArrayList<>();
-		BitSet toMerge = new BitSet(similarShapes.size());
-		
-		// abuse highway count to find identical points in different shapes
-		similarShapes.forEach(sh -> sh.getPoints().forEach(Coord::resetHighwayCount));
-		similarShapes.forEach(sh -> sh.getPoints().forEach(Coord::incHighwayCount));
-		// decrement counter for duplicated start/end node
-		similarShapes.forEach(sh -> sh.getPoints().get(0).decHighwayCount());
-		
-		// points with count > 1 are probably shared by different shapes, collect the shapes
-		IdentityHashMap<Coord, BitSet> coord2Shape = new IdentityHashMap<>();
-		BitSet[] candidates = new BitSet[similarShapes.size()];
-		
-		for (int i = 0; i < similarShapes.size(); i++) {
-			ShapeHelper sh0 = similarShapes.get(i);
-			List<Coord> sharedPoints = new ArrayList<>(); 
-			for (int j = 1; j < sh0.getPoints().size(); j++) {
-				Coord c = sh0.getPoints().get(j);
-				if (c.getHighwayCount() > 1) {
-					sharedPoints.add(c);
-				}
-			}
-			if (sharedPoints.isEmpty() || sh0.getPoints().size() - sharedPoints.size()> PolygonSplitterFilter.MAX_POINT_IN_ELEMENT) {
-				// merge will not work 
-				noMerge.add(sh0);
-				continue;
-			}
-			
-			assert candidates[i] == null;
-			candidates[i] = new BitSet();
-			BitSet curr = candidates[i];
-			curr.set(i);
-			
-			toMerge.set(i);
-			for (Coord c: sharedPoints) { 
-				BitSet set = coord2Shape.get(c);
-				if (set == null) {
-					set = new BitSet();
-					coord2Shape.put(c, set);
-				} else { 
-					for (int j = set.nextSetBit(0); j >= 0; j = set.nextSetBit(j + 1)) {
-						candidates[j].set(i);
-					}
-					curr.or(set);
-				}
-				set.set(i);
-			}
-		}
-		if (coord2Shape.isEmpty()) {
-			// nothing to do
-			return;
-		}
-		
+		int numCandidates = similarShapes.size();
+		List<BitSet> candidates = createMatrix(similarShapes);
 		List<ShapeHelper> next = new ArrayList<>();
 		boolean merged = false;
 		BitSet done = new BitSet();
-		BitSet delayed = new BitSet();  
-
-		for (int i = toMerge.nextSetBit(0); i >= 0; i = toMerge.nextSetBit(i + 1)) {
-			if (done.get(i))
+		BitSet delayed = new BitSet();
+		
+		List<ShapeHelper> noMerge = new ArrayList<>();
+		class SortHelper {
+			final int pos;
+			final BitSet all;
+			public SortHelper(int index, BitSet set) {
+				pos = index;
+				all = set;
+			}
+		}
+		List<SortHelper> byNum = new ArrayList<>();
+		for (int i = 0; i < numCandidates; i++) {
+			byNum.add(new SortHelper(i, candidates.get(i)));
+		}
+		// sort so that shapes with more neighbours come 
+		byNum.sort((o1, o2) -> o1.all.cardinality() - o2.all.cardinality());
+		for (SortHelper helper : byNum) {
+			final int pos = helper.pos;
+			BitSet all = helper.all;
+			if (all.isEmpty()) {
+				noMerge.add(similarShapes.get(pos));
+				done.set(pos);
+			}
+			if (done.get(pos))
 				continue;
-			BitSet all = candidates[i];
-			if (all.cardinality() <= 1) {
-				if (!all.isEmpty())
-					delayed.set(i);
+			if (all.cardinality() == 1) {
+				delayed.set(pos);
 				continue;
 			}
 			all.andNot(done);
 			
 			if (all.isEmpty())
 				continue;
-			List<ShapeHelper> result = new ArrayList<>();
-			for (int j = all.nextSetBit(0); j >= 0; j = all.nextSetBit(j + 1)) {
+			
+			IntArrayList byCenter = new IntArrayList();
+			byCenter.add(pos);
+			all.stream().filter(k -> k != pos).forEach(byCenter::add);
+
+			// try to process the connected shapes so that parts are added to the one in the middle
+			// this should allow to remove spikes as early as possible
+			if (byCenter.size() > 2) {
+				Map<Integer, Coord> centers = new HashMap<>();
+				byCenter.forEach(i -> centers.put(i, Area.getBBox(similarShapes.get(i).points).getCenter()));
+				Coord mid = Area.getBBox(new ArrayList<>(centers.values())).getCenter();
+				byCenter.sort((o1, o2) -> Double.compare(centers.get(o1).distance(mid), centers.get(o2).distance(mid)));
+			} 			
+			List<ShapeHelper> result = Collections.emptyList();
+			for (int j : byCenter) {
 				ShapeHelper sh = similarShapes.get(j);
 				int oldSize = result.size();
 				result = addWithConnectedHoles(result, sh, pattern.getType());
 				if (result.size() < oldSize + 1) {
 					merged = true;
-					log.debug("shape with id", sh.id, "was merged", (oldSize + 1 - result.size()),
-							" time(s) at resolution", resolution);
+					if (log.isDebugEnabled()) {
+						log.debug("shape with id", sh.id, "was merged", (oldSize + 1 - result.size()),
+								" time(s) at resolution", resolution);
+					}
 				}
 			}
 			// XXX : not exact, there may be other combinations of shapes which can be merged
@@ -228,21 +252,68 @@ public class ShapeMergeFilter{
 		
 		delayed.andNot(done);
 		if (!delayed.isEmpty()) {
-			for (int i = delayed.nextSetBit(0); i >= 0; i = delayed.nextSetBit(i+1)) {
-				noMerge.add(similarShapes.get(i));
-			}
+			delayed.stream().forEach(i -> noMerge.add(similarShapes.get(i)));
 		}
+		delayed.clear();
 		similarShapes.clear();
 		similarShapes.addAll(noMerge);
-		
-		if (merged) 
+		candidates.clear();
+		if (merged) {
 			tryMerge(pattern, next);
+		}
 		
 		// Maybe add final step which calls addWithConnectedHoles for all remaining shapes
 		// this will find a few more merges but is still slow for maps with lots of islands 
 		similarShapes.addAll(next);
 	}
 
+	/**
+	 * Calculate matrix of shapes which share node
+	 * @param similarShapes
+	 * @return list of sets with indexes of shared nodes, empty for shapes which cannot be merged
+	 */
+	private List<BitSet> createMatrix(List<ShapeHelper> similarShapes) {
+		// abuse highway count to find identical points in different shapes
+		similarShapes.forEach(sh -> sh.getPoints().forEach(Coord::resetHighwayCount));
+		similarShapes.forEach(sh -> sh.getPoints().forEach(Coord::incHighwayCount));
+		// decrement counter for duplicated start/end node
+		similarShapes.forEach(sh -> sh.getPoints().get(0).decHighwayCount());
+		
+		// points with count > 1 are probably shared by different shapes, collect the shapes
+		IdentityHashMap<Coord, BitSet> coord2Shape = new IdentityHashMap<>();
+		final List<BitSet>candidates = new ArrayList<>(similarShapes.size());
+		for (int i = 0; i < similarShapes.size(); i++) {
+			candidates.add(new BitSet());
+		}
+		for (int i = 0; i < similarShapes.size(); i++) {
+			ShapeHelper sh0 = similarShapes.get(i);
+			List<Coord> sharedPoints = sh0.getPoints().stream().filter(p -> p.getHighwayCount() > 1)
+					.collect(Collectors.toList());
+			if (sh0.getPoints().get(0).getHighwayCount() > 1)
+				sharedPoints.remove(0);
+			if (sharedPoints.isEmpty() || (sh0.getPoints().size() - sharedPoints.size() > maxPoints)) {
+				// merge will not work
+				continue;
+			}
+
+			BitSet curr = candidates.get(i);
+			curr.set(i);
+
+			for (Coord c : sharedPoints) {
+				BitSet set = coord2Shape.get(c);
+				if (set == null) {
+					set = new BitSet();
+					coord2Shape.put(c, set);
+				} else {
+					final int row = i;
+					set.stream().forEach(j -> candidates.get(j).set(row));
+					curr.or(set);
+				}
+				set.set(i);
+			}
+		}
+		return candidates;
+	}
 
 	/**
 	 * Try to merge a shape with one or more of the shapes in the list.
@@ -265,7 +336,7 @@ public class ShapeMergeFilter{
 			if (mergeRes == shOld){
 				result.add(shOld);
 				continue;
-			} else if (mergeRes != null){
+			} else {
 				shNew = mergeRes;
 			}
 			if (shNew == DUP_SHAPE){
@@ -273,9 +344,9 @@ public class ShapeMergeFilter{
 				return list; // nothing to do
 			}
 		}
-		if (shNew != null && shNew != DUP_SHAPE)
+		if (shNew != DUP_SHAPE)
 			result.add(shNew);
-		if (result.size() > list.size()+1 )
+		if (result.size() > list.size() + 1)
 			log.error("result list size is wrong", list.size(), "->", result.size());
 		return result;
 	}
@@ -287,7 +358,7 @@ public class ShapeMergeFilter{
 	 * @return merged shape or 1st shape if no common point found or {@code dupShape} 
 	 * if both shapes describe the same area. 
 	 */
-	private static ShapeHelper tryMerge(ShapeHelper sh1, ShapeHelper sh2) {
+	private ShapeHelper tryMerge(ShapeHelper sh1, ShapeHelper sh2) {
 		
 		// both clockwise or both ccw ?
 		boolean sameDir = sh1.areaTestVal > 0 && sh2.areaTestVal > 0 || sh1.areaTestVal < 0 && sh2.areaTestVal < 0;
@@ -317,40 +388,38 @@ public class ShapeMergeFilter{
 				return DUP_SHAPE;
 			}
 		}
-		List<Coord> merged = null; 
-		if (points1.size() + points2.size() - 2*sh1PositionsToCheck.size() < PolygonSplitterFilter.MAX_POINT_IN_ELEMENT){
-			merged = mergeLongestSequence(points1, points2, sh1PositionsToCheck, sh2PositionsToCheck, sameDir);
+		List<Coord> merged = null;
+		if (points1.size() + points2.size() - 2 * sh1PositionsToCheck.size() < maxPoints) {
+			merged = findBestMerge(points1, points2, sh1PositionsToCheck, sh2PositionsToCheck, sameDir);
+			if (merged == null)
+				return sh1;
 			if (merged.isEmpty())
 				return DUP_SHAPE;
-			if (merged.get(0) != merged.get(merged.size()-1))
+			if (merged.get(0) != merged.get(merged.size() - 1))
 				merged = null;
-			else if (merged.size() > PolygonSplitterFilter.MAX_POINT_IN_ELEMENT){
-				// don't merge because merged polygon would be split again
+			else if (merged.size() > maxPoints) {
+				// don't merge because merged polygon would probably be split again
 				log.info("merge rejected: merged shape has too many points " + merged.size());
 				merged = null;
 			}
 		}
-		ShapeHelper shm = null;
-		if (merged != null){
-			shm = new ShapeHelper(merged);
-			if (Math.abs(shm.areaTestVal) != Math.abs(sh1.areaTestVal) + Math.abs(sh2.areaTestVal)){
-				log.warn("merging shapes skipped for shapes near", points1.get(sh1PositionsToCheck.getInt(0)).toOSMURL(), 
-						"(maybe overlapping shapes?)");
-				merged = null;
-				shm = null;
-			} else {
-				if (log.isInfoEnabled()){
-					log.info("merge of shapes near",points1.get(sh1PositionsToCheck.getInt(0)).toOSMURL(), 
-							"reduces number of points from",(points1.size()+points2.size()),
-							"to",merged.size());
-				}
-			}
-		}
-		if (shm != null)
-			return shm;
 		if (merged == null)
 			return sh1;
-		return null;
+		
+		ShapeHelper shm = new ShapeHelper(merged);
+		if (Math.abs(shm.areaTestVal) != Math.abs(sh1.areaTestVal) + Math.abs(sh2.areaTestVal)){
+			log.warn("merging shapes skipped for shapes near", points1.get(sh1PositionsToCheck.getInt(0)).toOSMURL(), 
+					"(maybe overlapping shapes?)");
+			return sh1;
+		} else {
+			if (log.isInfoEnabled()){
+				log.info("merge of shapes near",points1.get(sh1PositionsToCheck.getInt(0)).toOSMURL(), 
+						"reduces number of points from",(points1.size()+points2.size()),
+						"to",merged.size());
+
+			}
+		}
+		return shm;
 	}
 
 	/**
@@ -401,87 +470,143 @@ public class ShapeMergeFilter{
 	} 	
 	
 	/**
-	 * Finds the longest sequence of common points in two shapes.
+	 * Merges two shapes if possible and removes the longest common sequence of points
 	 * @param points1 list of Coord instances that describes the 1st shape 
 	 * @param points2 list of Coord instances that describes the 2nd shape
 	 * @param sh1PositionsToCheck positions in the 1st shape that are common
 	 * @param sh2PositionsToCheck positions in the 2nd shape that are common
-	 * @param sameDir true if both shapes are clockwise or both are ccw
-	 * @return the merged shape or null if no points are common.
+	 * @param sameDir set to true if both shapes are clockwise or both are counter-clockwise
+	 * @return the shape with the shortest overall length
 	 */
-	private static List<Coord> mergeLongestSequence(List<Coord> points1, List<Coord> points2, IntArrayList sh1PositionsToCheck,
+	private static List<Coord> findBestMerge(List<Coord> points1, List<Coord> points2, IntArrayList sh1PositionsToCheck,
 			IntArrayList sh2PositionsToCheck, boolean sameDir) {
 		if (sh1PositionsToCheck.isEmpty())
-			return null;
+			throw new IllegalArgumentException("nothing to merge");
 		int s1Size = points1.size(); 
 		int s2Size = points2.size();
 		int longestSequence = 0;
-		int startOfLongestSequence = 0;
 		int length = 0;
 		int start = -1;
 		int n1 = sh1PositionsToCheck.size();
-		
+		List<Map.Entry<Integer, Integer>> possibleCombinations = new ArrayList<>();
 		assert sh2PositionsToCheck.size() == n1;
 		boolean inSequence = false;
-		for (int i = 0; i+1 < n1; i++){
+		for (int i = 0; i + 1 < n1; i++) {
 			int pred1 = sh1PositionsToCheck.getInt(i);
-			int succ1 = sh1PositionsToCheck.getInt(i+1);
-			if (Math.abs(succ1-pred1) == 1 || pred1+2 == s1Size && succ1 == 0 || succ1+2 == s1Size && pred1 == 0 ){
+			int succ1 = sh1PositionsToCheck.getInt(i + 1);
+			if (Math.abs(succ1 - pred1) == 1 || pred1 + 2 == s1Size && succ1 == 0 || succ1 + 2 == s1Size && pred1 == 0) {
 				// found sequence in s1
 				int pred2 = sh2PositionsToCheck.getInt(i);
-				int succ2 = sh2PositionsToCheck.getInt(i+1);
-				if (Math.abs(succ2-pred2) == 1 || pred2+2 == s2Size && succ2 == 0 || succ2+2 == s2Size && pred2 == 0 ){
+				int succ2 = sh2PositionsToCheck.getInt(i + 1);
+				if (Math.abs(succ2 - pred2) == 1 || pred2 + 2 == s2Size && succ2 == 0 || succ2 + 2 == s2Size && pred2 == 0) {
 					// found common sequence
 					if (start < 0)
 						start = i;
 					inSequence = true;
-					length++; 
+					length++;
 				} else {
 					inSequence = false;
 				}
 			} else {
 				inSequence = false;
 			}
-			if (!inSequence){
-				if (length > longestSequence){
+			if (!inSequence) {
+				if (length > longestSequence) 
 					longestSequence = length;
-					startOfLongestSequence = start;
-				}
+				possibleCombinations.add(new AbstractMap.SimpleEntry<>(start < 0 ? i : start, length));
 				length = 0;
 				start = -1;
 			}
 		}
-		if (length > longestSequence){
+		if (length > longestSequence) 
 			longestSequence = length;
-			startOfLongestSequence = start;
+		possibleCombinations.add(new AbstractMap.SimpleEntry<>(start < 0 ? n1 - 1 : start, length));
+
+		// now collect the alternative merge results,
+		List<List<Coord>> results = new ArrayList<>();
+		for (Map.Entry<Integer, Integer> combi : possibleCombinations) {
+			int len = combi.getValue();
+			if (len < longestSequence)
+				continue;
+			int pos = combi.getKey();
+			List<Coord> merged = combine(points1, points2, sh1PositionsToCheck.get(pos + len),
+					sh2PositionsToCheck.get(pos), sameDir, len);
+			if (merged.get(0) == merged.get(merged.size() - 1))
+				results.add(merged);
 		}
-		// now merge the shapes. The longest sequence of common points is removed.
+
+		return filterBest(results);
+	}
+ 	
+	private static List<Coord> filterBest(List<List<Coord>> allMerged) {
+		// if we have more than one result, use the one that produced the shortest line
+		// so that connection lines to holes are shortest. 
+		List<Coord> best = null;
+		double bestLen = Double.MAX_VALUE;
+		for (List<Coord> merged : allMerged) {
+			if (best == null)
+				best = merged;
+			else {
+				if (bestLen == Double.MAX_VALUE) {
+					bestLen = getSumLengthSquared(best);
+				} 
+				double len = getSumLengthSquared(merged);
+				if (len < bestLen) {
+					best = merged;
+					bestLen = len;
+				}
+			}
+		}
+		return best;
+	}
+	
+	private static List<Coord> combine(List<Coord> points1, List<Coord> points2, final int s1PosInit,
+			final int s2PosInit, boolean sameDir, int lengthOfSequence) {
+		int s1Size = points1.size();
+		int s2Size = points2.size();
+		// merge the shapes with the parts given
 		// The remaining points are connected in the direction of the 1st shape.
-		int remaining = s1Size + s2Size - 2*longestSequence -1;
+		int remaining = s1Size + s2Size - 2 * lengthOfSequence - 1;
 		if (remaining < 3) {
 			return Collections.emptyList(); // may happen with self-intersecting duplicated shapes
 		}
 		List<Coord> merged = new ArrayList<>(remaining);
-		int s1Pos = sh1PositionsToCheck.getInt(startOfLongestSequence+longestSequence);
-		for (int i = 0; i < s1Size - longestSequence - 1; i++){
+		int s1Pos = s1PosInit;
+		for (int i = 0; i < s1Size - lengthOfSequence - 1; i++) {
 			merged.add(points1.get(s1Pos));
 			s1Pos++;
-			if (s1Pos+1 >= s1Size)
+			if (s1Pos + 1 >= s1Size)
 				s1Pos = 0;
 		}
-		int s2Pos = sh2PositionsToCheck.getInt(startOfLongestSequence);
-		int s2Step = sameDir ? 1:-1;
-		for (int i = 0; i < s2Size - longestSequence; i++){
+		int s2Pos = s2PosInit;
+		int s2Step = sameDir ? 1 : -1;
+		for (int i = 0; i < s2Size - lengthOfSequence; i++) {
 			merged.add(points2.get(s2Pos));
 			s2Pos += s2Step;
-			if (s2Pos < 0) 
-				s2Pos = s2Size-2;
-			else if (s2Pos+1 >= s2Size)
+			if (s2Pos < 0)
+				s2Pos = s2Size - 2;
+			else if (s2Pos + 1 >= s2Size)
 				s2Pos = 0;
 		}
+		if (merged.get(0) == merged.get(merged.size()-1))
+			merged = WrongAngleFixer.removeSpikeInShape(merged);
 		return merged;
 	}
- 	
+	
+	public static double getSumLengthSquared(final List<Coord> points) {
+		double length = 0;
+		Iterator<Coord> iter = points.iterator();
+		Coord p0 = null;
+		while (iter.hasNext()) {
+			final Coord p1 = iter.next();
+			if (p0 != null) {
+				length += p0.distanceInHighPrecSquared(p1);
+			}
+			p0 = p1;
+		}
+		return length;
+	}
+
 	private static class ShapeHelper {
 		private final List<Coord> points;
 		long id;
@@ -533,7 +658,16 @@ public class ShapeMergeFilter{
 		return signedAreaSize;
 	}
 	
-	private class MapShapeComparator implements Comparator<MapShape> {
+	public static class MapShapeComparator implements Comparator<MapShape> {
+		
+		private boolean orderByDecreasingArea;
+		
+
+		public MapShapeComparator(boolean orderByDecreasingArea) {
+			this.orderByDecreasingArea = orderByDecreasingArea;
+		}
+
+
 		@Override
 		public int compare(MapShape o1, MapShape o2) {
 			int d = Integer.compare(o1.getType(), o2.getType());
@@ -543,7 +677,7 @@ public class ShapeMergeFilter{
 			if (d != 0)
 				return d;
 			// XXX wasClipped() is ignored here, might be needed if later filters need it  
-			if (orderByDecreasingArea) {
+			if (this.orderByDecreasingArea) {
 				d = Long.compare(o1.getFullArea(), o2.getFullArea());
 				if (d != 0)
 					return d;

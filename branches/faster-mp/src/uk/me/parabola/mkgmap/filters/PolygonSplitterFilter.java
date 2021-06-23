@@ -18,8 +18,10 @@ package uk.me.parabola.mkgmap.filters;
 
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.general.MapElement;
 import uk.me.parabola.mkgmap.general.MapShape;
+import uk.me.parabola.mkgmap.reader.osm.GType;
 import uk.me.parabola.util.ShapeSplitter;
 
 import java.util.ArrayList;
@@ -31,6 +33,8 @@ import java.util.List;
  * @author Gerd Petermann
  */
 public class PolygonSplitterFilter implements MapFilter {
+	private static final Logger log = Logger.getLogger(PolygonSplitterFilter.class);
+
 	public static final int MAX_POINT_IN_ELEMENT = 250;
 	private int shift;
 	
@@ -80,11 +84,22 @@ public class PolygonSplitterFilter implements MapFilter {
 		try {
 			next.doFilter(shape);
 		} catch (MustSplitException e) {
+			if (log.isDebugEnabled()) {
+				log.debug("splitting shape", GType.formatType(shape.getType()), "at shift", shift);
+			}
 			List<MapShape> outputs = new ArrayList<>();
 			split(shape, outputs); // split in half
 			for (MapShape s : outputs) {
 				doFilter(s, next); // recurse as components could still be too big
 			}
 		}
+	}
+
+	// used for testing
+	public List<MapShape> testSplit(MapShape shape, int shift) {
+		this.shift = shift;
+		List<MapShape> outputs = new ArrayList<>();
+		split(shape, outputs); // split in half
+		return outputs;
 	}
 }

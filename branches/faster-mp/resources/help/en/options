@@ -428,17 +428,23 @@ filename
     All entries of all maps will be merged in the overview map.
 
 === Optimization options ===
+--improve-overview
+    Tells mkgmap to use a more complex method to calculate the outlines of
+    complex multipolygons which are visible in the overview map. This reduces
+    the size of the overview map and it improves especially complex coastline
+    areas.
 
 --reduce-point-density=NUM
     Simplifies the ways with the Douglas Peucker algorithm. NUM is the maximal
     allowed error distance, by which the resulting way may differ from the
-    original one. This distance gets shifted with lower zoom levels.
-    Recommended setting is 4, this should lead to only small differences
-    (Default is 2.6, which should lead to invisible changes)
+    original one. This distance gets shifted with lower zoom levels. (Default
+    is 2.6, which should lead to invisible changes) See also --simplify-lines
+    which gives better control.
 
 --reduce-point-density-polygon=NUM
     Allows you to set the maximal allowed error distance for the DP algorithm
-    to be applied against polygons. Recommended setting is 8.
+    to be applied against polygons. See also --simplify-polygons which gives
+    better control.
 
 --merge-lines
     Try to merge lines. This helps the simplify filter to straighten out longer
@@ -478,6 +484,20 @@ filename
         --polygon-size-limits=24:12
         --polygon-size-limits=24:0,23:12
         --polygon-size-limits=24:0,23:12,22:12,21:12,16:12
+
+--simplify-lines=resolution:value[,resolution:value...]
+    Use this option to specify different values for the Douglas Peucker
+    algorithm depending on the resolution when it is applied to lines. It
+    overwrites the --reduce-point-density value. The syntax is similar to
+    --polygon-size-limits, but values are given in metres. This distance gets
+    shifted with lower zoom levels. Example:
+        --simplify-lines=23:2.6,22:4.2,21:5.4,20:6
+
+--simplify-polygons=resolution:value[,resolution:value...]
+    Use this option to specify different values for the Douglas Peucker
+    algorithm depending on the resolution when it is applied to polygons. It
+    overwrites the --reduce-point-density-polygon value. The syntax is similar
+    to --simplify-lines.
 
 === Hill Shading (DEM) options ===
 

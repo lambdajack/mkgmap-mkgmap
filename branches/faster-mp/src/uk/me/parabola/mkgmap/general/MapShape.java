@@ -17,6 +17,7 @@ package uk.me.parabola.mkgmap.general;
 
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.mkgmap.filters.ShapeMergeFilter;
+import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
 
 /**
  * A shape or polygon is just the same as a line really as far as I can tell.
@@ -25,8 +26,10 @@ import uk.me.parabola.mkgmap.filters.ShapeMergeFilter;
  * @author Steve Ratcliffe.
  */
 public class MapShape extends MapLine {// So top code can link objects from here
-	private long osmid; //TODO: remove debug aid
+	private long osmid; 
 	private long fullArea = Long.MAX_VALUE; // meaning unset
+	private MultiPolygonRelation mpRel;
+	
 	public MapShape() {
 		osmid = 0;
 	}
@@ -37,12 +40,15 @@ public class MapShape extends MapLine {// So top code can link objects from here
 		super(s);
 		this.osmid = s.osmid;
 		this.fullArea = s.getFullArea();
+		this.mpRel = s.mpRel;
 	}
 
+	@Override
 	public MapShape copy() {
 		return new MapShape(this);
 	}
 
+	@Override
 	public void setDirection(boolean direction) {
 		throw new IllegalArgumentException(
 				"can't set a direction on a polygon");
@@ -68,5 +74,18 @@ public class MapShape extends MapLine {// So top code can link objects from here
 		}
 		return this.fullArea;
 	}
+	
+	/**
+	 * @return the mpRel, null if the shape was not created from a multipolygon 
+	 */
+	public MultiPolygonRelation getMpRel() {
+		return mpRel;
+	}
 
+	/**
+	 * @param mpRel the mpRel to set
+	 */
+	public void setMpRel(MultiPolygonRelation mpRel) {
+		this.mpRel = mpRel;
+	}
 }

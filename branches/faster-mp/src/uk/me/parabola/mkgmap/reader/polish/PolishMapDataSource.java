@@ -466,9 +466,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 			extractResolution(name);
 			addLineString(value, false);
 			// If it is a contour line, then fix the elevation if required.
-			if ((polyline.getType() == 0x20) ||
-			    (polyline.getType() == 0x21) ||
-			    (polyline.getType() == 0x22)) {
+			if (GType.isContourLine(polyline)) {
 				fixElevation();
 			}
 		} else if ("RoadID".equals(name)) {

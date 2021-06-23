@@ -78,9 +78,11 @@ public class MultiPolygonRelation extends Relation {
 	/** maps ids to ways, will be extended with joined ways */
 	private final Map<Long, Way> tileWayMap; // never clear!
 	
+
+	protected List<JoinedWay> polygons;
 	private Map<Long, Way> mpPolygons = new LinkedHashMap<>();
 
-	private JoinedWay largestOuterPolygon;
+	protected JoinedWay largestOuterPolygon;
 	private Long2ObjectOpenHashMap<Coord> commonCoordMap = new Long2ObjectOpenHashMap<>();
 	protected Set<Way> outerWaysForLineTagging;
 
@@ -91,6 +93,8 @@ public class MultiPolygonRelation extends Relation {
 	
 	// the sum of all outer polygons area size 
 	private double mpAreaSize;
+	
+	private boolean noRecalc;
 	
 	/**
 	 * Create an instance based on an existing relation. We need to do this
@@ -591,36 +595,9 @@ public class MultiPolygonRelation extends Relation {
 			log.info("Do not process multipolygon", getId(), "because it has no style relevant tags.");
 			return;
 		}
-		List<JoinedWay> polygons = joinWays();
-
-		outerWaysForLineTagging = new HashSet<>();
-		
-		polygons = filterUnclosed(polygons);
-		
-		do {
-			polygons.forEach(this::tryCloseSingleWays);
-		} while (connectUnclosedWays(polygons, assumeDataInBoundsIsComplete()));
-
-		removeUnclosedWays(polygons);
-
-		// now only closed ways are left => polygons only
-
-		// check if we have at least one polygon left
-		boolean hasPolygons = !polygons.isEmpty();
-
-		removeWaysOutsideBbox(polygons);
-
-		if (polygons.isEmpty()) {
-			// do nothing
-			if (log.isInfoEnabled()) {
-				log.info("Multipolygon", toBrowseURL(),
-						hasPolygons ? "is completely outside the bounding box. It is not processed."
-								: "does not contain a closed polygon.");
-			}
-			tagOuterWays();
-			cleanup();
+		polygons = buildRings();
+		if (polygons.isEmpty())
 			return;
-		}
 		
 		// trigger setting area before start cutting...
 		// do like this to disguise function with side effects
@@ -656,7 +633,39 @@ public class MultiPolygonRelation extends Relation {
 		
 	}
 
+	private List<JoinedWay> buildRings() {
+		List<JoinedWay> polygons = joinWays();
 
+		outerWaysForLineTagging = new HashSet<>();
+		
+		polygons = filterUnclosed(polygons);
+		
+		do {
+			polygons.forEach(this::tryCloseSingleWays);
+		} while (connectUnclosedWays(polygons, assumeDataInBoundsIsComplete()));
+
+		removeUnclosedWays(polygons);
+
+		// now only closed ways are left => polygons only
+
+		// check if we have at least one polygon left
+		boolean hasPolygons = !polygons.isEmpty();
+
+		removeWaysOutsideBbox(polygons);
+
+		if (polygons.isEmpty()) {
+			// do nothing
+			if (log.isInfoEnabled()) {
+				log.info("Multipolygon", toBrowseURL(),
+						hasPolygons ? "is completely outside the bounding box. It is not processed."
+								: "does not contain a closed polygon.");
+			}
+			tagOuterWays();
+			cleanup();
+		}
+		return polygons;
+	}
+	
 	private static JoinedWay getLargest(List<JoinedWay> polygons) {
 		double maxSize = -1;
 		int maxPos = -1;
@@ -846,6 +855,9 @@ public class MultiPolygonRelation extends Relation {
 
 					MultiPolygonCutter cutter = new MultiPolygonCutter(this, tileArea, commonCoordMap);
 					singularOuterPolygons = cutter.cutOutInnerPolygons(currentPolygon.polygon, innerWays);
+					if (currentPolygon.outer) {
+						singularOuterPolygons.forEach(s -> s.setMpRel(this));
+					}
 				}
 				
 				if (!singularOuterPolygons.isEmpty()) {
@@ -935,8 +947,11 @@ public class MultiPolygonRelation extends Relation {
 		mpPolygons = null;
 		tileArea = null;
 		outerWaysForLineTagging = null;
-		largestOuterPolygon = null;
 		commonCoordMap = null;
+		getElements().clear();
+		if (getElements() instanceof ArrayList) {
+			((ArrayList<?>) getElements()).trimToSize();
+		}
 	}
 
 	/**
@@ -1981,6 +1996,28 @@ public class MultiPolygonRelation extends Relation {
 			}
 		} 
 		partitions.add(partition);
+	}
+
+
+	public Way getLargestOuterRing() {
+		return largestOuterPolygon;
+	}
+	
+	public List<JoinedWay> getRings() {
+		if (polygons == null) {
+			polygons = buildRings();
+			cleanup();
+		}
+		return polygons;
+	}
+
+
+	public void setNoRecalc(boolean b) {
+		this.noRecalc = b;
+	}
+
+	public boolean isNoRecalc() {
+		return noRecalc;
 	}
 
 

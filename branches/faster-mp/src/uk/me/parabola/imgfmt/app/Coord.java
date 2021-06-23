@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.mkgmap.filters.ShapeMergeFilter;
 
@@ -120,6 +121,18 @@ public class Coord implements Comparable<Coord> {
 		return new Coord(lat24, lon24, dLat, dLon);
 	}
 	
+	public static Coord makeHighPrecCoord(int latHp, int lonHp, Long2ObjectOpenHashMap<Coord> coordPool) {
+		if (coordPool == null)
+			return makeHighPrecCoord(latHp, lonHp);
+		long key = (latHp & 0xffffffffL) << 32 | (lonHp & 0xffffffffL);
+		Coord p = coordPool.get(key);
+		if (p == null) {
+			p = makeHighPrecCoord(latHp, lonHp);
+			coordPool.put(key, p);
+		}
+		return p;
+	}
+	
 	/**
 	 * Construct from other coord instance, copies 
 	 * the lat/lon values in high precision
@@ -189,7 +202,7 @@ public class Coord implements Comparable<Coord> {
 	}
 
 	public boolean preserved() {
-		return (flags & PRESERVED_MASK) != 0 || (flags & HOUSENUMBER_NODE) != 0;
+		return (flags & PRESERVED_MASK) != 0;
 	}
 
 	public void preserved(boolean preserved) {
