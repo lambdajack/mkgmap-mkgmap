@@ -1944,7 +1944,7 @@ public class MultiPolygonRelation extends Relation {
 			return;
 		//TODO: find out in what case dividing will produce false results in calcContains
 		// probably complex polygons with crossing /self intersecting ways will be problematic 
-		if (depth >= 10 || partition.size() < 2) {
+		if (depth >= 10 || partition.size() < 2 || tagIsLikeYes("expect-self-intersection")) {
 			partitions.add(partition);
 			return;
 		}
