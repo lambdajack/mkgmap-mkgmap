@@ -167,12 +167,7 @@ class PrecompSeaMerger implements Runnable {
 				rel.addElement("inner", landWay);
 			}
 
-			Way seaWay = new Way(FakeIdGenerator.makeFakeId());
-			seaWay.addPoint(new Coord(-90.0d, -180.0d));
-			seaWay.addPoint(new Coord(90.0d, -180.0d));
-			seaWay.addPoint(new Coord(90.0d, 180.0d));
-			seaWay.addPoint(new Coord(-90.0d, 180.0d));
-			seaWay.addPoint(seaWay.getFirstPoint()); // close shape
+			Way seaWay = new Way(FakeIdGenerator.makeFakeId(), uk.me.parabola.imgfmt.app.Area.PLANET.toCoords());
 			seaWay.setClosedInOSM(true);
 			wayMap.put(seaWay.getId(), seaWay);
 			rel.addElement("outer", seaWay);
