@@ -80,9 +80,6 @@ public class MultiPolygonRelation extends Relation {
 	
 	private Map<Long, Way> mpPolygons = new LinkedHashMap<>();
 
-	
-
-	
 	private JoinedWay largestOuterPolygon;
 	private Long2ObjectOpenHashMap<Coord> commonCoordMap = new Long2ObjectOpenHashMap<>();
 	protected Set<Way> outerWaysForLineTagging;
@@ -206,8 +203,7 @@ public class MultiPolygonRelation extends Relation {
 				Way wayEl = (Way) el;
 				if (dupCheck.put(wayEl.getId(), wayEl) != null) {
 					log.warn("repeated way member with id", el.getId(), "is ignored in multipolygon relation", toBrowseURL());
-				}
-				if (wayEl.getPoints().size() <= 1) {
+				} else if (wayEl.getPoints().size() <= 1) {
 					log.warn("Way", wayEl, "has", wayEl.getPoints().size(),
 							 "points and cannot be used for the multipolygon", toBrowseURL());
 				} else {
@@ -239,7 +235,6 @@ public class MultiPolygonRelation extends Relation {
 						 "in multipolygon", toBrowseURL(), toTagString());
 			}
 		}
-		
 	}
 
 	/**
@@ -315,13 +310,13 @@ public class MultiPolygonRelation extends Relation {
 	}
 
 	/**
-	 * Try to close unclosed ways in the given list of ways.
+	 * Try to close unclosed way.
 	 * 
-	 * @param wayList a list of joined ways
+	 * @param way the joined way
 	 * 
 	 */
 	private void tryCloseSingleWays(JoinedWay way) {
-		if (way.hasIdenticalEndPoints() || way.getPoints().size() < 3) 
+		if (way.hasIdenticalEndPoints() || way.getPoints().size() < 3)
 			return;
 		
 		Coord p1 = way.getFirstPoint();
@@ -366,7 +361,6 @@ public class MultiPolygonRelation extends Relation {
 			lastPoint = thisPoint;
 		}
 
-		//TODO: why is the intersection a problem?
 		if (!intersects) {
 			// close the polygon
 			// the new way segment does not intersect the rest of the polygon
@@ -390,14 +384,17 @@ public class MultiPolygonRelation extends Relation {
 		double distance;
 	}
 
+	/**
+	 * Try to connect pairs of ways to closed rings or a single way by adding a
+	 * point outside of the tileBounds.
+	 * 
+	 * @param allWays     list of ways
+	 * @param onlyOutside if true, only connect ways outside of the tileBounds
+	 * @return true if anything was closed
+	 */
 	private boolean connectUnclosedWays(List<JoinedWay> allWays, boolean onlyOutside) {
-		List<JoinedWay> unclosed = new ArrayList<>();
-
-		for (JoinedWay w : allWays) {
-			if (!w.hasIdenticalEndPoints()) {
-				unclosed.add(w);
-			}
-		}
+		List<JoinedWay> unclosed = allWays.stream().filter(w->!w.hasEqualEndPoints()).collect(Collectors.toList());
+		
 		// try to connect ways lying outside or on the bbox
 		if (!unclosed.isEmpty()) {
 			log.debug("Checking", unclosed.size(), "unclosed ways for connections outside the bbox");
@@ -801,7 +798,7 @@ public class MultiPolygonRelation extends Relation {
 		return polygons.stream().filter(w -> {
 			Coord first = w.getFirstPoint();
 			Coord last = w.getLastPoint();
-			return first == last || getTileBounds().contains(first) && getTileBounds().contains(last);
+			return first == last || tileBounds.contains(first) && tileBounds.contains(last);
 		}).collect(Collectors.toList());
 	}
 
@@ -860,8 +857,6 @@ public class MultiPolygonRelation extends Relation {
 							p.copyTags(this);
 							p.deleteTag("type");
 						}
-						// remove the multipolygon tags in the original ways of the current polygon
-						markTagsForRemovalInOrgWays(this, currentPolygon.polygon);
 					} else {
 						// we have a nested MP with one or more outer rings inside an inner ring 
 						// use the tags of the original ways
@@ -871,7 +866,7 @@ public class MultiPolygonRelation extends Relation {
 							p.copyTags(currentPolygon.polygon);
 						}
 						// remove the current polygon tags in its original ways
-						markTagsForRemovalInOrgWays(currentPolygon.polygon, currentPolygon.polygon);
+						markTagsForRemovalInOrgWays(currentPolygon.polygon);
 					}
 				
 					long fullArea = currentPolygon.polygon.getFullArea();
@@ -1088,14 +1083,12 @@ public class MultiPolygonRelation extends Relation {
 	}
 
 	/**
-	 * Marks all tags of the original ways of the given JoinedWay that are also
-	 * contained in the given tagElement for removal.
+	 * Marks all tags of the original ways of the given JoinedWay for removal.
 	 * 
-	 * @param tagElement an element that contains the tags to be removed
-	 * @param way        a joined way
+	 * @param way a joined way
 	 */
-	private static void markTagsForRemovalInOrgWays(Element tagElement, JoinedWay way) {
-		for (Entry<String, String> tag : tagElement.getTagEntryIterator()) {
+	private static void markTagsForRemovalInOrgWays(JoinedWay way) {
+		for (Entry<String, String> tag : way.getTagEntryIterator()) {
 			markTagForRemovalInOrgWays(way, tag.getKey(), tag.getValue());
 		}
 	}
@@ -1104,33 +1097,32 @@ public class MultiPolygonRelation extends Relation {
 	 * Mark the given tag for removal in all original ways of the given way.
 	 * 
 	 * @param way      a joined way
-	 * @param tagname  the tag to be removed
+	 * @param tagKey   the tag to be removed
 	 * @param tagvalue the value of the tag to be removed
 	 */
-	private static void markTagForRemovalInOrgWays(JoinedWay way, String tagname, String tagvalue) {
+	private static void markTagForRemovalInOrgWays(JoinedWay way, String tagKey, String tagvalue) {
 		for (Way w : way.getOriginalWays()) {
 			if (w instanceof JoinedWay) {
-				// remove the tags recursively
-				markTagForRemovalInOrgWays((JoinedWay) w, tagname, tagvalue);
-			} else if (tagvalue.equals(w.getTag(tagname))) {
-				if (log.isDebugEnabled()) {
-					log.debug("Will remove", tagname + "=" + w.getTag(tagname), "from way", w.getId(), w.toTagString());
-				}
-				markTagsForRemovalInOrgWays(w, tagname);
+				// remove the tag recursively
+				markTagForRemovalInOrgWays((JoinedWay) w, tagKey, tagvalue);
+			} else if (tagvalue.equals(w.getTag(tagKey))) {
+				markTagsForRemovalInOrgWays(w, tagKey);
 			}
 		}
 	}
 	
 	/**
-	 * Add given tag key to the special tag which contains the list of tag keys which are to be removed in  
-	 * MultiPolygonFinishHook. 
-	 * @param way the way
+	 * Add given tag key to the special tag which contains the list of tag keys
+	 * which are to be removed in MultiPolygonFinishHook.
+	 * 
+	 * @param way    the way
 	 * @param tagKey the tag key
 	 */
 	private static void markTagsForRemovalInOrgWays(Way way, String tagKey) {
 		if (tagKey == null || tagKey.isEmpty()) {
 			return; // should not happen
 		}
+
 		String tagsToRemove = way.getTag(ElementSaver.TKM_REMOVETAGS);
 		
 		if (tagsToRemove == null) {
@@ -1144,6 +1136,9 @@ public class MultiPolygonRelation extends Relation {
 			}
 			tagsToRemove += ";" + tagKey;
 		} 
+		if (log.isDebugEnabled()) {
+			log.debug("Will remove", tagKey + "=" + way.getTag(tagKey), "from way", way.getId(), way.toTagString());
+		}
 		way.addTag(ElementSaver.TKM_REMOVETAGS, tagsToRemove);
 	}
 	
@@ -1691,7 +1686,7 @@ public class MultiPolygonRelation extends Relation {
 				outerUnusedPolys.or(unfinishedPolygons);
 				// use only the outer polygons
 				outerUnusedPolys.and(outerPolygons);
-				for (JoinedWay w : bitsToList(outerUnusedPolys)) {
+				for (JoinedWay w : bitsetToList(outerUnusedPolys)) {
 					//TODO: How do we get here?
 					outerWaysForLineTagging.addAll(w.getOriginalWays());
 				}
@@ -1706,7 +1701,7 @@ public class MultiPolygonRelation extends Relation {
 				// one possible reason is if the relation overlaps the tile
 				// bounds
 				// => issue a warning
-				List<JoinedWay> lostWays = bitsToList(unfinishedPolygons);
+				List<JoinedWay> lostWays = bitsetToList(unfinishedPolygons);
 				for (JoinedWay w : lostWays) {
 					log.warn("Polygon", w, "is not processed due to an unknown reason.");
 					logWayURLs(Level.WARNING, "-", w);
@@ -1714,7 +1709,7 @@ public class MultiPolygonRelation extends Relation {
 			}
 		}
 
-		private List<JoinedWay> bitsToList(BitSet selection) {
+		private List<JoinedWay> bitsetToList(BitSet selection) {
 			return selection.stream().mapToObj(polygons::get).collect(Collectors.toList());
 		}
 
