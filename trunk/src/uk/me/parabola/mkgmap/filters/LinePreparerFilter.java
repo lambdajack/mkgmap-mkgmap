@@ -25,7 +25,7 @@ import uk.me.parabola.mkgmap.general.MapShape;
 
 /**
  * This filter does more or less the same calculations as LinePreparer.calcDeltas   
- * It rejects lines that have not enough different points, and it optimises
+ * It rejects lines that have not enough different points or too many, and it optimises
  * shapes so that they require fewer bits in the img file.
  * @author GerdP
  *
@@ -53,7 +53,7 @@ public class LinePreparerFilter implements MapFilter {
 		MapLine line = (MapLine) element;
 
 		int numPoints = line.getPoints().size();
-		if (line instanceof MapShape && numPoints >= PolygonSplitterFilter.MAX_POINT_IN_ELEMENT)
+		if (line instanceof MapShape && numPoints > PolygonSplitterFilter.MAX_POINT_IN_ELEMENT)
 			throw new MustSplitException();
 
 		boolean first = true;

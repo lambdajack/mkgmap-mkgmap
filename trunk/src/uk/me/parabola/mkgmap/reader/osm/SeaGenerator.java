@@ -13,6 +13,7 @@
 package uk.me.parabola.mkgmap.reader.osm;
 
 import java.awt.Rectangle;
+import java.awt.geom.Path2D;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,6 +27,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,7 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.FormatException;
 import uk.me.parabola.imgfmt.MapFailedException;
@@ -46,7 +49,9 @@ import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.mkgmap.filters.ShapeMergeFilter;
 import uk.me.parabola.mkgmap.general.LineClipper;
+import uk.me.parabola.mkgmap.general.MapShape;
 import uk.me.parabola.mkgmap.osmstyle.StyleImpl;
 import uk.me.parabola.util.EnhancedProperties;
 import uk.me.parabola.util.Java2DConverter;
@@ -84,7 +89,9 @@ public class SeaGenerator implements OsmReadingHooks {
 
 	private String[] coastlineFilenames;
 	private StyleImpl fbRules;
-	
+
+	private boolean improveOverview;
+
 	/** The size (lat and long) of the precompiled sea tiles */
 	public static final int PRECOMP_RASTER = 1 << 15;
 	
@@ -130,6 +137,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		
 		boolean failOnIndexCheck = props.getProperty("check-precomp-sea", true);
 		precompSea = props.getProperty("precomp-sea", null);
+		improveOverview = props.getProperty("improve-overview", false);
 		if (precompSea != null) {
 			synchronized (checkedPrecomp) {
 				initPrecompSeaIndex(precompSea, failOnIndexCheck);	
@@ -701,6 +709,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		List<java.awt.geom.Area> landOnlyAreas = new ArrayList<>();
 		
 		PrecompData pd = precompIndex.get();
+ 		Long2ObjectOpenHashMap<Coord> commonCoordMap = new Long2ObjectOpenHashMap<>();
 
 		for (String precompKey : getPrecompKeyNames()) {
 			String tileName = getTileName(precompKey);
@@ -725,15 +734,107 @@ public class SeaGenerator implements OsmReadingHooks {
 				}
 			} else {
 				distinctTilesOnly = false;
-				loadMixedTile(pd, tileName, landWays, seaWays);
+				loadMixedTile(pd, tileName, landWays, seaWays, commonCoordMap);
 			}
 		}
- 		landWays.addAll(areaToWays(landOnlyAreas,"land"));
- 		seaWays.addAll(areaToWays(seaOnlyAreas,"sea"));
- 		return distinctTilesOnly;
+		landWays.addAll(areaToWays(landOnlyAreas, "land", commonCoordMap));
+		seaWays.addAll(areaToWays(seaOnlyAreas, "sea", commonCoordMap));
+
+		if (improveOverview) {
+			createSeaMP(landWays, seaWays, tileBounds, commonCoordMap);
+		}
+		return distinctTilesOnly;
 	}
 
-	private static void loadMixedTile(PrecompData pd, String tileName, List<Way> landWays, List<Way> seaWays) {
+	/**
+	 * Create a single multipolygon from all land ways(inner) and planet as
+	 * sea(outer) It is used to improve sea shapes at lower resolutions.
+	 * 
+	 * @param landWays       the land areas
+	 * @param seaWays        the sea areas
+	 * @param tileBounds     the boundary of the tile
+	 * @param commonCoordMap map to produce unique Coord instances
+	 */
+	private static void createSeaMP(List<Way> landWays, List<Way> seaWays, Area tileBounds, Long2ObjectOpenHashMap<Coord> commonCoordMap) {
+		if (landWays.isEmpty() || seaWays.isEmpty())
+			return;
+		log.info("improve-overview: re-creating multipolygon from", landWays.size(), "land areas");
+		Map<Long, Way> wayMap = new LinkedHashMap<>();
+		Way seaWay = new Way(FakeIdGenerator.makeFakeId(), uk.me.parabola.imgfmt.app.Area.PLANET.toCoords());
+		wayMap.put(seaWay.getId(), seaWay);
+
+		// join the land polygons, gives better results than simply adding the land ways
+		landWays.forEach(w -> w.getPoints().forEach(Coord::resetHighwayCount));
+		landWays.forEach(w -> w.getPoints().forEach(Coord::incHighwayCount));
+		landWays.forEach(w -> w.getPoints().get(0).decHighwayCount());
+		List<MapShape> landShapesToMerge = new ArrayList<>();
+		for (int i = 0; i < landWays.size(); i++) {
+			Way w = landWays.get(i);
+			if (w.getPoints().stream().anyMatch(c -> c.getHighwayCount() > 1)) {
+				MapShape ms = new MapShape(w.getId());
+				ms.setType(1);
+				ms.setPoints(w.getPoints());
+				landShapesToMerge.add(ms);
+			} else {
+				wayMap.put(w.getId(), w);
+			}
+		}
+		ShapeMergeFilter mergeFilter = new ShapeMergeFilter(-1, false);
+		List<MapShape> merged = mergeFilter.merge(landShapesToMerge);
+		for (MapShape s : merged) {
+			s.getPoints().forEach(Coord::resetHighwayCount);
+			s.getPoints().forEach(Coord::incHighwayCount);
+			s.getPoints().get(0).decHighwayCount();
+			int n = s.getPoints().size();
+			boolean isSimple = true;
+			for (int i = 0; i < n; i++) {
+				int count = s.getPoints().get(i).getHighwayCount();
+				if (count > 2 || (count > 1 && i != 0 && i != n - 1)) {
+					isSimple = false;
+				}
+			}
+			if (isSimple) {
+				Way w = new Way(FakeIdGenerator.makeFakeId(), s.getPoints());
+				wayMap.put(w.getId(), w);
+			} else {
+				Path2D path = Java2DConverter.createPath2D(s.getPoints());
+				path.setWindingRule(Path2D.WIND_EVEN_ODD);
+				List<List<Coord>> shapes = Java2DConverter.areaToShapes(new java.awt.geom.Area(path), commonCoordMap);
+				for (List<Coord> points : shapes) {
+					if (Way.clockwise(points)) {
+						Way w = new Way(FakeIdGenerator.makeFakeId(), points);
+						wayMap.put(w.getId(), w);
+					}
+				}
+			}
+		}
+		Relation gr = new GeneralRelation(FakeIdGenerator.makeFakeId());
+		for (Way w : wayMap.values()) {
+			w.setClosedInOSM(true);
+			gr.addElement((w == seaWay ? "outer" : "inner"), w);
+		}
+
+		MultiPolygonRelation mpr = new MultiPolygonRelation(gr, wayMap, tileBounds) {
+			@Override
+			public Way getLargestOuterRing() {
+				if (largestOuterPolygon == null) {
+					for (JoinedWay w : getRings()) {
+						if (w.getOriginalWays().contains(seaWay)) {
+							largestOuterPolygon = w;
+							break;
+						}
+					}
+				}
+				return largestOuterPolygon;
+			}
+		};
+		// link all sea ways with the multipolygon, we don't call processShapes for this
+		// relation!
+		seaWays.forEach(w -> w.setMpRel(mpr));
+	}
+
+	private static void loadMixedTile(PrecompData pd, String tileName, List<Way> landWays, List<Way> seaWays,
+			Long2ObjectOpenHashMap<Coord> commonCoordMap) {
 		try {
 			InputStream is = null;
 			if (pd.zipFile != null) {
@@ -753,6 +854,21 @@ public class SeaGenerator implements OsmReadingHooks {
 					log.debug(seaPrecompWays.size(), "precomp sea ways from", tileName, "loaded.");
 
 				for (Way w : seaPrecompWays) {
+					int n = w.getPoints().size();
+					for (int i = 0; i < n; i++) {
+						Coord p = w.getPoints().get(i);
+						if (p.getLatitude() % PRECOMP_RASTER == 0 || p.getLongitude() % PRECOMP_RASTER == 0) {
+							long key = Utils.coord2Long(p);
+							Coord replacement = commonCoordMap.get(key);
+							if (replacement == null)
+								commonCoordMap.put(key, p);
+							else {
+								assert p.highPrecEquals(replacement);
+								w.getPoints().set(i, replacement);
+							}
+						}
+					}
+					
 					// set a new id to be sure that the precompiled ids do not
 					// interfere with the ids of this run
 					w.markAsGeneratedFrom(w);
@@ -811,12 +927,14 @@ public class SeaGenerator implements OsmReadingHooks {
 	/**
 	 * @param area
 	 * @param type
+	 * @param commonCoordMap
 	 * @return
 	 */
-	private static List<Way> areaToWays(List<java.awt.geom.Area> areas, String type) {
+	private static List<Way> areaToWays(List<java.awt.geom.Area> areas, String type,
+			Long2ObjectOpenHashMap<Coord> commonCoordMap) {
 		List<Way> ways = new ArrayList<>();
 		for (java.awt.geom.Area area : areas) {
-			List<List<Coord>> shapes = Java2DConverter.areaToShapes(area);
+			List<List<Coord>> shapes = Java2DConverter.areaToShapes(area, commonCoordMap);
 			for (List<Coord> points : shapes) {
 				Way w = new Way(FakeIdGenerator.makeFakeId(), points);
 				w.addTag("natural", type);
@@ -1344,7 +1462,7 @@ public class SeaGenerator implements OsmReadingHooks {
 		}
 		log.debug("addCorners", hFrom, hTo, direction, startEdge, endEdge, toCorner);
 		while (startEdge != endEdge) {
-			Coord p = getPoint(tileBounds, startEdge + toCorner);
+			Coord p = getPoint(tileBounds, (startEdge + toCorner));
 			w.addPointIfNotEqualToLastPoint(p);
 			startEdge += direction;
 		}

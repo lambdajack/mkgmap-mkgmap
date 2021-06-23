@@ -40,7 +40,6 @@ public class CoordNode extends Coord {
 		setOnBoundary(boundary);
 		setOnCountryBorder(onCountryBorder);
 		setNumberNode(true);
-		preserved(true);
 	}
 
 	public CoordNode(Coord other, int id, boolean boundary, boolean onCountryBorder) {
@@ -49,9 +48,9 @@ public class CoordNode extends Coord {
 		setOnBoundary(boundary);
 		setOnCountryBorder(onCountryBorder);
 		setNumberNode(true);
-		preserved(true);
-		
 	}
+	
+	@Override
 	public int getId() {
 		return id;
 	}

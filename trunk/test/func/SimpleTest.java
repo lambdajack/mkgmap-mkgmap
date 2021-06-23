@@ -69,7 +69,7 @@ public class SimpleTest extends Base {
 		assertEquals("number of points at level 0", 204, list.size());
 
 		List<Polyline> list1 = mr.linesForLevel(0);
-		assertEquals("number of lines at level 0", 3369, list1.size());
+		assertEquals("number of lines at level 0", 3289, list1.size());
 	}
 
 	@Test
@@ -95,7 +95,7 @@ public class SimpleTest extends Base {
 			case "RGN":
 				count++;
 				System.out.println("RGN size " + size);
-				assertThat("RGN size", size, new RangeMatcher(2741,3));
+				assertThat("RGN size", size, new RangeMatcher(2632,3));
 				break;
 			case "TRE":
 				count++;

@@ -27,7 +27,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.UnaryOperator;
@@ -89,6 +91,7 @@ import uk.me.parabola.mkgmap.filters.RemoveObsoletePointsFilter;
 import uk.me.parabola.mkgmap.filters.RoundCoordsFilter;
 import uk.me.parabola.mkgmap.filters.ShapeMergeFilter;
 import uk.me.parabola.mkgmap.filters.SizeFilter;
+import uk.me.parabola.mkgmap.filters.ShapeMergeFilter.MapShapeComparator;
 import uk.me.parabola.mkgmap.general.CityInfo;
 import uk.me.parabola.mkgmap.general.LevelInfo;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
@@ -104,11 +107,16 @@ import uk.me.parabola.mkgmap.reader.MapperBasedMapDataSource;
 import uk.me.parabola.mkgmap.reader.hgt.HGTConverter;
 import uk.me.parabola.mkgmap.reader.hgt.HGTConverter.InterpolationMethod;
 import uk.me.parabola.mkgmap.reader.hgt.HGTReader;
+import uk.me.parabola.mkgmap.reader.osm.FakeIdGenerator;
 import uk.me.parabola.mkgmap.reader.osm.GType;
+import uk.me.parabola.mkgmap.reader.osm.GeneralRelation;
+import uk.me.parabola.mkgmap.reader.osm.MultiPolygonRelation;
+import uk.me.parabola.mkgmap.reader.osm.Way;
 import uk.me.parabola.mkgmap.reader.overview.OverviewMapDataSource;
 import uk.me.parabola.util.Configurable;
 import uk.me.parabola.util.EnhancedProperties;
 import uk.me.parabola.util.Java2DConverter;
+import uk.me.parabola.util.ShapeSplitter;
 
 /**
  * This is the core of the code to translate from the general representation
@@ -135,7 +143,7 @@ public class MapBuilder implements Configurable {
 	private List<String> mapInfo = new ArrayList<>();
 	private List<String> copyrights = new ArrayList<>();
 
-	private boolean doRoads; 
+	private boolean hasNet; 
 	private Boolean driveOnLeft; // needs to be Boolean for later null test 
 	private Locator locator;
 
@@ -155,8 +163,8 @@ public class MapBuilder implements Configurable {
 	private int minSizePolygon;
 	private String polygonSizeLimitsOpt;
 	private TreeMap<Integer,Integer> polygonSizeLimits;
-	private double reducePointError;
-	private double reducePointErrorPolygon;
+	private TreeMap<Integer, Double> dpFilterLineResMap; 
+	private TreeMap<Integer, Double> dpFilterShapeResMap; 
 	private boolean mergeLines;
 	private boolean mergeShapes;
 
@@ -176,7 +184,8 @@ public class MapBuilder implements Configurable {
 	private short demOutsidePolygonHeight;
 	private java.awt.geom.Area demPolygon;
 	private HGTConverter.InterpolationMethod demInterpolationMethod;
-	
+	private boolean allowReverseMerge;
+	private boolean improveOverview;
 
 	/**
 	 * Construct a new MapBuilder.
@@ -202,15 +211,21 @@ public class MapBuilder implements Configurable {
 		regionAbbr = props.getProperty("region-abbr", null);
  		minSizePolygon = props.getProperty("min-size-polygon", 8);
  		polygonSizeLimitsOpt = props.getProperty("polygon-size-limits", null);
-		reducePointError = props.getProperty("reduce-point-density", 2.6);
- 		reducePointErrorPolygon = props.getProperty("reduce-point-density-polygon", -1);
+ 		// options for DouglasPeuckerFilter
+		double reducePointError = props.getProperty("reduce-point-density", 2.6);
+ 		double reducePointErrorPolygon = props.getProperty("reduce-point-density-polygon", -1);
 		if (reducePointErrorPolygon == -1)
 			reducePointErrorPolygon = reducePointError;
+		dpFilterLineResMap = parseLevelOption(props, "simplify-lines", reducePointError);
+		dpFilterShapeResMap = parseLevelOption(props, "simplify-polygons", reducePointErrorPolygon);
+		
 		mergeLines = props.containsKey("merge-lines");
+		allowReverseMerge = props.getProperty("allow-reverse-merge", false); 
 
 		// undocumented option - usually used for debugging only
 		mergeShapes = !props.getProperty("no-mergeshapes", false);
-
+		improveOverview = props.getProperty("improve-overview", false);
+		
 		makePOIIndex = props.getProperty("make-poi-index", false);
 
 		if(props.getProperty("poi-address") != null)
@@ -288,7 +303,7 @@ public class MapBuilder implements Configurable {
 		lblFile = map.getLblFile();
 		NETFile netFile = map.getNetFile();
 		
-		doRoads = netFile != null;
+		hasNet = netFile != null;
 		
 		if (routeCenterBoundaryType != 0 && netFile != null && src instanceof MapperBasedMapDataSource) {
 			for (RouteCenter rc : src.getRoadNetwork().getCenters()) {
@@ -726,7 +741,8 @@ public class MapBuilder implements Configurable {
 				String description = "";
 				if(atts.length > 3)
 					description = atts[3];
-				boolean last = true; // FIXME - handle multiple facilities?
+				boolean last = true;
+				// FIXME - handle multiple facilities?
 				ExitFacility ef = lbl.createExitFacility(type, direction, facilities, description, last);
 
 				exit.addFacility(ef);
@@ -738,8 +754,7 @@ public class MapBuilder implements Configurable {
 				exit.setDescription(ed);
 			}
 			poimap.put(mep, r);
-			// FIXME - set bottom bits of
-			// type to reflect facilities available?
+			// FIXME - set bottom bits of type to reflect facilities available?
 		}
 	}
 
@@ -797,6 +812,10 @@ public class MapBuilder implements Configurable {
 
 		// We start with one map data source.
 		List<SourceSubdiv> srcList = Collections.singletonList(new SourceSubdiv(src, topdiv));
+		if (mergeShapes && improveOverview && isOverviewComponent) {
+			recalcMultipolygons(src, levels);
+		}
+		src.getShapes().forEach(s -> s.setMpRel(null)); // free memory for MultipolygonRelations
 
 		// Now the levels filled with features.
 		for (LevelInfo linfo : levels) {
@@ -805,7 +824,6 @@ public class MapBuilder implements Configurable {
 			Zoom zoom = map.createZoom(linfo.getLevel(), linfo.getBits());
 
 			for (SourceSubdiv srcDivPair : srcList) {
-
 				MapSplitter splitter = new MapSplitter(srcDivPair.getSource(), zoom);
 				MapArea[] areas = splitter.split(orderByDecreasingArea);
 				log.info("Map region", srcDivPair.getSource().getBounds(), "split into", areas.length, "areas at resolution", zoom.getResolution());
@@ -839,9 +857,10 @@ public class MapBuilder implements Configurable {
 			int n = points.size();
 			for (int i = 0; i < n; i++) {
 				Coord co = points.get(i);
-				Coord repl = coordMap.get(Utils.coord2Long(co));
+				long key = Utils.coord2Long(co);
+				Coord repl = coordMap.get(key);
 				if (repl == null)
-					coordMap.put(Utils.coord2Long(co), co);
+					coordMap.put(key, co);
 				else
 					points.set(i, repl);
 			}
@@ -899,13 +918,52 @@ public class MapBuilder implements Configurable {
 		div.startDivision();
 
 		processPoints(map, div, points);
-		processLines(map, div, lines);
+
+		final int res = z.getResolution();
+		lines = lines.stream().filter(l -> l.getMinResolution() <= res).collect(Collectors.toList());
+		shapes = shapes.stream().filter(s -> s.getMinResolution() <= res).collect(Collectors.toList());
+		
+		if (mergeLines) {
+			LineMergeFilter merger = new LineMergeFilter();
+			lines = merger.merge(lines, res, !hasNet, allowReverseMerge);
+		}
+
+		if (mergeShapes) {
+			ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea);
+			shapes = shapeMergeFilter.merge(shapes);
+		}
+
+		// recalculate preserved status for all points in lines and shapes
+		shapes.forEach(e -> e.getPoints().forEach(p -> p.preserved(false)));
+		if (z.getLevel() == 0 && hasNet) {
+			lines.forEach(e -> e.getPoints().forEach(p -> p.preserved(p.isNumberNode())));	
+		} else {
+			lines.forEach(e -> e.getPoints().forEach(p -> p.preserved(false)));
+		}
+		preserveFirstLast(lines);
+		if (res < 24) {
+			preserveHorizontalAndVerticalLines(res, shapes);
+		}
+		
+		processLines(map, div, lines); 
 		processShapes(map, div, shapes);
 
 		div.endDivision();
 
 		return div;
 	}
+
+	/**
+	 * Mark first and last point of each line as preserved 
+	 * @param the lines 
+	 */
+	private static void preserveFirstLast(List<MapLine> lines) {
+		for (MapLine l : lines) {
+			l.getPoints().get(0).preserved(true);
+			l.getPoints().get(l.getPoints().size()-1).preserved(true);
+		}
+	}
+
 
 	/**
 	 * Create the overview sections.
@@ -1177,31 +1235,40 @@ public class MapBuilder implements Configurable {
 		FilterConfig config = new FilterConfig();
 		config.setResolution(res);
 		config.setLevel(div.getZoom().getLevel());
-		config.setHasNet(doRoads);
+		config.setHasNet(hasNet);
 
-		//TODO: Maybe this is the wrong place to do merging.
-		// Maybe more efficient if merging before creating subdivisions.
-		if (mergeLines) {
-			LineMergeFilter merger = new LineMergeFilter();
-			lines = merger.merge(lines, res);
-		}
-		
-		LayerFilterChain filters = new LayerFilterChain(config);
+		LayerFilterChain normalFilters = new LayerFilterChain(config);
+		LayerFilterChain keepParallelFilters = new LayerFilterChain(config);
 		if (enableLineCleanFilters && (res < 24)) {
-			filters.addFilter(new RoundCoordsFilter());
-			filters.addFilter(new SizeFilter(MIN_SIZE_LINE));
-			if(reducePointError > 0)
-				filters.addFilter(new DouglasPeuckerFilter(reducePointError));
+			MapFilter rounder = new RoundCoordsFilter();
+			MapFilter sizeFilter = new SizeFilter(MIN_SIZE_LINE);
+			normalFilters.addFilter(rounder);
+			normalFilters.addFilter(sizeFilter);
+			double errorForRes = dpFilterLineResMap.ceilingEntry(res).getValue();
+			if(errorForRes > 0) {
+				DouglasPeuckerFilter dp = new DouglasPeuckerFilter(errorForRes);
+				normalFilters.addFilter(dp);
+				keepParallelFilters.addFilter(dp);
+			}
+			keepParallelFilters.addFilter(rounder);
+			keepParallelFilters.addFilter(sizeFilter);
 		}
-		filters.addFilter(new LineSplitterFilter());
-		filters.addFilter(new RemoveEmpty());
-		filters.addFilter(new RemoveObsoletePointsFilter());
-		filters.addFilter(new LinePreparerFilter(div));
-		filters.addFilter(new LineAddFilter(div, map));
+		for (MapFilter filter : Arrays.asList(
+				new LineSplitterFilter(), 
+				new RemoveEmpty(),
+				new RemoveObsoletePointsFilter(), 
+				new LinePreparerFilter(div), 
+				new LineAddFilter(div, map))) {
+			normalFilters.addFilter(filter);
+			keepParallelFilters.addFilter(filter);
+		}
 		
 		for (MapLine line : lines) {
 			if (line.getMinResolution() <= res) {
-				filters.startFilter(line);
+				if (GType.isContourLine(line) || isOverviewComponent) 
+					keepParallelFilters.startFilter(line);
+				else 
+					normalFilters.startFilter(line);
 			}
 		}
 	}
@@ -1225,20 +1292,13 @@ public class MapBuilder implements Configurable {
 		FilterConfig config = new FilterConfig();
 		config.setResolution(res);
 		config.setLevel(div.getZoom().getLevel());
-		config.setHasNet(doRoads);
-		
-		if (mergeShapes){
-			ShapeMergeFilter shapeMergeFilter = new ShapeMergeFilter(res, orderByDecreasingArea);
-			List<MapShape> mergedShapes = shapeMergeFilter.merge(shapes);
-			shapes = mergedShapes;
-		}
+		config.setHasNet(hasNet);
 		
 		if (orderByDecreasingArea && shapes.size() > 1) {
 			// sort so that the shape with the largest area is processed first
 			shapes.sort((s1,s2) -> Long.compare(Math.abs(s2.getFullArea()), Math.abs(s1.getFullArea())));
 		}
 
-		preserveHorizontalAndVerticalLines(res, shapes);
 		
 		LayerFilterChain filters = new LayerFilterChain(config);
 		filters.addFilter(new PolygonSplitterFilter());
@@ -1248,9 +1308,10 @@ public class MapBuilder implements Configurable {
 			if (sizefilterVal > 0)
 				filters.addFilter(new SizeFilter(sizefilterVal));
 			//DouglasPeucker behaves at the moment not really optimal at low zooms, but acceptable.
-			//Is there an similar algorithm for polygons?
-			if(reducePointErrorPolygon > 0)
-				filters.addFilter(new DouglasPeuckerFilter(reducePointErrorPolygon));
+			//Is there a similar algorithm for polygons?
+			double errorForRes = dpFilterShapeResMap.ceilingEntry(res).getValue();
+			if(errorForRes > 0)
+				filters.addFilter(new DouglasPeuckerFilter(errorForRes));
 		}
 		filters.addFilter(new RemoveObsoletePointsFilter());
 		filters.addFilter(new RemoveEmpty());
@@ -1280,11 +1341,6 @@ public class MapBuilder implements Configurable {
 		for (MapShape shape : shapes) {
 			if (shape.getMinResolution() > res)
 				continue;
-			int minLat = shape.getBounds().getMinLat();
-			int maxLat = shape.getBounds().getMaxLat();
-			int minLon = shape.getBounds().getMinLong();
-			int maxLon = shape.getBounds().getMaxLong();
-			
 			List<Coord> points = shape.getPoints();
 			int n = points.size();
 			IdentityHashMap<Coord, Coord> coords = new IdentityHashMap<>(n);
@@ -1301,17 +1357,16 @@ public class MapBuilder implements Configurable {
 					last.preserved(true);
 				}
 
-				// preserve the end points of horizontal and vertical lines that lie
-				// on the bbox of the shape. 
-				if(last.getLatitude() == prev.getLatitude() && (last.getLatitude() == minLat || last.getLatitude() == maxLat) ||
-				   last.getLongitude() == prev.getLongitude() && (last.getLongitude() == minLon || last.getLongitude() == maxLon)) {
+				// preserve the end points of horizontal and vertical lines 
+				// they are very likely produced by cutting 
+				if(last.getHighPrecLat() == prev.getHighPrecLat() || last.getHighPrecLon() == prev.getHighPrecLon()) {
 					last.preserved(true);
 					prev.preserved(true);
 				}
 				prev = last;
 			}
 		}
-	}
+	} 
 
 	/**
 	 * It is not possible to represent large maps at the 24 bit resolution.  This
@@ -1347,7 +1402,7 @@ public class MapBuilder implements Configurable {
 
 			for (String s : desc) {
 				String[] keyVal = s.split("[=:]");
-				if (keyVal == null || keyVal.length < 2) {
+				if (keyVal == null || keyVal.length != 2) {
 					throw new ExitException("incorrect polygon-size-limits specification " + polygonSizeLimitsOpt);
 				}
 	
@@ -1368,6 +1423,46 @@ public class MapBuilder implements Configurable {
 		}
 		// return the value for the desired resolution or the next higher one
 		return polygonSizeLimits.ceilingEntry(res).getValue();
+	}
+
+	/**
+	 * Parse an option with pairs of resolution and double values.
+	 * 
+	 * @param props        the properties
+	 * @param optionName   the option name
+	 * @param defaultValue the default value for all resolutions if the option is
+	 *                     not given
+	 * @return the map
+	 */
+	private TreeMap<Integer, Double> parseLevelOption(EnhancedProperties props, String optionName,
+			double defaultValue) {
+		String option = props.getProperty(optionName);
+		TreeMap<Integer, Double> levelMap = new TreeMap<>();
+		if (option != null) {
+			String[] desc = option.split("[, \\t\\n]+");
+
+			for (String s : desc) {
+				String[] keyVal = s.split("[=:]");
+				if (keyVal == null || keyVal.length != 2) {
+					throw new ExitException("incorrect " + optionName + " specification " + option + " at " + s);
+				}
+
+				try {
+					int key = Integer.parseInt(keyVal[0]);
+					double value = Double.parseDouble(keyVal[1]);
+					Double testDup = levelMap.put(key, value);
+					if (testDup != null) {
+						throw new ExitException(
+								"duplicate resolution value in " + optionName + " specification " + optionName);
+					}
+				} catch (NumberFormatException e) {
+					throw new ExitException(optionName + " specification not all numbers: " + s);
+				}
+			}
+		}
+		if (levelMap.get(24) == null)
+			levelMap.put(24, defaultValue);
+		return levelMap;
 	}
 
 	private static class SourceSubdiv {
@@ -1397,6 +1492,7 @@ public class MapBuilder implements Configurable {
 			this.map = map;
 		}
 
+		@Override
 		public void doFilter(MapElement element, MapFilterChain next) {
 			MapLine line = (MapLine) element;
 			assert line.getPoints().size() < 255 : "too many points";
@@ -1442,6 +1538,7 @@ public class MapBuilder implements Configurable {
 			this.map = map;
 		}
 
+		@Override
 		public void doFilter(MapElement element, MapFilterChain next) {
 			MapShape shape = (MapShape) element;
 			assert shape.getPoints().size() < 255 : "too many points";
@@ -1459,6 +1556,111 @@ public class MapBuilder implements Configurable {
 				}
 			}
 			map.addMapObject(pg);
+		}
+	}
+
+	/**
+	 * Find out shapes visible in the overview map which were created from a single multipolygon.
+	 * Typically this is the sea polygon. Create a simplified version for each. 
+	 * @param src the map source
+	 * @param levels levels for the overview map
+	 */
+	private void recalcMultipolygons(LoadableMapDataSource src, LevelInfo[] levels) {
+		final int maxRes = levels[levels.length - 1].getBits();
+		java.util.Map<MultiPolygonRelation, List<MapShape>> mpShapes = new LinkedHashMap<>();
+		src.getShapes().stream().filter(s -> s.getMpRel() != null && s.getMinResolution() <= maxRes)
+				.forEach(s -> mpShapes.computeIfAbsent(s.getMpRel(), k -> new ArrayList<>()).add(s));
+		if (mpShapes.isEmpty())
+			return;
+		MapShapeComparator comparator = new MapShapeComparator(orderByDecreasingArea);
+		for (Entry<MultiPolygonRelation, List<MapShape>> e : mpShapes.entrySet()) {
+			if (e.getKey().isNoRecalc())
+				continue;
+			MapShape pattern = e.getValue().get(0);
+			boolean matches = true;
+			for (MapShape s : e.getValue()) {
+				if (s.getMinResolution() != pattern.getMinResolution()
+						|| s.getMaxResolution() != pattern.getMaxResolution() 
+						|| comparator.compare(s, pattern) != 0) {
+					matches = false;
+					break;
+				}
+			}
+			if (matches) {
+				buildMPRing(src, maxRes, pattern, e.getKey());
+				e.getValue().forEach(s -> s.setMinResolution(maxRes + 1));
+			}
+		}
+	}
+
+	/**
+	 * Re-Render the multipolygon for the given max. resolution and create new
+	 * shapes with this value as maxResolution.
+	 * 
+	 * @param src     the map source
+	 * @param res     the wanted maximum resolution
+	 * @param pattern pattern for the new shapes
+	 * @param origMp  the multipolygon relation that contains the rings at full
+	 *                resolution
+	 */
+	private void buildMPRing(LoadableMapDataSource src, int res, MapShape pattern, MultiPolygonRelation origMp) {
+		List<? extends Way> rings = origMp.getRings();
+		Way largest = origMp.getLargestOuterRing();
+		int shift = 24 - res;
+		int minSize = getMinSizePolygonForResolution(res) * (1 << shift) / 2;
+		GeneralRelation gr = new GeneralRelation(FakeIdGenerator.makeFakeId());
+		java.util.Map<Long, Way> wayMap = new LinkedHashMap<>();
+
+		final double dpError = dpFilterShapeResMap.ceilingEntry(res).getValue() * (1 << shift);
+		for (int i = 0; i < rings.size(); i++) {
+			List<Coord> poly = new ArrayList<>(rings.get(i).getPoints());
+			boolean isLargest = largest == rings.get(i);
+			boolean tooSmall = minSize > 0 && Area.getBBox(poly).getMaxDimension() < minSize;
+			if (isLargest && tooSmall && !pattern.isSkipSizeFilter())
+				return;
+			if (tooSmall)
+				continue;
+			if (dpError > 0 && !isLargest) {
+				DouglasPeuckerFilter.douglasPeucker(poly, 0, poly.size() - 1, dpError);
+			}
+			if (poly.size() > 3) {
+				Way w = new Way(FakeIdGenerator.makeFakeId(), poly);
+				wayMap.put(w.getId(), w);
+				gr.addElement("", w);
+			}
+		}
+		List<List<Coord>> list = new ArrayList<>();
+		if (gr.getElements().isEmpty()) {
+			return;
+		} else if (gr.getElements().size() == 1) {
+			list.addAll(ShapeSplitter.clipToBounds(largest.getPoints(), src.getBounds(), null));
+		} else {
+			final String codeValue = GType.formatType(pattern.getType());
+			gr.addTag("code", codeValue);
+			MultiPolygonRelation mp = new MultiPolygonRelation(gr, wayMap, src.getBounds());
+			mp.processElements();
+			for (Way w : wayMap.values()) {
+				if (MultiPolygonRelation.STYLE_FILTER_POLYGON.equals(w.getTag(MultiPolygonRelation.STYLE_FILTER_TAG))
+						&& codeValue.equals(w.getTag("code"))) {
+					if (src.getBounds().contains(Area.getBBox(w.getPoints()))) {
+						list.add(w.getPoints());
+					} else {
+						// we must clip to tile bounds
+						list.addAll(ShapeSplitter.clipToBounds(w.getPoints(), src.getBounds(), null));
+					}
+				}
+			}
+		}
+
+		for (int i = 0; i < list.size(); i++) {
+			List<Coord> poly = list.get(i);
+			MapShape newShape = pattern.copy();
+
+			newShape.setPoints(poly);
+			newShape.setOsmid(FakeIdGenerator.makeFakeId());
+			newShape.setMaxResolution(res);
+			newShape.setMpRel(null);
+			src.getShapes().add(newShape);
 		}
 	}
 }

@@ -179,6 +179,8 @@ public class Polyline extends MapObject {
 
 		if(labelOff != 0)
 			type |= 0x20;		// has label
+		if (direction)
+			type |= FLAG_DIR;
 		if(extraBytes != null)
 			type |= 0x80;		// has extra bytes
 		stream.write(type >> 8);

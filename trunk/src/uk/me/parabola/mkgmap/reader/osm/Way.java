@@ -35,6 +35,7 @@ public class Way extends Element {
 	private static final Logger log = Logger.getLogger(Way.class);
 	private final List<Coord> points;
 	private long fullArea = Long.MAX_VALUE; // meaning unset
+	private MultiPolygonRelation mpRel; 
 
 	// This will be set if a way is read from an OSM file and the first node is the same node as the last
 	// one in the way. This can be set to true even if there are missing nodes and so the nodes that we
@@ -67,6 +68,7 @@ public class Way extends Element {
 		dup.complete = this.complete;
 		dup.isViaWay = this.isViaWay;
 		dup.fullArea = this.getFullArea();
+		dup.mpRel = this.mpRel;
 		return dup;
 	}
 
@@ -301,5 +303,19 @@ public class Way extends Element {
 			}
 		}
 		return length;
+	}
+
+	/**
+	 * @return the mpRel, null if the way was not created from a multipolygon with inner rings
+	 */
+	public MultiPolygonRelation getMpRel() {
+		return mpRel;
+	}
+
+	/**
+	 * @param mpRel the mpRel to set
+	 */
+	public void setMpRel(MultiPolygonRelation mpRel) {
+		this.mpRel = mpRel;
 	}
 }

@@ -256,6 +256,7 @@ route=ferry {set mkgmap:numbers=false; set mkgmap:ferry=1; add mkgmap:toll=yes}
 route=ferry & (motorcar=no | motor_vehicle=no) [0x1b road_class=0 road_speed=0 resolution 23]
 route=ferry [0x1a road_class=3 road_speed=0 resolution 19]
 
+(waterway=river | waterway=stream | waterway=rapids | waterway=waterfall) {add mkgmap:has-direction=true}
 (waterway=river | waterway=canal) & intermittent=yes [0x26 resolution 20]
 (waterway=stream | waterway=drain) & intermittent=yes [0x26 resolution 22]
 
