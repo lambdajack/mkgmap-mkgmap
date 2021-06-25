@@ -531,7 +531,7 @@ public class ShapeMergeFilter{
 			int pos = combi.getKey();
 			List<Coord> merged = combine(points1, points2, sh1PositionsToCheck.get(pos + len),
 					sh2PositionsToCheck.get(pos), sameDir, len);
-			if (merged.get(0) == merged.get(merged.size() - 1))
+			if (merged.size() >= 4 && merged.get(0) == merged.get(merged.size() - 1))
 				results.add(merged);
 		}
 
