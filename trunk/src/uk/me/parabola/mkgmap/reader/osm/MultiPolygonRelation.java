@@ -1295,11 +1295,6 @@ public class MultiPolygonRelation extends Relation {
 		taggedInnerPolygons = null;
 		outerPolygons = null;
 		taggedOuterPolygons = null;
-		getElements().clear();
-		if (getElements() instanceof ArrayList) {
-			((ArrayList<?>) getElements()).trimToSize();
-		}
-		
 //		largestOuterPolygon = null;
 	}
 
