@@ -12,6 +12,7 @@
  */
 package uk.me.parabola.mkgmap.reader.osm.boundary;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -135,5 +136,12 @@ public class BoundaryRelation extends MultiPolygonRelation {
 		if (postal != null)
 			return basicInfo + " postal_code=" + postal;
 		return basicInfo;
+	}
+
+	@Override
+	protected void cleanup() {
+		super.cleanup();
+		this.getElements().clear();
+		((ArrayList<?>)this.getElements()).trimToSize();
 	}
 }

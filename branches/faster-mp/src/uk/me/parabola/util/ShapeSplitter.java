@@ -809,8 +809,8 @@ public class ShapeSplitter {
 	private void split(List<Coord> coords, int dividingLine, boolean isLongitude,
 					   List<List<Coord>> lessList, List<List<Coord>> moreList,
 					   Long2ObjectOpenHashMap<Coord> coordPool) {
-		if (log.isDebugEnabled()) {
-			gpxDirectory = (isLongitude ? "V" : "H") + dividingLine + "_" +
+		if (true || log.isDebugEnabled()) {
+			gpxDirectory = "e:/ld/" + (isLongitude ? "V" : "H") + dividingLine + "_" +
 				(isLongitude ? coords.get(0).getLatitude() : coords.get(0).getLongitude()) + "/";
 		}
 		formLoops(coords, dividingLine, isLongitude, lessList != null, moreList != null, coordPool);
@@ -818,7 +818,7 @@ public class ShapeSplitter {
 		processLineList(newMore, moreList);
 		if (detectedProblems) {
 			logDiagInfo(coords, lessList, moreList);
-			log.error(isLongitude ? "Vertical" : "Horizontal", "split", dividingLine, "failed on shape at", coords.get(0).toOSMURL(),
+			log.error(isLongitude ? "Vertical" : "Horizontal", "split", dividingLine, "failed on shape at", coords.get(0),
 					  "Possibly a self-intersecting polygon");
 		}
 	} // split
@@ -925,7 +925,7 @@ public class ShapeSplitter {
 		if (newMore != null)
 			for (MergeCloseHelper thisLine : newMore)
 				log.info("MoreLoop", thisLine.lowPoint-lowestPoint, thisLine.highPoint-lowestPoint, thisLine.direction, thisLine.areaOrHole, thisLine.areaToLine, thisLine.points.size());
-		if (log.isDebugEnabled()) {
+		if (gpxDirectory != null) {
 			uk.me.parabola.util.GpxCreator.createGpx(gpxDirectory + "S", coords); // original shape
 			int fInx = 0;
 			// NB: lessList/moreList could be non-existent, the same object or have already have contents

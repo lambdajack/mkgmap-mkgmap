@@ -225,8 +225,9 @@ public class ElementSaver {
 		converter.augmentWith(this);
 		
 
-		for (Relation r : relationMap.values())
+		for (Relation r : relationMap.values()) {
 			converter.convertRelation(r);
+		}
 
 		for (Node n : nodeMap.values()) {
 			converter.convertNode(n);
@@ -255,7 +256,7 @@ public class ElementSaver {
 		wayMap = null;
 
 		converter.end();
-
+		
 		relationMap = null;
 		deferredRelationMap.clear();
 	}

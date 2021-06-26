@@ -948,10 +948,6 @@ public class MultiPolygonRelation extends Relation {
 		tileArea = null;
 		outerWaysForLineTagging = null;
 		commonCoordMap = null;
-		getElements().clear();
-		if (getElements() instanceof ArrayList) {
-			((ArrayList<?>) getElements()).trimToSize();
-		}
 	}
 
 	/**
