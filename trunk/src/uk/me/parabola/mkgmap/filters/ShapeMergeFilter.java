@@ -227,7 +227,9 @@ public class ShapeMergeFilter{
 			// this should allow to remove spikes as early as possible
 			if (byCenter.size() > 2) {
 				Map<Integer, Coord> centers = new HashMap<>();
-				byCenter.forEach(i -> centers.put(i, Area.getBBox(similarShapes.get(i).points).getCenter()));
+				for (int j : byCenter) {
+					centers.put(j, Area.getBBox(similarShapes.get(j).points).getCenter());	
+				}
 				Coord mid = Area.getBBox(new ArrayList<>(centers.values())).getCenter();
 				byCenter.sort((o1, o2) -> Double.compare(centers.get(o1).distance(mid), centers.get(o2).distance(mid)));
 			} 			
@@ -463,7 +465,7 @@ public class ShapeMergeFilter{
 				s1PositionsToCheck.add(pos);
 				Integer posInSh2 = s2PosMap.get(co);
 				assert posInSh2 != null;
-				s2PositionsToCheck.add(posInSh2);
+				s2PositionsToCheck.add(posInSh2.intValue());
 			}
 			pos++;
 		}
@@ -529,8 +531,8 @@ public class ShapeMergeFilter{
 			if (len < longestSequence)
 				continue;
 			int pos = combi.getKey();
-			List<Coord> merged = combine(points1, points2, sh1PositionsToCheck.get(pos + len),
-					sh2PositionsToCheck.get(pos), sameDir, len);
+			List<Coord> merged = combine(points1, points2, sh1PositionsToCheck.getInt(pos + len),
+					sh2PositionsToCheck.getInt(pos), sameDir, len);
 			if (merged.size() >= 4 && merged.get(0) == merged.get(merged.size() - 1))
 				results.add(merged);
 		}

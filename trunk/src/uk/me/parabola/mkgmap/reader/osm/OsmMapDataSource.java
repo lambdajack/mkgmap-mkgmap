@@ -22,6 +22,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -161,11 +162,12 @@ public class OsmMapDataSource extends MapperBasedMapDataSource implements Loadab
 		for (OsmHandler h : handlers) {
 			if (h.isFileSupported(name)) {
 				try {
-					OsmHandler handler = h.getClass().newInstance();
+					OsmHandler handler = h.getClass().getDeclaredConstructor().newInstance();
 					setupHandler(handler);
 					handler.parse(is);
 					break;
-				} catch (InstantiationException | IllegalAccessException e) {
+				} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+						| InvocationTargetException | NoSuchMethodException | SecurityException e) {
 					// TODO Auto-generated catch block
 					log.error("Unexpected error", e);
 				}
