@@ -239,7 +239,7 @@ public class RouteNode implements Comparable<RouteNode> {
 				Byte compactedDir = null;
 				if (useCompactDirs && (lastArc == null || lastArc.getIndexA() != arc.getIndexA() || lastArc.isForward() != arc.isForward())){
 					if (index % 2 == 0)
-						compactedDir = (byte) (initialHeadings.get(index) | (initialHeadings.getInt(index+1)<<4));
+						compactedDir = (byte) (initialHeadings.getInt(index) | (initialHeadings.getInt(index+1)<<4));
 					index++;
 				}
 //				if (diagNodeArcs)
@@ -492,7 +492,7 @@ public class RouteNode implements Comparable<RouteNode> {
 					nodes.get(i).arcs.addAll(directArcPos + 1, newArcs);
 					if (dir == 0 && i > 0){
 						// check if the inserted arcs change the position of the direct reverse arc
-						int reverseArcPos = reverseArcPositions.get(i-1); // i-1 because first node doesn't have reverse arc 
+						int reverseArcPos = reverseArcPositions.getInt(i-1); // i-1 because first node doesn't have reverse arc 
 						if (directArcPos < reverseArcPos)
 							reverseArcPositions.set(i - 1, reverseArcPos + newArcs.size());
 					}
