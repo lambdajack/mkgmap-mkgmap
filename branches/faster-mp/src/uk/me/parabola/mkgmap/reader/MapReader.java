@@ -16,6 +16,7 @@
  */
 package uk.me.parabola.mkgmap.reader;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,10 +54,9 @@ public class MapReader {
 		for (LoadableMapDataSource loader : loaders) {
 			if (loader.isFileSupported(name)) {
 				try {
-					return loader.getClass().newInstance();
-				} catch (InstantiationException e) {
-					// try the next one.
-				} catch (IllegalAccessException e) {
+					return loader.getClass().getDeclaredConstructor().newInstance();
+				} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+						| InvocationTargetException | NoSuchMethodException | SecurityException e) {
 					// try the next one.
 				}
 			}
