@@ -36,88 +36,87 @@ public class CustomCollectionsTest {
 		
 		for (long i = 1; i < 1000; i++) {
 			Long j = map.put(idOffset + i, i);
-			assertEquals(true, j == null);
-			assertEquals(map.size(), i);
+			assertNull(j);
+			assertEquals(i, map.size());
 		}
 
 		for (long i = 1; i < 1000; i++) {
 			boolean b = map.containsKey(idOffset + i);
-			assertEquals(b, true);
+			assertTrue(b);
 		}
 
 
 		for (long i = 1; i < 1000; i++) {
-			assertEquals(map.get(idOffset + i), new Long(i));
+			assertEquals(Long.valueOf(i), map.get(idOffset + i));
 		}
 
 		// random read access 
 		for (long i = 1; i < 1000; i++) {
 			Long key = (long) Math.max(1, (Math.random() * 1000));
-			assertEquals(map.get(idOffset + key), key);
+			assertEquals(key, map.get(idOffset + key));
 		}
 
 		for (long i = 1000; i < 2000; i++) {
-			assertEquals(true, map.get(idOffset + i) == null);
+			assertNull(map.get(idOffset + i));
 		}
 		
 		for (long i = 1000; i < 2000; i++) {
 			boolean b = map.containsKey(idOffset + i);
-			assertEquals(b, false);
+			assertFalse(b);
 		}
 		for (long i = 1000; i < 1200; i++) {
 			Long j = map.put(idOffset + i, 333L);
-			assertEquals(true, j == null);
-			assertEquals(map.size(), i);
+			assertNull(j);
+			assertEquals(i, map.size());
 		}
 		// random read access 2 
 		for (int i = 1; i < 1000; i++) {
 			Long key = 1000 + (long) (Math.random() * 200);
-			assertEquals(map.get(idOffset + key), new Long(333));
+			assertEquals(Long.valueOf(333), map.get(idOffset + key));
 		}
 
-
 		for (long i = -2000; i < -1000; i++) {
-			assertEquals(true, map.get(idOffset + i) == null);
+			assertNull(map.get(idOffset + i));
 		}
 		for (long i = -2000; i < -1000; i++) {
 			boolean b = map.containsKey(idOffset + i);
-			assertEquals(b, false);
+			assertFalse(b);
 		}
 		long mapSize = map.size();
-		// seq. update existing records 
+		// seq. update existing records
 		for (int i = 1; i < 1000; i++) {
-			long j = map.put(idOffset + i, new Long (i+333));
-			assertEquals(j, i);
-			assertEquals(map.size(), mapSize);
+			long j = map.put(idOffset + i, Long.valueOf(i + 333L));
+			assertEquals(i, j);
+			assertEquals(mapSize, map.size());
 		}
-		// random read access 3, update existing entries 
+		// random read access 3, update existing entries
 		for (int i = 1; i < 1000; i++) {
-			long j = map.put(idOffset + i, new Long (i+555));
-			assertEquals(true, j == i+333 || j == i+555);
-			assertEquals(map.size(), mapSize);
+			long j = map.put(idOffset + i, Long.valueOf(i + 555L));
+			assertTrue(j == i + 333 || j == i + 555);
+			assertEquals(mapSize, map.size());
 		}
 				
-		assertEquals(true, map.get(idOffset + 123456) == null);
+		assertNull(map.get(idOffset + 123456));
 		map.put(idOffset + 123456, (long) 999);
-		assertEquals(map.get(idOffset + 123456), new Long(999));
+		assertEquals(Long.valueOf(999), map.get(idOffset + 123456));
 		map.put(idOffset + 123456, (long) 888);
-		assertEquals(map.get(idOffset + 123456), new Long(888));
+		assertEquals(Long.valueOf(888), map.get(idOffset + 123456));
 
-		assertEquals(true, map.get(idOffset - 123456) == null);
+		assertNull(map.get(idOffset - 123456));
 		map.put(idOffset - 123456, (long) 999);
-		assertEquals(map.get(idOffset - 123456), new Long(999));
+		assertEquals(Long.valueOf(999), map.get(idOffset - 123456));
 		map.put(idOffset - 123456, (long) 888);
-		assertEquals(map.get(idOffset - 123456), new Long(888));
+		assertEquals(Long.valueOf(888), map.get(idOffset - 123456));
 	
 		map.clear();
-		assertEquals(map.size(), 0);
+		assertEquals(0, map.size());
 		for (long i = 0; i < 100; i++){
-			map.put(idOffset + i, new Long(i));
+			map.put(idOffset + i, i);
 		}
 		Long old = map.remove(idOffset + 5);
-		assertEquals(old, new Long(5));
-		assertEquals(map.size(), 99);
-		assertEquals(true, map.get(idOffset + 5) == null);
+		assertEquals(Long.valueOf(5), old);
+		assertEquals(99, map.size());
+		assertNull(map.get(idOffset + 5));
 	}
 	
 }
