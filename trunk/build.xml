@@ -414,7 +414,7 @@
 		<copy todir="${dist}/examples">
 			<fileset dir="resources">
 				<include name="roadNameConfig.txt"/>
-				<include name="roadNameConfig.txt"/>
+				<include name="sample.cfg"/>
 				<include name="RoundaboutFlareRules.config"/>
 				<include name="known-hgt.txt"/>
 				<include name="installer/**"/>
