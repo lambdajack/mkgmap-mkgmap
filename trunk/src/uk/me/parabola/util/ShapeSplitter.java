@@ -818,7 +818,7 @@ public class ShapeSplitter {
 		processLineList(newMore, moreList);
 		if (detectedProblems) {
 			logDiagInfo(coords, lessList, moreList);
-			log.error(isLongitude ? "Vertical" : "Horizontal", "split", dividingLine, "failed on shape at", coords.get(0).toOSMURL(),
+			log.warn(isLongitude ? "Vertical" : "Horizontal", "split", dividingLine, "failed on shape at", coords.get(0).toOSMURL(),
 					  "Possibly a self-intersecting polygon");
 		}
 	} // split
