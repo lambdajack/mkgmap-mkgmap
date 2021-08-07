@@ -69,7 +69,7 @@ public class MapMaker implements MapProcessor {
 			}
 			return makeMap(args, src, "");
 		} catch (FormatException e) {
-			Logger.defaultLogger.error("Bad file format: " + filename);
+			Logger.defaultLogger.error("Bad file format: " + filename, e);
 			return filename;
 		} catch (FileNotFoundException e) {
 			Logger.defaultLogger.error("Could not open file: " + filename);
