@@ -77,6 +77,11 @@ public class NOD1Part {
 	private static final int MAX_TABB_UNSAFE = 0x100;
 	private static final int MAX_TABB = MAX_TABB_UNSAFE - 0x2;
 
+	// Last entry in table C should not start at 0x8000 or higher, actual limit is unknown
+	private static final int MAX_TABC_OFFSET = 0x8000 - 1;
+	private int lastTabCOffset;
+	private int tabCSize;
+	
 	// Nodes size is max 0x2000 to cope with signed 14 bit node offsets
 	private static final int MAX_NODES_SIZE = 0x2000;
 	private int nodesSize;
@@ -230,6 +235,8 @@ public class NOD1Part {
 		}
 		
 		for (RouteRestriction rr: node.getRestrictions()){
+			lastTabCOffset = tabCSize;
+			tabCSize += rr.getSize();
 			List<RouteArc> arcs = rr.getArcs();
 			if (arcs.size() >= 3){
 				for (int i = 0; i < arcs.size(); i++){
@@ -309,11 +316,12 @@ public class NOD1Part {
 	}
 
 	private boolean satisfiesConstraints() {
-		log.debug("constraints:", bboxActual, tabA.size(), destNodes.size(), nodesSize);
+		log.debug("constraints:", bboxActual, tabA.size(), destNodes.size(), nodesSize, lastTabCOffset);
 		return bboxActual.getMaxDimension() < MAX_SIZE
 			&& tabA.size() < MAX_TABA
 			&& destNodes.size() < MAX_TABB
-			&& nodesSize < MAX_NODES_SIZE;
+			&& nodesSize < MAX_NODES_SIZE
+			&& lastTabCOffset <= MAX_TABC_OFFSET;
 	}
 
 	/**
