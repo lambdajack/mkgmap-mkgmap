@@ -234,7 +234,7 @@ public class POIGeneratorHook implements OsmReadingHooks {
 		for (int order = 0; order < poiPlacementTags.size(); order++) {
 			Entry<String,String> poiTagDef = poiPlacementTags.get(order);
 			String tagValue = elem.getTag(poiTagDef.getKey());
-			if (tagValue != null && poiTagDef.getValue() == null || poiTagDef.getValue().equals(tagValue)) {
+			if (tagValue != null && (poiTagDef.getValue() == null || poiTagDef.getValue().equals(tagValue))) {
 				return order;
 			}
 		}
