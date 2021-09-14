@@ -19,11 +19,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.time.Instant;
@@ -613,7 +613,7 @@ public class Main implements ArgumentProcessor {
 		for (Combiner c : combiners)
 			c.init(args);
 
-		filenames.removeIf(f -> f == null || f.isCancelled());
+		filenames.removeIf(f -> f == null || f.getFilename() == null || f.isCancelled());
 
 		final Map<String, Integer> nameToHex = new HashMap<>();
 		for (FilenameTask f : filenames) {
