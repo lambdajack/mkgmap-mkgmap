@@ -135,10 +135,9 @@ public class TdbBuilder implements Combiner {
 		for (String m : msgs)
 			tdb.addCopyright(m);
 
-		MapReader mapReader = null;
 		String filename = finfo.getFilename();
 		try{
-			mapReader = new MapReader(filename);
+			MapReader mapReader = finfo.getMapReader();
 
 			msgs = mapReader.getCopyrights();
 			boolean found = false;
@@ -157,8 +156,6 @@ public class TdbBuilder implements Combiner {
 
 		} catch (FileNotFoundException e) {
 			throw new ExitException("Could not open " + filename + " when creating tdb file");
-		} finally {
-			Utils.closeFile(mapReader);
 		}
 
 

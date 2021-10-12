@@ -27,7 +27,7 @@ public class CommandArgs {
 		for (String listOpt : Arrays.asList("mdr7-excl", "mdr7-del", "poi-excl-index", "location-autofill",
 				"overview-levels", "levels", "name-tag-list", "polygon-size-limits", "dem", "dem-dists", "drive-on",
 				"dead-ends", "add-pois-to-lines", "coastlinefile", "generate-sea", "nearby-poi-rules",
-				"line-types-with-direction")) {
+				"line-types-with-direction", "gmapi-minimal")) {
 			stringToList(get(listOpt,  null), listOpt);
 		}
 	}

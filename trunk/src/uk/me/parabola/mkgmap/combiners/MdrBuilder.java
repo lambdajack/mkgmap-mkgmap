@@ -155,9 +155,8 @@ public class MdrBuilder implements Combiner {
 		mdrFile.addMap(info.getHexname(), info.getCodePage());
 
 		String filename = info.getFilename();
-		MapReader mr = null;
 		try {
-			mr = new MapReader(filename);
+			MapReader mr = info.getMapReader();
 
 			AreaMaps maps = new AreaMaps();
 
@@ -172,8 +171,6 @@ public class MdrBuilder implements Combiner {
 			addZips(mr);
 		} catch (FileNotFoundException e) {
 			throw new ExitException("Could not open " + filename + " when creating mdr file");
-		} finally {
-			Utils.closeFile(mr);
 		}
 	}
 
