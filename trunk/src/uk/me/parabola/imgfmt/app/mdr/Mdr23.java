@@ -12,6 +12,7 @@
  */
 package uk.me.parabola.imgfmt.app.mdr;
 
+import java.text.Collator;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +38,8 @@ public class Mdr23 extends MdrSection {
 	 */
 	public void sortRegions(List<Mdr13Record> list) {
 		Sort sort = getConfig().getSort();
+		Collator collator = sort.getCollator();
+		collator.setStrength(Collator.SECONDARY);
 		List<SortKey<Mdr13Record>> keys = MdrUtils.sortList(sort, list);
 
 		String lastName = null;
@@ -47,7 +50,7 @@ public class Mdr23 extends MdrSection {
 
 			// Only add if different name or map
 			String name = reg.getName();
-			if (reg.getMapIndex() != lastMapIndex || !name.equals(lastName)) {
+			if (lastName == null || reg.getMapIndex() != lastMapIndex || collator.compare(name, lastName) != 0) {
 				record++;
 				reg.getMdr28().setMdr23(record);
 				regions.add(reg);

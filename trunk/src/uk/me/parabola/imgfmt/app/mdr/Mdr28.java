@@ -12,6 +12,7 @@
  */
 package uk.me.parabola.imgfmt.app.mdr;
 
+import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -35,6 +36,8 @@ public class Mdr28 extends MdrSection implements HasHeaderFlags {
 
 	public void buildFromRegions(List<Mdr13Record> regions) {
 		Sort sort = getConfig().getSort();
+		Collator collator = sort.getCollator();
+		collator.setStrength(Collator.SECONDARY);
 		List<SortKey<Mdr13Record>> keys = MdrUtils.sortList(sort, regions);
 
 		int record = 0;
@@ -44,7 +47,7 @@ public class Mdr28 extends MdrSection implements HasHeaderFlags {
 			Mdr13Record region = key.getObject();
 
 			String name = region.getName();
-			if (!name.equals(lastName)) {
+			if (lastName == null || collator.compare(name, lastName) != 0) {
 				record++;
 				mdr28 = new Mdr28Record();
 				mdr28.setIndex(record);
