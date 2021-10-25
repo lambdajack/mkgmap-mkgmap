@@ -12,7 +12,6 @@
  */
 package uk.me.parabola.imgfmt.app.mdr;
 
-import java.text.Collator;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,8 +37,6 @@ public class Mdr25 extends MdrSection {
 	 */
 	public void sortCities(List<Mdr5Record> list) {
 		Sort sort = getConfig().getSort();
-		Collator collator = sort.getCollator();
-		collator.setStrength(Collator.SECONDARY);
 
 		List<SortKey<Mdr5Record>> keys = new ArrayList<>();
 		for (Mdr5Record c : list) {
@@ -54,8 +51,9 @@ public class Mdr25 extends MdrSection {
 		int record = 0;
 		for (SortKey<Mdr5Record> key : keys) {
 			Mdr5Record city = key.getObject();
+
 			if (lastCity == null ||
-				collator.compare(city.getName(), lastCity.getName()) != 0 || !city.getRegionName().equals(lastCity.getRegionName()))
+					(!city.getName().equals(lastCity.getName()) || !(city.getRegionName().equals(lastCity.getRegionName()))))
 			{
 				record++;
 

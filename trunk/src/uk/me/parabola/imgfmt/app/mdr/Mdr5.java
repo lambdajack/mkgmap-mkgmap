@@ -39,8 +39,6 @@ public class Mdr5 extends MdrMapSection {
 	private int maxCityIndex;
 	private int localCitySize;
 	private int mdr20PointerSize = 0; // bytes for mdr20 pointer, or 0 if no mdr20
-	private Sort sort;
-	private Collator collator;
 
 	// We need a common area to save the mdr20 values, since there can be multiple
 	// city records with the same global city index
@@ -48,9 +46,6 @@ public class Mdr5 extends MdrMapSection {
 
 	public Mdr5(MdrConfig config) {
 		setConfig(config);
-		sort = config.getSort();
-		collator = sort.getCollator();
-		collator.setStrength(Collator.SECONDARY);
 	}
 
 	public void addCity(Mdr5Record record) {
@@ -67,14 +62,15 @@ public class Mdr5 extends MdrMapSection {
 	public void preWriteImpl() {
 		allCities.trimToSize();
 		localCitySize = Utils.numberToPointerSize(maxCityIndex + 1);
-		genCitiesAndMdr20s();
+		Sort sort = getConfig().getSort();
+		genCitiesAndMdr20s(sort);
 		// calculate positions for the different road indexes
-		calcMdr20SortPos();
-		calcMdr21SortPos();
-		calcMdr22SortPos();
+		calcMdr20SortPos(sort);
+		calcMdr21SortPos(sort);
+		calcMdr22SortPos(sort);
 	}
 
-	private void genCitiesAndMdr20s() {
+	private void genCitiesAndMdr20s(Sort sort) {
 		List<SortKey<Mdr5Record>> sortKeys = new ArrayList<>(allCities.size());
 		Map<String, byte[]> regionCache = new HashMap<>();
 		Map<String, byte[]> countryCache = new HashMap<>();
@@ -94,6 +90,7 @@ public class Mdr5 extends MdrMapSection {
 		sortKeys.sort(null);
 
 		cities = new ArrayList<>(sortKeys.size());
+		Collator collator = sort.getCollator();
 
 		int count = 0;
 		Mdr5Record lastCity = null;
@@ -125,7 +122,7 @@ public class Mdr5 extends MdrMapSection {
 	/**
 	 * Calculate a position when sorting by name, region, and country- This is used for MDR20. 
 	 */
-	private void calcMdr20SortPos() {
+	private void calcMdr20SortPos(Sort sort) {
 		List<SortKey<Mdr5Record>> sortKeys = new ArrayList<>(allCities.size());
 		Map<String, byte[]> regionCache = new HashMap<>();
 		Map<String, byte[]> countryCache = new HashMap<>();
@@ -158,7 +155,7 @@ public class Mdr5 extends MdrMapSection {
 	/**
 	 * Calculate a position when sorting by region- This is used for MDR21. 
 	 */
-	private void calcMdr21SortPos() {
+	private void calcMdr21SortPos(Sort sort) {
 		List<SortKey<Mdr5Record>> sortKeys = new ArrayList<>(allCities.size());
 		for (Mdr5Record m : allCities) {
 			if (m.getRegionName() == null) 
@@ -184,7 +181,7 @@ public class Mdr5 extends MdrMapSection {
 	 * Calculate a position when sorting by country- This is used for MDR22. 
 	 */
 
-	private void calcMdr22SortPos() {
+	private void calcMdr22SortPos(Sort sort) {
 		List<SortKey<Mdr5Record>> sortKeys = new ArrayList<>(allCities.size());
 		for (Mdr5Record m : allCities) {
 			if (m.getCountryName() == null)
@@ -211,6 +208,7 @@ public class Mdr5 extends MdrMapSection {
 		Mdr5Record lastCity = null;
 		boolean hasString = hasFlag(0x8);
 		boolean hasRegion = hasFlag(0x4);
+		Collator collator = getConfig().getSort().getCollator();
 		for (Mdr5Record city : cities) {
 			int gci = city.getGlobalCityIndex();
 			addIndexPointer(city.getMapIndex(), gci);
@@ -286,7 +284,7 @@ public class Mdr5 extends MdrMapSection {
 		int val = (localCitySize - 1);
 		// String offset is only included for a mapsource index.
 		if (isForDevice() ) {
-			if (!sort.isMulti())
+			if (!getConfig().getSort().isMulti())
 				val |= 0x40; // mdr17 sub section present (not with unicode)
 		} else {
 			val |= 0x04;  // region

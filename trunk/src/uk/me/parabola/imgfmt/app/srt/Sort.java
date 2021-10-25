@@ -72,8 +72,6 @@ public class Sort {
 	private int headerLen = SRTHeader.HEADER_LEN; 
 	private int header3Len = -1;
 
-	private int maxPrimary = 0;  // max seen while loading resource/sort/cp*.txt file. == 10690 for cp65001.txt on 18Oct2021
-
 	public Sort() {
 		pages[0] = new Page();
 	}
@@ -82,11 +80,9 @@ public class Sort {
 		ensurePage(ch >>> 8);
 		if (getPrimary(ch) != 0)
 			throw new ExitException(String.format("Repeated primary index 0x%x", ch & 0xff));
-		if (primary > maxPrimary)
-			maxPrimary = primary;
-		setPrimary(ch, primary);
+		setPrimary (ch, primary);
 		setSecondary(ch, secondary);
-		setTertiary(ch, tertiary);
+		setTertiary( ch, tertiary);
 
 		setFlags(ch, flags);
 		int numExp = (flags >> 4) & 0xf;
@@ -397,13 +393,6 @@ public class Sort {
 		return fillKey(Collator.TERTIARY, bVal, key, start);
 	}
 
-	private static int writeSort(int strength, int pos, byte[] outKey, int start) {
-		if (strength == Collator.PRIMARY)
-			outKey[start++] = (byte) ((pos >> 8) & 0xff); // for 2 byte charsets
-		outKey[start++] = (byte) (pos & 0xff);
-		return start;
-	}
-
 	/**
 	 * Fill in the output key for a given strength.
 	 *
@@ -416,25 +405,22 @@ public class Sort {
 		int index = start;
 		for (char c : input) {
 
-			if (!hasPage(c >>> 8)) {
-				if (isMulti() && type == Collator.PRIMARY) // attempt to avoid conflict with defined sorts. Be consistent with SrtCollator
-					index = writeSort(type, c + maxPrimary, outKey, index);
+			if (!hasPage(c >>> 8))
 				continue;
-			}
 
 			int exp = (getFlags(c) >> 4) & 0xf;
 			if (exp == 0) {
-				int startIndex = index;
 				index = writePos(type, c, outKey, index);
-				if (index == startIndex && isMulti() && type == Collator.PRIMARY) { // nothing got written but is needed
-					index = writeSort(type, c + maxPrimary, outKey, index);
-				}
 			} else {
 				// now have to redirect to a list of input chars, get the list via the primary value always.
 				int idx = getPrimary(c);
 				for (int i = idx - 1; i < idx + exp; i++) {
 					int pos = expansions.get(i).getPosition(type);
-					index = writeSort(type, pos, outKey, index);
+					if (pos != 0) {
+						if (type == Collator.PRIMARY)
+							outKey[index++] = (byte) ((pos >>> 8) & 0xff);
+						outKey[index++] = (byte) pos;
+					}
 				}
 			}
 		}
@@ -695,8 +681,11 @@ public class Sort {
 		 */
 		public int writePos(int strength, int ch, byte[] outKey, int start) {
 			int pos = getPos(strength, ch);
-			if (pos != 0)
-				start = writeSort(strength, pos, outKey, start);
+			if (pos != 0) {
+				if (strength == Collator.PRIMARY)
+					outKey[start++] = (byte) ((pos >> 8) & 0xff); // for 2 byte charsets
+				outKey[start++] = (byte) (pos & 0xff);
+			}
 			return start;
 		}
 	}
@@ -862,10 +851,8 @@ public class Sort {
 						}
 
 						// Get the first non-ignorable at this level
-						int c = chars[pos++];
+						int c = chars[pos++ & 0xff];
 						if (!hasPage(c >>> 8)) {
-							if (isMulti() && type == Collator.PRIMARY) // order by char itself if no sortpos
-								return (c + maxPrimary) & 0xffff; // attempt to avoid conflict with defined sorts. Be consistent with fillKey
 							next = 0;
 							continue;
 						}
@@ -882,8 +869,6 @@ public class Sort {
 								expPos = 0;
 						} else {
 							next = getPos(type, c);
-							if (next == 0 && isMulti() && type == Collator.PRIMARY) // like earlier
-								return (c + maxPrimary) & 0xffff;
 						}
 
 					} while (next == 0);

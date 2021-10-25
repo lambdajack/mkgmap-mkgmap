@@ -12,7 +12,6 @@
  */
 package uk.me.parabola.imgfmt.app.mdr;
 
-import java.text.Collator;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,8 +36,6 @@ public class Mdr29 extends MdrSection implements HasHeaderFlags {
 
 	public void buildFromCountries(List<Mdr14Record> countries) {
 		Sort sort = getConfig().getSort();
-		Collator collator = sort.getCollator();
-		collator.setStrength(Collator.SECONDARY);
 		List<SortKey<Mdr14Record>> keys = MdrUtils.sortList(sort, countries);
 
 		// Sorted by name, for every new name we allocate a new 29 record and set the same one in every
@@ -49,7 +46,7 @@ public class Mdr29 extends MdrSection implements HasHeaderFlags {
 			Mdr14Record country = key.getObject();
 
 			String name = country.getName();
-			if (lastName == null || collator.compare(name, lastName) != 0) {
+			if (!name.equals(lastName)) {
 				mdr29 = new Mdr29Record();
 				mdr29.setName(name);
 				mdr29.setStrOffset(country.getStrOff());
@@ -86,8 +83,6 @@ public class Mdr29 extends MdrSection implements HasHeaderFlags {
 		PointerSizes sizes = getSizes();
 		int size24 = sizes.getSize(24);
 		int size22 = sizes.getSize(22);
-		assert sizes.getNumberOfItems(5) >= sizes.getNumberOfItems(25)
-			: "5:" + sizes.getNumberOfItems(5) + " 25:" + sizes.getNumberOfItems(25);
 		int size25 = sizes.getSize(5);  // NB appears to be size of 5 (cities), not 25 (cities with country).
 		int size26 = has26? sizes.getSize(26): 0;
 		int size17 = Utils.numberToPointerSize(max17);
