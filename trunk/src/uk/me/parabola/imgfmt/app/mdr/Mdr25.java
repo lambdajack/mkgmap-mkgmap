@@ -52,9 +52,9 @@ public class Mdr25 extends MdrSection {
 		for (SortKey<Mdr5Record> key : keys) {
 			Mdr5Record city = key.getObject();
 
-			if (lastCity == null ||
-					(!city.getName().equals(lastCity.getName()) || !(city.getRegionName().equals(lastCity.getRegionName()))))
-			{
+			if (lastCity == null || !city.getName().equals(lastCity.getName())
+					|| !city.getRegionName().equals(lastCity.getRegionName())
+					|| !city.getCountryName().equals(lastCity.getCountryName())) {
 				record++;
 
 				// Record in the 29 index if there is one for this record
