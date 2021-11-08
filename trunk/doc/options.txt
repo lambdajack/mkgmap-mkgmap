@@ -74,8 +74,8 @@ The directory name is --family-name with extension .gmap.
 
 ;--gmapi-minimal[=<include-pattern>]
 : 	Special option for map providers to reduce disk writes when updating. Works like
---gmapi but does not write Product data for input files which are provided as
-*.img. It is assumed that the content of those files wasn't changed and thus
+--gmapi but does not write Product data for input files which are provided
+as *.img. It is assumed that the content of those files wasn't changed and thus
 doesn't need a rewrite. The optional include-pattern is a regular expression
 which can be used to specify *.img files for which a write should be forced. The
 pattern is used on the full path to the input file. The global index files and
