@@ -18,6 +18,7 @@ package uk.me.parabola.imgfmt.app.labelenc;
 
 import java.util.Locale;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 
 /**
  * Encoder for labels in utf-8.
@@ -35,7 +36,8 @@ public class Utf8Encoder extends BaseEncoder implements CharacterEncoder {
 			uctext = text.toUpperCase(Locale.ENGLISH);
 		else
 			uctext = text;
-
+		uctext = Normalizer.normalize(uctext, Normalizer.Form.NFC);
+		
 		EncodedText et;
 		byte[] buf = uctext.getBytes(StandardCharsets.UTF_8);
 		byte[] res = new byte[buf.length + 1];

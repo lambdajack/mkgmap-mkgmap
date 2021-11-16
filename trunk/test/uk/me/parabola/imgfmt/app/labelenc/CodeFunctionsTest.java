@@ -58,17 +58,18 @@ public class CodeFunctionsTest {
 		CodeFunctions functions = CodeFunctions.createEncoderForLBL(6, 0);
 
 		CharacterEncoder encoder = functions.getEncoder();
-		Transliterator transliterator = new TableTransliterator("ascii");
-		EncodedText text = encoder.encodeText(transliterator.transliterate("Körnerstraße, Velkomezeříčská, Skólavörðustigur"));
+		// Twülpstedt contains u + "COMBINING DIAERESIS" (0x75 + 0x308)
+		EncodedText text = encoder.encodeText("Körnerstraße, Twülpstedt, Velkomezeříčská, Skólavörðustigur");
 
 		CharacterDecoder decoder = functions.getDecoder();
 		byte[] ctext = text.getCtext();
-		for (int i = 0; i < text.getLength(); i++) {
-			decoder.addByte(ctext[i]);
+		boolean finished = false;
+		int i = 0;
+		while (!finished) {
+			finished = decoder.addByte(ctext[i++]);
 		}
-		decoder.addByte(0xff);
 		String result = decoder.getText().getText();
-		assertEquals("transliterated text", "KORNERSTRASSE, VELKOMEZERICSKA, SKOLAVORDUSTIGUR", result);
+		assertEquals("transliterated text", "KORNERSTRASSE, TWULPSTEDT, VELKOMEZERICSKA, SKOLAVORDUSTIGUR", result);
 	}
 
 	/**
@@ -80,17 +81,20 @@ public class CodeFunctionsTest {
 		CodeFunctions functions = CodeFunctions.createEncoderForLBL("latin1");
 
 		CharacterEncoder encoder = functions.getEncoder();
-		Transliterator transliterator = new TableTransliterator("latin1");
-		EncodedText text = encoder.encodeText(transliterator.transliterate("Körnerstraße, Velkomezeříčská, Skólavörðustigur"));
+		// Twülpstedt contains u + "COMBINING DIAERESIS" (0x75 + 0x308)
+		EncodedText text = encoder.encodeText("Körnerstraße, Twülpstedt, Velkomezeříčská, Skólavörðustigur");
 
 		CharacterDecoder decoder = functions.getDecoder();
 		byte[] ctext = text.getCtext();
-		for (int i = 0; i < text.getLength(); i++) {
-			decoder.addByte(ctext[i]);
+		boolean finished = false;
+		int i = 0;
+		while (!finished) {
+			finished = decoder.addByte(ctext[i++]);
 		}
 
 		String result = decoder.getText().getText();
-		assertEquals("transliterated text", "Körnerstraße, Velkomezerícská, Skólavörðustigur", result);
+		// Twülpstedt now contains LATIN SMALL LETTER U WITH DIAERESIS (u+00fc)
+		assertEquals("transliterated text", "Körnerstraße, Twülpstedt, Velkomezerícská, Skólavörðustigur", result);
 	}
 
 	/**
@@ -122,4 +126,6 @@ public class CodeFunctionsTest {
 			assertEquals("character", i, text.getCtext()[i-1] & 0xff);
 		}
 	}
+	
+	
 }

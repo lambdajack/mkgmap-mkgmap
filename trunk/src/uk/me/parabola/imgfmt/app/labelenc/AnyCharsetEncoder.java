@@ -22,6 +22,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
+import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.Locale;
 
@@ -59,6 +60,7 @@ public class AnyCharsetEncoder extends BaseEncoder implements CharacterEncoder {
 			ucText = text.toUpperCase(Locale.ENGLISH);
 		else
 			ucText = text;
+		ucText = Normalizer.normalize(ucText, Normalizer.Form.NFC);
 
 		// Allocate a buffer for the encoded text. This will be large enough in almost all cases,
 		// but the code below allocates more space if necessary.

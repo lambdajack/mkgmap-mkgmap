@@ -16,6 +16,7 @@
  */
 package uk.me.parabola.imgfmt.app.labelenc;
 
+import java.text.Normalizer;
 import java.util.Locale;
 
 /**
@@ -60,8 +61,8 @@ public class Format6Encoder extends BaseEncoder implements CharacterEncoder {
 	public EncodedText encodeText(String text) {
 		if (text == null || text.isEmpty())
 			return NO_TEXT;
-
-		String s = transliterator.transliterate(text).toUpperCase(Locale.ENGLISH);
+		String normalisedText = Normalizer.normalize(text, Normalizer.Form.NFC);
+		String s = transliterator.transliterate(normalisedText).toUpperCase(Locale.ENGLISH);
 
 		// Allocate more than enough space on average for the label.
 		// if you overdo it then it will waste a lot of space , but
