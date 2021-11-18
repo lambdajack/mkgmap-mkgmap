@@ -76,9 +76,9 @@ public class AnyCharsetEncoder extends BaseEncoder implements CharacterEncoder {
 				// There is a character that cannot be represented in the target code page.
 				// Read the character(s), transliterate them, and add them to the output.
 				// We then continue onward with the rest of the string.
-				String s;
+				String s0;
 				if (result.length() == 1) {
-					s = String.valueOf(charBuffer.get());
+					s0 = String.valueOf(charBuffer.get());
 				} else {
 					// Don't know under what circumstances this will be called and may not be the
 					// correct thing to do when it does happen.
@@ -86,17 +86,23 @@ public class AnyCharsetEncoder extends BaseEncoder implements CharacterEncoder {
 					for (int i = 0; i < result.length(); i++)
 						sb.append(charBuffer.get());
 
-					s = sb.toString();
+					s0 = sb.toString();
 				}
 
-				s = transliterator.transliterate(s);
+				String s = transliterator.transliterate(s0);
 
 				// Make sure that there is enough space for the transliterated string
 				while (outBuf.limit() < outBuf.position() + s.length())
 					outBuf = reallocBuf(outBuf);
 
-				for (int i = 0; i < s.length(); i++)
-					outBuf.put((byte) s.charAt(i));
+				if (s.equals(s0)) {
+					// string is still unmappable
+					outBuf.put(encoder.replacement()); //typically '?'
+				} else {
+					for (int i = 0; i < s.length(); i++) {
+						outBuf.put((byte) s.charAt(i));
+					}
+				}
 
 			} else if (result == CoderResult.OVERFLOW) {
 				// Ran out of space in the output
