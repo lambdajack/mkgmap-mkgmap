@@ -424,11 +424,7 @@ public class Sort {
 
 			int exp = (getFlags(c) >> 4) & 0xf;
 			if (exp == 0) {
-				int startIndex = index;
 				index = writePos(type, c, outKey, index);
-				if (index == startIndex && isMulti() && type == Collator.PRIMARY) { // nothing got written but is needed
-					index = writeSort(type, c + maxPrimary, outKey, index);
-				}
 			} else {
 				// now have to redirect to a list of input chars, get the list via the primary value always.
 				int idx = getPrimary(c);
@@ -882,8 +878,6 @@ public class Sort {
 								expPos = 0;
 						} else {
 							next = getPos(type, c);
-							if (next == 0 && isMulti() && type == Collator.PRIMARY) // like earlier
-								return (c + maxPrimary) & 0xffff;
 						}
 
 					} while (next == 0);
