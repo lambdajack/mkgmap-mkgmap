@@ -452,7 +452,7 @@ public class POIGeneratorHook implements OsmReadingHooks {
 								// boundary relations may have a node with role admin_centre, if yes, use the 
 								// location of it
 								String pName = nameFinder.getName(el);
-								if (relName.equals(pName)){
+								if (relName.equals(pName) || pName == null){
 									adminCentre = (Node) el;
 									if (log.isDebugEnabled())
 										log.debug("using admin_centre node as location for POI for rel",r.getId(),relName,"at",((Node) el).getLocation());
@@ -460,12 +460,12 @@ public class POIGeneratorHook implements OsmReadingHooks {
 							}
 						} else if ("label".equals(role)){
 							String label = nameFinder.getName(el);
-							if (relName.equals(label)){
+							if (relName.equals(label) || label == null){
 								labelPOI = (Node) el;
 								log.debug("using label node as location for POI for rel", r.getId(), relName, "at", ((Node) el).getLocation());
 								break;
 							} else {
-								log.warn("rel",r.toBrowseURL(),",node with role label is ignored because it has a different name");
+								log.warn("role label", el.toBrowseURL(), label, "is ignored because it has a different name than" ,r.toBrowseURL(), relName);
 							}
 						}
 					}
