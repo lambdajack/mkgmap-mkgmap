@@ -17,14 +17,12 @@
 package uk.me.parabola.imgfmt.app.labelenc;
 
 import java.text.Normalizer;
+import java.util.Locale;
 
 /**
- * Format according to the '6 bit' .img format.
- * Any letter with a diacritic or accent is replaced with its base letter.
- * Characters from other alphabets are transliterated if resources/chars/ascii/ data exists.
- * If set/forceUpperCase (mkgmap default), the text is upper-cased by the transliterator.
- * NB lower-case is supported but each lower-case letter needs 12 bits, so, with typical OSM data,
- * almost any other code-page will be more compact
+ * Format according to the '6 bit' .img format.  The text is first upper
+ * cased.  Any letter with a diacritic or accent is replaced with its base
+ * letter.
  *
  * For example Körnerstraße would become KORNERSTRASSE,
  * Řípovská would become RIPOVSKA etc.
@@ -37,31 +35,21 @@ import java.text.Normalizer;
  */
 public class Format6Encoder extends BaseEncoder implements CharacterEncoder {
 
-	// Following are swapped in the above John Mechalas document, but this is what works:
-	private static final int LOWERCASE_SHIFT = 0x1b;
-	private static final int SYMBOL_SHIFT    = 0x1c;
+	// This is 0x1b is the source document, but the accompanying code uses
+	// the value 0x1c, which seems to work.
+	private static final int SYMBOL_SHIFT = 0x1c;
 
 	public static final String LETTERS =
 		" ABCDEFGHIJKLMNO" +	// 0x00-0x0F
-		"PQRSTUVWXYZxx\u001d\u001e\u001f" +	// 0x10-0x1F  xx are above SHIFTs. prefix/suffix indicators
-		"0123456789\u0001\u0002\u0003\u0004\u0005\u0006";	// 0x20-0x2F  digits + shields
+		"PQRSTUVWXYZxx   " +	// 0x10-0x1F
+		"0123456789\u0001\u0002\u0003\u0004\u0005\u0006";	// 0x20-0x2F
 
 	public static final String SYMBOLS =
 		"@!\"#$%&'()*+,-./" +	// 0x00-0x0F
-		"          :;<=>?" +	// 0x10-0x1F
-		"°          [\\]^_";	// 0x20-0x2F
-	//   ^ looks like degree (\u00b0) on MapSource/eTrex. Won't happen as transliterated to "deg"
-	//   0123456789abcdef
-	public static final String LOWERCASE =
-		"`abcdefghijklmno" +	// 0x00-0x0F  back-tick
-		"pqrstuvwxyz{|}~ " +	// 0x10-0x1F
-		"           \u001b\u001c   ";     // 0x20-0x2F  more prefix/suffix indicators
+		"xxxxxxxxxx:;<=>?" +	// 0x10-0x1F
+		"xxxxxxxxxxx[\\]^_";	// 0x20-0x2F
 
-	private final Transliterator transliterator;
-
-	public Format6Encoder() {
-		transliterator = new TableTransliterator("ascii");
-	}
+	private final Transliterator transliterator = new TableTransliterator("ascii");
 
 	/**
 	 * Encode the text into the 6 bit format.  See the class level notes.
@@ -74,7 +62,7 @@ public class Format6Encoder extends BaseEncoder implements CharacterEncoder {
 		if (text == null || text.isEmpty())
 			return NO_TEXT;
 		String normalisedText = Normalizer.normalize(text, Normalizer.Form.NFC);
-		String s = transliterator.transliterate(normalisedText);  // it does the upper if forceUpper
+		String s = transliterator.transliterate(normalisedText).toUpperCase(Locale.ENGLISH);
 
 		// Allocate more than enough space on average for the label.
 		// if you overdo it then it will waste a lot of space , but
@@ -90,22 +78,16 @@ public class Format6Encoder extends BaseEncoder implements CharacterEncoder {
 				put6(buf, off++, c - 'A' + 1);
 			} else if (c >= '0' && c <= '9') {
 				put6(buf, off++, c - '0' + 0x20);
-			} else if (c == 0x1b || c == 0x1c) {  // shiftedLowerCase() does same thing
-				put6(buf, off++, LOWERCASE_SHIFT);
+			} else if (c == 0x1b || c == 0x1c) {
+				put6(buf, off++, 0x1b);
 				put6(buf, off++, c + 0x10);
 			} else if (c >= 0x1d && c <= 0x1f) {
 				put6(buf, off++, c);
 			} else if (c >= 1 && c <= 6) {
 				// Highway shields
 				put6(buf, off++, 0x29 + c);
-			} else if (c >= 'a' && c <= 'z') {
-				put6(buf, off++, LOWERCASE_SHIFT);
-				put6(buf, off++, c - 'a' + 1);
 			} else {
-				int rememberOff = off;
 				off = shiftedSymbol(buf, off, c);
-				if (off == rememberOff)
-					off = shiftedLowerCase(buf, off, c);
 			}
 		}
 
@@ -132,16 +114,6 @@ public class Format6Encoder extends BaseEncoder implements CharacterEncoder {
 		int ind = SYMBOLS.indexOf(c);
 		if (ind >= 0) {
 			put6(buf, off++, SYMBOL_SHIFT);
-			put6(buf, off++, ind);
-		}
-		return off;
-	}
-
-	private int shiftedLowerCase(byte[] buf, int startOffset, char c) {
-		int off = startOffset;
-		int ind = LOWERCASE.indexOf(c);
-		if (ind >= 0) {
-			put6(buf, off++, LOWERCASE_SHIFT);
 			put6(buf, off++, ind);
 		}
 		return off;
@@ -176,11 +148,5 @@ public class Format6Encoder extends BaseEncoder implements CharacterEncoder {
 		}
 
 		return buf;
-	}
-
-	@Override
-	public void setUpperCase(boolean upperCase) {
-		super.setUpperCase(upperCase);
-		transliterator.forceUppercase(upperCase);
 	}
 }

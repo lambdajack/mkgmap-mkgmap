@@ -28,7 +28,6 @@ public class CodeFunctionsTest {
 		assertEquals("code page", 0, functions.getCodepage());
 		assertEquals("encoding type", 6, functions.getEncodingType());
 		CharacterEncoder enc = functions.getEncoder();
-		((BaseEncoder) enc).setUpperCase(true);
 
 		EncodedText etext = enc.encodeText("hello world");
 		byte[] ctext = etext.getCtext();
@@ -59,13 +58,8 @@ public class CodeFunctionsTest {
 		CodeFunctions functions = CodeFunctions.createEncoderForLBL(6, 0);
 
 		CharacterEncoder encoder = functions.getEncoder();
-		((BaseEncoder) encoder).setUpperCase(true);
-
 		// Twülpstedt contains u + "COMBINING DIAERESIS" (0x75 + 0x308)
-		String tstStr = "Körnerstraße, Twülpstedt, Velkomezeříčská, Skólavörðustigur";
-		//              "12345678901234567890123456789012345678901234567890123456789"
-		assertEquals("tstStr length", 60, tstStr.length()); // check COMBINING DIAERESIS not already combined
-		EncodedText text = encoder.encodeText(tstStr);
+		EncodedText text = encoder.encodeText("Körnerstraße, Twülpstedt, Velkomezeříčská, Skólavörðustigur");
 
 		CharacterDecoder decoder = functions.getDecoder();
 		byte[] ctext = text.getCtext();
@@ -76,7 +70,6 @@ public class CodeFunctionsTest {
 		}
 		String result = decoder.getText().getText();
 		assertEquals("transliterated text", "KORNERSTRASSE, TWULPSTEDT, VELKOMEZERICSKA, SKOLAVORDUSTIGUR", result);
-		assertEquals("result length", 60, result.length()); // ß changed to ss, COMBINING DIAERESIS combined by normalisation
 	}
 
 	/**
@@ -88,11 +81,8 @@ public class CodeFunctionsTest {
 		CodeFunctions functions = CodeFunctions.createEncoderForLBL("latin1");
 
 		CharacterEncoder encoder = functions.getEncoder();
-		((BaseEncoder) encoder).setUpperCase(false);
 		// Twülpstedt contains u + "COMBINING DIAERESIS" (0x75 + 0x308)
-		String tstStr = "Körnerstraße, Twülpstedt, Velkomezeříčská, Skólavörðustigur";
-		assertEquals("tstStr length", 60, tstStr.length()); // check COMBINING DIAERESIS not already combined
-		EncodedText text = encoder.encodeText(tstStr);
+		EncodedText text = encoder.encodeText("Körnerstraße, Twülpstedt, Velkomezeříčská, Skólavörðustigur");
 
 		CharacterDecoder decoder = functions.getDecoder();
 		byte[] ctext = text.getCtext();
@@ -105,7 +95,6 @@ public class CodeFunctionsTest {
 		String result = decoder.getText().getText();
 		// Twülpstedt now contains LATIN SMALL LETTER U WITH DIAERESIS (u+00fc)
 		assertEquals("transliterated text", "Körnerstraße, Twülpstedt, Velkomezerícská, Skólavörðustigur", result);
-		assertEquals("result length", 59, result.length()); // COMBINING DIAERESIS combined by normalisation
 	}
 
 	/**
@@ -123,7 +112,6 @@ public class CodeFunctionsTest {
 		}
 
 		CharacterEncoder encoder = functions.getEncoder();
-		((BaseEncoder) encoder).setUpperCase(false);
 		EncodedText text = encoder.encodeText(sb.toString());
 
 		// This encoder appends a null byte.
