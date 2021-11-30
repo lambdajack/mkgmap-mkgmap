@@ -86,7 +86,7 @@ public class CommandArgs {
 		try {
 			cp = Integer.parseInt(s);
 		} catch (NumberFormatException e) {
-			cp = 0;
+			throw new ExitException("The --code-page parameter must be a number.");
 		}
 
 		return cp;

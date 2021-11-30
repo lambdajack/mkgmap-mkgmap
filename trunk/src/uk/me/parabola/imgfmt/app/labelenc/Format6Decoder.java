@@ -1,7 +1,7 @@
 package uk.me.parabola.imgfmt.app.labelenc;
 
 import java.io.ByteArrayOutputStream;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Convert the 6-bit label format back to a java string.
@@ -15,8 +15,6 @@ public class Format6Decoder implements CharacterDecoder {
 
 	private int store;
 	private int nbits;
-
-	private final Charset charset = Charset.forName("ascii");
 
 	public boolean addByte(int in) {
 		int b = 0xff & in; //wipe out high bits (in case of negative byte)
@@ -51,7 +49,7 @@ public class Format6Decoder implements CharacterDecoder {
 
 	public DecodedText getText() {
 		byte[] ba = out.toByteArray();
-		DecodedText text = new DecodedText(ba, charset);
+		DecodedText text = new DecodedText(ba, StandardCharsets.US_ASCII);
 
 		assert nbits == 0 || nbits == 8;
 		// If there is a byte left inside the decoder then we have to let our
