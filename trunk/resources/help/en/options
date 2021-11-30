@@ -145,10 +145,10 @@ filename
 === Label options ===
 
 --code-page=number
-    Specify which international character set is to be used. Only 8 bit
-    character sets are supported so you have to specify which code page you
-    want to use. It is entirely dependent on the device firmware which code
-    pages are supported.
+    Specify which character set is to be used. The default is --code-page=0
+    which uses a 6-bit encoding of ASCII characters. Mkgmap supports many 8-bit
+    code-pages and Unicode. Other, multi-byte, code-pages might work. It is
+    entirely dependent on the device firmware which code pages they support.
 
 --latin1
     This is equivalent to --code-page=1252.
@@ -158,8 +158,12 @@ filename
     support Unicode maps produced by mkgmap.
 
 --lower-case
-    Allow labels to contain lower case letters. Note that many Garmin devices
-    are not able to display lower case letters at an angle.
+    Allow labels to contain lower case letters. Note that some older Garmin
+    devices are not able to display lower case letters at an angle. Also note
+    that newer devices InitCap text, so, even without this option, text appears
+    as mixed case. Also note that, using the default code-page=0, lower-case
+    letters require 12 bits and the resultant map could be larger than if
+    --latin1 had been used.
 
 === Address search options ===
 
