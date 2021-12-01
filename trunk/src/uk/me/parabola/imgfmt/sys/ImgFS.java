@@ -246,7 +246,7 @@ public class ImgFS implements FileSystem {
 
 		fileBlockManager.setBlockSize(param.getBlockSize());
 		headerBlockManager.setBlockSize(param.getBlockSize());
-		file.position(param.getReservedDirectoryBlocks() * param.getBlockSize());
+		file.position((long)param.getReservedDirectoryBlocks() * param.getBlockSize());
 
 		fileBlockManager.setCurrentBlock(param.getReservedDirectoryBlocks());
 		for (FileNode n : openNodes) {
@@ -291,7 +291,7 @@ public class ImgFS implements FileSystem {
 			int headerBlocks = (requiredSlots * ENTRY_SIZE + blockSize - 1) / blockSize;
 			int totalBlocks = headerBlocks + fileBlocks;
 			int size = totalBlocks * blockSize;
-			log.infof("bs=%d, whole size=%d, hb=%d, fb=%d, blocks=%d\n", blockSize, size,
+			log.infof("bs=%d, whole size=%d, hb=%d, fb=%d, blocks=%d", blockSize, size,
 					headerBlocks, fileBlocks, totalBlocks);
 
 			if (headerBlocks > SLOTS_PER_ENTRY)
@@ -308,7 +308,7 @@ public class ImgFS implements FileSystem {
 			sizeInBlocks = fileBlocks + headerBlocks;
 			bestSize = size;
 		}
-		log.infof("Best block size: %d sizeInBlocks=%d, reserved=%d\n", bestBlockSize, sizeInBlocks, reserved);
+		log.infof("Best block size: %d sizeInBlocks=%d, reserved=%d", bestBlockSize, sizeInBlocks, reserved);
 
 		param.setBlockSize(bestBlockSize);
 		param.setReservedDirectoryBlocks(reserved);
