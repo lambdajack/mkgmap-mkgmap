@@ -80,15 +80,16 @@ public class CommandArgs {
 	}
 
 	public int getCodePage() {
-		int cp;
+		int cp = 0;
 
 		String s = currentOptions.getProperty("code-page");
-		try {
-			cp = Integer.parseInt(s);
-		} catch (NumberFormatException e) {
-			cp = 0;
+		if (s != null) {
+			try {
+				cp = Integer.parseInt(s);
+			} catch (NumberFormatException e) {
+				throw new ExitException("The --code-page parameter must be a number.");
+			}
 		}
-
 		return cp;
 	}
 
