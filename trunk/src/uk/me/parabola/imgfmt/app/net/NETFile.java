@@ -114,7 +114,7 @@ public class NETFile extends ImgFile {
 	 * @return A list of road labels that identify all the different roads
 	 */
 	private List<LabeledRoadDef> deDupRoads() {
-		List<SortKey<LabeledRoadDef>> sortKeys = createSortKeysyNameAndCity();
+		List<SortKey<LabeledRoadDef>> sortKeys = createSortKeysByNameAndCity();
 		sortKeys.sort(null);
 
 		List<LabeledRoadDef> out = new ArrayList<>(sortKeys.size());
@@ -137,7 +137,7 @@ public class NETFile extends ImgFile {
 		return out;
 	}
 
-	private List<SortKey<LabeledRoadDef>> createSortKeysyNameAndCity() {
+	private List<SortKey<LabeledRoadDef>> createSortKeysByNameAndCity() {
 		List<SortKey<LabeledRoadDef>> sortKeys = new ArrayList<>(roads.size());
 
 		for (RoadDef rd : roads) {
