@@ -21,6 +21,7 @@ import uk.me.parabola.imgfmt.app.srt.SortKey;
 
 /**
  * Cities sorted by region name.
+ * TODO: dedup, garmin maps have fewer records in MDR 27 than in MDR 5
  *
  * @author Steve Ratcliffe
  */
