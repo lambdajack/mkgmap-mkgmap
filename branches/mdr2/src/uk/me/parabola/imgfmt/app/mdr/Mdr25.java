@@ -12,6 +12,7 @@
  */
 package uk.me.parabola.imgfmt.app.mdr;
 
+import java.text.Collator;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,12 +50,10 @@ public class Mdr25 extends MdrSection {
 		String lastName = null;
 		Mdr5Record lastCity = null;
 		int record = 0;
+		Collator collator = sort.getCollator();
 		for (SortKey<Mdr5Record> key : keys) {
 			Mdr5Record city = key.getObject();
-
-			if (lastCity == null || !city.getName().equals(lastCity.getName())
-					|| !city.getRegionName().equals(lastCity.getRegionName())
-					|| !city.getCountryName().equals(lastCity.getCountryName())) {
+			if (!city.isSameByName(collator, lastCity)) {
 				record++;
 
 				// Record in the 29 index if there is one for this record
