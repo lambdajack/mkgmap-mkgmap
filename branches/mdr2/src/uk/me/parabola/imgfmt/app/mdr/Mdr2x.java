@@ -37,7 +37,6 @@ public abstract class Mdr2x extends MdrMapSection implements HasHeaderFlags {
 	public void writeSectData(ImgFileWriter writer) {
 		Mdr7Record prev = null;
 		Collator collator = getConfig().getSort().getCollator();
-		collator.setStrength(Collator.SECONDARY);
 
 		int size = getSizes().getStreetSizeFlagged();
 		int magic = getExtraValue();

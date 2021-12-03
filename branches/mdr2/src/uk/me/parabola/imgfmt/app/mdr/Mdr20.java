@@ -56,7 +56,6 @@ public class Mdr20 extends Mdr2x {
 		});
 
 		Collator collator = getConfig().getSort().getCollator();
-		collator.setStrength(Collator.SECONDARY);
 		
 		Mdr5Record lastCity = null;
 		Mdr7Record lastStreet = null;

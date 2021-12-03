@@ -52,6 +52,7 @@ public class Mdr7 extends MdrMapSection {
 	private int partialInfoSize;
 	private Set<String> exclNames;
 	private final Sort sort;
+	private Collator collator;
 	private int maxPrefixCount;
 	private int maxSuffixCount;
 	private boolean magicIsValid;
@@ -60,6 +61,7 @@ public class Mdr7 extends MdrMapSection {
 	public Mdr7(MdrConfig config) {
 		setConfig(config);
 		sort = config.getSort();
+		collator = sort.getCollator();
 		splitName = config.isSplitName();
 		exclNames = config.getMdr7Excl();
 		codepage = sort.getCodepage();
@@ -217,8 +219,6 @@ public class Mdr7 extends MdrMapSection {
 		// list is now sorted by partial name only, we have to group by name and map index now
 		String lastPartial = null;
 		List<Mdr7Record> samePartial = new ArrayList<>();
-		Collator collator = sort.getCollator();
-		collator.setStrength(Collator.SECONDARY);
 		for (int i = 0; i < sorted.size(); i++) {
 			Mdr7Record r = sorted.get(i);
 			String partial = r.getPartialName();
@@ -264,7 +264,7 @@ public class Mdr7 extends MdrMapSection {
 		// per map for the same name.
 		for (int i = 0; i < samePartial.size(); i++) {
 			Mdr7Record r = samePartial.get(i);
-			if (last != null && r.getMapIndex() == last.getMapIndex() && r.getName().equals(last.getName())) {
+			if (last != null && r.getMapIndex() == last.getMapIndex() && collator.compare(r.getName(), last.getName()) == 0) {
 				// This has the same name (and map number) as the previous one.
 				// Save the pointer to that one
 				// which is going into the file.
@@ -283,8 +283,6 @@ public class Mdr7 extends MdrMapSection {
 	public void writeSectData(ImgFileWriter writer) {
 		boolean hasStrings = hasFlag(MDR7_HAS_STRING);
 		boolean hasNameOffset = hasFlag(MDR7_HAS_NAME_OFFSET);
-		Collator collator = sort.getCollator();
-		collator.setStrength(Collator.SECONDARY); 
 		Mdr7Record last = null;
 		for (Mdr7Record s : streets) {
 			addIndexPointer(s.getMapIndex(), s.getIndex());
