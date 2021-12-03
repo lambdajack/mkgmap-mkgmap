@@ -53,12 +53,15 @@ public class Mdr19 extends MdrSection implements HasHeaderFlags {
 		String lastName = null;
 		int lastType = -1;
 		int record = 1;
+		int lastKey2 = -1;
 		for (Mdr11Record p : pois) {
 			int index = p.getRecordNumber();
 			String name = p.getName();
-			if (!name.equals(lastName)) {
+			int key2 = p.isCity() ? p.getRegionIndex() : p.getCityIndex();
+			if (!name.equals(lastName) || key2 != lastKey2) {
 				index |= flag;
 				lastName = name;
+				lastKey2 = key2;
 			}
 			writer.putNu(n, index);
 

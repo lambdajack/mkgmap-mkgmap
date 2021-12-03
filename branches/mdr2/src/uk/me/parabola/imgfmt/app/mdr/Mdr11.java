@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
+import uk.me.parabola.imgfmt.app.srt.CombinedSortKey;
 import uk.me.parabola.imgfmt.app.srt.Sort;
 import uk.me.parabola.imgfmt.app.srt.Sort.SrtCollator;
 import uk.me.parabola.imgfmt.app.srt.SortKey;
@@ -26,7 +27,7 @@ import uk.me.parabola.imgfmt.app.trergn.Point;
 
 /**
  * Holds all the POIs, including cities.  Arranged alphabetically by
- * the name.
+ * the name, mapindex and city/region index. 
  *
  * @author Steve Ratcliffe
  */
@@ -52,7 +53,7 @@ public class Mdr11 extends MdrMapSection {
 	}
 
 	/**
-	 * Sort and fill in the mdr10 information.
+	 * Sort by name, mapindex and city/region index and fill in the mdr10 information.
 	 *
 	 * The POI index contains individual references to POI by subdiv and index, so they are not
 	 * de-duplicated in the index in the same way that streets and cities are.
@@ -61,12 +62,13 @@ public class Mdr11 extends MdrMapSection {
 	protected void preWriteImpl() {
 		pois.trimToSize();
 		Sort sort = getConfig().getSort();
-
 		LargeListSorter<Mdr11Record> sorter = new LargeListSorter<Mdr11Record>(sort) {
 			
 			@Override
 			protected SortKey<Mdr11Record> makeKey(Mdr11Record r, Sort sort, Map<String, byte[]> cache) {
-				return sort.createSortKey(r, r.getName(), r.getMapIndex(), cache);
+				SortKey<Mdr11Record> key1 = sort.createSortKey(r, r.getName(), r.getMapIndex(), cache);
+				int key2 = r.isCity() ? r.getRegionIndex() : r.getCityIndex(); 
+				return new CombinedSortKey<>(key1, key2, 0);
 			}
 		};
 		sorter.sort(pois);
@@ -121,8 +123,10 @@ public class Mdr11 extends MdrMapSection {
 			mdr11flags |= (citySize-2) << 2;
 
 		if (isForDevice()) {
-			if (!getConfig().getSort().isMulti())
-				mdr11flags |= 0x80; // mdr17 sub section present (not with unicode)
+			if (!getConfig().getSort().isMulti()) {
+				// mdr17 sub section present (not with unicode)
+				mdr11flags |= 0x80;  // without roads this might be 0x40
+			}
 		}
 		else 
 			mdr11flags |= 0x2;
