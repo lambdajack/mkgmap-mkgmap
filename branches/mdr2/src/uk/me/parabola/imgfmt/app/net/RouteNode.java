@@ -1,0 +1,630 @@
+/*
+ * Copyright (C) 2008
+ * 
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation.
+ * 
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ * Create date: 07-Jul-2008
+ */
+package uk.me.parabola.imgfmt.app.net;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.List;
+import java.util.logging.Level;
+
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import uk.me.parabola.imgfmt.Utils;
+import uk.me.parabola.imgfmt.app.Coord;
+import uk.me.parabola.imgfmt.app.CoordNode;
+import uk.me.parabola.imgfmt.app.ImgFileWriter;
+import uk.me.parabola.log.Logger;
+
+/**
+ * A routing node with its connections to other nodes via roads.
+ *
+ * @author Steve Ratcliffe
+ */
+public class RouteNode implements Comparable<RouteNode> {
+	private static final Logger log = Logger.getLogger(RouteNode.class);
+
+	/*
+	 * 1. instantiate
+	 * 2. setCoord, addArc
+	 *      arcs, coords set
+	 * 3. write
+	 *      node offsets set in all nodes
+	 * 4. writeSecond
+	 */
+
+	// Values for the first flag byte at offset 1
+	private static final int MAX_DEST_CLASS_MASK = 0x07;
+	private static final int F_BOUNDARY = 0x08;
+	private static final int F_RESTRICTIONS = 0x10;
+	private static final int F_LARGE_OFFSETS = 0x20;
+	private static final int F_ARCS = 0x40;
+	// only used internally in mkgmap
+	private static final int F_DISCARDED = 0x100; // node has been discarded
+
+	private int offsetNod1 = -1;
+
+	// arcs from this node
+	private final List<RouteArc> arcs = new ArrayList<>(4);
+	// restrictions at (via) this node
+	private final List<RouteRestriction> restrictions = new ArrayList<>();
+
+	private int flags;
+
+	private final CoordNode coord;
+	private int latOff;
+	private int lonOff;
+
+	// contains the maximum of roads this node is on, written with the flags
+	// field. It is also used for the calculation of the destination class on
+	// arcs.
+	private byte nodeClass;
+	
+	private byte nodeGroup = -1;
+
+	private boolean useCompactDirs = false;  // AngleChecker might change
+
+	public RouteNode(Coord coord) {
+		this.coord = (CoordNode) coord;
+		setBoundary(this.coord.getOnBoundary() || this.coord.getOnCountryBorder());
+	}
+
+	private boolean haveLargeOffsets() {
+		return (flags & F_LARGE_OFFSETS) != 0;
+	}
+
+	protected void setBoundary(boolean b) {
+		if (b)
+			flags |= F_BOUNDARY;
+		else
+			flags &= (~F_BOUNDARY) & 0xff;
+	}
+
+	public boolean isBoundary() {
+		return (flags & F_BOUNDARY) != 0;
+	}
+
+	public void addArc(RouteArc arc) {
+		arcs.add(arc);
+		byte cl = (byte) arc.getRoadDef().getRoadClass();
+		if(log.isDebugEnabled())
+			log.debug("adding arc", arc.getRoadDef(), cl);
+		if (cl > nodeClass)
+			nodeClass = cl;
+		flags |= F_ARCS;
+	}
+
+	public void addRestriction(RouteRestriction restr) {
+		restrictions.add(restr);
+		flags |= F_RESTRICTIONS;
+	}
+
+	/**
+	 * get all direct arcs to the given node and the given way id
+	 * @param otherNode
+	 * @param roadId
+	 * @return list with the direct arcs
+	 */
+	public List<RouteArc> getDirectArcsTo(RouteNode otherNode, long roadId) {
+		List<RouteArc> result = new ArrayList<>();
+		for (RouteArc a : arcs) {
+			if (a.isDirect() && a.getDest() == otherNode && a.getRoadDef().getId() == roadId) {
+				result.add(a);
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * get all direct arcs on a given way id  
+	 * @param roadId
+	 * @return @return list with the direct arcs
+	 */
+	public List<RouteArc> getDirectArcsOnWay(long roadId) {
+		List<RouteArc> result = new ArrayList<>();
+		for (RouteArc a : arcs) {
+			if (a.isDirect() && a.getRoadDef().getId() == roadId) {
+				result.add(a);
+			}
+		}
+		return result;
+	}
+	
+	/**
+	 * Find arc to given node on given road. 
+	 * @param otherNode
+	 * @param roadDef
+	 * @return
+	 */
+	public RouteArc getDirectArcTo(RouteNode otherNode, RoadDef roadDef) {
+		for (RouteArc a : arcs) {
+			if (a.isDirect() && a.getDest() == otherNode && a.getRoadDef() == roadDef) {
+				return a;
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * Provide an upper bound to the size (in bytes) that
+	 * writing this node will take.
+	 *
+	 * Should be called only after arcs and restrictions
+	 * have been set. The size of arcs depends on whether
+	 * or not they are internal to the RoutingCenter.
+	 */
+	public int boundSize() {
+		return 1 // table pointer
+			+ 1 // flags
+			+ 4 // assume large offsets required
+			+ arcsSize()
+			+ restrSize();
+	}
+
+	private int arcsSize() {
+		return arcs.stream().mapToInt(RouteArc::boundSize).sum();
+	}
+
+	private int restrSize() {
+		return 2*restrictions.size();
+	}
+
+	/**
+	 * Writes a nod1 entry.
+	 */
+	public void write(ImgFileWriter writer) {
+//		boolean diagNodeArcs = false;
+//		if (log.isInfoEnabled()) {
+//			String areaName = null;
+//			if (isClose(51.182575, -1.388928, 0.002))
+//				areaName = "A303 lead off/on";
+//			else if (isClose(51.012253, -1.087559, 0.0008))
+//				areaName = "West Meon";
+//			else if (isClose(51.064075, -1.380348, 0.0001))
+//				areaName = "Woodmans";
+//			if (areaName != null) {
+//				diagNodeArcs = true;
+//				log.info("diagNodeArcs", areaName, this, "compactDirs", useCompactDirs, "nArcs", arcs.size(), "cl", nodeClass);
+//			}
+//		}
+		if(log.isDebugEnabled())
+			log.debug("writing node, first pass, nod1", coord.getId());
+		offsetNod1 = writer.position();
+		assert offsetNod1 < 0x1000000 : "node offset doesn't fit in 3 bytes";
+
+		assert (flags & F_DISCARDED) == 0 : "attempt to write discarded node";
+
+		writer.put1u(0);  // will be overwritten later
+		flags |= (nodeClass & MAX_DEST_CLASS_MASK); // max. road class of any outgoing road
+		if (flags == 0) {
+			// avoids possible case that low flag and flags are both 0 when node has no arcs
+			flags |= F_LARGE_OFFSETS; 
+		}
+		writer.put1u(flags);
+
+		if (haveLargeOffsets()) {
+			writer.put4((latOff << 16) | (lonOff & 0xffff));
+		} else {
+			writer.put3s((latOff << 12) | (lonOff & 0xfff));
+		}
+
+		if (!arcs.isEmpty()) {
+			IntArrayList initialHeadings = new IntArrayList(arcs.size()+1);
+			RouteArc lastArc = null;
+			if (useCompactDirs) {
+				for (RouteArc arc: arcs) {
+					if (lastArc == null || lastArc.getIndexA() != arc.getIndexA() || lastArc.isForward() != arc.isForward())
+						initialHeadings.add(RouteArc.compactDirFromDegrees(arc.getInitialHeading()));
+					lastArc = arc;
+				}
+				initialHeadings.add(0); // add dummy 0 so that we don't have to check for existence
+				lastArc = null;
+			}
+			arcs.get(arcs.size() - 1).setLast();
+			int index = 0;
+			for (RouteArc arc: arcs){
+				Byte compactedDir = null;
+				if (useCompactDirs && (lastArc == null || lastArc.getIndexA() != arc.getIndexA() || lastArc.isForward() != arc.isForward())){
+					if (index % 2 == 0)
+						compactedDir = (byte) (initialHeadings.getInt(index) | (initialHeadings.getInt(index+1)<<4));
+					index++;
+				}
+//				if (diagNodeArcs)
+//					log.info(arc, arc.getIndexA(), arc.getInitialHeading(), RouteArc.compactDirFromDegrees(arc.getInitialHeading()), compactedDir, "cl", arc.getRoadDef().getRoadClass());
+				arc.write(writer, lastArc, useCompactDirs, compactedDir);
+				lastArc = arc;
+			}
+		}
+
+		if (!restrictions.isEmpty()) {
+			restrictions.get(restrictions.size() - 1).setLast();
+			for (RouteRestriction restr : restrictions)
+				restr.writeOffset(writer);
+		}
+	}
+
+	/**
+	 * Writes a nod3 /nod4 entry.
+	 */
+	public void writeNod3OrNod4(ImgFileWriter writer) {
+		assert isBoundary() : "trying to write nod3 for non-boundary node";
+
+		Utils.put3sLongitude(writer, coord.getLongitude());
+		writer.put3s(coord.getLatitude()); 
+		writer.put3u(offsetNod1);
+	}
+
+	public void discard() {
+		// mark the node as having been discarded
+		flags |= F_DISCARDED;
+		if (isBoundary()) {
+			log.error("intermal error? boundary node at", coord, "is discarded");
+		}
+	}
+
+	public boolean isDiscarded() {
+		return (flags &  F_DISCARDED) != 0;
+	}
+
+	public int getOffsetNod1() {
+		if((flags & F_DISCARDED) != 0) {
+			// return something so that the program can continue
+			return 0;
+		}
+		assert offsetNod1 != -1: "failed for node " + coord.getId() + " at " + coord;
+		return offsetNod1;
+	}
+
+	public void setOffsets(Coord centralPoint) {
+		if(log.isDebugEnabled())
+			log.debug("center", centralPoint, ", coord", coord);
+		setLatOff(coord.getLatitude() - centralPoint.getLatitude());
+		setLonOff(coord.getLongitude() - centralPoint.getLongitude());
+	}
+
+	public Coord getCoord() {
+		return coord;
+	}
+
+	private void checkOffSize(int off) {
+		if (off > 0x7ff || off < -0x800)
+			// does off fit in signed 12 bit quantity?
+			flags |= F_LARGE_OFFSETS;
+		// does off fit in signed 16 bit quantity?
+		assert (off <= 0x7fff && off >= -0x8000);
+	}
+
+	private void setLatOff(int latOff) {
+		if(log.isDebugEnabled())
+			log.debug("lat off", Integer.toHexString(latOff));
+		this.latOff = latOff;
+		checkOffSize(latOff);
+	}
+
+	private void setLonOff(int lonOff) {
+		if(log.isDebugEnabled())
+			log.debug("long off", Integer.toHexString(lonOff));
+		this.lonOff = lonOff;
+		checkOffSize(lonOff);
+	}
+
+	/**
+	 * Second pass over the nodes. Fill in pointers and Table A indices.
+	 */
+	public void writeSecond(ImgFileWriter writer) {
+		for (RouteArc arc : arcs)
+			arc.writeSecond(writer);
+	}
+
+	/**
+	 * Return the node's class, which is the maximum of
+	 * classes of the roads it's on.
+	 */
+	public int getNodeClass() {
+		return nodeClass;
+	}
+
+	public Iterable<RouteArc> arcsIteration() {
+		return arcs::iterator;
+	}
+
+	public List<RouteRestriction> getRestrictions() {
+		return restrictions;
+	}
+
+	public String toString() {
+		return String.valueOf(coord.getId()) + "@" + coord.toOSMURL();
+	}
+
+	/*
+	 * For sorting node entries in NOD 3.
+	 */
+	public int compareTo(RouteNode otherNode) {
+		return coord.compareTo(otherNode.getCoord());
+	}
+
+	public void reportSimilarArcs() {
+		for(int i = 0; i < arcs.size(); ++i) {
+			RouteArc arci = arcs.get(i);
+			RoadDef rdi = arci.getRoadDef();
+			if (!arci.isDirect() || rdi.isSynthesised())
+				continue;
+			for(int j = i + 1; j < arcs.size(); ++j) {
+				RouteArc arcj = arcs.get(j);
+				RoadDef rdj = arcj.getRoadDef();
+				if (!arcj.isDirect() || rdj.isSynthesised())
+					continue;
+				if(arci.getDest() == arcj.getDest() &&
+				   arci.getLength() == arcj.getLength() &&
+				   arci.getPointsHash() == arcj.getPointsHash() &&
+				   !rdi.messagePreviouslyIssued("Similar arcs")) {
+					log.diagnostic("Similar arcs " + rdi + " and " + rdj + " found at " + coord.toOSMURL());
+				}
+			}
+		}
+	}
+
+	/**
+	 * For each arc on the road, check if we can add indirect arcs to 
+	 * other nodes of the same road. This is done if the other node
+	 * lies on a different road with a higher road class than the
+	 * highest other road of the target node of the arc. We do this
+	 * for both forward and reverse arcs. Multiple indirect arcs
+	 * may be added for each Node. An indirect arc will 
+	 * always point to a higher road than the previous arc.
+	 * The length and direct bearing of the additional arc is measured 
+	 * from the target node of the preceding arc to the new target node.
+	 *
+	 * Arcs for the same road/direction must be inserted directly after the
+	 * direct arc and this allows the optimisation of initial bearing not being
+	 * written. Note that this routine is called after AngleChecker.fixSharpAngles
+	 * so the bearings will be consistent anyway.
+	 *
+	 * @param road
+	 */
+	public void addArcsToMajorRoads(RoadDef road){
+		assert road.getNode() == this;
+		RouteNode current = this;
+		// the nodes of this road
+		List<RouteNode> nodes = new ArrayList<>();
+		// the forward arcs of this road
+		List<RouteArc> forwardArcs = new ArrayList<>();
+		// will contain the highest other road of each node 
+		IntArrayList forwardArcPositions = new IntArrayList();
+		List<RouteArc> reverseArcs = new ArrayList<>();
+		IntArrayList reverseArcPositions = new IntArrayList();
+
+		// collect the nodes of the road and remember the arcs between them
+		nodes.add(current);
+		while (current != null){
+			RouteNode next = null;
+			for (int i = 0; i < current.arcs.size(); i++){
+				RouteArc arc = current.arcs.get(i);
+				if (arc.getRoadDef() == road && arc.isDirect()){
+					if (arc.isForward()){
+						next = arc.getDest();
+						nodes.add(next);
+						forwardArcs.add(arc);
+						forwardArcPositions.add(i);
+					} else {
+						reverseArcPositions.add(i);
+						reverseArcs.add(arc);
+					}
+				}
+			}
+			current = next;
+		}
+		
+		if (nodes.size() < 3)
+			return;
+		ArrayList<RouteArc> newArcs = new ArrayList<>(); 
+		IntArrayList arcPositions = forwardArcPositions;
+		List<RouteArc> roadArcs = forwardArcs;
+		for (int dir = 0; dir < 2; dir++){
+			// forward arcs first
+			for (int i = 0; i + 2 < nodes.size(); i++){
+				RouteNode sourceNode = nodes.get(i); // original source node of direct arc
+				RouteNode stepNode = nodes.get(i+1); 
+				RouteArc arcToStepNode = roadArcs.get(i);
+				assert arcToStepNode.getDest() == stepNode;
+				int currentClass = arcToStepNode.getArcDestClass();
+				int finalClass = road.getRoadClass();
+				if (finalClass <= currentClass)
+					continue;
+				newArcs.clear();
+				double partialArcLength = 0;
+				double pathLength = arcToStepNode.getLengthInMeter();
+				for (int j = i+2; j < nodes.size(); j++){
+					RouteArc arcToDest = roadArcs.get(j-1);
+					partialArcLength += arcToDest.getLengthInMeter();
+					pathLength += arcToDest.getLengthInMeter();
+					int cl = nodes.get(j).getGroup();
+					if (cl > currentClass){
+						if (cl > finalClass)
+							cl = finalClass;
+						currentClass = cl;
+						// create indirect arc from node i+1 to node j
+						RouteNode destNode = nodes.get(j);
+						Coord c1 = sourceNode.getCoord();
+						Coord c2 = destNode.getCoord();
+						RouteArc newArc = new RouteArc(road, 
+								sourceNode, 
+								destNode, 
+								roadArcs.get(i).getInitialHeading(), // not used
+								c1.bearingTo(c2),
+								partialArcLength, // from stepNode to destNode on road
+								pathLength, // from sourceNode to destNode on road
+								c1.distance(c2), 
+								c1.hashCode() + c2.hashCode());
+						if (arcToStepNode.isDirect())
+							arcToStepNode.setMaxDestClass(0);
+						else 
+							newArc.setMaxDestClass(cl);
+						if (dir == 0)
+							newArc.setForward();
+						newArc.setIndirect();
+						newArcs.add(newArc);
+						arcToStepNode = newArc;
+						
+						partialArcLength = 0;
+						if (cl >= finalClass)
+							break;
+					}
+				}
+				if (!newArcs.isEmpty()) {
+					int directArcPos = arcPositions.getInt(i);
+					assert nodes.get(i).arcs.get(directArcPos).isDirect();
+					assert nodes.get(i).arcs.get(directArcPos).getRoadDef() == newArcs.get(0).getRoadDef();
+					assert nodes.get(i).arcs.get(directArcPos).isForward() == newArcs.get(0).isForward();
+					nodes.get(i).arcs.addAll(directArcPos + 1, newArcs);
+					if (dir == 0 && i > 0){
+						// check if the inserted arcs change the position of the direct reverse arc
+						int reverseArcPos = reverseArcPositions.getInt(i-1); // i-1 because first node doesn't have reverse arc 
+						if (directArcPos < reverseArcPos)
+							reverseArcPositions.set(i - 1, reverseArcPos + newArcs.size());
+					}
+				}
+			}
+			if (dir > 0)
+				break;
+			// reverse the arrays for the other direction
+			Collections.reverse(reverseArcs);
+			Collections.reverse(reverseArcPositions);
+			Collections.reverse(nodes);
+			arcPositions = reverseArcPositions;
+			roadArcs = reverseArcs;
+		}
+	}
+
+	/**
+	 * Find the class group of the node. Rules:
+	 * 1. Find the highest class which is used more than once.
+	 * 2. Otherwise: use the class if the only one, or else the n-1 class.
+     * (eg: if [1,] then use 1, if [1,2,] then use 1, if [1,2,3,] then 	use 2.
+ 	 * 
+	 * @return the class group
+	 */
+	public int getGroup() {
+		if (nodeGroup < 0){
+			if (arcs.isEmpty()) {
+				nodeGroup = 0;
+				return nodeGroup;
+			}
+			HashSet<RoadDef> roads = new HashSet<>();
+			for (RouteArc arc: arcs){
+				roads.add(arc.getRoadDef());
+			}
+			int[] classes = new int[5];
+			int numClasses = 0;
+			// find highest class that is used more than once
+			for (RoadDef road: roads){
+				int cl = road.getRoadClass();
+				int n = ++classes[cl];
+				if (n == 1)
+					numClasses++;
+				else if (n > 1 && cl > nodeGroup)
+					nodeGroup = (byte) cl;
+			}
+			if (nodeGroup >= 0)
+				return nodeGroup;
+			if (numClasses == 1)
+				nodeGroup = nodeClass; // only one class
+			else {
+				// find n-1 class 
+				int n = 0;
+				for (int cl = 4; cl >= 0; cl--){
+					if (classes[cl] > 0){
+						if (n == 1){
+							nodeGroup = (byte) cl;
+							break;
+						}
+						n++;
+					}
+				}
+			}
+		}
+		return nodeGroup;
+	}
+
+	public List<RouteArc> getArcs() {
+		return arcs;
+	}
+	
+	@Override
+	public int hashCode() {
+		return getCoord().getId();	
+	}
+
+	public List<RouteArc> getDirectArcsBetween(RouteNode otherNode) {
+		List<RouteArc> result = new ArrayList<>();
+		for(RouteArc a : arcs){
+			if(a.isDirect() && a.getDest() == otherNode){
+				result.add(a);
+			}
+		}
+		return result;
+	}
+
+	/** used to find routing island, but may also be used for other checks */
+	private int visitId;
+	
+	public int getVisitID() {
+		return visitId;
+	}
+
+	public void visitNet(int visitId, List<RouteNode> visited) {
+		if (this.visitId != visitId) {
+			Deque<RouteNode> toVisit = new ArrayDeque<>();
+			toVisit.add(this);
+			while(!toVisit.isEmpty()) {
+				RouteNode n = toVisit.pop();
+				if (n.visitId != visitId) {
+					n.arcs.forEach(a -> toVisit.addLast(a.getDest()));
+					visited.add(n);
+					n.visitId = visitId;
+				}
+			}
+		}
+	}
+
+
+	public void setUseCompactDirs(boolean newValue) {
+		useCompactDirs = newValue;
+	}
+
+	public boolean getUseCompactDirs() {
+		return useCompactDirs;
+	}
+
+	public void setRoadClass(int roadClass) {
+		nodeClass = (byte) roadClass;
+	}
+	
+	public static boolean isWarningLogged() {
+		return log.isLoggable(Level.WARNING);
+	}
+
+//	/**
+//	 * simple-minded quick test for enabling RouteNode diagnostic for an area of interest.
+//	 * leeway is in degrees
+//	 */
+//	private boolean isClose(double latitude, double longitude, double leeway) {
+//		double nodeLat = coord.getLatDegrees();
+//		double nodeLon = coord.getLonDegrees();
+//		return nodeLat >= latitude  - leeway && nodeLat <= latitude  + leeway &&
+//			   nodeLon >= longitude - leeway && nodeLon <= longitude + leeway;
+//	}
+}
