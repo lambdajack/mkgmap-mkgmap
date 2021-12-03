@@ -525,6 +525,10 @@ public class Sort {
 		return expansions.get(val - 1);
 	}
 
+	/**
+	 * Create a new SrtCollator instance. 
+	 * @return a new {@link SrtCollator} instance.
+	 */
 	public Collator getCollator() {
 		return new SrtCollator(codepage);
 	}
@@ -699,7 +703,7 @@ public class Sort {
 
 	/**
 	 * A collator that works with this sort. This should be used if you just need to compare two
-	 * strings against each other once.
+	 * strings against each other once. Strength is TERTIARY by default.
 	 *
 	 * The sort key is better when the comparison must be done several times as in a sort operation.
 	 *
@@ -710,6 +714,7 @@ public class Sort {
 
 		private SrtCollator(int codepage) {
 			this.codepage = codepage;
+			setStrength(TERTIARY);
 		}
 
 		public int compare(String source, String target) {
@@ -745,6 +750,9 @@ public class Sort {
 				res = compareOneStrength(chars1, chars2, Collator.SECONDARY);
 				if (res == 0 && strength != SECONDARY) {
 					res = compareOneStrength(chars1, chars2, Collator.TERTIARY);
+					if (res == 0 && strength != TERTIARY) {
+						res = source.compareTo(target);
+					}
 				}
 			}
 
