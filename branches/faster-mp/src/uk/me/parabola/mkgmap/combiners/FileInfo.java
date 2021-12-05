@@ -32,6 +32,7 @@ import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.BufferedImgFileReader;
 import uk.me.parabola.imgfmt.app.lbl.LBLFileReader;
+import uk.me.parabola.imgfmt.app.map.MapReader;
 import uk.me.parabola.imgfmt.app.srt.Sort;
 import uk.me.parabola.imgfmt.app.trergn.TREFileReader;
 import uk.me.parabola.imgfmt.app.trergn.TREHeader;
@@ -85,6 +86,7 @@ public class FileInfo {
 	private int codePage;
 	private int sortOrderId;
 	private int demsize;
+	private MapReader mapReader;
 
 	private FileInfo(String filename, FileKind kind) {
 		this.filename = filename;
@@ -474,5 +476,18 @@ public class FileInfo {
 
 	public void setDemsize(int demsize) {
 		this.demsize = demsize;
+	}
+	
+	public MapReader getMapReader() throws FileNotFoundException {
+		if (mapReader == null)
+			mapReader = new MapReader(filename);
+		return mapReader;
+	}
+	
+	public void closeMapReader() {
+		if (mapReader != null) {
+			Utils.closeFile(mapReader);
+			mapReader = null;
+		}
 	}
 }

@@ -27,7 +27,7 @@ public class CommandArgs {
 		for (String listOpt : Arrays.asList("mdr7-excl", "mdr7-del", "poi-excl-index", "location-autofill",
 				"overview-levels", "levels", "name-tag-list", "polygon-size-limits", "dem", "dem-dists", "drive-on",
 				"dead-ends", "add-pois-to-lines", "coastlinefile", "generate-sea", "nearby-poi-rules",
-				"line-types-with-direction")) {
+				"line-types-with-direction", "gmapi-minimal")) {
 			stringToList(get(listOpt,  null), listOpt);
 		}
 	}
@@ -80,15 +80,16 @@ public class CommandArgs {
 	}
 
 	public int getCodePage() {
-		int cp;
+		int cp = 0;
 
 		String s = currentOptions.getProperty("code-page");
-		try {
-			cp = Integer.parseInt(s);
-		} catch (NumberFormatException e) {
-			cp = 0;
+		if (s != null) {
+			try {
+				cp = Integer.parseInt(s);
+			} catch (NumberFormatException e) {
+				throw new ExitException("The --code-page parameter must be a number.");
+			}
 		}
-
 		return cp;
 	}
 

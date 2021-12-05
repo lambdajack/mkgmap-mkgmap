@@ -16,7 +16,7 @@
  */
 package uk.me.parabola.imgfmt.app;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 import uk.me.parabola.imgfmt.ReadFailedException;
@@ -81,11 +81,7 @@ public abstract class CommonHeader {
 		reader.position(0);
 		headerLength = reader.get2u();
 		byte[] bytes = reader.get(TYPE_LEN);
-		try {
-			type = new String(bytes, "ascii");
-		} catch (UnsupportedEncodingException e) {
-			// ascii is supported always, so this can't happen
-		}
+		type = new String(bytes, StandardCharsets.US_ASCII);
 		reader.get(); // ignore
 		reader.get(); // ignore
 

@@ -13,13 +13,14 @@
 
 package uk.me.parabola.imgfmt.app.mdr;
 
+import java.text.Collator;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
 import uk.me.parabola.imgfmt.app.srt.Sort;
+import uk.me.parabola.imgfmt.app.srt.Sort.SrtCollator;
 import uk.me.parabola.imgfmt.app.srt.SortKey;
 import uk.me.parabola.imgfmt.app.trergn.Point;
 
@@ -131,6 +132,7 @@ public class Mdr11 extends MdrMapSection {
 
 	public List<Mdr8Record> getIndex() {
 		List<Mdr8Record> list = new ArrayList<>();
+		Sort.SrtCollator collator = (SrtCollator) getConfig().getSort().getCollator();
 		for (int number = 1; number <= pois.size(); number += 10240) {
 			char[] prefix = getPrefixForRecord(number);
 
@@ -138,7 +140,9 @@ public class Mdr11 extends MdrMapSection {
 			int rec = number;
 			while (rec > 1) {
 				char[] p = getPrefixForRecord(rec);
-				if (!Arrays.equals(p, prefix)) {
+				int cmp = collator.compareOneStrengthWithLength(prefix, p, Collator.PRIMARY,
+						MdrUtils.POI_INDEX_PREFIX_LEN);
+				if (cmp != 0) {
 					rec++;
 					break;
 				}

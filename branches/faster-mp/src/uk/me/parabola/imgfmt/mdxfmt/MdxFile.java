@@ -20,6 +20,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -84,11 +85,7 @@ public class MdxFile {
 	}
 
 	private void writeHeader(WritableByteChannel chan, ByteBuffer buf) throws IOException {
-		try {
-			buf.put("Midx".getBytes("ascii"));
-		} catch (UnsupportedEncodingException e) {
-			throw new IOException("Could not write header");
-		}
+		buf.put("Midx".getBytes(StandardCharsets.US_ASCII));
 		buf.putChar((char) 100);
 		buf.putInt(12);
 		buf.putInt(maps.size());

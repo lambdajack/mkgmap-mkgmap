@@ -16,7 +16,7 @@
  */
 package uk.me.parabola.imgfmt.app.lbl;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 
 import uk.me.parabola.imgfmt.app.CommonHeader;
 import uk.me.parabola.imgfmt.app.ImgFileReader;
@@ -85,11 +85,7 @@ public class LBLHeader extends CommonHeader {
 		reader.position(descOff);
 		byte[] bytes = reader.get(descLen);
 		String description;
-		try {
-			description = new String(bytes, "ascii");
-		} catch (UnsupportedEncodingException e) {
-			description = "Unknown";
-		}
+		description = new String(bytes, StandardCharsets.US_ASCII);
 
 		sort = new Sort();
 		sort.setCodepage(codepage);

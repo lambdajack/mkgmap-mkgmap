@@ -19,11 +19,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryType;
 import java.lang.management.MemoryUsage;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.time.Instant;
@@ -104,6 +104,7 @@ public class Main implements ArgumentProcessor {
 	private volatile int programRC = 0;
 
 	private final Map<String, Combiner> combinerMap = new HashMap<>();
+	private final Map<String, String> sourceMap = new HashMap<>();
 	private boolean informationDisplayed = false;
 
 	/**
@@ -297,6 +298,7 @@ public class Main implements ArgumentProcessor {
 			}
 		});
 		task.setArgs(args);
+		task.setSource(filename);
 		futures.add(task);
 	}
 
@@ -613,11 +615,12 @@ public class Main implements ArgumentProcessor {
 		for (Combiner c : combiners)
 			c.init(args);
 
-		filenames.removeIf(f -> f == null || f.isCancelled());
+		filenames.removeIf(f -> f == null || f.getFilename() == null || f.isCancelled());
 
 		final Map<String, Integer> nameToHex = new HashMap<>();
 		for (FilenameTask f : filenames) {
 			if (f.getFilename().endsWith(".img")) {
+				sourceMap.put(f.getFilename(), f.getSource());
 				int hex;
 				try {
 					hex = FileInfo.getFileInfo(f.getFilename() ).getHexname();
@@ -675,6 +678,7 @@ public class Main implements ArgumentProcessor {
 						continue;
 					c.onMapEnd(fileInfo);
 				}
+				fileInfo.closeMapReader();
 			} catch (FileNotFoundException e) {
 				throw new MapFailedException("could not open file " + e.getMessage());
 			}
@@ -706,10 +710,13 @@ public class Main implements ArgumentProcessor {
 		boolean indexOpt = args.exists("index");
 		boolean gmapsuppOpt = args.exists("gmapsupp");
 		boolean tdbOpt = args.exists("tdbfile");
-		boolean gmapiOpt = args.exists("gmapi");
+		boolean gmapiOpt = args.exists("gmapi") || args.exists("gmapi-minimal"); 
 		boolean nsisOpt = args.exists("nsis");
 
-		for (String opt : Arrays.asList("gmapi", "nsis")) {
+		if (args.exists("gmapi") && args.exists("gmapi-minimal")) {
+			throw new ExitException("Options --gmapi and --gmapi-minimal are mutually exclusive");
+		}
+		for (String opt : Arrays.asList("gmapi", "nsis", "gmapi-minimal")) {
 			if (!createTdbFiles && args.exists(opt)) {
 				throw new ExitException("Options --" + opt  + " and --no-tdbfiles are mutually exclusive");
 			}
@@ -729,7 +736,7 @@ public class Main implements ArgumentProcessor {
 			addCombiner("mdx", new MdxBuilder());
 		}
 		if (gmapiOpt) {
-			addCombiner("gmapi", new GmapiBuilder(combinerMap));
+			addCombiner("gmapi", new GmapiBuilder(combinerMap, sourceMap));
 		}
 		if (nsisOpt) {
 			addCombiner("nsis", new NsisBuilder(combinerMap));
@@ -772,6 +779,7 @@ public class Main implements ArgumentProcessor {
 	private static class FilenameTask extends FutureTask<String> {
 		private CommandArgs args;
 		private String filename;
+		private String source;
 
 		private FilenameTask(Callable<String> callable) {
 			super(callable);
@@ -794,7 +802,16 @@ public class Main implements ArgumentProcessor {
 		}
 
 		public String toString() {
-			return filename;
+			return source + " -> " + filename;
 		}
+		
+		public void setSource(String source) {
+			this.source = source;
+		}
+
+		public String getSource() {
+			return source;
+		}
+
 	}
 }

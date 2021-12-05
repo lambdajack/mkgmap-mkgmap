@@ -34,6 +34,7 @@ import uk.me.parabola.imgfmt.fs.DirectoryEntry;
 import uk.me.parabola.imgfmt.fs.FileSystem;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.imgfmt.sys.ImgFS;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.mkgmap.CommandArgs;
 
 import static java.nio.file.StandardOpenOption.*;
@@ -45,9 +46,11 @@ import static java.nio.file.StandardOpenOption.*;
  * each .img file.
  */
 public class GmapiBuilder implements Combiner {
+	private static final Logger log = Logger.getLogger(GmapiBuilder.class);
 	private static final String NS = "http://www.garmin.com/xmlschemas/MapProduct/v1";
 
 	private final Map<String, Combiner> combinerMap;
+	private final Map<String, String> sourceMap;
 
 	private Path gmapDir;
 	private final Map<Integer, ProductInfo> productMap = new HashMap<>();
@@ -58,8 +61,13 @@ public class GmapiBuilder implements Combiner {
 
 	private String typFile;
 
-	public GmapiBuilder(Map<String, Combiner> combinerMap) {
+	private boolean forceWrite;
+	private String mustWritePattern;
+
+
+	public GmapiBuilder(Map<String, Combiner> combinerMap, Map<String, String> sourceMap) {
 		this.combinerMap = combinerMap;
+		this.sourceMap = sourceMap;
 	}
 
 	/**
@@ -75,6 +83,9 @@ public class GmapiBuilder implements Combiner {
 		productVersion = (short) args.get("product-version", 100);
 
 		gmapDir = Paths.get(args.getOutputDir(), String.format("%s.gmap", familyName));
+		forceWrite = args.exists("gmapi");
+		
+		mustWritePattern = args.get("gmapi-minimal", null);
 	}
 
 	/**
@@ -93,14 +104,33 @@ public class GmapiBuilder implements Combiner {
 
 		// Unzip the image into the product tile directory.
 		try {
-			if (info.isImg())
-				unzipImg(fn, mapname, productId);
+			if (info.isImg()) {
+				if (forceWrite || shouldWrite(info))
+					unzipImg(fn, mapname, productId);
+			}
 			else if (info.getKind() == FileKind.TYP_KIND)
 				typFile = info.getFilename();
 
 		} catch (IOException e) {
 			throw new ExitException("Error saving gmapi data", e);
 		}
+	}
+
+	private boolean shouldWrite(FileInfo info) {
+		String fn = info.getFilename();
+		String source = sourceMap.get(fn);
+		if (!source.equals(fn)) {
+			log.diagnostic("gmapi-minimal: Writing freshly compiled file " + fn);
+			return true;
+		}
+		if (mustWritePattern != null) {
+			if (fn.matches(mustWritePattern)) {
+				log.diagnostic("gmapi-minimal: Writing old file " + fn + " because it matches pattern " + mustWritePattern);
+				return true;
+			}
+		}
+		log.diagnostic("gmapi-minimal: Skipping file " + fn);
+		return false;
 	}
 
 	/**
@@ -157,7 +187,7 @@ public class GmapiBuilder implements Combiner {
 		unzipImg(srcImgName, destDir);
 	}
 
-	private static void unzipImg(String srcImgName, Path destDir) throws IOException {
+	private void unzipImg(String srcImgName, Path destDir) throws IOException {
 		FileSystem fs = ImgFS.openFs(srcImgName);
 		for (DirectoryEntry ent : fs.list()) {
 			String fullname = ent.getFullName();
@@ -168,7 +198,8 @@ public class GmapiBuilder implements Combiner {
 					continue;
 
 				Files.createDirectories(destDir);
-				copyToFile(f, destDir.resolve(name));
+				Path out = destDir.resolve(name);
+				copyToFile(f, out);
 			}
 		}
 	}

@@ -269,6 +269,9 @@
 		<javac srcdir="${test}" destdir="${build.test}" encoding="utf-8" debug="true" includeantruntime="false">
 			<include name="**/*.java" />
 			<classpath refid="test"/>
+			<compilerarg value="-Xlint:all"/>
+			<compilerarg value="-Xlint:-serial"/>
+			<compilerarg value="-Xlint:-path"/>
 		</javac>
 	</target>
 
@@ -411,7 +414,7 @@
 		<copy todir="${dist}/examples">
 			<fileset dir="resources">
 				<include name="roadNameConfig.txt"/>
-				<include name="roadNameConfig.txt"/>
+				<include name="sample.cfg"/>
 				<include name="RoundaboutFlareRules.config"/>
 				<include name="known-hgt.txt"/>
 				<include name="installer/**"/>
@@ -439,6 +442,9 @@
 		<javac srcdir="${tools}" destdir="${build.classes}" encoding="utf-8" debug="true" includeantruntime="false">
 			<include name="**/*.java" />
 			<classpath refid="main"/>
+			<compilerarg value="-Xlint:all"/>
+			<compilerarg value="-Xlint:-serial"/>
+			<compilerarg value="-Xlint:-path"/>
 		</javac>
 	</target>
 
