@@ -148,7 +148,7 @@ public class LBLFile extends ImgFile {
 			int trimmedLen = text.length();
 			if (trimmedLen > MAX_LABEL_LEN) {
 				trimmedLen = MAX_LABEL_LEN;
-				while (text.charAt(trimmedLen) == ' ')
+				while (trimmedLen > 0 && text.charAt(trimmedLen) == ' ')
 					trimmedLen--;
 				text = text.substring(0, trimmedLen + 1);
 			}
