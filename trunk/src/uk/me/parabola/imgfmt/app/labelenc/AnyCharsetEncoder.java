@@ -107,6 +107,8 @@ public class AnyCharsetEncoder extends BaseEncoder implements CharacterEncoder {
 			} else if (result == CoderResult.OVERFLOW) {
 				// Ran out of space in the output
 				outBuf = reallocBuf(outBuf);
+			} else if (result.isMalformed()) {
+				break;
 			}
 		} while (result != CoderResult.UNDERFLOW);
 
