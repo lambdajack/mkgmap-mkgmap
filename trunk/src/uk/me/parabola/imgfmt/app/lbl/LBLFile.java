@@ -61,7 +61,7 @@ public class LBLFile extends ImgFile {
 	private static final int OFFSET_MULTIPLIER = 1;
 
 	/** Garmin software doesn't display longer labels */
-	private static final int MAX_LABEL_LEN = 170; 
+	private static final int MAX_LABEL_LEN = 170;
 
 	public LBLFile(ImgChannel chan, Sort sort) {
 		this.sort = sort;
@@ -144,17 +144,24 @@ public class LBLFile extends ImgFile {
 	 * @return A reference to the created label
 	 */
 	public Label newLabel(String text, boolean cutToMaxLen) {
-		if (text != null && cutToMaxLen) {
-			int trimmedLen = text.length();
-			if (trimmedLen > MAX_LABEL_LEN) {
-				trimmedLen = MAX_LABEL_LEN;
-				while (trimmedLen > 0 && text.charAt(trimmedLen) == ' ')
-					trimmedLen--;
+		if (text != null && cutToMaxLen && text.length() > MAX_LABEL_LEN) {
+			int trimmedLen;
+			try {
+				trimmedLen = text.offsetByCodePoints(0, MAX_LABEL_LEN);
+			} catch (IndexOutOfBoundsException e) {
+				trimmedLen = 0; // short enough
+			}
+			if (trimmedLen > 0) {
+				do { // logic elsewhere removes leading, trailing and multiple spaces, but now might have trailing; remove multiple anyway
+					--trimmedLen;
+					if (text.charAt(trimmedLen) != ' ')
+						break;
+				} while (trimmedLen > 0);
 				text = text.substring(0, trimmedLen + 1);
 			}
 		}
 		EncodedText encodedText = textEncoder.encodeText(text);
-		
+
 		Label l = labelCache.get(encodedText);
 		if (l == null) {
 			l = new Label(encodedText.getChars());
