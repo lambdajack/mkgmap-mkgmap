@@ -176,7 +176,7 @@ public class Map implements InternalFiles, Configurable {
 	 * gets shown when the device starts (sometimes?).
 	 */
 	public void addCopyright(String str) {
-		Label cpy = lblFile.newLabel(str);
+		Label cpy = lblFile.newLabel(str, false);
 		treFile.addCopyright(cpy);
 	}
 

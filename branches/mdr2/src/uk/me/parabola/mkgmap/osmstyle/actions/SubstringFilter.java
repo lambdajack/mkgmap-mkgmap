@@ -56,14 +56,28 @@ public class SubstringFilter extends ValueFilter {
 	}
 
 	protected String doFilter(String value, Element el) {
-		if (value == null) return null;
+		if (value == null)
+			return null;
 		if (start > value.length())
 			return null;
+		int codePointStart = 0;
+		if (start > 0)
+			try {
+				codePointStart = value.offsetByCodePoints(0, start);
+			} catch (IndexOutOfBoundsException e) {
+				return null;
+			}
 		if (args == 1 || end > value.length()) {
-			return value.substring(start);
+			return value.substring(codePointStart);
 		}
 		if (args == 2) {
-			return value.substring(start, end);
+			int codePointEnd = 0;
+			try {
+				codePointEnd = value.offsetByCodePoints(start, end-start);
+			} catch (IndexOutOfBoundsException e) {
+				return value.substring(codePointStart);
+			}
+			return value.substring(codePointStart, codePointEnd);
 		}
 		return value;
 	}

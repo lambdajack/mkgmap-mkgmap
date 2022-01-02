@@ -85,11 +85,14 @@ public class HighwaySymbolFilter extends ValueFilter {
 		for (char c : shieldText.toCharArray()) {
 		  	if (Character.isDigit(c)) {
 				isAlphaNum = true; // Consider alphanumeric if we find one or more digits
+				break;
 			}
 		}
 
 		// Check if shield exceeds maximum length:
-		if ( (isAlphaNum && shieldText.length() > maxAlphaNum) || (! isAlphaNum) && shieldText.length() > maxAlpha ) {
+		int codePointLength = shieldText.codePointCount(0, shieldText.length());
+		if (isAlphaNum && codePointLength > maxAlphaNum || !isAlphaNum && codePointLength > maxAlpha) {
+			// ??? this doesn't do as described in the documentation
 			return value; // If so, return original value
 		} else {
 			return prefix + shieldText; // If not, return condensed value with magic code

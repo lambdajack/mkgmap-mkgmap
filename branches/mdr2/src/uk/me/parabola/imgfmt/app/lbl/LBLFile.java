@@ -57,8 +57,11 @@ public class LBLFile extends ImgFile {
 	private final PlacesFile places = new PlacesFile();
 	private Sort sort;
 
-	// Shift value for the label offset, we always use 1 here.
+	/** Shift value for the label offset, we always use 1 here. */
 	private static final int OFFSET_MULTIPLIER = 1;
+
+	/** Garmin software doesn't display longer labels */
+	private static final int MAX_LABEL_LEN = 170;
 
 	public LBLFile(ImgChannel chan, Sort sort) {
 		this.sort = sort;
@@ -125,10 +128,38 @@ public class LBLFile extends ImgFile {
 	 * Add a new label with the given text.  Labels are shared, so that identical
 	 * text is always represented by the same label.
 	 *
-	 * @param text The text of the label, it will be in uppercase.
-	 * @return A reference to the created label.
+	 * @param text The text of the label
+	 * @return A reference to the created label
 	 */
 	public Label newLabel(String text) {
+		return newLabel(text, true);
+	}
+	
+	/**
+	 * Add a new label with the given text.  Labels are shared, so that identical
+	 * text is always represented by the same label.
+	 *
+	 * @param text The text of the label
+	 * @param cutToMaxLen if true, cut labels to max length
+	 * @return A reference to the created label
+	 */
+	public Label newLabel(String text, boolean cutToMaxLen) {
+		if (text != null && cutToMaxLen && text.length() > MAX_LABEL_LEN) {
+			int trimmedLen;
+			try {
+				trimmedLen = text.offsetByCodePoints(0, MAX_LABEL_LEN);
+			} catch (IndexOutOfBoundsException e) {
+				trimmedLen = 0; // short enough
+			}
+			if (trimmedLen > 0) {
+				do { // logic elsewhere removes leading, trailing and multiple spaces, but now might have trailing; remove multiple anyway
+					--trimmedLen;
+					if (text.charAt(trimmedLen) != ' ')
+						break;
+				} while (trimmedLen > 0);
+				text = text.substring(0, trimmedLen + 1);
+			}
+		}
 		EncodedText encodedText = textEncoder.encodeText(text);
 
 		Label l = labelCache.get(encodedText);

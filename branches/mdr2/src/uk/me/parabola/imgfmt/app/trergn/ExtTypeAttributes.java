@@ -204,17 +204,17 @@ public class ExtTypeAttributes {
 		if(note == null) {
 			String ns = attributes.get("note");
 			if(ns != null)
-				note = lbl.newLabel(ns);
+				note = lbl.newLabel(ns, false);
 		}
 		if(intDesig == null) {
 			String ids = attributes.get("int-desig");
 			if(ids != null)
-				intDesig = lbl.newLabel(ids);
+				intDesig = lbl.newLabel(ids, false);
 		}
 		if(localDesig == null) {
 			String lds = attributes.get("local-desig");
 			if(lds != null)
-				localDesig = lbl.newLabel(lds);
+				localDesig = lbl.newLabel(lds, false);
 		}
 	}
 

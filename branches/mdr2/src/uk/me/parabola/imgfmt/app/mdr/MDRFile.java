@@ -15,6 +15,7 @@ package uk.me.parabola.imgfmt.app.mdr;
 import java.util.Arrays;
 import java.util.Set;
 
+import uk.me.parabola.imgfmt.MapFailedException;
 import uk.me.parabola.imgfmt.app.BufferedImgFileReader;
 import uk.me.parabola.imgfmt.app.FileBackedImgFileWriter;
 import uk.me.parabola.imgfmt.app.ImgFile;
@@ -395,6 +396,10 @@ public class MDRFile extends ImgFile {
 		mdrHeader.setItemSize(1, mdr1.getItemSize());
 		mdrHeader.setEnd(1, writer.position());
 		mdrHeader.setExtraValue(1, mdr1.getExtraValue());
+		if (writer.position() < 0) {
+			// integer overflow can cause this
+			throw new MapFailedException("MDR sub file is too large");
+		}
 	}
 
 	/**
