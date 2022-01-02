@@ -12,6 +12,8 @@
  */
 package uk.me.parabola.mkgmap.typ;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.BufferedReader;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -20,10 +22,15 @@ import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.io.Reader;
 import java.io.StringReader;
-import java.nio.charset.Charset;
 import java.nio.channels.FileChannel;
+import java.nio.charset.Charset;
 import java.util.List;
 
+import org.junit.Before;
+import org.junit.Test;
+
+import func.lib.TestUtils;
+import uk.me.parabola.imgfmt.app.ArrayImgWriter;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
 import uk.me.parabola.imgfmt.app.typ.ShapeStacking;
 import uk.me.parabola.imgfmt.app.typ.TYPFile;
@@ -34,13 +41,6 @@ import uk.me.parabola.imgfmt.app.typ.TypPoint;
 import uk.me.parabola.imgfmt.app.typ.TypPolygon;
 import uk.me.parabola.imgfmt.sys.FileImgChannel;
 import uk.me.parabola.mkgmap.srt.SrtTextReader;
-
-import func.lib.ArrayImgWriter;
-import func.lib.TestUtils;
-import org.junit.Before;
-import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 public class TypTextReaderTest {
 	private TypTextReader tr;

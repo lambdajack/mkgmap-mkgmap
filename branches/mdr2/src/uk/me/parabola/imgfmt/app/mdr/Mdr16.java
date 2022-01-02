@@ -21,8 +21,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.PriorityQueue;
 
-import func.lib.ArrayImgWriter;
 import uk.me.parabola.imgfmt.MapFailedException;
+import uk.me.parabola.imgfmt.app.ArrayImgWriter;
 import uk.me.parabola.imgfmt.app.BitWriterLR;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
 import uk.me.parabola.imgfmt.app.srt.Sort;
@@ -32,6 +32,7 @@ import uk.me.parabola.log.Logger;
 public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	private final Sort sort;
 	private final Charset charset;
+	private final static String ZEROS = "00000000000000000000000000000000";
 	
 	private final Code[] codes = new Code[256];
 
@@ -212,7 +213,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 
 						String prefix = Integer.toBinaryString(pos);
 						// add leading 0 to make it at least initBits long
-						prefix = "0000000000".substring(0, initBits - prefix.length()) + prefix;
+						prefix = ZEROS.substring(0, initBits - prefix.length()) + prefix;
 						Logger.defaultLogger.diagnostic(String.format("tab2: %2d %s %d %s",pos, prefix, v0, displayChar(v1)));
 						addCode(ch, depth, pos, initBits);
 						pos--;
@@ -236,7 +237,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 					lastIndex = idx1;
 					numVals = (1 << (depth - initBits));
 					String prefix = Integer.toBinaryString(pos);
-					prefix = "0000000000".substring(0, initBits - prefix.length()) + prefix;
+					prefix = ZEROS.substring(0, initBits - prefix.length()) + prefix;
 					Logger.defaultLogger.diagnostic(String.format("tab2: %2d %s %2d %2d",pos, prefix, v0, v1));
 					pos--;
 					if (pos <= 0) {
@@ -244,7 +245,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 						if (vals.remaining() == 0)
 							idx1--;
 						tab2[1] = (byte) idx1;
-						prefix = "0000000000".substring(0, initBits);
+						prefix = ZEROS.substring(0, initBits);
 						Logger.defaultLogger.diagnostic(String.format("tab2: %2d %s %2d %2d",0, prefix, 0, idx1));
 						return tab2;
 					}
@@ -265,7 +266,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		if (len > initBits) {
 			String prefix = Integer.toBinaryString(code);
 			if (prefix.length() < len)
-				prefix = "00000000000000000000000000000000".substring(0, len - prefix.length()) + prefix;
+				prefix = ZEROS.substring(0, len - prefix.length()) + prefix;
 			Logger.defaultLogger.diagnostic(String.format("Huffman code: %s %s", prefix, displayChar(ch)));
 		}
 		Code coded = new Code(len, len < initBits ? code >> (initBits - len) : code);

@@ -10,16 +10,14 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  */
-package func.lib;
+package uk.me.parabola.imgfmt.app;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import uk.me.parabola.imgfmt.app.ImgFileWriter;
-
 /**
- * A writer that just writes to an array for testing.
+ * A writer that just writes to an array.
  *
  * @author Steve Ratcliffe
  */
