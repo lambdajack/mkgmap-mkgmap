@@ -76,7 +76,8 @@ public class MDRHeader extends CommonHeader {
 		sections[13].writeSectionInfo(writer, true, true);
 		sections[14].writeSectionInfo(writer, true, true);
 		sections[15].writeSectionInfo(writer);
-		writer.put1u(0);
+		// compressed/ uncompressed flag is a single byte 
+		writer.put1u(sections[16].getSize() > 0 ? 1 : 0); 
 
 		sections[16].writeSectionInfo(writer, true, true);
 		sections[17].writeSectionInfo(writer, false, true);

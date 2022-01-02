@@ -54,6 +54,7 @@ public class MDRFile extends ImgFile {
 	private final Mdr13 mdr13;
 	private final Mdr14 mdr14;
 	private final Mdr15 mdr15;
+	private final Mdr16 mdr16;
 	private final Mdr17 mdr17;
 	private final Mdr18 mdr18;
 	private final Mdr19 mdr19;
@@ -114,6 +115,7 @@ public class MDRFile extends ImgFile {
 		mdr13 = new Mdr13(config);
 		mdr14 = new Mdr14(config);
 		mdr15 = new Mdr15(config);
+		mdr16 = new Mdr16(config);
 		mdr17 = new Mdr17(config);
 		mdr18 = new Mdr18(config);
 		mdr19 = new Mdr19(config);
@@ -132,12 +134,19 @@ public class MDRFile extends ImgFile {
 				null,
 				mdr1, null, null, mdr4, mdr5, mdr6,
 				mdr7, mdr8, mdr9, mdr10, mdr11, mdr12,
-				mdr13, mdr14, mdr15, null, mdr17, mdr18, mdr19,
+				mdr13, mdr14, mdr15, mdr16, mdr17, mdr18, mdr19,
 				mdr20, mdr21, mdr22, mdr23, mdr24, mdr25,
 				mdr26, mdr27, mdr28, mdr29,
 		};
 
 		mdr11.setMdr10(mdr10);
+		if (mdr16.canEncode()) {
+			mdr15.setMdr16(mdr16);
+			for (MdrSection s : sections) {
+				if (s != null)
+					s.setMdr15(mdr15);
+			}
+		}
 	}
 
 	/**
@@ -289,7 +298,9 @@ public class MDRFile extends ImgFile {
 	 */
 	private void writeSections(ImgFileWriter writer) {
 		sizes = new MdrMapSection.PointerSizes(sections);
-
+		writeSection(writer, 16, mdr16);
+		writeSection(writer, 15, mdr15);
+		
 		mdr7.trim();
 		// Deal with the dependencies between the sections. The order of the following
 		// statements is sometimes important.
@@ -377,7 +388,6 @@ public class MDRFile extends ImgFile {
 		}
 		writeSection(writer, 13, mdr13);
 		writeSection(writer, 14, mdr14);
-		writeSection(writer, 15, mdr15);
 
 		writeSection(writer, 23, mdr23);
 		writeSection(writer, 24, mdr24);
@@ -408,7 +418,7 @@ public class MDRFile extends ImgFile {
 	private void writeSection(ImgFileWriter writer, int sectionNumber, MdrSection section) {
 
 		// Some sections are just not written in the device config
-		if (forDevice && Arrays.asList(13, 14, 15, 21, 23, 26, 27, 28).contains(sectionNumber))
+		if (forDevice && Arrays.asList(13, 14, 15, 16, 21, 23, 26, 27, 28).contains(sectionNumber))
 			return;
 
 		section.setSizes(sizes);

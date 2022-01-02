@@ -24,6 +24,7 @@ public abstract class MdrSection extends ConfigBase {
 	private boolean released;
 	protected int nItems;
 	private boolean sizeValid;
+	private Mdr15 mdr15;
 
 	/**
 	 * Write out the contents of this section.
@@ -53,6 +54,8 @@ public abstract class MdrSection extends ConfigBase {
 	}
 
 	protected void putStringOffset(ImgFileWriter writer, int strOff) {
+		if (mdr15 != null)
+			strOff = mdr15.translateOffset(strOff);
 		writer.putNu(sizes.getStrOffSize(), strOff);
 	}
 
@@ -219,5 +222,9 @@ public abstract class MdrSection extends ConfigBase {
 		public int getNumberOfItems(int sect) {
 			return sections[sect].getNumberOfItems();
 		}
+	}
+
+	public void setMdr15(Mdr15 mdr15) {
+		this.mdr15 = mdr15;
 	}
 }
