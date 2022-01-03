@@ -29,10 +29,21 @@ import uk.me.parabola.imgfmt.app.srt.Sort;
 import uk.me.parabola.log.Logger;
 
 
+/**
+ * The MDR 16 section contains data that allows to decode the data in MDR15. The basic algorithm is
+ * Huffman encoding. The decoder works with some lookup tables. 
+ * The section contains a few header bytes with a variable length, followed by an array of structures,
+ * followed by an array of 32x2 or 64x2 bytes which encodes the most frequent symbols and finally an array 
+ * of further symbols.    
+ * It is possible to reconstruct a normal Huffman tree from this data but Garmin software probably only
+ * uses the tables.  
+ * @author Gerd Petermann
+ *
+ */
 public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	private final Sort sort;
 	private final Charset charset;
-	private final static String ZEROS = "00000000000000000000000000000000";
+	private static final String ZEROS = "00000000000000000000000000000000";
 	
 	private final Code[] codes = new Code[256];
 
@@ -218,6 +229,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 						addCode(ch, depth, pos, initBits);
 						pos--;
 						if (pos <= 0) {
+							// no idea if this can happen
 							tab2[0] = 0;
 							tab2[1] = (byte) depth;
 							return tab2;
@@ -257,8 +269,13 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 				
 			}
 		}
-		// we should not get here
 		Logger.defaultLogger.error("Possibly failed to calculate Mdr16");
+		while (pos > 0) {
+			tab2[pos * 2] = 0;
+			tab2[pos * 2 + 1] = (byte) lastIndex;
+			pos--;
+		}
+		// we should not get here
 		return tab2; 
 	}
 
@@ -295,7 +312,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		if (node == null)
 			return;
 		if (node.ch != null) {
-			Logger.defaultLogger.diagnostic(
+			Logger.defaultLogger.debug(
 					String.format("depth:%d %s freq: %d", depth, displayChar((byte) (node.ch & 0xff)), node.freq));
 		}
 		printHuffmanTree(depth + 1, node.left);
@@ -357,9 +374,8 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	}
 	
 	public boolean canEncode() {
-//		return false; // TODO: add option
-		// TODO: refuse to encode codepage with more than 8 bit like 932    
-		return sort.getCodepage() == 65001 || (sort.getCodepage() >= 1250 && sort.getCodepage() <= 1258); 
+		// TODO: refuse to encode codepage with more than 8 bit like 932
+		return sort.getCodepage() == 65001 || (sort.getCodepage() >= 1250 && sort.getCodepage() <= 1258);
 	}
 	
 	public byte[] encode(ByteBuffer buf) {

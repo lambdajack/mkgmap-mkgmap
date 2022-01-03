@@ -166,9 +166,11 @@ public class Mdr15 extends MdrSection {
 				}
 				buf.compact();
 			}
-			int compressed = writer.position() - start;
-			Logger.defaultLogger.diagnostic(String.format("compressed/uncompressed MDR 15 size: %d/%d ratio ~%.3f",
-					compressed, uncompressed, (double) compressed / uncompressed));
+			if (mdr16 != null) {
+				int compressed = writer.position() - start;
+				Logger.defaultLogger.diagnostic(String.format("compressed/uncompressed MDR 15 size: %d/%d ratio ~%.3f",
+						compressed, uncompressed, (double) compressed / uncompressed));
+			}
 		} catch (IOException e) {
 			throw new ExitException("Could not write string section of index");
 		}

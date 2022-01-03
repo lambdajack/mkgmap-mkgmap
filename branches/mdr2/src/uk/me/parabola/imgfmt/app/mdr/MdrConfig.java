@@ -45,7 +45,7 @@ public class MdrConfig {
 	private Set<String> mdr7Excl = Collections.emptySet();
 	private Set<String> mdr7Del = Collections.emptySet();
 	private Set<Integer> poiExclTypes = Collections.emptySet();
-	
+	private boolean compressMdr15;
 	public MdrConfig() {
 		
 	}
@@ -198,5 +198,19 @@ public class MdrConfig {
 		mdr7Excl = args.argToSet("mdr7-excl", null);
 		mdr7Del = args.argToSet("mdr7-del", null);
 		setPoiExcl(args.argToList("poi-excl-index", null));
+	}
+
+	/**
+	 * @return the compressMdr15
+	 */
+	public boolean isCompressMdr15() {
+		return compressMdr15;
+	}
+
+	/**
+	 * @param compressMdr15 the compressMdr15 to set
+	 */
+	public void setCompressMdr15(boolean compressMdr15) {
+		this.compressMdr15 = compressMdr15;
 	}
 }

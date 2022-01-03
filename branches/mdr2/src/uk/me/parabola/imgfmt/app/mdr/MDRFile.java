@@ -140,13 +140,13 @@ public class MDRFile extends ImgFile {
 		};
 
 		mdr11.setMdr10(mdr10);
-		if (mdr16.canEncode()) {
+		if (config.isCompressMdr15() && mdr16.canEncode()) {
 			mdr15.setMdr16(mdr16);
 			for (MdrSection s : sections) {
 				if (s != null)
 					s.setMdr15(mdr15);
 			}
-		}
+		} 
 	}
 
 	/**

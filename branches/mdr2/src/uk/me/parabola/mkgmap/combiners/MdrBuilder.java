@@ -109,6 +109,8 @@ public class MdrBuilder implements Combiner {
 		config.setOutputDir(outputDir);
 		config.setSort(sort);
 		config.setIndexOptions(args);
+		boolean compress = !args.get("no-mdr15-compression", false);
+		config.setCompressMdr15(compress);
 
 		// Wrap the MDR channel with the MDRFile object
 		mdrFile = new MDRFile(mdrChan, config);
