@@ -588,7 +588,6 @@ public class MultiPolygonRelation extends Relation {
 	 */
 	public final void processElements() {
 		log.info("Processing multipolygon", toBrowseURL());
-		long t1 = System.currentTimeMillis();
 		
 		// check if it makes sense to process the mp 
 		if (!isUsable()) { 
@@ -627,10 +626,6 @@ public class MultiPolygonRelation extends Relation {
 		
 		postProcessing();
 		cleanup();
-//		long dt = System.currentTimeMillis() - t1;
-//		if (dt > 10000)
-//			log.diagnostic("processing MP relation " + this + " took " + dt + " ms with " + partitions.size() + " partitions");
-		
 	}
 
 	private List<JoinedWay> buildRings() {
@@ -715,7 +710,7 @@ public class MultiPolygonRelation extends Relation {
 		processQueue(partition, polygonWorkingQueue);
 
 		if (doReporting() && log.isLoggable(Level.WARNING)) {
-			partition.doReporting();
+			partition.reportProblems();
 		}
 
 	}
@@ -726,7 +721,7 @@ public class MultiPolygonRelation extends Relation {
 
 
 	protected boolean isUsable() {
-		// TODO: add a hook to filter unwanted MP 
+		// TODO: Would be good to have a hook to filter unwanted MP, e.g.  
 		for (Map.Entry<String, String> tagEntry : this.getTagEntryIterator()) {
 			String tagName = tagEntry.getKey();
 			// all tags are style relevant
@@ -938,7 +933,7 @@ public class MultiPolygonRelation extends Relation {
 			// use the center of the largest polygon as reference point
 			cOfG = largestOuterPolygon.getCofG();
 		}
-		// TODO: maybe keep the cOfg data from a label node? 
+		// XXX: maybe keep the cOfg data from a label node? 
 		if (largestOuterPolygon == null) 
 			cOfG = null; 
 	}
@@ -1475,7 +1470,6 @@ public class MultiPolygonRelation extends Relation {
 		 */
 		public Coord getPointInside() {
 			if (doPointInsideCalcs) {
-				// TODO: other faster alternatives to find point inside shape
 				doPointInsideCalcs = false;
 				Coord test = super.getCofG();
 				if (IsInUtil.isPointInShape(test, getPoints()) == IsInUtil.IN) {
@@ -1682,9 +1676,9 @@ public class MultiPolygonRelation extends Relation {
 		}
 
 		/**
-		 * TODO: either remove this or combine the data for all partitions
+		 * Report problems which are probably caused by OSM data errors or missing/incomplete data.   
 		 */
-		public void doReporting() {
+		public void reportProblems() {
 			if (outmostInnerPolygons.cardinality() + unfinishedPolygons.cardinality()
 					+ nestedOuterPolygons.cardinality() + nestedInnerPolygons.cardinality() >= 1) {
 				log.warn("Multipolygon", toBrowseURL(), toTagString(), "contains errors.");
@@ -1938,7 +1932,6 @@ public class MultiPolygonRelation extends Relation {
 	private void divideLargest(List<JoinedWay> partition, List<List<JoinedWay>> partitions, int depth) {
 		if (partition.isEmpty())
 			return;
-		//TODO: find out in what case dividing will produce false results in calcContains
 		// probably complex polygons with crossing /self intersecting ways will be problematic 
 		if (depth >= 10 || partition.size() < 2 || tagIsLikeYes("expect-self-intersection")) {
 			partitions.add(partition);
