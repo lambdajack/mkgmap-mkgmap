@@ -270,7 +270,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 			}
 		}
 		Logger.defaultLogger.error("Possibly failed to calculate Mdr16");
-		while (pos > 0) {
+		while (pos >= 0) {
 			tab2[pos * 2] = 0;
 			tab2[pos * 2 + 1] = (byte) lastIndex;
 			pos--;
