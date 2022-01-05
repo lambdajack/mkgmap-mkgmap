@@ -175,7 +175,6 @@ public class OsmBinHandler extends OsmHandler {
 				long id = binRel.getId();
 				GeneralRelation rel = new GeneralRelation(id);
 
-				boolean tagsIncomplete = false;
 				for (int j = 0; j < binRel.getKeysCount(); j++) {
 					String key = getStringById(binRel.getKeys(j));
 					String val = getStringById(binRel.getVals(j));
@@ -185,12 +184,10 @@ public class OsmBinHandler extends OsmHandler {
 						key = "type";
 					else
 						key = keepTag(key, val);
-					if (key == null)
-						tagsIncomplete = true;
-					else
+					if (key != null) {
 						rel.addTagFromRawOSM(key, val);
+					}
 				}
-				rel.setTagsIncomplete(tagsIncomplete);
 				long lastMid = 0;
 
 				for (int j = 0; j < binRel.getMemidsCount(); j++) {

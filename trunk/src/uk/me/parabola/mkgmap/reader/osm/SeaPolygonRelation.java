@@ -56,7 +56,7 @@ public class SeaPolygonRelation extends MultiPolygonRelation {
 	}
 
 	@Override
-	protected boolean isAreaSizeCalculated() {
+	protected boolean needsAreaSizeTag() {
 		return false;
 	}
 	
