@@ -1,6 +1,5 @@
 package uk.me.parabola.util;
 
-import java.awt.Shape;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.PrintWriter;
@@ -73,24 +72,7 @@ public class GpxCreator {
 	public static void createAreaGpx(String name, Area bbox) {
 		GpxCreator.createGpx(name, bbox.toCoords());
 	}
-
-	/**
-	 * Create gpx file(s) for java Shape. 
-	 * @param baseDir the base directory name
-	 * @param shape the shape to convert
-	 */
-	public static void createShapeGpx(String baseDir, Shape shape) {
-		// have to convert to area to make sure that clockwise/counterclockwise idea works for inner/outer
-		java.awt.geom.Area area = shape instanceof java.awt.geom.Area ? (java.awt.geom.Area) shape
-				: new java.awt.geom.Area(shape);
-		List<List<Coord>> shapes = Java2DConverter.areaToShapes(area);
-		for (int i = 0; i < shapes.size(); i++) {
-			List<Coord> points = shapes.get(i);
-			String extName = baseDir + Integer.toString(i) + "_" + (Way.clockwise(points) ? "o" : "i");
-			GpxCreator.createGpx(extName, points);
-		}
-	}	
-
+	
 	/**
 	 * Creates a gpx file for each way. The filename is the baseDir plus the id
 	 * of the way.

@@ -84,7 +84,6 @@ public class BoundaryElementSaver extends ElementSaver {
 		return false;
 	}
 	
-	@Override
 	public void addRelation(Relation rel) {
 		if (isBoundary(rel)) {
 			BoundaryRelation bRel = (BoundaryRelation) createMultiPolyRelation(rel);
@@ -97,22 +96,17 @@ public class BoundaryElementSaver extends ElementSaver {
 		}
 	}
 	
-	@Override
 	public void deferRelation(long id, Relation rel, String role) {
-		// nothing to do unless we have to process role subarea
+		return;
 	}
 	
-	@Override
 	public Relation createMultiPolyRelation(Relation rel) {
 		return new BoundaryRelation(rel, wayMap, getBoundingBox());
 	}
 
-	@Override
 	public void addNode(Node node) {
-		// nothing to do
 	}
 
-	@Override
 	public void convert(OsmConverter converter) {
 		nodeMap = null;
 
