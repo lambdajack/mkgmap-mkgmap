@@ -122,12 +122,18 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		int code = 0;
 		ByteBuffer remSymbols = ByteBuffer.allocate(256);
 		List<Mdr16Tab> tab1 = new ArrayList<>();
-		for (int depth = 32; depth > initBits; depth--) {
+		for (int depth = 32; depth >= 0; depth--) {
 			ByteBuffer vals = ByteBuffer.allocate(256);
 			getValsForDepth(0, depth, vals, root);
 			if (vals.position() > 0) {
-				if (depth > maxDepth)
+				if (depth > maxDepth) {
 					maxDepth = depth;
+					if (maxDepth < initBits) {
+						initBits = 0;
+					}
+				} else if (depth <= initBits) {
+					break;
+				}
 				Mdr16Tab tabEntry = new Mdr16Tab();
 				tabEntry.depth = depth;
 				tabEntry.offset = remSymbols.position();
@@ -144,14 +150,12 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 			if (code > 0)
 				code >>= 1;
 		}
-		if (tab1.isEmpty()) {
-			// don't know how to write this
-			return;
-		}
+		
 		byte[] tab2 = calcTab2(tab1, initBits, root);
+		if (tab2.length < 64)
+			initBits = 0;
 		
 		int tab1Width = 2 + (int) Math.ceil(maxDepth / 8.0); // not sure about this
-		
 		int neededBytes = remSymbols.position() + tab2.length + tab1.size() * tab1Width;
 		int remSymbolsSizeBytes = remSymbols.position() >= 128 ? 2 : 1;
 		int headerBytes = neededBytes + remSymbolsSizeBytes + 4;
@@ -194,6 +198,8 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	}
 
 	private byte[] calcTab2(List<Mdr16Tab> tab1, int initBits, HuffmanNode root) {
+		if (initBits <= 0)
+			return new byte[2]; // not 0 bytes! Why?
 		int tab2Rows = 1 << initBits; 
 		int pos = tab2Rows - 1;
 		byte[] tab2 = new byte[tab2Rows * 2];
@@ -276,12 +282,11 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	}
 
 	private void addCode(byte ch, int len, int code, int initBits) {
-		if (len > initBits) {
-			String prefix = Integer.toBinaryString(code);
-			if (prefix.length() < len)
-				prefix = ZEROS.substring(0, len - prefix.length()) + prefix;
-			Logger.defaultLogger.diagnostic(String.format("Huffman code: %s %s", prefix, displayChar(ch)));
-		}
+		String prefix = Integer.toBinaryString(code);
+		if (prefix.length() < len)
+			prefix = ZEROS.substring(0, len - prefix.length()) + prefix;
+		Logger.defaultLogger.diagnostic(String.format("Huffman code: %s %s", prefix, displayChar(ch)));
+		
 		Code coded = new Code(len, len < initBits ? code >> (initBits - len) : code);
 		codes[ch & 0xff] = coded;
 	}
@@ -308,7 +313,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		if (node == null)
 			return;
 		if (node.ch != null) {
-			Logger.defaultLogger.debug(
+			Logger.defaultLogger.diagnostic(
 					String.format("depth:%d %s freq: %d", depth, displayChar((byte) (node.ch & 0xff)), node.freq));
 		}
 		printHuffmanTree(depth + 1, node.left);
