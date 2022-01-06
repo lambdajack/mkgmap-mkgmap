@@ -144,8 +144,11 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 			if (code > 0)
 				code >>= 1;
 		}
+		if (tab1.isEmpty()) {
+			// don't know how to write this
+			return;
+		}
 		byte[] tab2 = calcTab2(tab1, initBits, root);
-		
 		
 		int tab1Width = 2 + (int) Math.ceil(maxDepth / 8.0); // not sure about this
 		
@@ -181,6 +184,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 			mdr16Bytes.put(writer.getBytes());
 		} catch (IOException e) {
 			e.printStackTrace();
+			return;
 		}
 		mdr16Bytes.put(tab2);
 		remSymbols.flip();
@@ -204,9 +208,9 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 				continue;
 			
 			int repeat = 1;
-			if (depth < initBits)
+			if (depth < initBits) {
 				repeat = 1 << (initBits - depth);
-			else {
+			} else {
 				idx1--;
 			}
 
@@ -217,7 +221,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 				while (vals.remaining() > 0) {
 					byte ch = vals.get();
 					for (int i = 0; i < repeat; i++) {
-						byte v0 = (byte) (depth * 2 + 1);
+						byte v0 = (byte) (depth * 2 + 1); // odd value is flag for a symbol
 						byte v1 = ch;
 						tab2[pos * 2] = v0;
 						tab2[pos * 2 + 1] = v1;
@@ -228,12 +232,6 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 						Logger.defaultLogger.diagnostic(String.format("tab2: %2d %s %d %s",pos, prefix, v0, displayChar(v1)));
 						addCode(ch, depth, pos, initBits);
 						pos--;
-						if (pos <= 0) {
-							// no idea if this can happen
-							tab2[0] = 0;
-							tab2[1] = (byte) depth;
-							return tab2;
-						}
 					}
 				}
 			} else {
@@ -269,13 +267,11 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 				
 			}
 		}
-		Logger.defaultLogger.error("Possibly failed to calculate Mdr16");
 		while (pos >= 0) {
 			tab2[pos * 2] = 0;
 			tab2[pos * 2 + 1] = (byte) lastIndex;
 			pos--;
 		}
-		// we should not get here
 		return tab2; 
 	}
 
@@ -384,7 +380,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		while (buf.remaining() > 0) {
 			b = buf.get();
 			Code code = codes[b & 0xff];
-			if (code == null)
+			if (code == null || code.len == 0)
 				throw new MapFailedException("invalid code found");
 
 			int bitToWrite = 1 << (code.len - 1);
@@ -395,5 +391,8 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		}
 		return Arrays.copyOf(bw.getBytes(), bw.getLength());
 	}
-	
+
+	public boolean isValid() {
+		return data.length > 0;
+	}
 }

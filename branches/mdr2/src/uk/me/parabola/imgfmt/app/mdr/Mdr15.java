@@ -150,7 +150,7 @@ public class Mdr15 extends MdrSection {
 			int start = writer.position();
 			while (channel.read(buf) > 0) {
 				buf.flip();
-				if (mdr16 == null)
+				if (mdr16 == null || !mdr16.isValid())
 					writer.put(buf);
 				else {
 					while (buf.remaining() > 0) {
@@ -166,7 +166,7 @@ public class Mdr15 extends MdrSection {
 				}
 				buf.compact();
 			}
-			if (mdr16 != null) {
+			if (mdr16 != null && mdr16.isValid()) {
 				int compressed = writer.position() - start;
 				Logger.defaultLogger.diagnostic(String.format("compressed/uncompressed MDR 15 size: %d/%d ratio ~%.3f",
 						compressed, uncompressed, (double) compressed / uncompressed));
