@@ -115,6 +115,11 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 
 	public void calc(int[] freqencies) {
 		HuffmanNode root = buildTree(freqencies);
+		if (root.ch != null) {
+			// only one character in tree, this will be the 0, so nothing to compress
+			return;
+		}
+		
 		printHuffmanTree(0, root);
 		int initBits = sort.getCodepage() == 65001 ? 6:5; // not sure about this
 		
