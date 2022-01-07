@@ -95,6 +95,8 @@ public class MultiPolygonRelation extends Relation {
 	private double mpAreaSize;
 	
 	private boolean noRecalc;
+
+	private boolean renderingFailed;
 	
 	/**
 	 * Create an instance based on an existing relation. We need to do this
@@ -446,16 +448,20 @@ public class MultiPolygonRelation extends Relation {
 						// multi-polygons.
 						Coord edgePoint1 = new Coord(cd.c1.getLatitude(), cd.c2.getLongitude());
 						Coord edgePoint2 = new Coord(cd.c2.getLatitude(), cd.c1.getLongitude());
-
+						
+						List<Coord> possibleEdges = new ArrayList<>();
 						if (!lineCutsBbox(cd.c1, edgePoint1) && !lineCutsBbox(edgePoint1, cd.c2)) {
-							cd.imC = edgePoint1;
-						} else if (!lineCutsBbox(cd.c1, edgePoint2) && !lineCutsBbox(edgePoint2, cd.c2)) {
-							cd.imC = edgePoint2;
-						} else {
+							possibleEdges.add(edgePoint1);
+						} 
+						if (!lineCutsBbox(cd.c1, edgePoint2) && !lineCutsBbox(edgePoint2, cd.c2)) {
+							possibleEdges.add(edgePoint2);
+						} 
+						if (possibleEdges.size() != 1) {
 							// both endpoints are on opposite sides of the bounding box
 							// automatically closing such points would create wrong polygons in most cases
 							continue;
 						}
+						cd.imC = possibleEdges.get(0);
 						cd.distance = cd.c1.distance(cd.imC) + cd.imC.distance(cd.c2);
 					} else {
 						cd.distance = cd.c1.distance(cd.c2);
@@ -620,6 +626,8 @@ public class MultiPolygonRelation extends Relation {
 		}
 		for (List<JoinedWay> some : partitions) {
 			processPartition(new Partition(some));
+			if (renderingFailed)
+				break;
 		}
 
 		tagOuterWays();
@@ -701,9 +709,12 @@ public class MultiPolygonRelation extends Relation {
 
 
 	void processPartition(Partition partition) {
-		
-		assert !partition.outerPolygons.isEmpty(): "no outer way in partition"; 
-
+		if (partition.outerPolygons.isEmpty()) {
+			renderingFailed = true;
+			log.error("Internal error: Failed to render " + this);
+			return;
+		}
+			
 		Queue<PolygonStatus> polygonWorkingQueue = new LinkedBlockingQueue<>();
 		
 		polygonWorkingQueue.addAll(partition.getPolygonStatus(null));
@@ -920,15 +931,16 @@ public class MultiPolygonRelation extends Relation {
 			addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
 		}
 
-		for (Way w : mpPolygons.values()) {
-			String role = w.deleteTag(TKM_MP_ROLE); 
-			if (mpAreaSizeStr != null && ROLE_OUTER.equals(role)) {
-				w.addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
+		if (!renderingFailed) {
+			for (Way w : mpPolygons.values()) {
+				String role = w.deleteTag(TKM_MP_ROLE); 
+				if (mpAreaSizeStr != null && ROLE_OUTER.equals(role)) {
+					w.addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
+				}
 			}
+			// copy all polygons created by the multipolygon algorithm to the global way map
+			tileWayMap.putAll(mpPolygons);
 		}
-		// copy all polygons created by the multipolygon algorithm to the global way map
-		tileWayMap.putAll(mpPolygons);
-		
 		if (cOfG == null && largestOuterPolygon != null) {
 			// use the center of the largest polygon as reference point
 			cOfG = largestOuterPolygon.getCofG();
