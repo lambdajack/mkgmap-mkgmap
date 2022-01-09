@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import uk.me.parabola.mkgmap.general.MapPoint;
+import uk.me.parabola.imgfmt.app.ImgFileWriter;
 import uk.me.parabola.imgfmt.app.srt.Sort;
 import uk.me.parabola.imgfmt.app.srt.SortKey;
 
@@ -124,5 +125,26 @@ public class MdrUtils {
 		int sub = getSubtypeFromFullType(ftype);
 		assert sub <= 0x1f: "Subtype doesn't fit into 5 bits: " + uk.me.parabola.mkgmap.reader.osm.GType.formatType(ftype);
 		return type << 5 | sub;
+	}
+	
+	/**
+	 * Write a length with a variable number of bytes. Used in MDR16 and MDR17.
+	 * @param writer the writer, can be null if only the number of bytes is needed
+	 * @param len the length value to write
+	 * @return the number of bytes written
+	 */
+	public static int writeVarLength(ImgFileWriter writer, int len) {
+		// The length is a variable length integer with the length indicated by a suffix.
+		len = (len << 1) + 1;
+		int mask = ~0xff;
+		int count = 1;
+		while ((len & mask) != 0) {
+			mask <<= 8;
+			len <<= 1;
+			count++;
+		}
+		if (writer instanceof ImgFileWriter)
+			writer.putNu(count, len);
+		return count;
 	}
 }
