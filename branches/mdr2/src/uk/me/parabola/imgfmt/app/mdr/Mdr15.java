@@ -47,15 +47,21 @@ public class Mdr15 extends MdrSection {
 	private Map<String, Integer> strings = new HashMap<>();
 	private final Charset charset;
 	private final File tempFile;
-	int[] freqencies = new int[256];
-	IntBuffer offsets = IntBuffer.allocate(32 * 1024); 
+	final int[] freqencies = new int[256];
+	IntBuffer offsets; 
 	Mdr16 mdr16;
 
 	public Mdr15(MdrConfig config) {
 		setConfig(config);
 
 		charset = config.getSort().getCharset();
-
+		if (config.isForDevice()) {
+			tempFile = null;
+			stringFile = null;
+			offsets = null;
+			return;
+		}
+		offsets = IntBuffer.allocate(32 * 1024);
 		try {
 			tempFile = File.createTempFile("strings", null, config.getOutputDir());
 			tempFile.deleteOnExit();
@@ -94,19 +100,19 @@ public class Mdr15 extends MdrSection {
 			
 			// Increase offset for the length of the string and the null byte
 			nextOffset += bytes.length + 1;
+			if (mdr16 != null) {
+				if (offsets.position() + 1 >= offsets.capacity()) {
+					IntBuffer tmp = offsets;
+					offsets = IntBuffer.allocate(tmp.capacity() * 2);
+					tmp.flip();
+					offsets.put(tmp);
+				}
+				offsets.put(off);
+				off = offsets.position() - 1;
+			}
 		} catch (IOException e) {
 			// Can't convert, return empty string instead.
 			off = 0;
-		}
-		if (mdr16 != null && off != 0) {
-			if (offsets.position() + 1 >= offsets.capacity()) {
-				IntBuffer tmp = offsets;
-				offsets = IntBuffer.allocate(tmp.capacity() * 2);
-				tmp.flip();
-				offsets.put(tmp);
-			}
-			offsets.put(off);
-			off = offsets.position() - 1;
 		}
 		strings.put(str, off);
 		return off;
@@ -121,7 +127,9 @@ public class Mdr15 extends MdrSection {
 	public void releaseMemory() {
 		strings = null;
 		try {
-			stringFile.close();
+			if (stringFile != null) {
+				stringFile.close();
+			}
 		} catch (IOException e) {
 			throw new MapFailedException("Could not close string temporary file");
 		}

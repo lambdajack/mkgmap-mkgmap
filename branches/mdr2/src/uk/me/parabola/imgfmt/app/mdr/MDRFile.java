@@ -453,6 +453,8 @@ public class MDRFile extends ImgFile {
 	 * @return An offset value.
 	 */
 	private int createString(String str) {
+		if (forDevice)
+			return -1;
 		return mdr15.createString(str);
 	}
 }
