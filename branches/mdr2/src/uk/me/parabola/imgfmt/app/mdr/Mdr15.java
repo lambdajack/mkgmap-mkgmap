@@ -42,6 +42,7 @@ import uk.me.parabola.log.Logger;
 public class Mdr15 extends MdrSection {
 	private final OutputStream stringFile;
 	private int nextOffset;
+	private int maxOffset;
 
 	private Map<String, Integer> strings = new HashMap<>();
 	private final Charset charset;
@@ -79,6 +80,7 @@ public class Mdr15 extends MdrSection {
 		int off;
 		try {
 			off = nextOffset;
+			maxOffset = off;
 
 			byte[] bytes = str.getBytes(charset);
 			stringFile.write(bytes);
@@ -167,6 +169,7 @@ public class Mdr15 extends MdrSection {
 				buf.compact();
 			}
 			if (mdr16 != null && mdr16.isValid()) {
+				maxOffset = offsets.get(offsets.position() - 1);
 				int compressed = writer.position() - start;
 				Logger.defaultLogger.diagnostic(String.format("compressed/uncompressed MDR 15 size: %d/%d ratio ~%.3f",
 						compressed, uncompressed, (double) compressed / uncompressed));
@@ -183,12 +186,11 @@ public class Mdr15 extends MdrSection {
 
 	/**
 	 * The meaning of number of items for this section is the largest string
-	 * offset possible.  We are taking the total size of the string section
-	 * for this.
+	 * offset possible.  
 	 */
 	@Override
 	public int getSizeForRecord() {
-		return Utils.numberToPointerSize(nextOffset);
+		return Utils.numberToPointerSize(maxOffset);
 	}
 
 	/**
