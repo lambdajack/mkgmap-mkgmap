@@ -54,7 +54,7 @@ public class Mdr17 extends MdrSection {
 		int len = index.getItemSize() * index.getNumberOfItems() + 2;
 		if (len == 2)
 			return; // nothing to do
-		len = (len << 1) + 1;
+		
 		MdrUtils.writeVarLength(writer, len);
 
 		// Calculate the header. This code is unlikely to survive the finding of another example!
