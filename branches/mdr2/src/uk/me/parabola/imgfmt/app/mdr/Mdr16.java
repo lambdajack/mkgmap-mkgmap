@@ -119,7 +119,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 			// only one character in tree, this will be the 0, so nothing to compress
 			return;
 		}
-		
+		 
 		printHuffmanTree(0, root);
 		
 		int maxDepth = root.maxDepth(0);
@@ -127,10 +127,12 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 			Logger.defaultLogger.warn("Huffman tree depth to high. Don't know how to encode that: ", maxDepth);
 			return;
 		}
-			
-		int loopupBits = sort.getCodepage() == 65001 ? 6 : 5; // unicode always 6? Not sure about this
-		if (maxDepth < loopupBits)
-			loopupBits = 0; // lookup table is not used. TODO: what if depth is 5 with unicode?
+		
+		// Do we want a lookup table? Not sure how Garmin determines if it improves performance.
+		int lookupBits = sort.getCodepage() == 65001 ? 6 : 5; // unicode always 6? Not sure about this
+		if (maxDepth <= 5)
+			lookupBits = 0; // lookup table is not used.
+		
 		int code = 0;
 		
 		// contains the symbols which are not encoded in the lookup table. This will be written at the end of MDR16
@@ -139,7 +141,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		// First table contains information about the deeper levels of the Huffman tree.
 		// If lookupBits is 0 it contains all levels. Levels without any symbol are not stored.
 		List<Mdr16Tab> tab1 = new ArrayList<>();
-		for (int depth = maxDepth; depth > loopupBits; depth--) {
+		for (int depth = maxDepth; depth > lookupBits; depth--) {
 			ByteBuffer vals = ByteBuffer.allocate(256);
 			getValsForDepth(0, depth, vals, root);
 			if (vals.position() > 0) {
@@ -147,7 +149,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 				tabEntry.depth = depth;
 				tabEntry.offset = remSymbols.position();
 				tabEntry.vals = Arrays.copyOf(vals.array(), vals.position());
-				tabEntry.minCode = code << (maxDepth - depth); // why the shifting???
+				tabEntry.minCode = code << (maxDepth - depth); // shifting is needed for binary search
 				tab1.add(tabEntry);
 				vals.flip();
 				while (vals.remaining() > 0) {
@@ -164,24 +166,43 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 				code >>= 1;
 		}
 		
-		byte[] lookupTable = calcLookupTable(root, tab1, loopupBits, maxDepth);
+		byte[] lookupTable = calcLookupTable(root, tab1, lookupBits, maxDepth);
 		
 		
 		int tab1Width = 2 + (int) Math.ceil(maxDepth / 8.0); // not sure about this
 		int remSymbolsSizeBytes = MdrUtils.writeVarLength(null, remSymbols.position());
 		int headerSize = 4 + remSymbolsSizeBytes;
 		int remainingBytes = headerSize + remSymbols.position() + lookupTable.length + tab1.size() * tab1Width;
+		int mdr16Size = MdrUtils.writeVarLength(null, remainingBytes) + remainingBytes;
+		
+		// compare number of bits required with/without compression
+		long numBitsNormal = 0; 
+		long numBitsCompressed = 0; 
+		for (int i = 0; i < freqencies.length; i++) {
+			numBitsNormal += 8 * freqencies[i];
+			if (codes[i] != null) {
+				numBitsCompressed += freqencies[i] * codes[i].len;
+			}
+		}
+		// add size of MDR16 and on average we can expect 4 wasted bits for the terminating 0 in each string
+		numBitsCompressed += mdr16Size * 8 + freqencies[0] * 4L;
+		
+		if (numBitsNormal <= numBitsCompressed ) {
+			// we ignore the case that the string offsets might be written with only 3 instead of 4 bytes
+			// as it is very unlikely that a file > 16MM  shows no gain
+			Logger.defaultLogger.warn("Huffman encoding disbled, will not save any space.");
+			return;
+		}
+		
 		try (ArrayImgWriter writer = new ArrayImgWriter()) {
 			MdrUtils.writeVarLength(writer, remainingBytes);
-			writer.put1u(0x10 | loopupBits);
+			writer.put1u(0x10 | lookupBits);
 			writer.put1u(maxDepth);
 			writer.put1u(tab1.size());
 			writer.put1u(8); // symbol width
 			MdrUtils.writeVarLength(writer, remSymbols.position());
 			for (Mdr16Tab e : tab1) {
 				writer.putNu(tab1Width - 2, e.minCode);
-				assert e.depth > 0 && e.depth < 32 : "invalid depth:" + e.depth;
-				assert e.offset >= 0 && e.offset < 128: "invalid offset:" + e.offset;
 				writer.put1u(e.depth);
 				writer.put1u(e.offset);
 			}
@@ -198,12 +219,12 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	 * Calculate the lookup table. This is only used if the tree has more than 5 or 6 levels
 	 */
 	private byte[] calcLookupTable(HuffmanNode root, List<Mdr16Tab> tab1, int lookupBits, int maxDepth) {
+		byte[] tab2 = new byte[(1 << lookupBits) * 2];
 		if (lookupBits <= 0)
-			return new byte[2]; // 2 not 0 bytes! 
+			return tab2;  // will just contain two bytes with 0
 		
 		int tab2Rows = 1 << lookupBits; 
-		int pos = tab2Rows - 1;
-		byte[] tab2 = new byte[tab2Rows * 2];
+		int pos = tab2Rows - 1; // we start at the end of the table
 		int idx1 = tab1.size();
 		int lastIndex = tab1.size() - 1;
 		int carry = 0; // number of symbols not yet represented in a table entry
@@ -255,7 +276,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 					Logger.defaultLogger.diagnostic(String.format("tab2: %2d %s %2d %2d",pos, prefix, v0, v1));
 					pos--;
 				}
-				if (remaining == 0) 
+				if (remaining == 0 && lastIndex > 0) 
 					lastIndex = idx1 - 1;  
 
 				carry += remaining;
