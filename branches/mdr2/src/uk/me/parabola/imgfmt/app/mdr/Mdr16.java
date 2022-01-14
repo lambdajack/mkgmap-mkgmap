@@ -268,11 +268,14 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 				byte v1 = (byte) maxIdx; // highest index in tab1 that contains values for this entry
 				tab2[pos * 2] = v0;
 				tab2[pos * 2 + 1] = v1;
-				maxIdx = minIdx;
 				String prefix = Integer.toBinaryString(pos);
 				prefix = ZEROS.substring(0, lookupBits - prefix.length()) + prefix;
 				Logger.defaultLogger.diagnostic(String.format("tab2: %2d %s %2d %2d",pos, prefix, v0, v1));
 				pos--;
+				maxIdx = minIdx;
+				if (minCode == tab1.get(minIdx).minCode && maxIdx > 0) {
+					maxIdx--;
+				}
 			} else {
 				minIdx--;
 				if (minIdx < 0) {
