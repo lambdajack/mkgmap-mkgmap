@@ -130,7 +130,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		
 		// Do we want a lookup table? Not sure how Garmin determines if it improves performance.
 		int lookupBits = sort.getCodepage() == 65001 ? 6 : 5; // unicode always 6? Not sure about this
-		if (maxDepth <= 5)
+		if (maxDepth <= lookupBits)
 			lookupBits = 0; // lookup table is not used.
 		
 		int code = 0;
@@ -143,7 +143,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		List<Mdr16Tab> tab1 = new ArrayList<>();
 		for (int depth = maxDepth; depth > lookupBits; depth--) {
 			ByteBuffer vals = ByteBuffer.allocate(256);
-			getValsForDepth(0, depth, vals, root);
+			getSymbolsForDepth(0, depth, vals, root);
 			if (vals.position() > 0) {
 				Mdr16Tab tabEntry = new Mdr16Tab();
 				tabEntry.depth = depth;
@@ -167,7 +167,6 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		}
 		
 		byte[] lookupTable = calcLookupTable(root, tab1, lookupBits, maxDepth);
-		
 		
 		int tab1Width = 2 + (int) Math.ceil(maxDepth / 8.0); // not sure about this
 		int remSymbolsSizeBytes = MdrUtils.writeVarLength(null, remSymbols.position());
@@ -221,75 +220,69 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	private byte[] calcLookupTable(HuffmanNode root, List<Mdr16Tab> tab1, int lookupBits, int maxDepth) {
 		byte[] tab2 = new byte[(1 << lookupBits) * 2];
 		if (lookupBits <= 0)
-			return tab2;  // will just contain two bytes with 0
-		
-		int tab2Rows = 1 << lookupBits; 
-		int pos = tab2Rows - 1; // we start at the end of the table
-		int idx1 = tab1.size();
-		int lastIndex = tab1.size() - 1;
-		int carry = 0; // number of symbols not yet represented in a table entry
-		
-		for (int depth = 0; depth <= maxDepth; depth++) {
-			ByteBuffer vals = ByteBuffer.allocate(256);
-			getValsForDepth(0, depth, vals, root);
-			if (vals.position() == 0)
-				continue;
-			vals.flip();
-			
-			if (depth > lookupBits) {
-				idx1--;
-			}
+			return tab2; // will just contain two bytes with 0
 
-			if (depth <= lookupBits) {
-				int repeat = 1 << (lookupBits - depth);
-				while (vals.remaining() > 0) {
-					byte v0 = (byte) (depth * 2 + 1); // odd value is flag for a symbol
-					byte v1 = vals.get();
-					
-					int code = pos >> (lookupBits - depth);
-					addCode(v1, depth, code);
-					for (int i = 0; i < repeat; i++) {
-						tab2[pos * 2] = v0;
-						tab2[pos * 2 + 1] = v1;
-						String prefix = Integer.toBinaryString(pos);
-						// add leading 0 to make it at least lookupBits long
-						prefix = ZEROS.substring(0, lookupBits - prefix.length()) + prefix;
-						Logger.defaultLogger.diagnostic(String.format("tab2: %2d %s %d %s",pos, prefix, v0, displayChar(v1)));
-						pos--;
-					}
-				}
-			} else {
-				// the number of symbols that is represented by the entry in the lookup table
-				int numValsNeeded = (1 << (depth - lookupBits));
-				int remaining = vals.remaining();
-				assert tab1.get(idx1).vals.length == remaining;
-				while (remaining + carry >= numValsNeeded) {
-					remaining -= numValsNeeded;
-					byte v0 = (byte) (idx1 * 2); // even value signals that an index into tab1 
-					byte v1 = (byte) lastIndex; // highest index in tab1 that contains values for this entry
+		int tab2Rows = 1 << lookupBits;
+		int pos = tab2Rows - 1; // we start at the end of the table
+
+		for (int depth = 0; depth <= lookupBits; depth++) {
+			ByteBuffer symbols = ByteBuffer.allocate(256);
+			getSymbolsForDepth(0, depth, symbols, root);
+			if (symbols.position() == 0)
+				continue;
+			symbols.flip();
+
+			// the depth gives the code length. If that length is smaller than the number of bits
+			// in the lookup part we have to fill multiple rows of the lookup table with the same 
+			// value.
+			int repeat = 1 << (lookupBits - depth);
+			while (symbols.remaining() > 0) {
+				byte v0 = (byte) (depth * 2 + 1); // odd value is flag for a symbol
+				byte v1 = symbols.get();
+				
+				int code = pos >> (lookupBits - depth);
+				addCode(v1, depth, code);
+				for (int i = 0; i < repeat; i++) {
 					tab2[pos * 2] = v0;
 					tab2[pos * 2 + 1] = v1;
-					carry = 0;
-					lastIndex = idx1;
+					
 					String prefix = Integer.toBinaryString(pos);
+					// add leading 0 to make it at least lookupBits long
 					prefix = ZEROS.substring(0, lookupBits - prefix.length()) + prefix;
-					Logger.defaultLogger.diagnostic(String.format("tab2: %2d %s %2d %2d",pos, prefix, v0, v1));
+					Logger.defaultLogger
+							.diagnostic(String.format("tab2: %2d %s %d %s", pos, prefix, v0, displayChar(v1)));
 					pos--;
 				}
-				if (remaining == 0 && lastIndex > 0) 
-					lastIndex = idx1 - 1;  
-
-				carry += remaining;
 			}
 		}
+		// the lower entries in the table may give min/max entries for the binary search in search table 
+		int maxIdx = tab1.size() - 1;
+		if (maxIdx <= 0)
+			return tab2; // avoid special cases, table is already filled with 0 
+		int minIdx = maxIdx;
+		
 		while (pos >= 0) {
-			tab2[pos * 2] = 0;
-			tab2[pos * 2 + 1] = (byte) lastIndex;
-			pos--;
+			int minCode = pos << (maxDepth - lookupBits);
+			if (tab1.get(minIdx).minCode <= minCode) {
+				byte v0 = (byte) (minIdx * 2); // even value signals that an index into tab1 
+				byte v1 = (byte) maxIdx; // highest index in tab1 that contains values for this entry
+				tab2[pos * 2] = v0;
+				tab2[pos * 2 + 1] = v1;
+				maxIdx = minIdx;
+				String prefix = Integer.toBinaryString(pos);
+				prefix = ZEROS.substring(0, lookupBits - prefix.length()) + prefix;
+				Logger.defaultLogger.diagnostic(String.format("tab2: %2d %s %2d %2d",pos, prefix, v0, v1));
+				pos--;
+			} else {
+				minIdx--;
+				if (minIdx < 0) {
+					throw new MapFailedException("Failed to calculate data for MDR16");
+				}
+			}
 		}
-		return tab2; 
+		return tab2;
 	}
-
+	
 	private void addCode(byte ch, int len, int code) {
 		String prefix = Integer.toBinaryString(code);
 		if (prefix.length() < len)
@@ -329,14 +322,14 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		printHuffmanTree(depth + 1, node.right);
 	}
 	
-	private void getValsForDepth(int depth, int wantedDepth, ByteBuffer vals, HuffmanNode node) {
+	private void getSymbolsForDepth(int depth, int wantedDepth, ByteBuffer vals, HuffmanNode node) {
 		if (node.ch != null && wantedDepth == depth) {
 			vals.put(node.ch);
 		}
 		if (node.left != null)
-			getValsForDepth(depth + 1, wantedDepth, vals, node.left);
+			getSymbolsForDepth(depth + 1, wantedDepth, vals, node.left);
 		if (node.right != null)
-			getValsForDepth(depth + 1, wantedDepth, vals, node.right);
+			getSymbolsForDepth(depth + 1, wantedDepth, vals, node.right);
 	}
 	
 	private String displayChar(byte val) {
