@@ -165,6 +165,12 @@ public class Mdr15 extends MdrSection {
 				else {
 					while (buf.remaining() > 0) {
 						byte b = buf.get();
+						if (!encoderBuf.hasRemaining()) {
+							// prevent overflow, older maps may contain very long labels
+							ByteBuffer tmp = encoderBuf;
+							encoderBuf = ByteBuffer.allocate(tmp.capacity() * 2);
+							encoderBuf.put(tmp);
+						}
 						encoderBuf.put(b);
 						if (b == 0) {
 							offsets.put(writer.position() - start);
