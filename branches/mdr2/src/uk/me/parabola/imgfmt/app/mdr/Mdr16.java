@@ -15,7 +15,6 @@ package uk.me.parabola.imgfmt.app.mdr;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.IntBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -286,9 +285,6 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	}
 	
 	private void addCode(byte ch, int len, int code) {
-		if (ch == 81) {
-			long dd = 4;
-		}
 		String prefix = Integer.toBinaryString(code);
 		if (prefix.length() < len)
 			prefix = ZEROS.substring(0, len - prefix.length()) + prefix;
@@ -299,15 +295,8 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	}
 
 	private HuffmanNode buildTree(int[] freqencies) {
-		PriorityQueue<HuffmanNode> q = new PriorityQueue<>(128, (o1, o2) -> {
-			int d = Integer.compare(o1.freq, o2.freq);
-			if (d == 0) {
-				int v1 = o1.ch == null ? Integer.MAX_VALUE : o1.ch & 0xff;
-				int v2 = o2.ch == null ? Integer.MAX_VALUE : o2.ch & 0xff;
-				d = Integer.compare(v1, v2);
-			}
-			return d;
-		});
+		PriorityQueue<HuffmanNode> q = new PriorityQueue<>(128, (o1, o2) -> Integer.compare(o1.freq, o2.freq));
+		
 		for (int i = 0; i < freqencies.length; i++) {
 			if (freqencies[i] > 0) {
 				q.add(new HuffmanNode((byte) i, freqencies[i], null, null));
@@ -336,20 +325,14 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	}
 	
 	private ByteBuffer getSymbolsForDepth(int wantedDepth, HuffmanNode root) {
-		IntBuffer buffer = IntBuffer.allocate(256);
+		ByteBuffer buffer = ByteBuffer.allocate(256);
 		getSymbolsForDepth(0, wantedDepth, buffer, root);
-
-		Arrays.sort(buffer.array(), 0, buffer.position());
-		ByteBuffer res = ByteBuffer.allocate(buffer.position());
-		buffer.flip();
-		while (buffer.hasRemaining()) 
-			res.put((byte) buffer.get());
-		return res;
+		return buffer;
 	}
 
-	private void getSymbolsForDepth(int depth, int wantedDepth, IntBuffer symbols, HuffmanNode node) {
+	private void getSymbolsForDepth(int depth, int wantedDepth, ByteBuffer symbols, HuffmanNode node) {
 		if (node.ch != null && wantedDepth == depth) {
-			symbols.put(node.ch & 0xff);
+			symbols.put(node.ch);
 		}
 		if (node.left != null)
 			getSymbolsForDepth(depth + 1, wantedDepth, symbols, node.left);
