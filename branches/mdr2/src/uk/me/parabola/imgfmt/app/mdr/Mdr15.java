@@ -144,7 +144,7 @@ public class Mdr15 extends MdrSection {
 //				0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 2, 0, 43, 0, 34, 4, 0, 51, 0, 0, 0, 0, 5, 0, 0, 0, 0,
 //				0, 5, 0, 2, 0, 1, 2, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 //				0, 0, 0, 0, 0, 0, 0, 0 };
-//		freqencies = fakeFreq;
+//		System.arraycopy(fakeFreq, 0, freqencies, 0, fakeFreq.length);
 		
 		if (mdr16 != null)
 			mdr16.calc(freqencies);

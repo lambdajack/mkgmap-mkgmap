@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2021.
+ * Copyright (C) 2022.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 3 or
@@ -9,12 +9,13 @@
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
- */
+ */ 
 package uk.me.parabola.imgfmt.app.mdr;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.IntBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,8 +48,8 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	
 	private final Code[] codes = new Code[256];
 
-	// initialize with 
-	byte[] data = new byte[0];
+	/** the data that is written to MDR file */
+	private byte[] data = new byte[0];
 //	data = {
 //			  (byte) 0xeb , (byte) 0x15 , (byte) 0x0d , (byte) 0x07 , (byte) 0x08 , (byte) 0x29 , (byte) 0x00 , (byte) 0x00
 //			  , (byte) 0x0d , (byte) 0x00 , (byte) 0x04 , (byte) 0x00 , (byte) 0x0c , (byte) 0x04 , (byte) 0x08 , (byte) 0x00
@@ -142,8 +143,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		// If lookupBits is 0 it contains all levels. Levels without any symbol are not stored.
 		List<Mdr16Tab> tab1 = new ArrayList<>();
 		for (int depth = maxDepth; depth > lookupBits; depth--) {
-			ByteBuffer vals = ByteBuffer.allocate(256);
-			getSymbolsForDepth(0, depth, vals, root);
+			ByteBuffer vals = getSymbolsForDepth(depth, root);
 			if (vals.position() > 0) {
 				Mdr16Tab tabEntry = new Mdr16Tab();
 				tabEntry.depth = depth;
@@ -226,8 +226,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		int pos = tab2Rows - 1; // we start at the end of the table
 
 		for (int depth = 0; depth <= lookupBits; depth++) {
-			ByteBuffer symbols = ByteBuffer.allocate(256);
-			getSymbolsForDepth(0, depth, symbols, root);
+			ByteBuffer symbols = getSymbolsForDepth(depth, root);
 			if (symbols.position() == 0)
 				continue;
 			symbols.flip();
@@ -272,10 +271,10 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 				prefix = ZEROS.substring(0, lookupBits - prefix.length()) + prefix;
 				Logger.defaultLogger.diagnostic(String.format("tab2: %2d %s %2d %2d",pos, prefix, v0, v1));
 				pos--;
-				maxIdx = minIdx;
-				if (minCode == tab1.get(minIdx).minCode && maxIdx > 0) {
-					maxIdx--;
+				if (minCode == tab1.get(minIdx).minCode && minIdx > 0) {
+					minIdx--;
 				}
+				maxIdx = minIdx;
 			} else {
 				minIdx--;
 				if (minIdx < 0) {
@@ -287,6 +286,9 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	}
 	
 	private void addCode(byte ch, int len, int code) {
+		if (ch == 81) {
+			long dd = 4;
+		}
 		String prefix = Integer.toBinaryString(code);
 		if (prefix.length() < len)
 			prefix = ZEROS.substring(0, len - prefix.length()) + prefix;
@@ -297,7 +299,15 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	}
 
 	private HuffmanNode buildTree(int[] freqencies) {
-		PriorityQueue<HuffmanNode> q = new PriorityQueue<>(128, (o1, o2) -> Integer.compare(o1.freq, o2.freq));
+		PriorityQueue<HuffmanNode> q = new PriorityQueue<>(128, (o1, o2) -> {
+			int d = Integer.compare(o1.freq, o2.freq);
+			if (d == 0) {
+				int v1 = o1.ch == null ? Integer.MAX_VALUE : o1.ch & 0xff;
+				int v2 = o2.ch == null ? Integer.MAX_VALUE : o2.ch & 0xff;
+				d = Integer.compare(v1, v2);
+			}
+			return d;
+		});
 		for (int i = 0; i < freqencies.length; i++) {
 			if (freqencies[i] > 0) {
 				q.add(new HuffmanNode((byte) i, freqencies[i], null, null));
@@ -325,14 +335,26 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		printHuffmanTree(depth + 1, node.right);
 	}
 	
-	private void getSymbolsForDepth(int depth, int wantedDepth, ByteBuffer vals, HuffmanNode node) {
+	private ByteBuffer getSymbolsForDepth(int wantedDepth, HuffmanNode root) {
+		IntBuffer buffer = IntBuffer.allocate(256);
+		getSymbolsForDepth(0, wantedDepth, buffer, root);
+
+		Arrays.sort(buffer.array(), 0, buffer.position());
+		ByteBuffer res = ByteBuffer.allocate(buffer.position());
+		buffer.flip();
+		while (buffer.hasRemaining()) 
+			res.put((byte) buffer.get());
+		return res;
+	}
+
+	private void getSymbolsForDepth(int depth, int wantedDepth, IntBuffer symbols, HuffmanNode node) {
 		if (node.ch != null && wantedDepth == depth) {
-			vals.put(node.ch);
+			symbols.put(node.ch & 0xff);
 		}
 		if (node.left != null)
-			getSymbolsForDepth(depth + 1, wantedDepth, vals, node.left);
+			getSymbolsForDepth(depth + 1, wantedDepth, symbols, node.left);
 		if (node.right != null)
-			getSymbolsForDepth(depth + 1, wantedDepth, vals, node.right);
+			getSymbolsForDepth(depth + 1, wantedDepth, symbols, node.right);
 	}
 	
 	private String displayChar(byte val) {
@@ -344,10 +366,10 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	}
 
 	private static class HuffmanNode {
-		Byte ch;
-		int freq;
-		HuffmanNode left;
-		HuffmanNode right;
+		final Byte ch;
+		final int freq;
+		final HuffmanNode left;
+		final HuffmanNode right;
 		public HuffmanNode(Byte b, int freq, HuffmanNode l, HuffmanNode r) {
 			this.ch = b;
 			this.freq = freq;
@@ -410,5 +432,9 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 
 	public boolean isValid() {
 		return data.length > 0;
+	}
+	
+	public byte[] getData() {
+		return data;
 	}
 }
