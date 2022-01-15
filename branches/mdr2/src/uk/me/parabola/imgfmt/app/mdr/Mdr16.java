@@ -114,6 +114,7 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	}
 
 	public void calc(int[] freqencies) {
+		Logger.defaultLogger.diagnostic("building Huffman tree for the following frequencies: " + Arrays.toString(freqencies));  
 		HuffmanNode root = buildTree(freqencies);
 		if (root.ch != null) {
 			// only one character in tree, this will be the 0, so nothing to compress
