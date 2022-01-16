@@ -916,7 +916,7 @@ public class MultiPolygonRelation extends Relation {
 
 
 	protected double getMaxCloseDist() {
-		return -1; // overwritten in BoundaryRelation
+		return Double.MAX_VALUE; // overwritten in BoundaryRelation
 	}
 
 	private String getAreaSizeString() {
