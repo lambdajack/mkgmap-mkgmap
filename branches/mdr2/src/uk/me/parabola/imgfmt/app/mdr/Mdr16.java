@@ -393,7 +393,8 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 	
 	public boolean canEncode() {
 		// TODO: refuse to encode codepage with more than 8 bit like 932
-		return sort.getCodepage() == 65001 || (sort.getCodepage() >= 1250 && sort.getCodepage() <= 1258);
+		int cp = sort.getCodepage();
+		return cp == 0 || cp == 65001 || (cp >= 1250 && cp <= 1258);
 	}
 	
 	public byte[] encode(ByteBuffer buf) {
