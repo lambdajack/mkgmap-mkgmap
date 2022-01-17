@@ -45,7 +45,7 @@ public class MdrConfig {
 	private boolean splitName;
 	private Set<String> mdr7Excl = Collections.emptySet();
 	private Set<String> mdr7Del = Collections.emptySet();
-	private Set<Integer> poiExclTypes = Collections.emptySet(); //TODO: Maybe use BitSet instead?
+	private Set<Integer> poiExclTypes = Collections.emptySet();
 	private boolean compressMdr15;
 	public MdrConfig() {
 		
