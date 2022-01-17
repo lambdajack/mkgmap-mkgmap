@@ -168,8 +168,9 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 		
 		byte[] lookupTable = calcLookupTable(root, tab1, lookupBits, maxDepth);
 		
-		int tab1Width = 2 + (int) Math.ceil(maxDepth / 8.0); // not sure about this
 		int remSymbolsSizeBytes = MdrUtils.writeVarLength(null, remSymbols.position());
+		int minCodeBytes = (int) Math.ceil(maxDepth / 8.0);
+		int tab1Width = 1 + remSymbolsSizeBytes + minCodeBytes;
 		int headerSize = 4 + remSymbolsSizeBytes;
 		int remainingBytes = headerSize + remSymbols.position() + lookupTable.length + tab1.size() * tab1Width;
 		int mdr16Size = MdrUtils.writeVarLength(null, remainingBytes) + remainingBytes;
@@ -201,9 +202,9 @@ public class Mdr16 extends MdrSection implements HasHeaderFlags {
 			writer.put1u(8); // symbol width
 			MdrUtils.writeVarLength(writer, remSymbols.position());
 			for (Mdr16Tab e : tab1) {
-				writer.putNu(tab1Width - 2, e.minCode);
+				writer.putNu(minCodeBytes, e.minCode);
 				writer.put1u(e.depth);
-				writer.put1u(e.offset);
+				writer.putNu(remSymbolsSizeBytes, e.offset);
 			}
 			writer.put(lookupTable);
 			remSymbols.flip();
