@@ -140,9 +140,8 @@ public class Mdr7Record extends RecordBase implements NamedRecord {
 		result = prime * result + nameOffset;
 		result = prime * result + outNameOffset;
 		result = prime * result + prefixOffset;
-		result = prime * result + stringOffset; // XXX probably not needed
 		result = prime * result + suffixOffset;
-		result = prime * result + getMapIndex();
+		result = prime * result + index;
 		return result;
 	}
 
@@ -155,21 +154,13 @@ public class Mdr7Record extends RecordBase implements NamedRecord {
 		if (getClass() != obj.getClass())
 			return false;
 		Mdr7Record other = (Mdr7Record) obj;
-		if (labelOffset != other.labelOffset)
-			return false;
-		if (getMapIndex() != other.getMapIndex())
-			return false;
-		if (nameOffset != other.nameOffset)
-			return false;
-		if (outNameOffset != other.outNameOffset)
-			return false;
-		if (prefixOffset != other.prefixOffset)
-			return false;
-		if (stringOffset != other.stringOffset) // XXX probably not needed
-			return false;
-		if (suffixOffset != other.suffixOffset)
-			return false;
-		return (city == other.getCity()); 
+		return labelOffset == other.labelOffset
+				&& index == other.index
+				&& nameOffset == other.nameOffset
+				&& outNameOffset == other.outNameOffset
+				&& prefixOffset == other.prefixOffset
+				&& suffixOffset == other.suffixOffset
+				&& city == other.city;
 	}
 
 	/**
