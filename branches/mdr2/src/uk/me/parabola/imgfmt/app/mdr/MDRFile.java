@@ -12,7 +12,10 @@
  */
 package uk.me.parabola.imgfmt.app.mdr;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import uk.me.parabola.imgfmt.MapFailedException;
@@ -76,7 +79,6 @@ public class MDRFile extends ImgFile {
 
 	private final MdrSection[] sections;
 	private PointerSizes sizes;
-	private Set<String> mdr7Del;
 
 	private Set<Integer> poiExclTypes; 
 
@@ -85,7 +87,6 @@ public class MDRFile extends ImgFile {
 
 		forDevice = config.isForDevice();
 		isMulti = config.getSort().isMulti();
-		mdr7Del = config.getMdr7Del();
 		poiExclTypes = config.getPoiExclTypes();
 		mdrHeader = new MDRHeader(config.getHeaderLen());
 		mdrHeader.setSort(sort);
@@ -235,41 +236,32 @@ public class MDRFile extends ImgFile {
 
 	public void addStreet(RoadDef street, Mdr5Record mdrCity) {
 		// Add a separate record for each name
+		List<Label> labels = new ArrayList<>();
 		for (Label lab : street.getLabels()) {
-			if (lab == null)
-				break;
-
-			if (lab.getOffset() == 0)
-				continue;
-			
+			if(lab != null && lab.getOffset() != 0)
+				labels.add(lab);
+		}
+		if (labels.size() > 1) {
+			// sort so that shorter labels come first
+			labels.sort((o1,o2) -> Integer.compare(o1.getLength(), o2.getLength()));
+		}
+		Set<String> indexed = new HashSet<>();
+		// generate the possible mdr7 entries
+		for (Label lab : labels) {
 			String name = lab.getText();
-			if (!mdr7Del.isEmpty()) {
-				String[] parts = name.split(" ");
-				int pos = parts.length;
-				for (int i = parts.length - 1; i >= 0; i--) {
-					if (!mdr7Del.contains(parts[i])) {
-						break;
-					}
-					pos = i;
-				}
-				if (pos == 0)
-					continue;
-				if (pos < parts.length) {
-					StringBuilder sb = new StringBuilder();
-					for (int i = 0; i + 1 < pos; i++) {
-						sb.append(parts[i]);
-						sb.append(" ");
-					}
-					sb.append(parts[pos - 1]);
-					name = sb.toString(); // XXX maybe add -intern()
+			
+			// We sort on the dirty name (ie with the Garmin shield codes) although those codes do not
+			// affect the sort order.
+			List<Mdr7Record> candidates = mdr7.genIndexEntries(currentMap, name, lab.getOffset(), indexed, mdrCity);
+			int strOff = -1;
+			for (Mdr7Record r : candidates) {
+				if (indexed.add(r.getPartialName())) {
+					if (strOff < 0) 
+						strOff = createString(name);
+					r.setStringOffset(strOff);
+					mdr7.storeMdr7(r);
 				}
 			}
-			
-			int strOff = createString(name);
-
-			// We sort on the dirty name (ie with the Garmin shield codes) although those codes do not
-			// affect the sort order. The string for mdr15 does not include the shield codes.
-			mdr7.addStreet(currentMap, name, lab.getOffset(), strOff, mdrCity);
 		}
 	}
 
@@ -454,7 +446,7 @@ public class MDRFile extends ImgFile {
 	 */
 	private int createString(String str) {
 		if (forDevice)
-			return -1;
+			return 0;
 		return mdr15.createString(str);
 	}
 }

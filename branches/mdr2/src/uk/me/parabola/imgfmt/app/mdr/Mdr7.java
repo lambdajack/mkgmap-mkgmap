@@ -57,6 +57,7 @@ public class Mdr7 extends MdrMapSection {
 	private int maxSuffixCount;
 	private boolean magicIsValid;
 	private int magic;
+	private Set<String> mdr7Del;
 
 	public Mdr7(MdrConfig config) {
 		setConfig(config);
@@ -64,14 +65,20 @@ public class Mdr7 extends MdrMapSection {
 		collator = sort.getCollator();
 		splitName = config.isSplitName();
 		exclNames = config.getMdr7Excl();
+		mdr7Del = config.getMdr7Del();
 		codepage = sort.getCodepage();
 		isMulti = sort.isMulti();
 	}
 
-	public void addStreet(int mapId, String name, int lblOffset, int strOff, Mdr5Record mdrCity) {
+	public List<Mdr7Record> genIndexEntries(int mapId, final String name, int lblOffset,
+			Set<String> indexed, Mdr5Record mdrCity) {
 		if (name.isEmpty())
-			return;
-			
+			return Collections.emptyList();
+		
+		final int stopPos = checkMdr7Del(name);
+		if (stopPos == 0 || (stopPos < name.length() && indexed.contains(name.substring(0, stopPos))))
+			return Collections.emptyList();
+
 		// Find a name prefix, which is either a shield or a word ending 0x1e or 0x1c. We are treating
 		// a shield as a prefix of length one.
 		int prefix = 0;
@@ -95,21 +102,20 @@ public class Mdr7 extends MdrMapSection {
 
 		// Large values can't actually work.
 		if (prefix >= MAX_NAME_OFFSET || suffix >= MAX_NAME_OFFSET)
-			return;
+			return Collections.emptyList();
 
 		Mdr7Record st = new Mdr7Record();
 		st.setMapIndex(mapId);
 		st.setLabelOffset(lblOffset);
-		st.setStringOffset(strOff);
 		st.setName(name);
 		st.setCity(mdrCity);
 		st.setPrefixOffset((byte) prefix);
 		st.setSuffixOffset((byte) suffix);
-		storeMdr7(st);
 
 		if (!splitName)
-			return;
-
+			return Collections.singletonList(st);
+		List<Mdr7Record> allEntries = new ArrayList<>();
+		allEntries.add(st);
 		boolean start = false;
 		boolean inWord = false;
 
@@ -117,6 +123,8 @@ public class Mdr7 extends MdrMapSection {
 		int outOffset = 0;
 
 		int end = Math.min(((suffix > 0) ? suffix : name.length()) - prefix - 1, MAX_NAME_OFFSET);
+		if (end > stopPos - prefix)
+			end = stopPos - prefix;
 		for (int nameOffset = 0; nameOffset < end; nameOffset += Character.charCount(c)) {
 			c = name.codePointAt(prefix + nameOffset);
 
@@ -135,15 +143,15 @@ public class Mdr7 extends MdrMapSection {
 				st = new Mdr7Record();
 				st.setMapIndex(mapId);
 				st.setLabelOffset(lblOffset);
-				st.setStringOffset(strOff);
 				st.setName(name);
 				st.setCity(mdrCity);
 				st.setNameOffset((byte) nameOffset);
 				st.setOutNameOffset((byte) outOffset);
 				st.setPrefixOffset((byte) prefix);
 				st.setSuffixOffset((byte) suffix);
-				if (!exclNames.contains(st.getPartialName()))
-					storeMdr7(st);
+				if (!exclNames.contains(st.getPartialName())) {
+					allEntries.add(st);
+				}
 
 				start = false;
 			}
@@ -152,13 +160,38 @@ public class Mdr7 extends MdrMapSection {
 			if (outOffset > MAX_NAME_OFFSET)
 				break;
 		}
+		return allEntries;
+	}
+
+	private int checkMdr7Del(String name) {
+		int stopPos = Integer.MAX_VALUE;
+		if (!mdr7Del.isEmpty()) {
+			String[] parts = name.split(" ");
+			int pos = parts.length;
+			for (int i = parts.length - 1; i >= 0; i--) {
+				if (!mdr7Del.contains(parts[i])) {
+					break;
+				}
+				pos = i;
+			}
+			if (pos == 0)
+				return 0;
+			if (pos < parts.length) {
+				stopPos = 0;
+				for (int i = 0; i + 1 < pos; i++) {
+					stopPos += parts[i].length() + 1; // +1 for the blank
+				}
+				stopPos += parts[pos - 1].length();
+			}
+		}
+		return stopPos;
 	}
 
 	/**
 	 * Store in array if not already done
 	 * @param st the mdr7 record
 	 */
-	private void storeMdr7(Mdr7Record st) {
+	void storeMdr7(Mdr7Record st) {
 		if (lastMaxIndex != st.getMapIndex()) {
 			// we process all roads of one map tile sequentially, so we can clear the set with each new map tile
 			lastMaxIndex = st.getMapIndex();
