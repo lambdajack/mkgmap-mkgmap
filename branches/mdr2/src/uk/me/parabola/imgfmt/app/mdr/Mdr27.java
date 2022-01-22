@@ -12,6 +12,7 @@
  */
 package uk.me.parabola.imgfmt.app.mdr;
 
+import java.text.Collator;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,7 +22,6 @@ import uk.me.parabola.imgfmt.app.srt.SortKey;
 
 /**
  * Cities sorted by region name.
- * TODO: dedup, garmin maps have fewer records in MDR 27 than in MDR 5
  *
  * @author Steve Ratcliffe
  */
@@ -49,22 +49,26 @@ public class Mdr27 extends MdrSection {
 		}
 
 		keys.sort(null);
-
+		Mdr5Record lastCity = null;
 		String lastName = null;
 		int record = 0;
+		Collator collator = sort.getCollator();
 		for (SortKey<Mdr5Record> key : keys) {
-			record++;
 			Mdr5Record city = key.getObject();
+			if(!city.isSameByMapAndName(collator, lastCity)) {
+				record++;
 
-			Mdr13Record mdrRegion = city.getMdrRegion();
-			Mdr28Record mdr28 = mdrRegion.getMdr28();
-			String name = mdr28.getName();
-			if (!name.equals(lastName)) {
-				mdr28.setMdr27(record);
-				lastName = name;
+				Mdr13Record mdrRegion = city.getMdrRegion();
+				Mdr28Record mdr28 = mdrRegion.getMdr28();
+				String name = mdr28.getName();
+				if (!name.equals(lastName)) {
+					mdr28.setMdr27(record);
+					lastName = name;
+				}
+
+				cities.add(city);
+				lastCity = city;
 			}
-
-			cities.add(city);
 		}
 	}
 
