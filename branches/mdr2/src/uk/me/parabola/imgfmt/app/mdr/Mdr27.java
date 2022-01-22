@@ -21,7 +21,7 @@ import uk.me.parabola.imgfmt.app.srt.Sort;
 import uk.me.parabola.imgfmt.app.srt.SortKey;
 
 /**
- * Cities sorted by region name.
+ * Cities sorted by region name and city record number. One record for each combination.
  *
  * @author Steve Ratcliffe
  */
