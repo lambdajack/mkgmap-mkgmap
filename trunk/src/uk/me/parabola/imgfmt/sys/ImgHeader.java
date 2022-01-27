@@ -358,16 +358,6 @@ class ImgHeader {
 	}
 
 	/**
-	 * Convert a string to a byte array.
-	 * @param s The string
-	 * @return A byte array.
-	 */
-	private static byte[] toByte(String s) {
-		// NB: what character set should be used?
-		return s.getBytes();
-	}
-
-	/**
 	 * Convert to the one byte code that is used for the year.
 	 * If the year is in the 1900, then subtract 1900 and add the result to 0x63,
 	 * else subtract 2000.
