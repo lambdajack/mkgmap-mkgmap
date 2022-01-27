@@ -260,6 +260,8 @@ public class TREFileReader extends ImgReader {
 	
 	
 	// code taken from GPXsee 
+	// origin is much older: 
+	// https://github.com/wuyongzheng/gimgtools/blob/92d015749e105c5fb8eb704ae503a5c7e51af2bd/gimgunlock.c#L15
 	private static void demangle(byte[] data, int size, int key) {
 		final byte[] shuf = {
 			0xb, 0xc, 0xa, 0x0,
