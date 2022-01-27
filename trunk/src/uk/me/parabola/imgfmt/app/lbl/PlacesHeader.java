@@ -122,7 +122,7 @@ public class PlacesHeader {
 	}
 
 	void readFileHeader(ImgFileReader reader) {
-		reader.position(0x1f);
+		reader.position(0x1fL + reader.getGMPOffset());
 
 		country.readSectionInfo(reader, true);
 		reader.get4();
@@ -223,42 +223,26 @@ public class PlacesHeader {
 		return poiProperties.getEndPos();
 	}
 
-	public int getCitiesStart() {
-		return city.getPosition();
+	public Section getCitySection() {
+		return city;
 	}
-	public int getCitiesEnd() {
-		return city.getEndPos();
-	}
-	
 	public int getNumExits() {
 		return exitFacility.getNumItems();
 	}
 
-	public int getCountriesStart() {
-		return country.getPosition();
+	public Section getCountrySection() {
+		return country;
 	}
 
-	public int getCountriesEnd() {
-		return country.getEndPos();
-	}
-
-	public int getRegionsStart() {
-		return region.getPosition();
-	}
-
-	public int getRegionsEnd() {
-		return region.getEndPos();
+	public Section getRegionSection() {
+		return region;
 	}
 
 	public int getNumHighways() {
 		return highway.getNumItems();
 	}
 	
-	public int getZipsStart() {
-		return zip.getPosition();
+	public Section getZipSection() {
+		return zip;
 	}
-	
-	public int getZipsEnd() {
-		return zip.getEndPos();
-	}	
 }

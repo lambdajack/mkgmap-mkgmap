@@ -45,11 +45,23 @@ public class BufferedImgFileReader implements ImgFileReader {
 
 	// We keep our own idea of the file position.
 	private long position;
+	// the position of the header, normally 0, but not in GMP format
+	private final int gmpOffset;
 
 	public BufferedImgFileReader(ImgChannel chan) {
+		this(chan, 0);
+	}
+
+	public BufferedImgFileReader(ImgChannel chan, int gmpOffset) {
 		this.chan = chan;
+		this.gmpOffset = gmpOffset;
 //		buf.order(ByteOrder.LITTLE_ENDIAN);
 // could use getShort/getChar/getInt if sure buffer loaded		
+	}
+
+	@Override
+	public int getGMPOffset() {
+		return gmpOffset;
 	}
 
 	/**

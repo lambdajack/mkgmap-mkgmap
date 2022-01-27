@@ -336,7 +336,7 @@ public class FileInfo {
 	}
 
 	private static void lblInfo(ImgChannel chan, FileInfo info) {
-		try (LBLFileReader lblFile = new LBLFileReader(chan, false)) {
+		try (LBLFileReader lblFile = new LBLFileReader(chan, false, 0)) {
 			info.setCodePage(lblFile.getCodePage());
 			info.setSortOrderId(lblFile.getSortOrderId());
 		}

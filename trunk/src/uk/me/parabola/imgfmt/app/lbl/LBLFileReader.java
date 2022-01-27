@@ -12,6 +12,8 @@
  */
 package uk.me.parabola.imgfmt.app.lbl;
 
+import static uk.me.parabola.imgfmt.app.Label.NULL_LABEL;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -24,14 +26,13 @@ import uk.me.parabola.imgfmt.app.BufferedImgFileReader;
 import uk.me.parabola.imgfmt.app.ImgFile;
 import uk.me.parabola.imgfmt.app.ImgFileReader;
 import uk.me.parabola.imgfmt.app.Label;
+import uk.me.parabola.imgfmt.app.Section;
 import uk.me.parabola.imgfmt.app.labelenc.CharacterDecoder;
 import uk.me.parabola.imgfmt.app.labelenc.CodeFunctions;
 import uk.me.parabola.imgfmt.app.labelenc.DecodedText;
 import uk.me.parabola.imgfmt.app.trergn.Subdivision;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
 import uk.me.parabola.log.Logger;
-
-import static uk.me.parabola.imgfmt.app.Label.NULL_LABEL;
 
 /**
  * The file that holds all the labels for the map.
@@ -59,13 +60,13 @@ public class LBLFileReader extends ImgFile {
 	private final List<City> cities = new ArrayList<>();
 
 	public LBLFileReader(ImgChannel chan) {
-		this(chan, true);
+		this(chan, true, 0);
 	}
 	
-	public LBLFileReader(ImgChannel chan, boolean fullData) {
+	public LBLFileReader(ImgChannel chan, boolean fullData, int gmpOffset) {
 		setHeader(header);
 
-		setReader(new BufferedImgFileReader(chan));
+		setReader(new BufferedImgFileReader(chan, gmpOffset));
 		header.readHeader(getReader());
 		if (!fullData)
 			return;
@@ -140,15 +141,18 @@ public class LBLFileReader extends ImgFile {
 		PlacesHeader placeHeader = header.getPlaceHeader();
 
 		countries.add(null); // 1 based indexes
-
-		int start = placeHeader.getCountriesStart();
-		int end = placeHeader.getCountriesEnd();
-
+		Section s = placeHeader.getCountrySection();
+		int start = s.getPosition();
+		int end = s.getEndPos();
+		int recSize = s.getItemSize();
+		int unkSize = recSize - 3;   // new maps may have extra data
 		reader.position(start);
 		int index = 1;
 		while (reader.position() < end) {
 			int offset = reader.get3u();
-			Label label = fetchLabel(offset);
+			Label label = fetchLabel(offset & 0x3fffff);
+			if (unkSize > 0)
+				reader.get(unkSize);
 
 			if (label != null) {
 				Country country = new Country(index, label);
@@ -165,9 +169,11 @@ public class LBLFileReader extends ImgFile {
 		ImgFileReader reader = getReader();
 
 		PlacesHeader placeHeader = header.getPlaceHeader();
-
-		int start = placeHeader.getRegionsStart();
-		int end = placeHeader.getRegionsEnd();
+		Section s = placeHeader.getRegionSection();
+		int start = s.getPosition();
+		int end = s.getEndPos();
+		int recSize = s.getItemSize();
+		int unkSize = recSize - 5;   // new maps may have extra data
 
 		regions.add(null);
 
@@ -176,7 +182,9 @@ public class LBLFileReader extends ImgFile {
 		while (reader.position() < end) {
 			int country = reader.get2u();
 			int offset = reader.get3u();
-			Label label = fetchLabel(offset);
+			if (unkSize > 0)
+				reader.get(unkSize);
+			Label label = fetchLabel(offset & 0x3fffff);
 			if (label != null) {
 				Region region = new Region(countries.get(country), label);
 				region.setIndex(index);
@@ -194,9 +202,11 @@ public class LBLFileReader extends ImgFile {
 	 */
 	private void readCities() {
 		PlacesHeader placeHeader = header.getPlaceHeader();
-		int start = placeHeader.getCitiesStart();
-		int end = placeHeader.getCitiesEnd();
-
+		Section s = placeHeader.getCitySection();
+		int start = s.getPosition();
+		int end = s.getEndPos();
+		int recSize = s.getItemSize();
+		int unkSize = recSize - 5;   // new maps may have extra data
 		ImgFileReader reader = getReader();
 
 		// Since cities are indexed starting from 1, we add a null one at index 0
@@ -208,6 +218,8 @@ public class LBLFileReader extends ImgFile {
 			// don't know until we have read further
 			int label = reader.get3u();
 			int info = reader.get2u();
+			if (unkSize > 0)
+				reader.get(unkSize);
 
 			City city;
 			if ((info & 0x4000) == 0) {
@@ -221,7 +233,7 @@ public class LBLFileReader extends ImgFile {
 			city.setIndex(index);
 			if ((info & 0x8000) == 0) {
 				city.setSubdivision(Subdivision.createEmptySubdivision(1));
-				Label label1 = labels.get(label & 0x3fffff);
+				Label label1 = fetchLabel(label & 0x3fffff);
 				city.setLabel(label1);
 			} else {
 				// Has subdiv/point index
@@ -310,16 +322,21 @@ public class LBLFileReader extends ImgFile {
 		ImgFileReader reader = getReader();
 
 		PlacesHeader placeHeader = header.getPlaceHeader();
-		int start = placeHeader.getZipsStart();
-		int end = placeHeader.getZipsEnd();
+		Section s = placeHeader.getZipSection();
+		int start = s.getPosition();
+		int end = s.getEndPos();
+		int recSize = s.getItemSize();
+		int unkSize = recSize - 3;   // new maps may have extra data
 
 		reader.position(start);
 
 		int zipIndex = 1;
 		while (reader.position() < end) {
 			int lblOffset = reader.get3u();
-			
-			Zip zip = new Zip(fetchLabel(lblOffset));
+			if (unkSize > 0)
+				reader.get(unkSize);
+
+			Zip zip = new Zip(fetchLabel(lblOffset & 0x3fffff));
 			zip.setIndex(zipIndex);
 			
 			zips.put(zip.getIndex(), zip);

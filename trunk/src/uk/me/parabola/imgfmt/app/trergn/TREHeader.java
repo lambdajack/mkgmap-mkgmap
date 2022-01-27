@@ -107,7 +107,7 @@ public class TREHeader extends CommonHeader {
 	 * @param reader The header is read from here.
 	 */
 	protected void readFileHeader(ImgFileReader reader) throws ReadFailedException {
-		if (reader.position() != COMMON_HEADER_LEN) {
+		if (reader.position() - reader.getGMPOffset() != COMMON_HEADER_LEN) {
 			throw new ReadFailedException("Reader position not at expected header length", new IOException());
 		}
 		int maxLat = reader.get3s();

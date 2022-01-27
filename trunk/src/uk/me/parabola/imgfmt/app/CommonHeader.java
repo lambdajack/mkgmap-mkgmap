@@ -41,7 +41,7 @@ public abstract class CommonHeader {
 
 	// Set to 0x80 on locked maps.  We are not interested in creating locked
 	// maps, but may be useful to recognise them for completeness.
-	//	private byte lockFlag;
+	private byte lockFlag;
 
 	// A date of creation.
 	private Date creationDate;
@@ -78,12 +78,12 @@ public abstract class CommonHeader {
 	 * @param reader Used to read the header.
 	 */
 	public final void readHeader(ImgFileReader reader) throws ReadFailedException {
-		reader.position(0);
+		reader.position(reader.getGMPOffset());
 		headerLength = reader.get2u();
 		byte[] bytes = reader.get(TYPE_LEN);
 		type = new String(bytes, StandardCharsets.US_ASCII);
 		reader.get(); // ignore
-		reader.get(); // ignore
+		this.lockFlag = reader.get(); // 0x80 if locked
 
 		byte[] date = reader.get(7);
 		creationDate = Utils.makeCreationTime(date);
@@ -115,5 +115,12 @@ public abstract class CommonHeader {
 		// lockFlag = 0;
 		if (creationDate == null)
 			creationDate = new Date();
+	}
+
+	/**
+	 * @return the lockFlag
+	 */
+	public byte getLockFlag() {
+		return lockFlag;
 	}
 }

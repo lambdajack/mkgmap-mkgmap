@@ -17,6 +17,7 @@
 package uk.me.parabola.imgfmt.app;
 
 import java.io.Closeable;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import uk.me.parabola.imgfmt.ReadFailedException;
 
@@ -109,4 +110,35 @@ public interface ImgFileReader extends Closeable {
 	 * @return A phone number possibly containing the delimiter character.
 	 */
 	public String getBase11str(byte firstChar, char delimiter);
+
+	/**
+	 * Get the offset in the GMP file.
+	 * @return the offset, 0 if not a GMP file  
+	 */
+	default int getGMPOffset() {
+		return 0;
+	}
+
+	/**
+	 * Read varying length integer where first byte also gives number of following bytes.
+	 * See also imgfmt/app/mdr/MdrUtils.writeVarLength() and ./MdrDisplay.printSect17()
+	 *
+	 * @return the length
+	 */
+	default int readVarLength(AtomicInteger varLength) {
+		int peek = get1u();
+		if ((peek & 0x1) == 0x1) {
+			varLength.set(1);
+			return peek >> 1;
+		} else if ((peek & 0x3) == 0x2) {
+			varLength.set(2);
+			return peek >> 2 | get1u() << 6;
+		} else if ((peek & 0x7) == 0x4) {
+			varLength.set(3);
+			return peek >> 3 | get2u() << 5;
+		}  else { // bottom 3 bits clear so assume:
+			varLength.set(4);
+			return peek >> 4 | get3u() << 4; // mkgmap writeVarLength does this
+		}
+	}
 }

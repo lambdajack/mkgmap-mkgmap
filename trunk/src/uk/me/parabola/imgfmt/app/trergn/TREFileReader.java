@@ -50,9 +50,13 @@ public class TREFileReader extends ImgReader {
 
 
 	public TREFileReader(ImgChannel chan) {
+		this(chan, 0);
+	}
+
+	public TREFileReader(ImgChannel chan, int gmpOffset) {
 		setHeader(header);
 
-		setReader(new BufferedImgFileReader(chan));
+		setReader(new BufferedImgFileReader(chan, gmpOffset));
 		header.readHeader(getReader());
 		readMapLevels();
 		readSubdivs();
@@ -170,15 +174,30 @@ public class TREFileReader extends ImgReader {
 		int levelsPos = header.getMapLevelsPos();
 		int levelsSize = header.getMapLevelsSize();
 		reader.position(levelsPos);
+		byte[] levelsData = reader.get(levelsSize);
 
 		List<Subdivision[]> levelDivsList = new ArrayList<>();
 		List<Zoom> mapLevelsList = new ArrayList<>();
-		int end = levelsPos + levelsSize;
-		while (reader.position() < end) {
-			int level = reader.get1u();
-			int nbits = reader.get1u();
-			int ndivs = reader.get2u();
-
+		int key = 0;
+		if (header.getLockFlag() != 0) {
+			long pos = reader.position();
+			if (header.getHeaderLength() >= 0xAA) {
+				reader.position((reader.getGMPOffset() + 0xAA));
+				key = reader.get4();
+				
+			}
+			reader.position(pos);
+			
+			demangle(levelsData, levelsSize, key);
+		}
+		
+		int used = 0;
+		while (used < levelsSize) {
+			int level = levelsData[used++] & 0xff;
+			int nbits = levelsData[used++] & 0xff;
+			byte b1 = levelsData[used++];
+			byte b2 = levelsData[used++];
+			int ndivs = (b1 & 0xff) | ((b2 & 0xff) << 8);
 			Subdivision[] divs = new Subdivision[ndivs];
 			levelDivsList.add(divs);
 			level &= 0x7f;
@@ -238,4 +257,35 @@ public class TREFileReader extends ImgReader {
 		}
 		return msgs.toArray(new String[msgs.size()]);
 	}
+	
+	
+	// code taken from GPXsee 
+	private static void demangle(byte[] data, int size, int key) {
+		final byte[] shuf = {
+			0xb, 0xc, 0xa, 0x0,
+			0x8, 0xf, 0x2, 0x1,
+			0x6, 0x4, 0x9, 0x3,
+			0xd, 0x5, 0x7, 0xe
+		};
+
+		int sum = shuf[((key >> 24) + (key >> 16) + (key >> 8) + key) & 0xf];
+		int ringctr = 16;
+		for (int i = 0; i < size; i++) {
+			int upper = data[i] >> 4;
+			int lower = data[i];
+
+			upper -= sum;
+			upper -= key >> ringctr;
+			upper -= shuf[(key >> ringctr) & 0xf];
+			ringctr = ringctr != 0 ? ringctr - 4 : 16;
+
+			lower -= sum;
+			lower -= key >> ringctr;
+			lower -= shuf[(key >> ringctr) & 0xf];
+			ringctr = ringctr != 0 ? ringctr - 4 : 16;
+
+			data[i] = (byte) (((upper << 4) & 0xf0) | (lower & 0xf));
+		}
+	}
+	 	
 }
