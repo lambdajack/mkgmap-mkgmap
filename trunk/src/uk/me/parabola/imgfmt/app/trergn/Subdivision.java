@@ -68,6 +68,7 @@ public class Subdivision {
 	private boolean hasIndPoints;
 	private boolean hasPolylines;
 	private boolean hasPolygons;
+	private boolean hasRoadRefs;
 
 	private int numPolylines;
 
@@ -167,7 +168,9 @@ public class Subdivision {
 			setHasPolylines(true);
 		if ((elem & 0x80) != 0)
 			setHasPolygons(true);
-	}
+		if ((elem & 0x1) != 0) // from top bit in height 
+			setHasRoadRefs(true);
+	}	
 
 	/**
 	 * Create a subdivision at a given zoom level.
@@ -399,6 +402,10 @@ public class Subdivision {
 		this.hasPolygons = hasPolygons;
 	}
 
+	public void setHasRoadRefs(boolean hasRoeadRefs) {
+		this.hasRoadRefs = hasRoeadRefs;
+	}
+
 	public boolean hasPoints() {
 		return hasPoints;
 	}
@@ -413,6 +420,10 @@ public class Subdivision {
 
 	public boolean hasPolygons() {
 		return hasPolygons;
+	}
+
+	public boolean hasRoadRefs() {
+		return hasRoadRefs;
 	}
 
 	/**
@@ -434,14 +445,23 @@ public class Subdivision {
 	}
 
 	/**
-	 * As this is last in the list it is needed if it exists and there
-	 * is another section.
+	 * Needed if it exists and is not first, ie there is a points or
+	 * indexed points or polyline section.
 	 * @return true if pointer needed.
 	 */
 	public boolean needsPolygonPtr() {
 		return hasPolygons && (hasPoints || hasIndPoints || hasPolylines);
 	}
 
+	/**
+	 * As this is last in the list it is needed if it exists and there
+	 * is another section.
+	 * @return true if pointer needed.
+	 */
+	public boolean needsRoadRefPtr() {
+		return hasRoadRefs && (hasPoints || hasIndPoints || hasPolylines || hasPolygons);
+	}
+	
 	public String toString() {
 		return "Sub" + zoomLevel + '(' + getCenter().toOSMURL() + ')';
 	}

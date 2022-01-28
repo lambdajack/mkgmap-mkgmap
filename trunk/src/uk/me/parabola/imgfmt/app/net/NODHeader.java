@@ -18,6 +18,7 @@ package uk.me.parabola.imgfmt.app.net;
 
 import java.util.Arrays;
 
+import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.CommonHeader;
 import uk.me.parabola.imgfmt.app.ImgFileReader;
 import uk.me.parabola.imgfmt.app.ImgFileWriter;
@@ -41,12 +42,16 @@ public class NODHeader extends CommonHeader {
 	private final Section boundary = new Section(roads, BOUNDARY_ITEM_SIZE);
 	private final Section highClassBoundary = new Section(boundary);
 	private final int[] classBoundaries = new int[5];
+	private final Section nod5 = new Section();
+	private final Section nod6 = new Section();
 
     private int flags;
     private int align;
     private int mult1;
 	private int tableARecordLen;
 	private boolean driveOnLeft;
+
+	private int indexIdSize;
 
 	public NODHeader() {
 		super(HEADER_LEN, "GARMIN NOD");
@@ -80,6 +85,14 @@ public class NODHeader extends CommonHeader {
 			classBoundaries[3] = classBoundaries[2] + reader.get4();
 			classBoundaries[4] = classBoundaries[3] + reader.get4();
 		}
+		if (getHeaderLength() >= 0x7f) {
+			reader.position(reader.getGMPOffset() + 0x67);
+			nod5.readSectionInfo(reader, false);
+			reader.get2u();
+			nod6.readSectionInfo(reader, true);
+			indexIdSize = Utils.numberToPointerSize(nod6.getNumItems());
+		}
+
 	}
 
 	/**
@@ -198,5 +211,12 @@ public class NODHeader extends CommonHeader {
 
 	public int getTableARecordLen() {
 		return tableARecordLen;
+	}
+
+	/**
+	 * @return the indexIdSize
+	 */
+	public int getIndexIdSize() {
+		return indexIdSize;
 	}
 }

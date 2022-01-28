@@ -112,14 +112,18 @@ public class TREFileReader extends ImgReader {
 				int lat = reader.get3s();
 				int width = reader.get2u() & 0x7fff;
 				int height = reader.get2u();
+				int extFlags = flags; 
+				if (reader.getGMPOffset() > 0 && (height & 0x8000) != 0) {
+					extFlags |= 0x1;
+					height &= 0x7fff;
+				}
 
 				if (count < levelDivs.length-1)
 					reader.get2u();
 
 				int endRgnOffset = reader.get3u();
 
-				SubdivData subdivData = new SubdivData(flags,
-// why???					lat, lon, 2*width, 2*height,
+				SubdivData subdivData = new SubdivData(extFlags,
 						lat, lon, width, height,
 						lastRgnOffset, endRgnOffset);
 
