@@ -37,8 +37,8 @@ public class MapSplitter {
 
 	private final MapDataSource mapSource;
 
-	// There is an absolute largest size as offsets are in 16 bits, we are
-	//  staying safely inside it however.
+	// There is an absolute largest size as offsets are in 16 bits, but
+	// the top bit of height is probably a flag for GMP "RoadRef" data.  
 	public static final int MAX_DIVISION_SIZE = 0x7fff;
 
 	// Not a real limit.  Note that the offset to the start of a section
