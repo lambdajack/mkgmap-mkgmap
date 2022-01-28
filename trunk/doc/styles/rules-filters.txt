@@ -2,7 +2,7 @@
 // This is the list of variable filters.
 //
 .List of all substitution filters
-[width="100%",grid="rows",cols="<1,<1,3a",options="header"]
+[width="100%",grid="rows",cols="<1,<1,4a",options="header"]
 |=======
 | Name | Arguments | Description
 | def | `default` |
@@ -10,7 +10,7 @@ If the variable is not set, then use the argument as a default value.
 This means that the variable will never be `unset' in places where that
 matters. 
 
-`${oneway\|def:no}`
+`${oneway\|def:"no"}`
 
 | conv | `m=>ft` |
 Use for conversions between units.
@@ -49,7 +49,7 @@ Example, if name ="Queen Street"
 | part | `separator operator partnumber` |
 Split a value in parts and returns one or more part(s) of it. If +partnumber+ is negative, the part returned is counted from the end of the split
 
-If not specified, the default separator is ';' and the first part is returned (i.e. `${name\|part:}`=`${name\|part:;:1}`).
+If not specified, the default separator is ';' and the first part is returned (i.e. `${name\|part:""}`=`${name\|part:";:1"}`).
 
 If the operator is `:` the part specified by +partnumber+ is returned.
 
@@ -80,8 +80,7 @@ example if value is "word1 word2 ... wordN-1 wordN"
 Prepares the value as a highway reference such as "A21" "I-80" and so
 on.
 A code is added to the front of the string so that a highway shield is
-displayed, spaces are removed and the text is truncated so as not to overflow the
-symbol.
+displayed, any ";" are replaced by "/" and spaces are removed.
 
 `${ref\|highway-symbol:"box:4:8"}`
 
@@ -91,6 +90,10 @@ The first number is the maximum number of characters to allow for
 references that contain numbers and letters.
 The second is the maximum length of references that do not contain numbers.
 If there is just the one number then it is used in both cases.
+If no numbers are given, the default value 8 is used.
+
+If the reference, after spaces have been removed, is longer than the maximum length
+then the filter passes the string onwards unchanged; the highway-symbol is not prepended.
 
 | height | `m=>ft` |
 This is exactly the same as the +conv+ filter, except that it prepends a special
@@ -104,7 +107,7 @@ must be ft (foot).
 | country-ISO |  |
 Use to normalize country names to the 3 character ISO 1366 code.
 The filter has no arguments. It uses the list in LocatorConfig.xml.
-Possible arguments are country names, or ISO codes in 2 or 3 characters,
+Possible inputs are country names, or ISO codes in 2 or 3 characters,
 for example "Deutschland", "Germany", "Bundesrepublik Deutschland", or "DE" 
 will all return "DEU", also different cases like "GERMANY" or "   germany " 
 will work.
@@ -118,7 +121,7 @@ of this tag is set to undefined.
 
 ....
 place=* {
-   name '${name} (${int_name\|not-equal:name})'
+   name '${name} (${int_name\|not-equal:"name"})'
        \| '${name}'
    }
 ....
@@ -130,11 +133,11 @@ in parenthesis after the name. Otherwise there will just be the name as given in
 Extract part of the string. The start and end positions
 are counted starting from zero and the end position is not included.
 
-`${name\|substring:2:5}`
+`${name\|substring:"2:5"}`
 If the "name" was "Dorset Lane", then the result is "rse".  If there is just the one number,
 then the substring starts from that character until the end of the string.
 
-| not-contained | `separator tag` |
+| not-contained | `separator:tag` |
 Used to check for duplicate values. If the value of this tag is contained in the list being
 the value of the tag named as the argument to +not-contained+, then value
 of this tag is set to undefined.
@@ -142,7 +145,9 @@ of this tag is set to undefined.
 ....
 type=route & route=bus & ref=* {
    apply {
-      set route_ref='$(route_ref),${ref\|not-contained:,:route_ref}' \| '$(route_ref)' \| '${ref}';
+      set route_ref=
+         '$(route_ref),${ref\|not-contained:",:route_ref"}'
+             \| '$(route_ref)' \| '${ref}';
    }
 }
 ....

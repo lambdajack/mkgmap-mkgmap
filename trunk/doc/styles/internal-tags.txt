@@ -20,7 +20,7 @@ This rule defines that the road cannot be used by bicycles.
 // see [[Mkgmap/help/Tags]]
 
 .Tags for routable roads
-[options="header"]
+[cols="4,6,3,7",options="header"]
 |=========================================================
 | Attribute   | mkgmap tag     | Example | Notes
 | Labels      | +mkgmap:label:1+ + 
@@ -56,7 +56,7 @@ A112 | Usually only the first label is displayed. On some units the second label
 |=========================================================
 
 .Tags that control the treatment of roads
-[options="header"]
+[cols="8,7,5",options="header"]
 |=========================================================
 | Tag | Description     | Required mkgmap option
 | +mkgmap:way-has-pois+  | +true+ for ways that have at least one point with a tag +access=\*+, +barrier=\*+, or +highway=*+ | 'link-pois-to-ways'
