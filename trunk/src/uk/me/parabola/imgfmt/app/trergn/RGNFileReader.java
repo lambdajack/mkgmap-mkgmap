@@ -343,11 +343,11 @@ public class RGNFileReader extends ImgReader {
 			if ((labelOffset & 0x800000) == 0) {
 				label = lblFile.fetchLabel(labelOffset & 0x7fffff);
 			} else {
-					int netoff = labelOffset & 0x3fffff;
-					labelOffset = netFile.getLabelOffset(netoff);
-					label = lblFile.fetchLabel(labelOffset);
-					RoadDef roadDef = new RoadDef(0, netoff, label.getText());
-					line.setRoadDef(roadDef);
+				int netoff = labelOffset & 0x3fffff;
+				labelOffset = netFile.getLabelOffset(netoff);
+				label = lblFile.fetchLabel(labelOffset);
+				RoadDef roadDef = new RoadDef(0, netoff, label.getText());
+				line.setRoadDef(roadDef);
 			}
 			line.setLabel(label);
 		}
