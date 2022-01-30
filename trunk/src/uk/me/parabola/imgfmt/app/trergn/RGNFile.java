@@ -50,9 +50,9 @@ public class RGNFile extends ImgFile {
 	private int indPointPtrOff;
 	private int polylinePtrOff;
 	private int polygonPtrOff;
-	private ByteArrayOutputStream extTypePointsData;
-	private ByteArrayOutputStream extTypeLinesData;
-	private ByteArrayOutputStream extTypeAreasData;
+	private final ByteArrayOutputStream extTypePointsData = new ByteArrayOutputStream();
+	private final ByteArrayOutputStream extTypeLinesData = new ByteArrayOutputStream();
+	private final ByteArrayOutputStream extTypeAreasData = new ByteArrayOutputStream();
 
 	public RGNFile(ImgChannel chan) {
 		setHeader(header);
@@ -69,15 +69,15 @@ public class RGNFile extends ImgFile {
 
 		header.setDataSize(position() - HEADER_LEN);
 
-		if(extTypeAreasData != null) {
+		if(extTypeAreasData.size() > 0) {
 			header.setExtTypeAreasInfo(position(), extTypeAreasData.size());
 			getWriter().put(extTypeAreasData.toByteArray());
 		}
-		if(extTypeLinesData != null) {
+		if(extTypeLinesData.size() > 0) {
 			header.setExtTypeLinesInfo(position(), extTypeLinesData.size());
 			getWriter().put(extTypeLinesData.toByteArray());
 		}
-		if(extTypePointsData != null) {
+		if(extTypePointsData.size() > 0) {
 			header.setExtTypePointsInfo(position(), extTypePointsData.size());
 			getWriter().put(extTypePointsData.toByteArray());
 		}
@@ -95,48 +95,37 @@ public class RGNFile extends ImgFile {
 		// needed as it will always be first if present.
 		if (sd.needsIndPointPtr()) {
 			indPointPtrOff = position();
-			position(position() + 2);
+			position(position() + 2L);
 		}
 
 		if (sd.needsPolylinePtr()) {
 			polylinePtrOff = position();
-			position(position() + 2);
+			position(position() + 2L);
 		}
 
 		if (sd.needsPolygonPtr()) {
 			polygonPtrOff = position();
-			position(position() + 2);
+			position(position() + 2L);
 		}
 
 		currentDivision = sd;
 	}
 
 	public void addMapObject(MapObject item) {
-		if(item.hasExtendedType()) {
+		if (item.hasExtendedType()) {
 			try {
-				if(item instanceof Point) {
-					if(extTypePointsData == null)
-						extTypePointsData = new ByteArrayOutputStream();
+				if (item instanceof Point) {
 					item.write(extTypePointsData);
-				}
-				else if(item instanceof Polygon) {
-					if(extTypeAreasData == null)
-						extTypeAreasData = new ByteArrayOutputStream();
+				} else if (item instanceof Polygon) {
 					item.write(extTypeAreasData);
-				}
-				else if(item instanceof Polyline) {
-					if(extTypeLinesData == null)
-						extTypeLinesData = new ByteArrayOutputStream();
+				} else if (item instanceof Polyline) {
 					item.write(extTypeLinesData);
-				}
-				else
+				} else
 					log.error("Can't add object of type " + item.getClass());
-			}
-			catch (IOException ioe) {
+			} catch (IOException ioe) {
 				log.error("Error writing extended type object: " + ioe.getMessage());
 			}
-		}
-		else {
+		} else {
 			item.write(getWriter());
 		}
 	}
@@ -192,20 +181,20 @@ public class RGNFile extends ImgFile {
 	}
 
 	public int getExtTypePointsSize() {
-		return (extTypePointsData == null)? 0 : extTypePointsData.size();
+		return extTypePointsData.size();
 	}
 
 	public int getExtTypeLinesSize() {
-		return (extTypeLinesData == null)? 0 : extTypeLinesData.size();
+		return extTypeLinesData.size();
 	}
 
 	public int getExtTypeAreasSize() {
-		return (extTypeAreasData == null)? 0 : extTypeAreasData.size();
+		return extTypeAreasData.size();
 	}
 
 	public boolean haveExtendedTypes() {
-		return extTypePointsData != null ||
-				extTypeLinesData != null ||
-				extTypeAreasData != null;
+		return extTypeAreasData.size() != 0 || 
+				extTypeLinesData.size() != 0 || 
+				extTypePointsData.size() != 0;
 	}
 }
