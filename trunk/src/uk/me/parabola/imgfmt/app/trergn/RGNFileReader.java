@@ -85,7 +85,7 @@ public class RGNFileReader extends ImgReader {
 			fetchPointsCommon(sd, rgnOffsets.getPointStart(), rgnOffsets.getPointEnd(), list);
 		}
 		if (withExtType && sd.getExtTypePointsSize() > 0)
-			fetchPointsCommonExtType(sd, rgnHeader.getExtTypePointsOffset() + sd.getExtTypePointsOffset(), sd.getExtTypePointsSize(), list);
+			fetchPointsExtType(sd, list);
 
 		return list;
 	}
@@ -128,7 +128,6 @@ public class RGNFileReader extends ImgReader {
 			if (hasSubtype) {
 				int st = reader.get1u();
 				t |= st;
-				//p.setHasSubtype(true);
 			}
 			p.setType(t);
 
@@ -138,9 +137,11 @@ public class RGNFileReader extends ImgReader {
 	}
 
 	/**
-	 * The indexed points and the points sections are both read just the same.
+	 * The points with extended types
 	 */
-	private void fetchPointsCommonExtType(Subdivision sd, long start, long end, List<Point> points) {
+	private void fetchPointsExtType(Subdivision sd, List<Point> points) {
+		long start = rgnHeader.getExtTypePointsOffset() + sd.getExtTypePointsOffset();
+		long end = start + sd.getExtTypePointsSize();
 		position(start);
 		ImgFileReader reader = getReader();
 
@@ -339,16 +340,7 @@ public class RGNFileReader extends ImgReader {
 	
 		if (hasLabel){
 			int labelOffset = reader.get3u();
-			Label label;			
-			if ((labelOffset & 0x800000) == 0) {
-				label = lblFile.fetchLabel(labelOffset & 0x7fffff);
-			} else {
-				int netoff = labelOffset & 0x3fffff;
-				labelOffset = netFile.getLabelOffset(netoff);
-				label = lblFile.fetchLabel(labelOffset);
-				RoadDef roadDef = new RoadDef(0, netoff, label.getText());
-				line.setRoadDef(roadDef);
-			}
+			Label label = lblFile.fetchLabel(labelOffset & 0x3fffff);
 			line.setLabel(label);
 		}
 		if (hasExtraBytes){
