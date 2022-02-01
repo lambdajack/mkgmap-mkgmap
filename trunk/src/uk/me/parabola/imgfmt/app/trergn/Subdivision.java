@@ -565,17 +565,18 @@ public class Subdivision {
 	 * Corresponds to {@link #writeExtTypeOffsetsRecord(ImgFileWriter)} 
 	 * @param reader the reader
 	 * @param sdPrev the pred. sub-div or null
+	 * @param size the record size
+	 * @param tre7Magic the magic value from TRE7 section 
 	 */
-	public void readExtTypeOffsetsRecord(ImgFileReader reader,
-			Subdivision sdPrev, int size) {
-		extTypeAreasOffset = reader.get4();
-		extTypeLinesOffset = reader.get4();
-		extTypePointsOffset = reader.get4();
-		if (size > 12) {
-			reader.get();  // kinds
-		}
-		if (size > 13)
-			reader.get(size-13);
+	public void readExtTypeOffsetsRecord(ImgFileReader reader, Subdivision sdPrev, int size, int tre7Magic) {
+		long nextPos = reader.position() + size;
+		if ((tre7Magic & 0x1) != 0) 
+			extTypeAreasOffset = reader.get4();
+		if ((tre7Magic & 0x2) != 0)
+			extTypeLinesOffset = reader.get4();
+		if ((tre7Magic & 0x4) != 0)
+			extTypePointsOffset = reader.get4();
+		reader.position(nextPos); 
 		assert extTypeAreasOffset >= 0;
 		assert extTypeLinesOffset >= 0;
 		assert extTypePointsOffset >= 0;
@@ -591,18 +592,22 @@ public class Subdivision {
 	}
 	/**
 	 * Set the sizes for the extended type data. See {@link #writeLastExtTypeOffsetsRecord(ImgFileWriter)} 
+	 * @param reader the reader
+	 * @param size the record size
+	 * @param tre7Magic the magic value from TRE7 section 
 	 */
-	public void readLastExtTypeOffsetsRecord(ImgFileReader reader, int size) {
-		extTypeAreasSize = reader.get4() - extTypeAreasOffset;
-		extTypeLinesSize = reader.get4() - extTypeLinesOffset;
-		extTypePointsSize = reader.get4() - extTypePointsOffset;
+	public void readLastExtTypeOffsetsRecord(ImgFileReader reader, int size, int tre7Magic) {
+		long nextPos = reader.position() + size;
+		if ((tre7Magic & 0x1) != 0) 
+			extTypeAreasSize = reader.get4() - extTypeAreasOffset;
+		if ((tre7Magic & 0x2) != 0) 
+			extTypeLinesSize = reader.get4() - extTypeLinesOffset;
+		if ((tre7Magic & 0x4) != 0) 
+			extTypePointsSize = reader.get4() - extTypePointsOffset;
 		assert extTypeAreasSize >= 0;
 		assert extTypeLinesSize >= 0;
 		assert extTypePointsSize >= 0;
-		if (size > 12) {
-			byte test = reader.get();
-			assert test == 0;
-		}
+		reader.position(nextPos);
 	}
 	
 	/**

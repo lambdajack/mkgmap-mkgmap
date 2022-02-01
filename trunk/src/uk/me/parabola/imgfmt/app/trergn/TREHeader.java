@@ -16,11 +16,10 @@
  */
 package uk.me.parabola.imgfmt.app.trergn;
 
-import uk.me.parabola.imgfmt.Utils;
-
 import java.io.IOException;
 
 import uk.me.parabola.imgfmt.ReadFailedException;
+import uk.me.parabola.imgfmt.Utils;
 import uk.me.parabola.imgfmt.app.Area;
 import uk.me.parabola.imgfmt.app.CommonHeader;
 import uk.me.parabola.imgfmt.app.ImgFileReader;
@@ -151,12 +150,14 @@ public class TREHeader extends CommonHeader {
 
 		mapInfoSize = mapInfoOff - getHeaderLength();
 		if (getHeaderLength() > 116) {
-			reader.position(reader.getGMPOffset() + 116);
+			assert reader.position() == reader.getGMPOffset() + 116;
 			mapId = reader.get4();
 		}
 		if (getHeaderLength() > 120) {
 			reader.get4();
+			assert reader.position() == reader.getGMPOffset() + 124;
 			extTypeOffsets.readSectionInfo(reader, true);
+			extTypeOffsets.setExtraValue(reader.get4());
 		}
 	}
 
@@ -322,7 +323,6 @@ public class TREHeader extends CommonHeader {
 	}
 
 	public void setCopyrightPos(int copyrightPos) {
-		//this.copyrightPos = copyrightPos;
 		copyright.setPosition(copyrightPos);
 	}
 
@@ -400,11 +400,17 @@ public class TREHeader extends CommonHeader {
 	public int getExtTypeOffsetsPos() {
 		return extTypeOffsets.getPosition();
 	}
+
 	public int getExtTypeOffsetsSize() {
 		return extTypeOffsets.getSize();
 	}
+
 	public int getExtTypeSectionSize() {
 		return extTypeOffsets.getItemSize();
+	}
+
+	public int getTre7Magic() {
+		return extTypeOffsets.getExtraValue();
 	}
 
 	public Section getCopyrightSection() {

@@ -48,7 +48,7 @@ public class TREFileReader extends ImgReader {
 	private static final Subdivision[] EMPTY_SUBDIVISIONS = new Subdivision[0];
 
 	private final TREHeader header = new TREHeader();
-
+	private int tre7Magic;
 
 	public TREFileReader(ImgChannel chan) {
 		this(chan, 0);
@@ -59,6 +59,7 @@ public class TREFileReader extends ImgReader {
 
 		setReader(new BufferedImgFileReader(chan, gmpOffset));
 		header.readHeader(getReader());
+		tre7Magic = header.getTre7Magic();
 		readMapLevels();
 		readSubdivs();
 		readExtTypeOffsetsRecords();
@@ -143,31 +144,36 @@ public class TREFileReader extends ImgReader {
 	 * Read the extended type info for the sub divisions. Corresponds to {@link TREFile#writeExtTypeOffsetsRecords()}.
 	 */
 	private void readExtTypeOffsetsRecords() {
+		if ((tre7Magic & 7) == 0) {
+			return;
+		}
 		ImgFileReader reader = getReader();
 		int start = header.getExtTypeOffsetsPos();
 		int end = start + header.getExtTypeOffsetsSize();
-			
+		int recSize = header.getExtTypeSectionSize();
 		reader.position(start);
 		Subdivision sd = null;
 		Subdivision sdPrev = null;
-		if (header.getExtTypeOffsetsSize() % header.getExtTypeSectionSize() != 0) {
+		if (header.getExtTypeOffsetsSize() % recSize != 0) {
 			Logger.defaultLogger.error("TRE7 data seems to have varying length records, don't know how to read extended types offsets");
 			return;
 			
 		}
-		int n = header.getExtTypeOffsetsSize() / header.getExtTypeSectionSize();
-		int expectedDivs = 0; 
-		for (int count = 0; count < levelDivs.length; count++) {
-			Subdivision[] divs = levelDivs[count];
-			expectedDivs += divs.length;
+		int available = header.getExtTypeOffsetsSize() / recSize;
+		// with record size > 13 there may be no data for the first level(s).
+		int firstDivIndex = 0;
+		for (int i = levelDivs.length-1; i >= 0; i--) {
+			available -= levelDivs[i].length;
+			if (available < 0) {
+				Logger.defaultLogger.error("TRE7 data contains unexpected values, don't know how to read extended types offsets");
+				return;
+			}
+			if (available == 1) {
+				firstDivIndex = i;
+				break;
+			}
 		}
-		if (header.getExtTypeSectionSize() <= 13)
-			expectedDivs++; 
-		if (expectedDivs * header.getExtTypeSectionSize() != header.getExtTypeOffsetsSize()) {
-			Logger.defaultLogger.error("TRE7 data contains unexpected values, don't know how to read extended types offsets");
-			return;
-		}
-		for (int count = 0; count < levelDivs.length && reader.position() < end; count++) {
+		for (int count = firstDivIndex; count < levelDivs.length && reader.position() < end; count++) {
 			Subdivision[] divs = levelDivs[count];
 			if (divs == null)
 				break;
@@ -175,13 +181,13 @@ public class TREFileReader extends ImgReader {
 			for (int i = 0; i < divs.length; i++) {
 				sdPrev = sd;
 				sd = divs[i];
-				sd.readExtTypeOffsetsRecord(reader, sdPrev, header.getExtTypeSectionSize());
+				sd.readExtTypeOffsetsRecord(reader, sdPrev, recSize, tre7Magic);
 			}
 		}
 		if(sd != null && reader.position() < end) {
-			sd.readLastExtTypeOffsetsRecord(reader, header.getExtTypeSectionSize());
+			sd.readLastExtTypeOffsetsRecord(reader, recSize, tre7Magic);
 		}
-		
+		assert reader.position() == end : "Failed to read TRE7"; 
 	}
 
 
