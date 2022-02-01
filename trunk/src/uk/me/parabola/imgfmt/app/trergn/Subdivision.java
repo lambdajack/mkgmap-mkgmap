@@ -584,9 +584,9 @@ public class Subdivision {
 			sdPrev.extTypeAreasSize = extTypeAreasOffset - sdPrev.extTypeAreasOffset;
 			sdPrev.extTypeLinesSize = extTypeLinesOffset - sdPrev.extTypeLinesOffset;
 			sdPrev.extTypePointsSize = extTypePointsOffset - sdPrev.extTypePointsOffset;
-			assert extTypeAreasSize >= 0;
-			assert extTypeLinesSize >= 0;
-			assert extTypePointsSize >= 0;
+			assert sdPrev.extTypeAreasSize >= 0;
+			assert sdPrev.extTypeLinesSize >= 0;
+			assert sdPrev.extTypePointsSize >= 0;
 		}
 	}
 	/**
