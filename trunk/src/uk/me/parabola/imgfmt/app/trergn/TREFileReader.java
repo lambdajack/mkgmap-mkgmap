@@ -151,6 +151,8 @@ public class TREFileReader extends ImgReader {
 		int start = header.getExtTypeOffsetsPos();
 		int end = start + header.getExtTypeOffsetsSize();
 		int recSize = header.getExtTypeSectionSize();
+		if (recSize == 0)
+			return;
 		reader.position(start);
 		Subdivision sd = null;
 		Subdivision sdPrev = null;
