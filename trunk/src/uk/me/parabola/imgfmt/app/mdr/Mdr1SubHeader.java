@@ -52,11 +52,7 @@ public class Mdr1SubHeader {
 				writer.put4(section.getPosition());
 			else {
 				writer.put4(section.getPosition());
-				int size = section.getSize();
-				if (size == 0)
-					writer.put4(0);
-				else
-					writer.put4(size / section.getItemSize());
+				writer.put4(section.getNumItems());
 			}
 		}
 	}
