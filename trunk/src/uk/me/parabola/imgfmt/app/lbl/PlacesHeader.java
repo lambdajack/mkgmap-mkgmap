@@ -122,7 +122,7 @@ public class PlacesHeader {
 	}
 
 	void readFileHeader(ImgFileReader reader) {
-		reader.position(0x1fL + reader.getGMPOffset());
+		reader.position(reader.getGMPOffset() + 0x1fL);
 
 		country.readSectionInfo(reader, true);
 		reader.get4();

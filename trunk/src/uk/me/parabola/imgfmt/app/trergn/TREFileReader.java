@@ -26,6 +26,7 @@ import uk.me.parabola.imgfmt.app.labelenc.CodeFunctions;
 import uk.me.parabola.imgfmt.app.labelenc.DecodedText;
 import uk.me.parabola.imgfmt.app.lbl.LBLFileReader;
 import uk.me.parabola.imgfmt.fs.ImgChannel;
+import uk.me.parabola.log.Logger;
 import uk.me.parabola.util.EnhancedProperties;
 
 /**
@@ -149,6 +150,23 @@ public class TREFileReader extends ImgReader {
 		reader.position(start);
 		Subdivision sd = null;
 		Subdivision sdPrev = null;
+		if (header.getExtTypeOffsetsSize() % header.getExtTypeSectionSize() != 0) {
+			Logger.defaultLogger.error("TRE7 data seems to have varying length records, don't know how to read extended types offsets");
+			return;
+			
+		}
+		int n = header.getExtTypeOffsetsSize() / header.getExtTypeSectionSize();
+		int expectedDivs = 0; 
+		for (int count = 0; count < levelDivs.length; count++) {
+			Subdivision[] divs = levelDivs[count];
+			expectedDivs += divs.length;
+		}
+		if (header.getExtTypeSectionSize() <= 13)
+			expectedDivs++; 
+		if (expectedDivs * header.getExtTypeSectionSize() != header.getExtTypeOffsetsSize()) {
+			Logger.defaultLogger.error("TRE7 data contains unexpected values, don't know how to read extended types offsets");
+			return;
+		}
 		for (int count = 0; count < levelDivs.length && reader.position() < end; count++) {
 			Subdivision[] divs = levelDivs[count];
 			if (divs == null)
@@ -224,7 +242,7 @@ public class TREFileReader extends ImgReader {
 
 		// First do the ones in the TRE header gap
 		ImgFileReader reader = getReader();
-		reader.position(header.getHeaderLength());
+		reader.position(reader.getGMPOffset() + header.getHeaderLength());
 		List<String> msgs = new ArrayList<>();
 		while (reader.position() < header.getHeaderLength() + header.getMapInfoSize()) {
 			byte[] m = reader.getZString();

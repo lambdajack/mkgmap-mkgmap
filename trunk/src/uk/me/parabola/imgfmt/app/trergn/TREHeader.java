@@ -151,7 +151,7 @@ public class TREHeader extends CommonHeader {
 
 		mapInfoSize = mapInfoOff - getHeaderLength();
 		if (getHeaderLength() > 116) {
-			reader.position(116);
+			reader.position(reader.getGMPOffset() + 116);
 			mapId = reader.get4();
 		}
 		if (getHeaderLength() > 120) {
