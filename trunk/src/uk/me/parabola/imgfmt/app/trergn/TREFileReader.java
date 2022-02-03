@@ -319,5 +319,8 @@ public class TREFileReader extends ImgReader {
 			data[i] = (byte) (((upper << 4) & 0xf0) | (lower & 0xf));
 		}
 	}
-	 	
+	 
+	public int getTre7Magic() {
+		return tre7Magic;
+	}
 }
