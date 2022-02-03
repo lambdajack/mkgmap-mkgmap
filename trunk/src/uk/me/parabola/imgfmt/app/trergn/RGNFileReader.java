@@ -295,7 +295,7 @@ public class RGNFileReader extends ImgReader {
 		byte[] bitstream = reader.get(len);
 		BitReader br = new BitReader(bitstream);
 		// This reads the bit stream and adds all the points found
-		readBitStream(br, div, line, extra, len, base);
+		readBitStream(br, div.getShift(), line, extra, len, base);
 	}
 
 
@@ -336,7 +336,7 @@ public class RGNFileReader extends ImgReader {
 		BitReader br = new BitReader(bitstream);
 	
 		// This reads the bit stream and adds all the points found, 
-		readBitStream(br, div, line, false, len, base);
+		readBitStream(br, div.getShift(), line, false, len, base);
 	
 		if (hasLabel){
 			int labelOffset = reader.get3u();
@@ -379,13 +379,13 @@ public class RGNFileReader extends ImgReader {
 	/**
 	 * Read the bit stream for a single line in the file.
 	 * @param br The bit stream reader.
-	 * @param div The subdivision that the line is in.
+	 * @param shift delta values are shifted to the left
 	 * @param line The line itself.
 	 * @param extra True if there is an 'extra' bit in the stream. Used for nodes.
 	 * @param len The length of the stream.
 	 * @param base The base size of the deltas.
 	 */
-	private void readBitStream(BitReader br, Subdivision div, Polyline line, boolean extra, int len, int base) {
+	private void readBitStream(BitReader br, final int shift, Polyline line, boolean extra, int len, int base) {
 		int currLat = line.getLat();
 		int currLon = line.getLong();
 
@@ -472,8 +472,8 @@ public class RGNFileReader extends ImgReader {
 			if (!isnode && dx == 0 && dy == 0)
 				continue;
 			
-			currLat += dy << (24 - div.getResolution());
-			currLon += dx << (24 - div.getResolution());
+			currLat += dy << shift;
+			currLon += dx << shift;
 			Coord coord;
 			if (isnode)
 				coord = new CoordNode(currLat, currLon, 0/* XXX */, false, false);
