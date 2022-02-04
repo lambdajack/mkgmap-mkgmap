@@ -124,39 +124,29 @@ public class PlacesHeader {
 	void readFileHeader(ImgFileReader reader) {
 		reader.position(reader.getGMPOffset() + 0x1fL);
 
-		country.readSectionInfo(reader, true);
-		reader.get4();
+		country.readSectionInfo(reader, true, true);
 
-		region.readSectionInfo(reader, true);
-		reader.get4();
+		region.readSectionInfo(reader, true, true);
 
-		city.readSectionInfo(reader, true);
-		reader.get4();
+		city.readSectionInfo(reader, true, true);
 
-		poiIndex.readSectionInfo(reader, true);
-		reader.get4();
+		poiIndex.readSectionInfo(reader, true, true);
 
-		poiProperties.readSectionInfo(reader, false);
-		reader.get(); // offset multiplier
+		poiProperties.readSectionInfo(reader, false, true);
 
 		POIGlobalFlags = reader.get1u();
 		reader.get2u();
 		reader.get();
 
-		poiTypeIndex.readSectionInfo(reader, true);
-		reader.get4();
+		poiTypeIndex.readSectionInfo(reader, true, true);
 
-		zip.readSectionInfo(reader, true);
-		reader.get4();
+		zip.readSectionInfo(reader, true, true);
 
-		highway.readSectionInfo(reader, true);
-		reader.get4();
+		highway.readSectionInfo(reader, true, true);
 
-		exitFacility.readSectionInfo(reader, true);
-		reader.get4();
+		exitFacility.readSectionInfo(reader, true, true);
 
-		highwayData.readSectionInfo(reader, true);
-		reader.get4();
+		highwayData.readSectionInfo(reader, true, true);
 	}
 
 	int getLastPos() {
