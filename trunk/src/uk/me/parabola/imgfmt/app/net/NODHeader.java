@@ -72,10 +72,8 @@ public class NODHeader extends CommonHeader {
         align = reader.get1u();
         mult1 = reader.get1u();
         tableARecordLen = reader.get2u();
-        roads.readSectionInfo(reader, false);
-        reader.get4();
-        boundary.readSectionInfo(reader, true);
-		reader.get4();
+        roads.readSectionInfo(reader, false, true);
+        boundary.readSectionInfo(reader, true, true);
 		if (getHeaderLength() > 0x3f) {
 			highClassBoundary.readSectionInfo(reader, false);
 

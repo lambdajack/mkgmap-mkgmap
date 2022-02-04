@@ -117,10 +117,16 @@ public class Section {
 	}
 
 	public void readSectionInfo(ImgFileReader reader, boolean withItemSize) {
+		readSectionInfo(reader, withItemSize, false);
+	}
+
+	public void readSectionInfo(ImgFileReader reader, boolean withItemSize, boolean withExtraValue) {
 		setPosition(reader.get4());
 		setSize(reader.get4());
 		if (withItemSize)
 			setItemSize(reader.get2u());
+		if (withExtraValue)
+			setExtraValue(reader.get4());
 	}
 
 	public SectionWriter makeSectionWriter(ImgFileWriter writer) {

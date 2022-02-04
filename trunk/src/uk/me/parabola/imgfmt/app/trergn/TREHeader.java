@@ -126,8 +126,7 @@ public class TREHeader extends CommonHeader {
 		subdivPos = reader.get4();
 		subdivSize = reader.get4();
 
-		copyright.readSectionInfo(reader, true);
-		reader.get4();
+		copyright.readSectionInfo(reader, true, true);
 
 		poiDisplayFlags = reader.get1u();
 		displayPriority = reader.get3u();
@@ -135,12 +134,9 @@ public class TREHeader extends CommonHeader {
 		reader.get2u();
 		reader.get();
 
-		polyline.readSectionInfo(reader, true);
-		reader.get4();
-		polygon.readSectionInfo(reader, true);
-		reader.get4();
-		points.readSectionInfo(reader, true);
-		reader.get4();
+		polyline.readSectionInfo(reader, true, true);
+		polygon.readSectionInfo(reader, true, true);
+		points.readSectionInfo(reader, true, true);
 
 		int mapInfoOff = mapLevelPos;
 		if (subdivPos < mapInfoOff)
@@ -156,8 +152,7 @@ public class TREHeader extends CommonHeader {
 		if (getHeaderLength() > 120) {
 			reader.get4();
 			assert reader.position() == reader.getGMPOffset() + 124;
-			extTypeOffsets.readSectionInfo(reader, true);
-			extTypeOffsets.setExtraValue(reader.get4());
+			extTypeOffsets.readSectionInfo(reader, true, true);
 		}
 	}
 
