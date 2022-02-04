@@ -132,7 +132,8 @@ public class PlacesHeader {
 
 		poiIndex.readSectionInfo(reader, true, true);
 
-		poiProperties.readSectionInfo(reader, false, true);
+		poiProperties.readSectionInfo(reader, false);
+		reader.get(); // offset multiplier
 
 		POIGlobalFlags = reader.get1u();
 		reader.get2u();
