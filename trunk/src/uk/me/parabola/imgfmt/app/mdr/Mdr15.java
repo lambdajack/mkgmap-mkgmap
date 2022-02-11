@@ -49,7 +49,11 @@ public class Mdr15 extends MdrSection {
 		setConfig(config);
 
 		charset = config.getSort().getCharset();
-
+		if (config.isForDevice()) {
+			tempFile = null;
+			stringFile = null;
+			return;
+		}
 		try {
 			tempFile = File.createTempFile("strings", null, config.getOutputDir());
 			tempFile.deleteOnExit();
@@ -98,7 +102,9 @@ public class Mdr15 extends MdrSection {
 	public void releaseMemory() {
 		strings = null;
 		try {
-			stringFile.close();
+			if (stringFile != null) {
+				stringFile.close();
+			}
 		} catch (IOException e) {
 			throw new MapFailedException("Could not close string temporary file");
 		}
