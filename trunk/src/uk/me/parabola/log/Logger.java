@@ -106,7 +106,7 @@ public class Logger {
 
 	/**
 	 * The default setup, which is basically not to do any logging apart from
-	 * showing warnings and errors (and I may remove that).
+	 * showing errors.
 	 */
 	private static void staticSetup() {
 		// Static setup.

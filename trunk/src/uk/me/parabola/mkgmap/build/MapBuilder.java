@@ -90,8 +90,8 @@ import uk.me.parabola.mkgmap.filters.RemoveEmpty;
 import uk.me.parabola.mkgmap.filters.RemoveObsoletePointsFilter;
 import uk.me.parabola.mkgmap.filters.RoundCoordsFilter;
 import uk.me.parabola.mkgmap.filters.ShapeMergeFilter;
-import uk.me.parabola.mkgmap.filters.SizeFilter;
 import uk.me.parabola.mkgmap.filters.ShapeMergeFilter.MapShapeComparator;
+import uk.me.parabola.mkgmap.filters.SizeFilter;
 import uk.me.parabola.mkgmap.general.CityInfo;
 import uk.me.parabola.mkgmap.general.LevelInfo;
 import uk.me.parabola.mkgmap.general.LoadableMapDataSource;
@@ -1637,6 +1637,7 @@ public class MapBuilder implements Configurable {
 		} else {
 			final String codeValue = GType.formatType(pattern.getType());
 			gr.addTag("code", codeValue);
+			gr.addTag("expect-self-intersection", "true");
 			MultiPolygonRelation mp = new MultiPolygonRelation(gr, wayMap, src.getBounds());
 			mp.processElements();
 			for (Way w : wayMap.values()) {

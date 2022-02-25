@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2014.
+ * Copyright (C) 2011-2021.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 3 or
@@ -13,7 +13,6 @@
 
 package uk.me.parabola.mkgmap.reader.osm;
 
-import java.awt.Polygon;
 import java.awt.Rectangle;
 import java.awt.geom.Area;
 import java.awt.geom.Line2D;
@@ -27,6 +26,7 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
@@ -39,9 +39,13 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import uk.me.parabola.imgfmt.ExitException;
 import uk.me.parabola.imgfmt.app.Coord;
 import uk.me.parabola.log.Logger;
+import uk.me.parabola.util.IsInUtil;
 import uk.me.parabola.util.Java2DConverter;
+import uk.me.parabola.util.MultiIdentityHashMap;
+import uk.me.parabola.util.ShapeSplitter;
 
 /**
  * Representation of an OSM Multipolygon Relation.<br/>
@@ -56,27 +60,31 @@ public class MultiPolygonRelation extends Relation {
 	public static final String STYLE_FILTER_TAG = "mkgmap:stylefilter";
 	public static final String STYLE_FILTER_LINE = "polyline";
 	public static final String STYLE_FILTER_POLYGON = "polygon";
-	
+
 	/** A tag that is set with value true on each polygon that is created by the mp processing. */
 	public static final short TKM_MP_CREATED = TagDict.getInstance().xlate("mkgmap:mp_created");
 	private static final short TKM_MP_ROLE = TagDict.getInstance().xlate("mkgmap:mp_role");
 	private static final short TKM_CACHE_AREA_SIZEKEY = TagDict.getInstance().xlate("mkgmap:cache_area_size");
-	private final Map<Long, Way> tileWayMap;
-	private final Map<Long, String> roleMap = new HashMap<>();
- 
-	private Map<Long, Way> mpPolygons = new LinkedHashMap<>();
 	
+	public static final String ROLE_OUTER = "outer";  
+	public static final String ROLE_INNER = "inner";  
+
+	private static final byte INT_ROLE_NULL = 1; 
+	private static final byte INT_ROLE_INNER = 2; 
+	private static final byte INT_ROLE_OUTER = 4; 
+	private static final byte INT_ROLE_BLANK = 8; 
+	private static final byte INT_ROLE_OTHER = 16; 
+
+	/** maps ids to ways, will be extended with joined ways */
+	private final Map<Long, Way> tileWayMap; // never clear!
 	
-	protected List<BitSet> containsMatrix;
+
 	protected List<JoinedWay> polygons;
-	protected Set<JoinedWay> intersectingPolygons;
-	
-	protected double largestSize;
+	private Map<Long, Way> mpPolygons = new LinkedHashMap<>();
+
 	protected JoinedWay largestOuterPolygon;
-	private Long2ObjectOpenHashMap<Coord> commonCoordMap = new Long2ObjectOpenHashMap<>(); 
-	
+	private Long2ObjectOpenHashMap<Coord> commonCoordMap = new Long2ObjectOpenHashMap<>();
 	protected Set<Way> outerWaysForLineTagging;
-	protected Map<String, String> outerTags;
 
 	private final uk.me.parabola.imgfmt.app.Area tileBounds;
 	private Area tileArea;
@@ -84,16 +92,11 @@ public class MultiPolygonRelation extends Relation {
 	private Coord cOfG = null;
 	
 	// the sum of all outer polygons area size 
-	private double mpAreaSize = 0;
+	private double mpAreaSize;
 	
-	/** 
-	 * A point that has a lower or equal squared distance from 
-	 * a line is treated as if it lies one the line.<br/>
-	 * 1.0d is very exact. 2.0d covers rounding problems when converting
-	 * OSM locations to mkgmap internal format. A larger value 
-	 * is more tolerant against imprecise OSM data.
-	 */
-	private static final double OVERLAP_TOLERANCE_DISTANCE = 2.0d;
+	private boolean noRecalc;
+
+	private boolean renderingFailed;
 	
 	/**
 	 * Create an instance based on an existing relation. We need to do this
@@ -107,8 +110,7 @@ public class MultiPolygonRelation extends Relation {
 	 * @param bbox
 	 *            The bounding box of the tile
 	 */
-	public MultiPolygonRelation(Relation other, Map<Long, Way> wayMap,
-			uk.me.parabola.imgfmt.app.Area bbox) {
+	public MultiPolygonRelation(Relation other, Map<Long, Way> wayMap, uk.me.parabola.imgfmt.app.Area bbox) {
 		this.tileWayMap = wayMap;
 		this.tileBounds = bbox;
 		// create an Area for the bbox to clip the polygons
@@ -116,24 +118,10 @@ public class MultiPolygonRelation extends Relation {
 
 		setId(other.getId());
 		copyTags(other);
-		this.setTagsIncomplete(other.getTagsIncomplete());
 
+		other.getElements().forEach(e -> addElement(e.getKey(), e.getValue()));
 		if (log.isDebugEnabled()) {
-			log.debug("Construct multipolygon", toBrowseURL(), toTagString());
-		}
-
-		for (Map.Entry<String, Element> pair : other.getElements()) {
-			String role = pair.getKey();
-			Element el = pair.getValue();
-			if (log.isDebugEnabled()) {
-				log.debug(" ", role, el.toBrowseURL(), el.toTagString());
-			}
-			if (roleMap.containsKey(el.getId()) )
-				log.warn("repeated member with id", el.getId(), "in multipolygon relation", this.getId(), "is ignored");
-			else {
-				addElement(role, el);
-				roleMap.put(el.getId(), role);
-			}
+			log.debug("Constructed multipolygon", toBrowseURL(), toTagString());
 		}
 	}
 	
@@ -153,347 +141,304 @@ public class MultiPolygonRelation extends Relation {
 	}
 	
 	/**
-	 * Retrieves the mp role of the given element.
+	 * Retrieves the role of the given element based on the role in the MP.
 	 * 
-	 * @param element
-	 *            the element
-	 * @return the role of the element
+	 * @param jw the element
+	 * @return either ROLE_INNER, ROLE_OUTER or null.
 	 */
-	protected String getRole(Element element) {
-		String role = roleMap.get(element.getId());
-		if (role != null && ("outer".equals(role) || "inner".equals(role))) {
-			return role;
-		}
-
+	private static String getRole(JoinedWay jw) {
+		if (jw.intRole == INT_ROLE_INNER)
+			return ROLE_INNER;
+		if (jw.intRole == INT_ROLE_OUTER)
+			return ROLE_OUTER;
 		return null;
 	}
 
 	/**
-	 * Try to join the two ways.
+	 * Combine a list of way segments to a list of maximally joined ways. There are
+	 * lots of possible ways to do this but the result should be predictable, so
+	 * that multiple runs of mkgmap produce the same polygons.
 	 * 
-	 * @param joinWay
-	 *            the way to which tempWay is added in case both ways could be
-	 *            joined and checkOnly is false.
-	 * @param tempWay
-	 *            the way to be added to joinWay
-	 * @param checkOnly
-	 *            <code>true</code> checks only and does not perform the join
-	 *            operation
-	 * @return <code>true</code> if tempWay way is (or could be) joined to
-	 *         joinWay
+	 * @return a list of maximally joined ways
 	 */
-	private static boolean joinWays(JoinedWay joinWay, JoinedWay tempWay, boolean checkOnly) {
-		boolean reverseTempWay = false;
-		int insIdx = -1;
-		int firstTmpIdx = 1;
-		boolean joinable = false;
+	private List<JoinedWay> joinWays() {
+		List<JoinedWay> joinedWays = new ArrayList<>();
+		List<JoinedWay> unclosedWays = new LinkedList<>();
 		
-		// use == or equals as comparator??
-		if (joinWay.getFirstPoint() == tempWay.getFirstPoint()) {
-			insIdx = 0;
-			reverseTempWay = true;
-			firstTmpIdx = 1;
-			joinable = true;
-		} else if (joinWay.getLastPoint() == tempWay.getFirstPoint()) {
-			insIdx = joinWay.getPoints().size();
-			firstTmpIdx = 1;
-			joinable = true;
-		} else if (joinWay.getFirstPoint() == tempWay.getLastPoint()) {
-			insIdx = 0; 
-			firstTmpIdx = 0;
-			joinable = true;
-		} else if (joinWay.getLastPoint() == tempWay.getLastPoint()) {
-			insIdx = joinWay.getPoints().size();
-			reverseTempWay = true;
-			firstTmpIdx = 0;
-			joinable = true;
-		}
+		parseElements(joinedWays, unclosedWays);
 		
-		if (!checkOnly && joinable){
-			int lastIdx = tempWay.getPoints().size();
-			if (firstTmpIdx == 0) {
-				// the last temp point is already contained in the joined way - do not copy it
-				lastIdx--;
-			}
-					
-			List<Coord> tempCoords = tempWay.getPoints().subList(firstTmpIdx,lastIdx);
-			
-			if (reverseTempWay) {
-				// the remp coords need to be reversed so copy the list
-				tempCoords = new ArrayList<>(tempCoords);
-				// and reverse it
-				Collections.reverse(tempCoords);
-			}
-			
-			joinWay.getPoints().addAll(insIdx, tempCoords);
-			joinWay.addWay(tempWay);
-		}
-		return joinable;
-	}
-
-	/**
-	 * Combine a list of way segments to a list of maximally joined ways
-	 * 
-	 * @param segments
-	 *            a list of closed or unclosed ways
-	 * @return a list of closed ways
-	 */
-	protected ArrayList<JoinedWay> joinWays(List<Way> segments) {
-		// TODO check if the closed polygon is valid and implement a backtracking algorithm to get other combinations
-
-		ArrayList<JoinedWay> joinedWays = new ArrayList<>();
-		if (segments == null || segments.isEmpty()) {
+		if (unclosedWays.isEmpty())
 			return joinedWays;
+		
+		if (unclosedWays.size() > 1) {
+			// first try to combine ways in the given order
+			joinInGivenOrder(joinedWays, unclosedWays);
 		}
-
-		// go through all segments and categorize them to closed and unclosed
-		// list
-		ArrayList<JoinedWay> unclosedWays = new ArrayList<>();
-		for (Way orgSegment : segments) {
-			JoinedWay jw = new JoinedWay(orgSegment);
-			roleMap.put(jw.getId(), getRole(orgSegment));
-			if (orgSegment.isClosed()) {
-				if (!orgSegment.isComplete()) {
-					// the way is closed in planet but some points are missing in this tile
-					// we can close it artificially
-					if (log.isDebugEnabled())
-						log.debug("Close incomplete but closed polygon:",orgSegment);
-					jw.closeWayArtificially();
+		if (unclosedWays.size() == 1) {
+			joinedWays.add(unclosedWays.remove(0));
+		}
+		if (!unclosedWays.isEmpty()) {
+			// members are not fully ordered or we have unclosed rings
+			joinWithIndex(joinedWays, unclosedWays);
+		}
+		joinedWays.addAll(unclosedWays);
+		if(log.isInfoEnabled()) {
+			for (JoinedWay jw : joinedWays) {
+				if (Integer.bitCount(jw.intRole) > 1) {
+					log.info("Joined polygon ways have different roles", this.toBrowseURL(), jw.toString());
 				}
-				assert 	jw.hasIdenticalEndPoints() : "way is not closed";
-				joinedWays.add(jw);
-			} else {
-				unclosedWays.add(jw);
 			}
 		}
-
-		while (!unclosedWays.isEmpty()) {
-			JoinedWay joinWay = unclosedWays.remove(0);
-
-			// check if the current way is already closed or if it is the last
-			// way
-			if (joinWay.hasIdenticalEndPoints() || unclosedWays.isEmpty()) {
-				joinedWays.add(joinWay);
-				continue;
-			}
-
-			boolean joined = false;
-
-			// if we have a way that could be joined but which has a wrong role
-			// then store it here and check in the end if it's working
-			JoinedWay wrongRoleWay = null;
-			String joinRole = getRole(joinWay);
-
-			// go through all ways and check if there is a way that can be
-			// joined with it
-			// in this case join the two ways
-			// => add all points of tempWay to joinWay, remove tempWay and put
-			// joinWay to the beginning of the list
-			// (not optimal but understandable - can be optimized later)
-			for (JoinedWay tempWay : unclosedWays) {
-				if (tempWay.hasIdenticalEndPoints()) {
-					continue;
-				}
-
-				String tempRole = getRole(tempWay);
-				// if a role is not 'inner' or 'outer' then it is used as
-				// universal
-				// check if the roles of the ways are matching
-				if ((!"outer".equals(joinRole) && !"inner".equals(joinRole))
-						|| (!"outer".equals(tempRole) && !"inner".equals(tempRole))
-						|| (joinRole != null && joinRole.equals(tempRole))) {
-					// the roles are matching => try to join both ways
-					joined = joinWays(joinWay, tempWay, false);
-				} else {
-					// the roles are not matching => test if both ways would
-					// join
-
-					// as long as we don't have an alternative way with wrong
-					// role
-					// or if the alternative way is shorter then check if
-					// the way with the wrong role could be joined
-					if (wrongRoleWay == null || wrongRoleWay.getPoints().size() < tempWay.getPoints().size()
-							&& joinWays(joinWay, tempWay, true)) {
-						// save this way => maybe we will use it in the end
-						// if we don't find any other way
-						wrongRoleWay = tempWay;
-					}
-				}
-
-				if (joined) {
-					// we have joined the way
-					unclosedWays.remove(tempWay);
-					break;
-				}
-			}
-
-			if (!joined && wrongRoleWay != null) {
-
-				log.warn("Join ways with different roles. Multipolygon: "
-						+ toBrowseURL());
-				log.warn("Way1 Role:", getRole(joinWay));
-				logWayURLs(Level.WARNING, "-", joinWay);
-				log.warn("Way2 Role:", getRole(wrongRoleWay));
-				logWayURLs(Level.WARNING, "-", wrongRoleWay);
-
-				joined = joinWays(joinWay, wrongRoleWay, false);
-				if (joined) {
-					// we have joined the way
-					unclosedWays.remove(wrongRoleWay);
-					break;
-				}
-			}
-
-			if (joined) {
-				if (joinWay.hasIdenticalEndPoints()) {
-					// it's closed => don't process it again
-					joinedWays.add(joinWay);
-				} else if (unclosedWays.isEmpty()) {
-					// no more ways to join with
-					// it's not closed but we cannot join it more
-					joinedWays.add(joinWay);
-				} else {
-					// it is not yet closed => process it once again
-					unclosedWays.add(0, joinWay);
-				}
-			} else {
-				// it's not closed but we cannot join it more
-				joinedWays.add(joinWay);
-			}
-		}
-
 		return joinedWays;
 	}
 
 	/**
-	 * Try to close all unclosed ways in the given list of ways.
+	 * Go through list of elements, do some basic checks and separate the ways into
+	 * closed and unclosed ways. The (last) label node is used to set cOfG.
 	 * 
-	 * @param wayList
-	 *            a list of ways
-	 * @param maxCloseDist max distance between ends for artificial close
+	 * @param closedWays   list to which closed ways are added
+	 * @param unclosedWays list to which unclosed ways are added
+	 */
+	private void parseElements(List<JoinedWay> closedWays, List<JoinedWay> unclosedWays) {
+		Map<Long, Way> dupCheck = new HashMap<>();
+
+		for (Map.Entry<String, Element> entry : getElements()) {
+			String role = entry.getKey();
+			Element el = entry.getValue();
+			if (el instanceof Way) {
+				Way wayEl = (Way) el;
+				if (dupCheck.put(wayEl.getId(), wayEl) != null) {
+					log.warn("repeated way member with id", el.getId(), "is ignored in multipolygon relation", toBrowseURL());
+				} else if (wayEl.getPoints().size() <= 1) {
+					log.warn("Way", wayEl, "has", wayEl.getPoints().size(),
+							 "points and cannot be used for the multipolygon", toBrowseURL());
+				} else {
+					JoinedWay jw = new JoinedWay(wayEl, role);
+					if (jw.intRole == INT_ROLE_OTHER) 
+						log.warn("Way role invalid", role, el.toBrowseURL(),
+								 "in multipolygon", toBrowseURL(), toTagString());
+					if (wayEl.isClosedInOSM() && !wayEl.hasIdenticalEndPoints() && !wayEl.isComplete()) {
+						// the way is closed in planet but some points are missing in this tile
+						// we can close it artificially, it is very likely outside of the tile bounds
+						if (log.isDebugEnabled())
+							log.debug("Close incomplete but closed polygon:", wayEl);
+						jw.closeWayArtificially();
+					}
+					if (jw.hasIdenticalEndPoints())
+						closedWays.add(jw);
+					else {
+						unclosedWays.add(jw);
+					}
+				}
+			} else if (el instanceof Node) {
+				if ("label".equals(role))
+					cOfG = ((Node) el).getLocation();
+				else if (!"admin_centre".equals(role)) 
+					log.warn("Node with unknown role is ignored", role, el.toBrowseURL(),
+							 "in multipolygon", toBrowseURL(), toTagString());
+			} else {
+				log.warn("Non Way/Node member with role is ignored", role, el.toBrowseURL(),
+						 "in multipolygon", toBrowseURL(), toTagString());
+			}
+		}
+	}
+
+	/**
+	 * Combines ways in the given order. Closed ways are added to closedWays, unclosed ways remain in unclosed.  
+	 * Stops when two ways cannot be joined in the given order.
+	 * @param closedWays
+	 * @param unclosedWays
+	 */
+	private void joinInGivenOrder(List<JoinedWay> closedWays, List<JoinedWay> unclosedWays) {
+		JoinedWay work = null;
+		while (unclosedWays.size() > 1) {
+			if (work == null)
+				work = unclosedWays.get(0);
+			if (!work.canJoin(unclosedWays.get(1)))
+				break;
+			work.joinWith(unclosedWays.get(1));
+			unclosedWays.remove(1);
+			if (work.hasIdenticalEndPoints()) {
+				closedWays.add(work);
+				unclosedWays.remove(0);
+				work = null;
+			}
+		}
+	}
+
+	private void joinWithIndex(List<JoinedWay> closedWays, List<JoinedWay> unclosedWays) {
+		MultiIdentityHashMap<Coord, JoinedWay> index = new MultiIdentityHashMap<>();
+		unclosedWays.forEach(jw -> {
+			index.add(jw.getFirstPoint(), jw);
+			index.add(jw.getLastPoint(), jw);
+		});
+
+		List<JoinedWay> finishedUnclosed = new ArrayList<>();
+		while (!unclosedWays.isEmpty()) {
+			JoinedWay joinWay = unclosedWays.remove(0);
+
+			List<JoinedWay> candidates = index.get(joinWay.getLastPoint());
+			if (candidates.size() != 2) {
+				candidates = index.get(joinWay.getFirstPoint());
+			}
+			if (candidates.size() <= 1) {
+				// cannot join further
+				finishedUnclosed.add(joinWay);
+				// no need to maintain index
+				continue;
+			}
+			// we will join
+			candidates.remove(joinWay);
+			JoinedWay other = candidates.get(0);
+			if (candidates.size() > 1) {
+				// we have alternatives, prefer one that closes the ring. 
+				other = candidates.stream().filter(joinWay::buildsRingWith).findFirst().orElse(other);
+			}
+			
+			// maintain index, we don't know which node is removed by the joining
+			index.removeMapping(other.getFirstPoint(), other);
+			index.removeMapping(other.getLastPoint(), other);
+			index.removeMapping(joinWay.getFirstPoint(), joinWay);
+			index.removeMapping(joinWay.getLastPoint(), joinWay);
+
+			unclosedWays.remove(other); // needs sequential search. Could set a flag in JoinedWay instead
+			joinWay.joinWith(other);
+
+			if (joinWay.hasIdenticalEndPoints()) {
+				closedWays.add(joinWay);
+			} else {
+				index.add(joinWay.getFirstPoint(), joinWay);
+				index.add(joinWay.getLastPoint(), joinWay);
+				unclosedWays.add(0, joinWay);
+			}
+		}
+		unclosedWays.addAll(finishedUnclosed);
+	}
+
+	/**
+	 * Try to close unclosed way.
+	 * 
+	 * @param way the joined way
 	 * 
 	 */
-	protected void closeWays(List<JoinedWay> wayList, double maxCloseDist) {
-		for (JoinedWay way : wayList) {
-			if (way.hasIdenticalEndPoints() || way.getPoints().size() < 3) {
-				continue;
-			}
-			Coord p1 = way.getFirstPoint();
-			Coord p2 = way.getLastPoint();
+	private void tryCloseSingleWays(JoinedWay way) {
+		if (way.hasIdenticalEndPoints() || way.getPoints().size() < 3)
+			return;
+		
+		Coord p1 = way.getFirstPoint();
+		Coord p2 = way.getLastPoint();
 
-			if (!tileBounds.insideBoundary(p1) && !tileBounds.insideBoundary(p2)
-			// both points lie outside the bbox or on the bbox
-			// check if both points are on the same side of the bounding box
-					&& (p1.getLatitude() <= tileBounds.getMinLat() && p2.getLatitude() <= tileBounds.getMinLat())
-					|| (p1.getLatitude() >= tileBounds.getMaxLat() && p2.getLatitude() >= tileBounds.getMaxLat())
-					|| (p1.getLongitude() <= tileBounds.getMinLong() && p2.getLongitude() <= tileBounds.getMinLong())
-					|| (p1.getLongitude() >= tileBounds.getMaxLong() && p2.getLongitude() >= tileBounds.getMaxLong())) {
-				// they are on the same side outside of the bbox
-				// so just close them without worrying about if
-				// they intersect itself because the intersection also
-				// is outside the bbox
-				way.closeWayArtificially();
-				log.info("Endpoints of way", way, "are both outside the bbox. Closing it directly.");
-				continue;
-			}
-			
-			Line2D closingLine = new Line2D.Double(p1.getHighPrecLon(), 
-					p1.getHighPrecLat(), p2.getHighPrecLon(), p2.getHighPrecLat());
-
-			boolean intersects = false;
-			Coord lastPoint = null;
-			// don't use the first and the last point
-			// the closing line can intersect only in one point or complete.
-			// Both isn't interesting for this check
-			for (Coord thisPoint : way.getPoints().subList(1, way.getPoints().size() - 1)) {
-				if (lastPoint != null && closingLine.intersectsLine(lastPoint.getHighPrecLon(), lastPoint.getHighPrecLat(),
-						thisPoint.getHighPrecLon(), thisPoint.getHighPrecLat())) {
-					intersects = true;
-					break;
-				}
-				lastPoint = thisPoint;
-			}
-
-			if (!intersects) {
-				// close the polygon
-				// the new way segment does not intersect the rest of the polygon
-				boolean doClose = true;
-				if (maxCloseDist > 0) {
-					// calc the distance to close
-					double closeDist = way.getFirstPoint().distance(way.getLastPoint());
-					doClose = closeDist < maxCloseDist;
-				}
-				if (doClose) {
-					if (log.isInfoEnabled()) {
-						log.info("Closing way", way);
-						log.info("from", way.getFirstPoint().toOSMURL());
-						log.info("to", way.getLastPoint().toOSMURL());
-					}
-					// mark this ways as artificially closed
-					way.closeWayArtificially();
-				}
-			}
+		if ((p1.getLatitude() <= tileBounds.getMinLat() && p2.getLatitude() <= tileBounds.getMinLat())
+				|| (p1.getLatitude() >= tileBounds.getMaxLat() && p2.getLatitude() >= tileBounds.getMaxLat())
+				|| (p1.getLongitude() <= tileBounds.getMinLong() && p2.getLongitude() <= tileBounds.getMinLong())
+				|| (p1.getLongitude() >= tileBounds.getMaxLong() && p2.getLongitude() >= tileBounds.getMaxLong())) {
+			// both points lie outside the bbox or on the bbox and 
+			// they are on the same side of the bbox
+			// so just close them without worrying about if
+			// they intersect itself because the intersection also
+			// is outside the bbox
+			way.closeWayArtificially();
+			log.info("Endpoints of way", way, "are both outside the bbox. Closing it directly.");
+			return;
 		}
-	}
+		
+		// calc the distance to close
+		double closeDist = way.getFirstPoint().distance(way.getLastPoint());
+		if (closeDist > getMaxCloseDist()) 
+			return;
+			
+		// We may get here with boundary preparer, for example when a country extract doesn't contain the 
+		// complete data. It is assumed that the country border is very close to the cutting polygon that was
+		// used for the country extract.
+		Line2D closingLine = new Line2D.Double(p1.getHighPrecLon(), 
+				p1.getHighPrecLat(), p2.getHighPrecLon(), p2.getHighPrecLat());
 
-	
-	protected static class ConnectionData {
-		public Coord c1;
-		public Coord c2;
-		public JoinedWay w1;
-		public JoinedWay w2;
+		boolean intersects = false;
+		Coord lastPoint = null;
+		// don't use the first and the last point
+		// the closing line can intersect only in one point or complete.
+		// Both isn't interesting for this check
+		for (Coord thisPoint : way.getPoints().subList(1, way.getPoints().size() - 1)) {
+			if (lastPoint != null && closingLine.intersectsLine(lastPoint.getHighPrecLon(), lastPoint.getHighPrecLat(),
+					thisPoint.getHighPrecLon(), thisPoint.getHighPrecLat())) {
+				intersects = true;
+				break;
+			}
+			lastPoint = thisPoint;
+		}
+
+		if (!intersects) {
+			// close the polygon
+			// the new way segment does not intersect the rest of the polygon
+			if (log.isInfoEnabled()) {
+				log.info("Closing way", way);
+				log.info("from", way.getFirstPoint().toOSMURL());
+				log.info("to", way.getLastPoint().toOSMURL());
+			}
+			// mark this ways as artificially closed
+			way.closeWayArtificially();
+		}
+	} 
+
+	private static class ConnectionData {
+		Coord c1;
+		Coord c2;
+		JoinedWay w1;
+		JoinedWay w2;
 		// sometimes the connection of both points cannot be done directly but with an intermediate point 
-		public Coord imC;
-		public double distance;
-		public ConnectionData() {
-			
-		}
+		Coord imC;
+		double distance;
 	}
-	
-	protected boolean connectUnclosedWays(List<JoinedWay> allWays) {
-		List<JoinedWay> unclosed = new ArrayList<>();
 
-		for (JoinedWay w : allWays) {
-			if (!w.hasIdenticalEndPoints()) {
-				unclosed.add(w);
-			}
-		}
+	/**
+	 * Try to connect pairs of ways to closed rings or a single way by adding a
+	 * point outside of the tileBounds.
+	 * 
+	 * @param allWays     list of ways
+	 * @param onlyOutside if true, only connect ways outside of the tileBounds
+	 * @return true if anything was closed
+	 */
+	private boolean connectUnclosedWays(List<JoinedWay> allWays, boolean onlyOutside) {
+		List<JoinedWay> unclosed = allWays.stream().filter(w->!w.hasEqualEndPoints()).collect(Collectors.toList());
+		
 		// try to connect ways lying outside or on the bbox
 		if (!unclosed.isEmpty()) {
 			log.debug("Checking", unclosed.size(), "unclosed ways for connections outside the bbox");
-			Map<Coord, JoinedWay> outOfBboxPoints = new IdentityHashMap<>();
+			Map<Coord, JoinedWay> openEnds = new IdentityHashMap<>();
 			
 			// check all ways for endpoints outside or on the bbox
 			for (JoinedWay w : unclosed) {
-				Coord c1 = w.getFirstPoint();
-				Coord c2 = w.getLastPoint();
-				if (!tileBounds.insideBoundary(c1)) {
-					log.debug("Point", c1, "of way", w.getId(), "outside bbox");
-					outOfBboxPoints.put(c1, w);
-				}
-
-				if (!tileBounds.insideBoundary(c2)) {
-					log.debug("Point", c2, "of way", w.getId(), "outside bbox");
-					outOfBboxPoints.put(c2, w);
+				for (Coord e : Arrays.asList(w.getFirstPoint(), w.getLastPoint())) { 
+					if (!onlyOutside) {
+						openEnds.put(e, w);
+					} else {
+						if (!tileBounds.insideBoundary(e)) {
+							log.debug("Point", e, "of way", w.getId(), "outside bbox");
+							openEnds.put(e, w);
+						}
+					}
 				}
 			}
-			
-			if (outOfBboxPoints.size() < 2) {
-				log.debug(outOfBboxPoints.size(), "point outside the bbox. No connection possible.");
+
+			if (openEnds.size() < 2) {
+				log.debug(openEnds.size(), "point outside the bbox. No connection possible.");
 				return false;
 			}
 			
 			List<ConnectionData> coordPairs = new ArrayList<>();
-			ArrayList<Coord> coords = new ArrayList<>(outOfBboxPoints.keySet());
+			ArrayList<Coord> coords = new ArrayList<>(openEnds.keySet());
 			for (int i = 0; i < coords.size(); i++) {
 				for (int j = i + 1; j < coords.size(); j++) {
 					ConnectionData cd = new ConnectionData();
 					cd.c1 = coords.get(i);
 					cd.c2 = coords.get(j);
-					cd.w1 = outOfBboxPoints.get(cd.c1);					
-					cd.w2 = outOfBboxPoints.get(cd.c2);					
+					cd.w1 = openEnds.get(cd.c1);					
+					cd.w2 = openEnds.get(cd.c2);
 					
-					if (lineCutsBbox(cd.c1, cd.c2)) {
+					if (!onlyOutside && cd.w1 == cd.w2) 
+						continue; // was already tested in tryCloseSingleWays() 
+					
+					if (onlyOutside && lineCutsBbox(cd.c1, cd.c2)) {
 						// Check if the way can be closed with one additional point
 						// outside the bounding box.
 						// The additional point is combination of the coords of both endpoints.
@@ -503,16 +448,20 @@ public class MultiPolygonRelation extends Relation {
 						// multi-polygons.
 						Coord edgePoint1 = new Coord(cd.c1.getLatitude(), cd.c2.getLongitude());
 						Coord edgePoint2 = new Coord(cd.c2.getLatitude(), cd.c1.getLongitude());
-
+						
+						List<Coord> possibleEdges = new ArrayList<>();
 						if (!lineCutsBbox(cd.c1, edgePoint1) && !lineCutsBbox(edgePoint1, cd.c2)) {
-							cd.imC = edgePoint1;
-						} else if (!lineCutsBbox(cd.c1, edgePoint2) && !lineCutsBbox(edgePoint2, cd.c2)) {
-							cd.imC = edgePoint2;
-						} else {
+							possibleEdges.add(edgePoint1);
+						} 
+						if (!lineCutsBbox(cd.c1, edgePoint2) && !lineCutsBbox(edgePoint2, cd.c2)) {
+							possibleEdges.add(edgePoint2);
+						} 
+						if (possibleEdges.size() != 1) {
 							// both endpoints are on opposite sides of the bounding box
 							// automatically closing such points would create wrong polygons in most cases
 							continue;
 						}
+						cd.imC = possibleEdges.get(0);
 						cd.distance = cd.c1.distance(cd.imC) + cd.imC.distance(cd.c2);
 					} else {
 						cd.distance = cd.c1.distance(cd.c2);
@@ -520,15 +469,15 @@ public class MultiPolygonRelation extends Relation {
 					coordPairs.add(cd);
 				}
 			}
-			
+
 			if (coordPairs.isEmpty()) {
 				log.debug("All potential connections cross the bbox. No connection possible.");
 				return false;
-			} else {
-				// retrieve the connection with the minimum distance
-				ConnectionData minCon = Collections.min(coordPairs,
-						(o1, o2) -> Double.compare(o1.distance, o2.distance));
+			}
+			// retrieve the connection with the minimum distance
+			ConnectionData minCon = Collections.min(coordPairs, (o1, o2) -> Double.compare(o1.distance, o2.distance));
 
+			if (onlyOutside || minCon.distance < getMaxCloseDist()) {
 				if (minCon.w1 == minCon.w2) {
 					log.debug("Close a gap in way", minCon.w1);
 					if (minCon.imC != null)
@@ -553,7 +502,6 @@ public class MultiPolygonRelation extends Relation {
 		}
 		return false;
 	}
-
 	
 	/**
 	 * Removes all non closed ways from the given list.
@@ -562,34 +510,30 @@ public class MultiPolygonRelation extends Relation {
 	 * @param wayList
 	 *            list of ways
 	 */
-	protected void removeUnclosedWays(List<JoinedWay> wayList) {
+	private void removeUnclosedWays(List<JoinedWay> wayList) {
 		Iterator<JoinedWay> it = wayList.iterator();
 		boolean firstWarn = true;
 		while (it.hasNext()) {
-			JoinedWay tempWay = it.next();
-			if (!tempWay.hasIdenticalEndPoints()) {
-				// warn only if the way intersects the bounding box 
-				boolean inBbox = tempWay.intersects(tileBounds);
-				if (inBbox) {
+			JoinedWay jw = it.next();
+			if (!jw.hasIdenticalEndPoints()) {
+				// warn only if the way bbox intersects the bounding box 
+				if (jw.getArea().intersects(tileBounds)) {
 					if (firstWarn) {
 						log.warn(
 							"Cannot join the following ways to closed polygons. Multipolygon",
 							toBrowseURL(), toTagString());
 						firstWarn = false;
 					}
-					logWayURLs(Level.WARNING, "- way:", tempWay);
-					logFakeWayDetails(Level.WARNING, tempWay);
+					logWayURLs(Level.WARNING, "- way:", jw);
+					logFakeWayDetails(Level.WARNING, jw);
+					String role = getRole(jw);
+					if (role == null || ROLE_OUTER.equals(role)) {
+						// anyhow add the ways to the list for line tagging
+						outerWaysForLineTagging.addAll(jw.getOriginalWays());
+					}
 				}
 
 				it.remove();
-				
-				if (inBbox) {
-					String role = getRole(tempWay);
-					if (role == null || "".equals(role) || "outer".equals(role)) {
-						// anyhow add the ways to the list for line tagging
-						outerWaysForLineTagging.addAll(tempWay.getOriginalWays());
-					}
-				}
 			}
 		}
 	}
@@ -599,7 +543,7 @@ public class MultiPolygonRelation extends Relation {
 	 * This reduces error messages from problems on the tile bounds.
 	 * @param wayList list of ways
 	 */
-	protected void removeWaysOutsideBbox(List<JoinedWay> wayList) {
+	private void removeWaysOutsideBbox(List<JoinedWay> wayList) {
 		ListIterator<JoinedWay> wayIter = wayList.listIterator();
 		while (wayIter.hasNext()) {
 			JoinedWay w = wayIter.next();
@@ -644,208 +588,242 @@ public class MultiPolygonRelation extends Relation {
 		return true;
 	}
 
-
 	/**
-	 * Find all polygons that are not contained by any other polygon.
-	 * 
-	 * @param candidates
-	 *            all polygons that should be checked
-	 * @param roleFilter
-	 *            an additional filter
-	 * @return all polygon indexes that are not contained by any other polygon
+	 * Process the ways in this relation. Tries to join the ways to closed rings and
+	 * detect inner/outer status and calls methods to process them.
 	 */
-	private BitSet findOutmostPolygons(BitSet candidates, BitSet roleFilter) {
-		BitSet realCandidates = ((BitSet) candidates.clone());
-		realCandidates.and(roleFilter);
-		return findOutmostPolygons(realCandidates);
-	}
-
-	/**
-	 * Finds all polygons that are not contained by any other polygons and that match
-	 * to the given role. All polygons with index given by <var>candidates</var>
-	 * are used.
-	 * 
-	 * @param candidates
-	 *            indexes of the polygons that should be used
-	 * @return the bits of all outermost polygons are set to true
-	 */
-	protected BitSet findOutmostPolygons(BitSet candidates) {
-		BitSet outmostPolygons = new BitSet();
-
-		// go through all candidates and check if they are contained by any
-		// other candidate
-		for (int candidateIndex = candidates.nextSetBit(0); candidateIndex >= 0; candidateIndex = candidates
-				.nextSetBit(candidateIndex + 1)) {
-			// check if the candidateIndex polygon is not contained by any
-			// other candidate polygon
-			boolean isOutmost = true;
-			for (int otherCandidateIndex = candidates.nextSetBit(0); otherCandidateIndex >= 0; otherCandidateIndex = candidates
-					.nextSetBit(otherCandidateIndex + 1)) {
-				if (contains(otherCandidateIndex, candidateIndex)) {
-					// candidateIndex is not an outermost polygon because it is
-					// contained by the otherCandidateIndex polygon
-					isOutmost = false;
-					break;
-				}
-			}
-			if (isOutmost) {
-				// this is an outermost polygon
-				// put it to the bitset
-				outmostPolygons.set(candidateIndex);
-			}
-		}
-
-		return outmostPolygons;
-	}
-
-	protected ArrayList<PolygonStatus> getPolygonStatus(BitSet outmostPolygons,
-			String defaultRole) {
-		ArrayList<PolygonStatus> polygonStatusList = new ArrayList<>();
-		for (int polyIndex = outmostPolygons.nextSetBit(0); polyIndex >= 0; polyIndex = outmostPolygons
-				.nextSetBit(polyIndex + 1)) {
-			// polyIndex is the polygon that is not contained by any other
-			// polygon
-			JoinedWay polygon = polygons.get(polyIndex);
-			String role = getRole(polygon);
-			// if the role is not explicitly set use the default role
-			if (role == null || "".equals(role)) {
-				role = defaultRole;
-			} 
-			polygonStatusList.add(new PolygonStatus("outer".equals(role), polyIndex, polygon));
-		}
-		// sort by role and then by number of points, this improves performance
-		// in the routines which add the polygons to areas
-		if (polygonStatusList.size() > 2) {
-			polygonStatusList.sort((o1, o2) -> {
-				if (o1.outer != o2.outer)
-					return (o1.outer) ? -1 : 1;
-				return o1.polygon.getPoints().size() - o2.polygon.getPoints().size();
-			});
-		}
-		return polygonStatusList;
-	}
-
-	/**
-	 * Creates a list of all original ways of the multipolygon. 
-	 * @return all source ways
-	 */
-	protected List<Way> getSourceWays() {
-		ArrayList<Way> allWays = new ArrayList<>();
-
-		for (Map.Entry<String, Element> entry : getElements()) {
-			if (entry.getValue() instanceof Way) {
-				if (((Way) entry.getValue()).getPoints().isEmpty()) {
-					log.warn("Way", entry.getValue(), "has no points and cannot be used for the multipolygon",
-							toBrowseURL());
-				} else {
-					allWays.add((Way) entry.getValue());
-				}
-			} else if (!(entry.getValue() instanceof Node)
-					|| (!"admin_centre".equals(entry.getKey()) && !"label".equals(entry.getKey()))) {
-				log.warn("Non way member in role", entry.getKey(), entry.getValue().toBrowseURL(),
-						"in multipolygon", toBrowseURL(), toTagString());
-			}
-		}
-		return allWays;
-	}
-	
-	
-	// unfinishedPolygons marks which polygons are not yet processed
-	protected BitSet unfinishedPolygons;
-
-	// create bitsets which polygons belong to the outer and to the inner role
-	protected BitSet innerPolygons;
-	protected BitSet taggedInnerPolygons;
-	protected BitSet outerPolygons;
-	protected BitSet taggedOuterPolygons;
-
-	private boolean noRecalc;
-
-	/**
-	 * Process the ways in this relation. Joins way with the role "outer" Adds
-	 * ways with the role "inner" to the way with the role "outer"
-	 */
-	public void processElements() {
+	public final void processElements() {
 		log.info("Processing multipolygon", toBrowseURL());
 		
+		// check if it makes sense to process the mp 
+		if (!isUsable()) { 
+			log.info("Do not process multipolygon", getId(), "because it has no style relevant tags.");
+			return;
+		}
 		polygons = buildRings();
 		if (polygons.isEmpty())
 			return;
 		
-		// the intersectingPolygons marks all intersecting/overlapping polygons
-		intersectingPolygons = new HashSet<>();
+		// trigger setting area before start cutting...
+		// do like this to disguise function with side effects
+		polygons.forEach(jw -> jw.setFullArea(jw.getFullArea()));
 		
-		// check which polygons lie inside which other polygon 
-		createContainsMatrix(polygons);
-
-		// unfinishedPolygons marks which polygons are not yet processed
-		unfinishedPolygons = new BitSet(polygons.size());
-		unfinishedPolygons.set(0, polygons.size());
-
-		// create bitsets which polygons belong to the outer and to the inner role
-		innerPolygons = new BitSet();
-		taggedInnerPolygons = new BitSet();
-		outerPolygons = new BitSet();
-		taggedOuterPolygons = new BitSet();
-		
-		int wi = 0;
-		for (Way w : polygons) {
-			w.setFullArea(w.getFullArea()); // trigger setting area before start cutting...
-			// do like this to disguise function with side effects
-			String role = getRole(w);
-			if ("inner".equals(role)) {
-				innerPolygons.set(wi);
-				taggedInnerPolygons.set(wi);
-			} else if ("outer".equals(role)) {
-				outerPolygons.set(wi);
-				taggedOuterPolygons.set(wi);
-			} else {
-				// unknown role => it could be both
-				innerPolygons.set(wi);
-				outerPolygons.set(wi);
-			}
-			wi++;
-		}
-
-		if (outerPolygons.isEmpty()) {
+		if (polygons.stream().allMatch(jw -> jw.intRole == INT_ROLE_INNER || jw.intRole == INT_ROLE_OTHER)) {
 			log.warn("Multipolygon", toBrowseURL(),
 				"does not contain any way tagged with role=outer or empty role.");
 			cleanup();
 			return;
 		}
-
-		Queue<PolygonStatus> polygonWorkingQueue = new LinkedBlockingQueue<>();
-		BitSet nestedOuterPolygons = new BitSet();
-		BitSet nestedInnerPolygons = new BitSet();
-
-		BitSet outmostPolygons;
-		BitSet outmostInnerPolygons = new BitSet();
-		boolean outmostInnerFound;
-		do {
-			outmostInnerFound = false;
-			outmostPolygons = findOutmostPolygons(unfinishedPolygons);
-
-			if (outmostPolygons.intersects(taggedInnerPolygons)) {
-				outmostInnerPolygons.or(outmostPolygons);
-				outmostInnerPolygons.and(taggedInnerPolygons);
-
-				if (log.isDebugEnabled())
-					log.debug("wrong inner polygons: " + outmostInnerPolygons);
-				// do not process polygons tagged with role=inner but which are
-				// not contained by any other polygon
-				unfinishedPolygons.andNot(outmostInnerPolygons);
-				outmostPolygons.andNot(outmostInnerPolygons);
-				outmostInnerFound = true;
-			}
-		} while (outmostInnerFound);
 		
-		if (!outmostPolygons.isEmpty()) {
-			polygonWorkingQueue.addAll(getPolygonStatus(outmostPolygons, "outer"));
+		//TODO: trunk uses more complex logic that also takes the inners into account
+		largestOuterPolygon = getLargest(polygons);
+		
+		List<List<JoinedWay>> partitions = new ArrayList<>();
+		if ("boundary".equals(getTag("type"))) {
+			partitions.add(polygons);
+		} else {	 
+			divideLargest(polygons, partitions, 0);
+		}
+		for (List<JoinedWay> some : partitions) {
+			processPartition(new Partition(some));
+			if (renderingFailed)
+				break;
 		}
 
-		boolean outmostPolygonProcessing = true;
+		tagOuterWays();
 		
+		postProcessing();
+		cleanup();
+	}
+
+	private List<JoinedWay> buildRings() {
+		List<JoinedWay> polygons = joinWays();
+
+		outerWaysForLineTagging = new HashSet<>();
+		
+		polygons = filterUnclosed(polygons);
+		
+		do {
+			polygons.forEach(this::tryCloseSingleWays);
+		} while (connectUnclosedWays(polygons, assumeDataInBoundsIsComplete()));
+
+		removeUnclosedWays(polygons);
+
+		// now only closed ways are left => polygons only
+
+		// check if we have at least one polygon left
+		boolean hasPolygons = !polygons.isEmpty();
+
+		removeWaysOutsideBbox(polygons);
+
+		if (polygons.isEmpty()) {
+			// do nothing
+			if (log.isInfoEnabled()) {
+				log.info("Multipolygon", toBrowseURL(),
+						hasPolygons ? "is completely outside the bounding box. It is not processed."
+								: "does not contain a closed polygon.");
+			}
+			tagOuterWays();
+			cleanup();
+		}
+		return polygons;
+	}
 	
+	private static JoinedWay getLargest(List<JoinedWay> polygons) {
+		double maxSize = -1;
+		int maxPos = -1;
+		for (int i = 0; i< polygons.size(); i++) {
+			JoinedWay closed = polygons.get(i);
+			double size = calcAreaSize(closed.getPoints());
+			if (size > maxSize) {
+				maxSize = size;
+				maxPos = i;
+			}
+		}
+		return polygons.get(maxPos);
+	}
+
+
+	/**
+	 * Calculate the bounds of given collection of joined ways
+	 * @param polygons list of polygons
+	 * @return the bounds
+	 */
+	private static uk.me.parabola.imgfmt.app.Area calcBounds(Collection<JoinedWay> polygons) {
+		int minLat = Integer.MAX_VALUE;
+		int minLon = Integer.MAX_VALUE;
+		int maxLat = Integer.MIN_VALUE;
+		int maxLon = Integer.MIN_VALUE;
+		for (JoinedWay jw : polygons) {
+			if (jw.minLat < minLat)
+				minLat = jw.minLat;
+			if (jw.minLon < minLon)
+				minLon = jw.minLon;
+			if (jw.maxLat > maxLat)
+				maxLat = jw.maxLat;
+			if (jw.maxLon > maxLon)
+				maxLon = jw.maxLon;
+		}
+		return new uk.me.parabola.imgfmt.app.Area(minLat, minLon, maxLat, maxLon);
+	}
+
+
+	void processPartition(Partition partition) {
+		if (partition.outerPolygons.isEmpty()) {
+			renderingFailed = true;
+			log.error("Internal error: Failed to render " + this);
+			return;
+		}
+			
+		Queue<PolygonStatus> polygonWorkingQueue = new LinkedBlockingQueue<>();
+		
+		polygonWorkingQueue.addAll(partition.getPolygonStatus(null));
+		processQueue(partition, polygonWorkingQueue);
+
+		if (doReporting() && log.isLoggable(Level.WARNING)) {
+			partition.reportProblems();
+		}
+
+	}
+
+	protected boolean doReporting() {
+		return true;
+	}
+
+
+	protected boolean isUsable() {
+		// TODO: Would be good to have a hook to filter unwanted MP, e.g.  
+		for (Map.Entry<String, String> tagEntry : this.getTagEntryIterator()) {
+			String tagName = tagEntry.getKey();
+			// all tags are style relevant
+			// except: type and mkgmap:* 
+			if (!"type".equals(tagName) && !tagName.startsWith("mkgmap:")) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Should return true if extra ways with style filter {@code STYLE_FILTER_LINE}
+	 * should be added to the {@code tileWayMap}. Overwrite if those ways are not needed. 
+	 * @return true if extra ways with style filter {@code STYLE_FILTER_LINE}
+	 * should be added to the {@code tileWayMap}
+	 */
+	protected boolean needsWaysForOutlines() {
+		return true;
+	}
+
+	protected boolean assumeDataInBoundsIsComplete() {
+		// we assume that data inside tile boundaries is complete
+		return true; 
+	}
+
+	private void tagOuterWays() {
+		if (outerWaysForLineTagging.isEmpty())
+			return;
+		
+		final Way patternWayForLineCopies;
+		if (needsWaysForOutlines()) {
+			// create pattern way with tags for outline of this multipolygon
+			patternWayForLineCopies = new Way(0);
+			patternWayForLineCopies.copyTags(this);
+			patternWayForLineCopies.deleteTag("type");
+			patternWayForLineCopies.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
+			patternWayForLineCopies.addTag(TKM_MP_CREATED, "true");
+			if (needsAreaSizeTag()) {
+				patternWayForLineCopies.addTag(TKM_CACHE_AREA_SIZEKEY, getAreaSizeString());
+			}
+		} else { 
+			patternWayForLineCopies = null;
+		}
+		
+		// Go through all original outer ways, create a copy if wanted, tag them
+		// with the mp tags and mark them only to be used for polyline processing
+		// This enables the style file to decide if the polygon information or
+		// the simple line information should be used.
+		
+		for (Way orgOuterWay : outerWaysForLineTagging) {
+			if (patternWayForLineCopies != null) {
+				Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
+				lineTagWay.markAsGeneratedFrom(this);
+				lineTagWay.copyTags(patternWayForLineCopies);
+				if (log.isDebugEnabled())
+					log.debug("Add line way", lineTagWay.getId(), lineTagWay.toTagString());
+				tileWayMap.put(lineTagWay.getId(), lineTagWay);
+			}
+			
+			for (Entry<String, String> tag : this.getTagEntryIterator()) {
+				// mark the tag for removal in the original way if it has the same value
+				if (tag.getValue().equals(orgOuterWay.getTag(tag.getKey()))) {
+					markTagsForRemovalInOrgWays(orgOuterWay, tag.getKey());
+				}
+			}
+		}
+	}
+
+	/**
+	 * Filter unclosed ways which have one or both end points outside of the tile bounds.
+	 * @param polygons the list of ways to filter
+	 * @return the original list if {@link allowCloseOutsideBBox} returns false, else the filtered list
+	 */
+	private List<JoinedWay> filterUnclosed(List<JoinedWay> polygons) {
+		if (assumeDataInBoundsIsComplete())
+			return polygons;
+		return polygons.stream().filter(w -> {
+			Coord first = w.getFirstPoint();
+			Coord last = w.getLastPoint();
+			return first == last || tileBounds.contains(first) && tileBounds.contains(last);
+		}).collect(Collectors.toList());
+	}
+
+	/**
+	 * The main routine to cut or split the rings of one partition containing a list of polygons
+	 * @param partition the partition
+	 * @param polygonWorkingQueue the queue that contains the initial outer rings
+	 */
+	protected void processQueue(Partition partition, Queue<PolygonStatus> polygonWorkingQueue) {
+		
 		while (!polygonWorkingQueue.isEmpty()) {
 
 			// the polygon is not contained by any other unfinished polygon
@@ -853,54 +831,9 @@ public class MultiPolygonRelation extends Relation {
 
 			// this polygon is now processed and should not be used by any
 			// further step
-			unfinishedPolygons.clear(currentPolygon.index);
+			partition.markFinished(currentPolygon);
 
-			BitSet polygonContains = new BitSet();
-			polygonContains.or(containsMatrix.get(currentPolygon.index));
-			// use only polygon that are contained by the polygon
-			polygonContains.and(unfinishedPolygons);
-			// polygonContains is the intersection of the unfinished and
-			// the contained polygons
-
-			// get the holes
-			// these are all polygons that are in the main polygon
-			// and that are not contained by any other polygon
-			boolean holesOk;
-			BitSet holeIndexes;
-			do {
-				holeIndexes = findOutmostPolygons(polygonContains);
-				holesOk = true;
-
-				if (currentPolygon.outer) {
-					// for role=outer only role=inner is allowed
-					if (holeIndexes.intersects(taggedOuterPolygons)) {
-						BitSet addOuterNestedPolygons = new BitSet();
-						addOuterNestedPolygons.or(holeIndexes);
-						addOuterNestedPolygons.and(taggedOuterPolygons);
-						nestedOuterPolygons.or(addOuterNestedPolygons);
-						holeIndexes.andNot(addOuterNestedPolygons);
-						// do not process them
-						unfinishedPolygons.andNot(addOuterNestedPolygons);
-						polygonContains.andNot(addOuterNestedPolygons);
-						
-						// recalculate the holes again to get all inner polygons 
-						// in the nested outer polygons
-						holesOk = false;
-					}
-				} else {
-					// for role=inner both role=inner and role=outer is supported
-					// although inner in inner is not officially allowed
-					if (holeIndexes.intersects(taggedInnerPolygons)) {
-						// process inner in inner but issue a warning later
-						BitSet addInnerNestedPolygons = new BitSet();
-						addInnerNestedPolygons.or(holeIndexes);
-						addInnerNestedPolygons.and(taggedInnerPolygons);
-						nestedInnerPolygons.or(addInnerNestedPolygons);
-					}
-				}
-			} while (!holesOk);
-
-			ArrayList<PolygonStatus> holes = getPolygonStatus(holeIndexes, (currentPolygon.outer ? "inner" : "outer"));
+			List<PolygonStatus> holes = partition.getPolygonStatus(currentPolygon);
 
 			// these polygons must all be checked for holes
 			polygonWorkingQueue.addAll(holes);
@@ -911,29 +844,15 @@ public class MultiPolygonRelation extends Relation {
 				outerWaysForLineTagging.addAll(currentPolygon.polygon.getOriginalWays());
 			}
 			
-			// calculate the size of the polygon
-			double outerAreaSize = currentPolygon.polygon.getSizeOfArea();
-			if (outerAreaSize > largestSize) {
-				// subtract the holes
-				for (PolygonStatus hole : holes) {
-					outerAreaSize -= hole.polygon.getSizeOfArea();
-				}
-				// is it still larger than the largest known polygon?
-				if (outerAreaSize > largestSize) {
-					largestOuterPolygon = currentPolygon.polygon;
-					largestSize = outerAreaSize;
-				}
-			}
-			
 			// check if the polygon is an outer polygon or 
 			// if there are some holes
-			boolean processPolygon = currentPolygon.outer || (!holes.isEmpty());
+			boolean processPolygon = currentPolygon.outer || !holes.isEmpty();
 
 			if (processPolygon) {
 				List<Way> singularOuterPolygons;
 				if (holes.isEmpty()) {
-					singularOuterPolygons = Collections
-							.singletonList((Way) new JoinedWay(currentPolygon.polygon));
+					Way w = new Way(currentPolygon.polygon.getId(), currentPolygon.polygon.getPoints());
+					singularOuterPolygons = Collections.singletonList(w);
 				} else {
 					List<Way> innerWays = new ArrayList<>(holes.size());
 					for (PolygonStatus polygonHoleStatus : holes) {
@@ -949,16 +868,15 @@ public class MultiPolygonRelation extends Relation {
 				
 				if (!singularOuterPolygons.isEmpty()) {
 					// handle the tagging 
-					if (currentPolygon.outer && hasStyleRelevantTags(this)) {
+					if (currentPolygon.outer) {
 						// use the tags of the multipolygon
 						for (Way p : singularOuterPolygons) {
 							// overwrite all tags
 							p.copyTags(this);
 							p.deleteTag("type");
 						}
-						// remove the multipolygon tags in the original ways of the current polygon
-						removeTagsInOrgWays(this, currentPolygon.polygon);
 					} else {
+						// we have a nested MP with one or more outer rings inside an inner ring 
 						// use the tags of the original ways
 						currentPolygon.polygon.mergeTagsFromOrgWays();
 						for (Way p : singularOuterPolygons) {
@@ -966,21 +884,9 @@ public class MultiPolygonRelation extends Relation {
 							p.copyTags(currentPolygon.polygon);
 						}
 						// remove the current polygon tags in its original ways
-						removeTagsInOrgWays(currentPolygon.polygon, currentPolygon.polygon);
+						markTagsForRemovalInOrgWays(currentPolygon.polygon);
 					}
 				
-					if (currentPolygon.outer && outmostPolygonProcessing) {
-						// this is the outer most polygon - copy its tags. They will be used
-						// later for tagging of the lines
-
-						// all cut polygons have the same tags - copy them from the first polygon
-						Way outerWay = singularOuterPolygons.get(0);
-						for (Entry<String, String> tag : outerWay.getTagEntryIterator()) {
-							outerTags.put(tag.getKey(), tag.getValue());
-						}
-						outmostPolygonProcessing = false;
-					}
-					
 					long fullArea = currentPolygon.polygon.getFullArea();
 					for (Way mpWay : singularOuterPolygons) {
 						// put the cut out polygons to the
@@ -994,700 +900,92 @@ public class MultiPolygonRelation extends Relation {
 						mpWay.addTag(TKM_MP_CREATED, "true");
 						
 						if (currentPolygon.outer) {
-							mpWay.addTag(TKM_MP_ROLE, "outer");
-							if (isAreaSizeCalculated())
+							mpWay.addTag(TKM_MP_ROLE, ROLE_OUTER);
+							if (needsAreaSizeTag())
 								mpAreaSize += calcAreaSize(mpWay.getPoints());
 						} else {
-							mpWay.addTag(TKM_MP_ROLE, "inner");
+							mpWay.addTag(TKM_MP_ROLE, ROLE_INNER);
 						}
 						
-						getMpPolygons().put(mpWay.getId(), mpWay);
+						mpPolygons.put(mpWay.getId(), mpWay);
 					}
 				}
 			}
 		}
-		
-		if (log.isLoggable(Level.WARNING) && (outmostInnerPolygons.cardinality() + unfinishedPolygons.cardinality()
-				+ nestedOuterPolygons.cardinality() + nestedInnerPolygons.cardinality() >= 1)) {
-			log.warn("Multipolygon", toBrowseURL(), toTagString(), "contains errors.");
-
-			BitSet outerUnusedPolys = new BitSet();
-			outerUnusedPolys.or(unfinishedPolygons);
-			outerUnusedPolys.or(outmostInnerPolygons);
-			outerUnusedPolys.or(nestedOuterPolygons);
-			outerUnusedPolys.or(nestedInnerPolygons);
-			outerUnusedPolys.or(unfinishedPolygons);
-			// use only the outer polygons
-			outerUnusedPolys.and(outerPolygons);
-			for (JoinedWay w : getWaysFromPolygonList(outerUnusedPolys)) {
-				outerWaysForLineTagging.addAll(w.getOriginalWays());
-			}
-			
-			runIntersectionCheck(unfinishedPolygons);
-			runOutmostInnerPolygonCheck(outmostInnerPolygons);
-			runNestedOuterPolygonCheck(nestedOuterPolygons);
-			runNestedInnerPolygonCheck(nestedInnerPolygons);
-			runWrongInnerPolygonCheck(unfinishedPolygons, innerPolygons);
-
-			// we have at least one polygon that could not be processed
-			// Probably we have intersecting or overlapping polygons
-			// one possible reason is if the relation overlaps the tile
-			// bounds
-			// => issue a warning
-			List<JoinedWay> lostWays = getWaysFromPolygonList(unfinishedPolygons);
-			for (JoinedWay w : lostWays) {
-				log.warn("Polygon", w, "is not processed due to an unknown reason.");
-				logWayURLs(Level.WARNING, "-", w);
-			}
-		}
-
-		if (!hasStyleRelevantTags(this)) {
-			// add tags to the multipolygon that are taken from the outer ways
-			// they may be required by some hooks (e.g. Area2POIHook)
-			for (Entry<String, String> tags : outerTags.entrySet()) {
-				addTag(tags.getKey(), tags.getValue());
-			}
-		}
-		String mpAreaSizeStr = null;
-		if (isAreaSizeCalculated()) {
-			// calculate tag value for mkgmap:cache_area_size only once
-			mpAreaSizeStr = String.format(Locale.US, "%.3f", mpAreaSize);
-		}
-		// Go through all original outer ways, create a copy, tag them
-		// with the mp tags and mark them only to be used for polyline processing
-		// This enables the style file to decide if the polygon information or
-		// the simple line information should be used.
-		for (Way orgOuterWay : outerWaysForLineTagging) {
-			Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
-			lineTagWay.markAsGeneratedFrom(this);
-			lineTagWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
-			lineTagWay.addTag(TKM_MP_CREATED, "true");
-			if (mpAreaSizeStr != null) {
-				// assign the area size of the whole multipolygon to all outer polygons
-				lineTagWay.addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
-			}
-			for (Entry<String,String> tag : outerTags.entrySet()) {
-				lineTagWay.addTag(tag.getKey(), tag.getValue());
-				
-				// remove the tag from the original way if it has the same value
-				if (tag.getValue().equals(orgOuterWay.getTag(tag.getKey()))) {
-					removeTagsInOrgWays(orgOuterWay, tag.getKey());
-				}
-			}
-	
-			if (log.isDebugEnabled())
-				log.debug("Add line way", lineTagWay.getId(), lineTagWay.toTagString());
-			tileWayMap.put(lineTagWay.getId(), lineTagWay);
-		}
-		
-		postProcessing();
-		cleanup();
 	}
-	
-	private List<JoinedWay> buildRings() {
-		List<Way> allWays = getSourceWays();
-		
-		// check if it makes sense to process the mp 
-		if (!isMpProcessable(allWays)) {
-			log.info("Do not process multipolygon", getId(), "because it has no style relevant tags.");
-			return Collections.emptyList();
-		}
 
-		
-		// join all single ways to polygons, try to close ways and remove non closed ways 
-		polygons = joinWays(allWays);
-		
-		outerWaysForLineTagging = new HashSet<>();
-		outerTags = new HashMap<>();
-		
-		do {
-			closeWays(polygons, getMaxCloseDist());
-		} while (connectUnclosedWays(polygons));
-
-		removeUnclosedWays(polygons);
-
-		// now only closed ways are left => polygons only
-
-		// check if we have at least one polygon left
-		boolean hasPolygons = !polygons.isEmpty();
-
-		removeWaysOutsideBbox(polygons);
-		
-		if (polygons.isEmpty()) {
-			// do nothing
-			if (log.isInfoEnabled()) {
-				log.info("Multipolygon", toBrowseURL(),
-						hasPolygons ? "is completely outside the bounding box. It is not processed."
-								: "does not contain a closed polygon.");
-			}
-			tagOuterWays();
-			cleanup();
-		}
-
-		return polygons;
-	}
 
 	protected double getMaxCloseDist() {
-		return -1; // 
+		return Double.MAX_VALUE; // overwritten in BoundaryRelation
 	}
 
+	private String getAreaSizeString() {
+		return String.format(Locale.US, "%.3f", mpAreaSize); 
+	}
 
 	protected void postProcessing() {
-		
-		if (isAreaSizeCalculated()) {
+		String mpAreaSizeStr = null;
+		if (needsAreaSizeTag()) {
 			// assign the area size of the whole multipolygon to all outer polygons
-			String mpAreaSizeStr = String.format(Locale.US, "%.3f", mpAreaSize); 
+			mpAreaSizeStr = getAreaSizeString(); 
 			addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
+		}
+
+		if (!renderingFailed) {
 			for (Way w : mpPolygons.values()) {
-				if ("outer".equals(w.getTag(TKM_MP_ROLE))) {
+				String role = w.deleteTag(TKM_MP_ROLE); 
+				if (mpAreaSizeStr != null && ROLE_OUTER.equals(role)) {
 					w.addTag(TKM_CACHE_AREA_SIZEKEY, mpAreaSizeStr);
 				}
 			}
+			// copy all polygons created by the multipolygon algorithm to the global way map
+			tileWayMap.putAll(mpPolygons);
 		}
-
-		for (Way w : mpPolygons.values()) {
-			w.deleteTag("mkgmap:mp_role");
+		if (cOfG == null && largestOuterPolygon != null) {
+			// use the center of the largest polygon as reference point
+			cOfG = largestOuterPolygon.getCofG();
 		}
-		// copy all polygons created by the multipolygon algorithm to the global way map
-		tileWayMap.putAll(mpPolygons);
-		
-		if (largestOuterPolygon != null) {
-			// check if the mp contains a node with role "label" 
-			for (Map.Entry<String, Element> entry : getElements()) {
-				if (entry.getValue() instanceof Node && "label".equals(entry.getKey())) {
-					// yes => use the label node as reference point
-					cOfG = ((Node) entry.getValue()).getLocation();
-					break;
-				}
-			}
-			
-			if (cOfG == null) {
-				// use the center of the largest polygon as reference point
-				cOfG = largestOuterPolygon.getCofG();
-			}
-		}
+		// XXX: maybe keep the cOfg data from a label node? 
+		if (largestOuterPolygon == null) 
+			cOfG = null; 
 	}
 	
-	private void runIntersectionCheck(BitSet unfinishedPolys) {
-		if (intersectingPolygons.isEmpty()) {
-			// nothing to do
-			return;
-		}
-
-		log.warn("Some polygons are intersecting. This is not allowed in multipolygons.");
-
-		boolean oneOufOfBbox = false;
-		for (JoinedWay polygon : intersectingPolygons) {
-			int pi = polygons.indexOf(polygon);
-			unfinishedPolys.clear(pi);
-
-			boolean outOfBbox = false;
-			for (Coord c : polygon.getPoints()) {
-				if (!tileBounds.contains(c)) {
-					outOfBbox = true;
-					oneOufOfBbox = true;
-					break;
-				}
-			}
-
-			logWayURLs(Level.WARNING, (outOfBbox ? "*" : "-"), polygon);
-		}
-		
-		for (JoinedWay polygon : intersectingPolygons) {
-			// print out the details of the original ways
-			logFakeWayDetails(Level.WARNING, polygon);
-		}
-		
-		if (oneOufOfBbox) {
-			log.warn("Some of these intersections/overlaps may be caused by incomplete data on bounding box edges (*).");
-		}
-	}
-
-	private void runNestedOuterPolygonCheck(BitSet nestedOuterPolygons) {
-		// just print out warnings
-		// the check has been done before
-		for (int wiIndex = nestedOuterPolygons.nextSetBit(0); wiIndex >= 0; wiIndex = nestedOuterPolygons
-				.nextSetBit(wiIndex + 1)) {
-			JoinedWay outerWay = polygons.get(wiIndex);
-			log.warn("Polygon",	outerWay, "carries role outer but lies inside an outer polygon. Potentially its role should be inner.");
-			logFakeWayDetails(Level.WARNING, outerWay);
-		}
-	}
-	
-	private void runNestedInnerPolygonCheck(BitSet nestedInnerPolygons) {
-		// just print out warnings
-		// the check has been done before
-		for (int wiIndex = nestedInnerPolygons.nextSetBit(0); wiIndex >= 0; wiIndex = nestedInnerPolygons
-				.nextSetBit(wiIndex + 1)) {
-			JoinedWay innerWay = polygons.get(wiIndex);
-			log.warn("Polygon",	innerWay, "carries role", getRole(innerWay), "but lies inside an inner polygon. Potentially its role should be outer.");
-			logFakeWayDetails(Level.WARNING, innerWay);
-		}
-	}	
-	
-	private void runOutmostInnerPolygonCheck(BitSet outmostInnerPolygons) {
-		// just print out warnings
-		// the check has been done before
-		for (int wiIndex = outmostInnerPolygons.nextSetBit(0); wiIndex >= 0; wiIndex = outmostInnerPolygons
-				.nextSetBit(wiIndex + 1)) {
-			JoinedWay innerWay = polygons.get(wiIndex);
-			log.warn("Polygon",	innerWay, "carries role", getRole(innerWay), "but is not inside any other polygon. Potentially it does not belong to this multipolygon.");
-			logFakeWayDetails(Level.WARNING, innerWay);
-		}
-	}
-
-	private void runWrongInnerPolygonCheck(BitSet unfinishedPolygons, BitSet innerPolygons) {
-		// find all unfinished inner polygons that are not contained by any
-		BitSet wrongInnerPolygons = findOutmostPolygons(unfinishedPolygons, innerPolygons);
-		if (log.isDebugEnabled()) {
-			log.debug("unfinished", unfinishedPolygons);
-			log.debug("inner", innerPolygons);
-			// other polygon
-			log.debug("wrong", wrongInnerPolygons);
-		}
-		if (!wrongInnerPolygons.isEmpty()) {
-			// we have an inner polygon that is not contained by any outer polygon
-			// check if
-			for (int wiIndex = wrongInnerPolygons.nextSetBit(0); wiIndex >= 0; wiIndex = wrongInnerPolygons
-					.nextSetBit(wiIndex + 1)) {
-				BitSet containedPolygons = new BitSet();
-				containedPolygons.or(unfinishedPolygons);
-				containedPolygons.and(containsMatrix.get(wiIndex));
-
-				JoinedWay innerWay = polygons.get(wiIndex);
-				if (containedPolygons.isEmpty()) {
-					log.warn("Polygon",	innerWay, "carries role", getRole(innerWay),
-						"but is not inside any outer polygon. Potentially it does not belong to this multipolygon.");
-					logFakeWayDetails(Level.WARNING, innerWay);
-				} else {
-					log.warn("Polygon",	innerWay, "carries role", getRole(innerWay),
-						"but is not inside any outer polygon. Potentially the roles are interchanged with the following",
-						(containedPolygons.cardinality() > 1 ? "ways" : "way"), ".");
-
-					for (int wrIndex = containedPolygons.nextSetBit(0); wrIndex >= 0; wrIndex = containedPolygons
-							.nextSetBit(wrIndex + 1)) {
-						logWayURLs(Level.WARNING, "-", polygons.get(wrIndex));
-						unfinishedPolygons.set(wrIndex);
-						wrongInnerPolygons.set(wrIndex);
-					}
-					logFakeWayDetails(Level.WARNING, innerWay);
-				}
-
-				unfinishedPolygons.clear(wiIndex);
-				wrongInnerPolygons.clear(wiIndex);
-			}
-		}
-	}
-
 	protected void cleanup() {
 		mpPolygons = null;
-		commonCoordMap = null;
-		roleMap.clear();
-		containsMatrix = null;
-//		polygons = null;
 		tileArea = null;
-		intersectingPolygons = null;
 		outerWaysForLineTagging = null;
-		outerTags = null;
-		
-		unfinishedPolygons = null;
-		innerPolygons = null;
-		taggedInnerPolygons = null;
-		outerPolygons = null;
-		taggedOuterPolygons = null;
-//		largestOuterPolygon = null;
+		commonCoordMap = null;
 	}
 
 	/**
-	 * Retrieves if the given element contains tags that may be relevant
-	 * for style processing. If it has no relevant tag it will probably be 
-	 * dropped by the style.
+	 * Checks if polygon1 contains polygon2 without intersection. 
 	 * 
-	 * @param element the OSM element
-	 * @return <code>true</code> has style relevant tags
-	 */
-	protected boolean hasStyleRelevantTags(Element element) {
-		if (element instanceof MultiPolygonRelation && ((MultiPolygonRelation) element).getTagsIncomplete()) {
-			return true;
-		}
-		
-		for (Map.Entry<String, String> tagEntry : element.getTagEntryIterator()) {
-			String tagName = tagEntry.getKey();
-			// all tags are style relevant
-			// except: type (for relations), mkgmap:* 
-			boolean isStyleRelevant = !(element instanceof Relation && "type".equals(tagName))
-					&& !tagName.startsWith("mkgmap:");
-			if (isStyleRelevant) {
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	/**
-	 * Checks if this mp should be processed or if it is needless to process it
-	 * because there is no result.
-	 * @param ways the list of ways of the mp
-	 * @return <code>true</code> the mp processing will have a result; 
-	 * 		   <code>false</code> the mp processing will fail 
-	 */
-	private boolean isMpProcessable(Collection<Way> ways) {
-		// Check if the multipolygon itself or the member ways have a
-		// tag. If not it does not make sense to process the mp because 
-		// the output will not change anything
-		if (hasStyleRelevantTags(this)) {
-			return true;
-		}
-
-		for (Way w : ways) {
-			if (hasStyleRelevantTags(w)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Creates a matrix which polygon contains which polygon. A polygon does not
-	 * contain itself.
-	 * 
-	 * @param polygonList
-	 *            a list of polygons
-	 */
-	protected void createContainsMatrix(List<JoinedWay> polygonList) {
-		containsMatrix = new ArrayList<>();
-		for (int i = 0; i < polygonList.size(); i++) {
-			containsMatrix.add(new BitSet());
-		}
-
-		long t1 = System.currentTimeMillis();
-
-		if (log.isDebugEnabled())
-			log.debug("createContainsMatrix listSize:", polygonList.size());
-
-		// use this matrix to check which matrix element has been
-		// calculated
-		ArrayList<BitSet> finishedMatrix = new ArrayList<>(polygonList
-				.size());
-
-		for (int i = 0; i < polygonList.size(); i++) {
-			BitSet matrixRow = new BitSet();
-			// a polygon does not contain itself
-			matrixRow.set(i);
-			finishedMatrix.add(matrixRow);
-		}
-
-		for (int rowIndex = 0; rowIndex < polygonList.size(); rowIndex++) {
-			JoinedWay potentialOuterPolygon = polygonList.get(rowIndex);
-			BitSet containsColumns = containsMatrix.get(rowIndex);
-			BitSet finishedCol = finishedMatrix.get(rowIndex);
-			
-			// the polygon need to be created only sometimes
-			// so use a lazy creation to improve performance
-			WayAndLazyPolygon lazyPotOuterPolygon = new WayAndLazyPolygon(potentialOuterPolygon);
-
-			// get all non calculated columns of the matrix
-			for (int colIndex = finishedCol.nextClearBit(0); colIndex >= 0
-					&& colIndex < polygonList.size(); colIndex = finishedCol
-					.nextClearBit(colIndex + 1)) {
-
-				JoinedWay innerPolygon = polygonList.get(colIndex);
-
-				if (potentialOuterPolygon.getBounds().intersects(
-						innerPolygon.getBounds()))
-				{
-					boolean contains = contains(lazyPotOuterPolygon, innerPolygon);
-					
-					if (contains) {
-						containsColumns.set(colIndex);
-
-						// we also know that the inner polygon does not contain the
-						// outer polygon
-						// so we can set the finished bit for this matrix
-						// element
-						finishedMatrix.get(colIndex).set(rowIndex);
-
-						// additionally we know that the outer polygon contains all
-						// polygons that are contained by the inner polygon
-						containsColumns.or(containsMatrix.get(colIndex));
-						finishedCol.or(containsColumns);
-					}
-				} else {
-					// both polygons do not intersect
-					// we can flag both matrix elements as finished
-					finishedMatrix.get(colIndex).set(rowIndex);
-					finishedMatrix.get(rowIndex).set(colIndex);
-				}
-				// this matrix element is calculated now
-				finishedCol.set(colIndex);
-			}
-		}
-
-		if (log.isDebugEnabled()) {
-			long t2 = System.currentTimeMillis();
-			log.debug("createMatrix for", polygonList.size(), "polygons took",
-				(t2 - t1), "ms");
-
-			log.debug("Containsmatrix:");
-			int i = 0;
-			boolean noContained = true;
-			for (BitSet b : containsMatrix) {
-				if (!b.isEmpty()) {
-					log.debug(i,"contains",b);
-					noContained = false;
-				}
-				i++;
-			}
-			if (noContained) {
-				log.debug("Matrix is empty");
-			}
-		}
-	}
-
-	
-	/**
-	 * This is a helper class that creates a high precision polygon for a way 
-	 * on request only.
-	 */
-	private static class WayAndLazyPolygon {
-		private final JoinedWay way;
-		private Polygon polygon;
-		
-		public WayAndLazyPolygon(JoinedWay way) {
-			this.way = way;
-		}
-
-		public final JoinedWay getWay() {
-			return this.way;
-		}
-
-		public final Polygon getPolygon() {
-			if (this.polygon == null) {
-				this.polygon = Java2DConverter.createHighPrecPolygon(this.way.getPoints());
-			}
-			return this.polygon;
-		}
-	}
-	
-	/**
-	 * Checks if the polygon with polygonIndex1 contains the polygon with polygonIndex2.
-	 * 
-	 * @return true if polygon(polygonIndex1) contains polygon(polygonIndex2)
-	 */
-	private boolean contains(int polygonIndex1, int polygonIndex2) {
-		return containsMatrix.get(polygonIndex1).get(polygonIndex2);
-	}
-
-	/**
-	 * Checks if polygon1 contains polygon2.
-	 * 
-	 * @param polygon1
+	 * @param expectedOuter
 	 *            a closed way
-	 * @param polygon2
+	 * @param expectedInner
 	 *            a 2nd closed way
-	 * @return true if polygon1 contains polygon2
+	 * @return true if polygon1 contains polygon2 without intersection.
 	 */
-	private boolean contains(WayAndLazyPolygon polygon1, JoinedWay polygon2) {
-		if (!polygon1.getWay().hasIdenticalEndPoints()) {
+	private static boolean calcContains(JoinedWay expectedOuter, JoinedWay expectedInner) {
+		if (!expectedOuter.hasIdenticalEndPoints()) {
 			return false;
 		}
 		// check if the bounds of polygon2 are completely inside/enclosed the bounds
 		// of polygon1
-		if (!polygon1.getWay().getBounds().contains(polygon2.getBounds())) {
-			return false;
-		}
-
-		// check first if one point of polygon2 is in polygon1
-
-		// ignore intersections outside the bounding box
-		// so it is necessary to check if there is at least one
-		// point of polygon2 in polygon1 ignoring all points outside the bounding box
-		boolean onePointContained = false;
-		boolean allOnLine = true;
-		for (Coord px : polygon2.getPoints()) {
-			if (polygon1.getPolygon().contains(px.getHighPrecLon(), px.getHighPrecLat())) {
-				// there's one point that is in polygon1 and in the bounding
-				// box => polygon1 may contain polygon2
-				onePointContained = true;
-				if (!locatedOnLine(px, polygon1.getWay().getPoints())) {
-					allOnLine = false;
-					break;
-				}
-			} else if ((!polygon1.getWay().closedArtificially && !polygon2.closedArtificially
-					|| tileBounds.contains(px)) && !locatedOnLine(px, polygon1.getWay().getPoints())) {
-				// there's one point that is not in polygon1
-				// if both polygons were complete => polygon1 does not contain polygon2
-				// if point is inside bounding box => polygon1 does not contain polygon2
-				return false;
-			}
-		}
-		
-		if (allOnLine) {
-			onePointContained = false;
-			// all points of polygon2 lie on lines of polygon1
-			// => the middle of each line polygon must NOT lie outside polygon1
-			ArrayList<Coord> middlePoints2 = new ArrayList<>(polygon2.getPoints().size());
-			Coord p1 = null;
-			for (Coord p2 : polygon2.getPoints()) {
-				if (p1 != null) {
-					Coord pm = p1.makeBetweenPoint(p2, 0.5);
-					middlePoints2.add(pm);
-				}
-				p1 = p2;
-			}
-			
-			for (Coord px : middlePoints2) {
-				if (polygon1.getPolygon().contains(px.getHighPrecLon(), px.getHighPrecLat())){
-					// there's one point that is in polygon1 and in the bounding
-					// box => polygon1 may contain polygon2
-					onePointContained = true;
-					break;
-				} else if (tileBounds.contains(px) && !locatedOnLine(px, polygon1.getWay().getPoints())) {
-					// there's one point that is not in polygon1 but inside the
-					// bounding box => polygon1 does not contain polygon2
-					return false;
-				}
-			}			
-		}
-
-		if (!onePointContained) {
-			// no point of polygon2 is in polygon1 => polygon1 does not contain polygon2
+		if (!expectedOuter.getBounds().contains(expectedInner.getBounds())) {
 			return false;
 		}
 		
-		Iterator<Coord> it1 = polygon1.getWay().getPoints().iterator();
-		Coord p11 = it1.next();
-
-		while (it1.hasNext()) {
-			Coord p12 = p11;
-			p11 = it1.next();
-
-			if (!polygon2.linePossiblyIntersectsWay(p11, p12)) {
-				// don't check it - this segment of the outer polygon
-				// definitely does not intersect the way
-				continue;
-			}
-
-			int lonMin = Math.min(p11.getLongitude(), p12.getLongitude());
-			int lonMax = Math.max(p11.getLongitude(), p12.getLongitude());
-			int latMin = Math.min(p11.getLatitude(), p12.getLatitude());
-			int latMax = Math.max(p11.getLatitude(), p12.getLatitude());
-
-			// check all lines of way1 and way2 for intersections
-			Iterator<Coord> it2 = polygon2.getPoints().iterator();
-			Coord p21 = it2.next();
-
-			// for speedup we divide the area around the second line into
-			// a 3x3 matrix with lon(-1,0,1) and lat(-1,0,1).
-			// -1 means below min lon/lat of bbox line p1_1-p1_2
-			// 0 means inside the bounding box of the line p1_1-p1_2
-			// 1 means above max lon/lat of bbox line p1_1-p1_2
-			int lonField = p21.getLongitude() < lonMin ? -1 : p21.getLongitude() > lonMax ? 1 : 0;
-			int latField = p21.getLatitude() < latMin ? -1 : p21.getLatitude() > latMax ? 1 : 0;
-
-			int prevLonField = lonField;
-			int prevLatField = latField;
-
-			while (it2.hasNext()) {
-				Coord p22 = p21;
-				p21 = it2.next();
-
-				int changes = 0;
-				// check if the field of the 3x3 matrix has changed
-				if ((lonField >= 0 && p11.getLongitude() < lonMin)
-						|| (lonField <= 0 && p11.getLongitude() > lonMax)) {
-					changes++;
-					lonField = p11.getLongitude() < lonMin ? -1 : p11.getLongitude() > lonMax ? 1 : 0;
-				}
-				if ((latField >= 0 && p11.getLatitude() < latMin)
-						|| (latField <= 0 && p11.getLatitude() > latMax)) {
-					changes++;
-					latField = p11.getLatitude() < latMin ? -1 : p11.getLatitude() > latMax ? 1 : 0;
-				}
-
-				// an intersection is possible if
-				// latField and lonField has changed
-				// or if we come from or go to the inner matrix field
-				boolean intersectionPossible = (changes == 2)
-						|| (latField == 0 && lonField == 0)
-						|| (prevLatField == 0 && prevLonField == 0);
-
-				boolean intersects = intersectionPossible && linesCutEachOther(p11, p12, p21, p22);
-				
-				if (intersects) {
-					if ((polygon1.getWay().isClosedArtificially() && !it1.hasNext())
-							|| (polygon2.isClosedArtificially() && !it2.hasNext())) {
-						// don't care about this intersection
-						// one of the polygons is closed by this mp code and the
-						// closing segment causes the intersection
-						log.info("Polygon", polygon1, "may contain polygon", polygon2,
-							". Ignoring artificial generated intersection.");
-					} else if ((!tileBounds.contains(p11))
-							|| (!tileBounds.contains(p12))
-							|| (!tileBounds.contains(p21))
-							|| (!tileBounds.contains(p22))) {
-						// at least one point is outside the bounding box
-						// we ignore the intersection because the ways may not
-						// be complete
-						// due to removals of the tile splitter or osmosis
-						log.info("Polygon", polygon1, "may contain polygon", polygon2,
-							". Ignoring because at least one point is outside the bounding box.");
-					} else {
-						// store them in the intersection polygons set
-						// the error message will be printed out in the end of
-						// the mp handling
-						intersectingPolygons.add(polygon1.getWay());
-						intersectingPolygons.add(polygon2);
-						return false;
-					}
-				}
-
-				prevLonField = lonField;
-				prevLatField = latField;
-			}
-		}
-
-		// don't have any intersection
-		// => polygon1 contains polygon2
-		return true;
-	}
-
-	/**
-	 * Checks if the point p is located on one line of the given points.
-	 * @param p a point
-	 * @param points a list of points; all consecutive points are handled as lines
-	 * @return true if p is located on one line given by points
-	 */
-	private static boolean locatedOnLine(Coord p, List<Coord> points) {
-		Coord cp1 = null;
-		for (Coord cp2 : points) {
-			if (p.highPrecEquals(cp2)) { 
-				return true;
-			}
-
-			try {
-				if (cp1 == null // first init
-						|| p.getHighPrecLon() < Math.min(cp1.getHighPrecLon(), cp2.getHighPrecLon())
-						|| p.getHighPrecLon() > Math.max(cp1.getHighPrecLon(), cp2.getHighPrecLon())
-						|| p.getHighPrecLat() < Math.min(cp1.getHighPrecLat(), cp2.getHighPrecLat())
-						|| p.getHighPrecLat() > Math.max(cp1.getHighPrecLat(), cp2.getHighPrecLat())) {
-					continue;
-				}
-
-				double dist = Line2D.ptSegDistSq(cp1.getHighPrecLon(), cp1.getHighPrecLat(),
-						cp2.getHighPrecLon(), cp2.getHighPrecLat(),
-						p.getHighPrecLon(), p.getHighPrecLat());
-
-				if (dist <= OVERLAP_TOLERANCE_DISTANCE) {
-					log.debug("Point", p, "is located on line between", cp1, "and",
-						cp2, ". Distance:", dist);
-					return true;
-				}
-			} finally {
-				cp1 = cp2;
-			}
-		}
-		return false;
+//		Coord test = expectedInner.getPointInside();
+//		if (test != null) {
+//			// we know that point test is inside expectedInner
+//			int quick = IsInUtil.isPointInShape(test, expectedOuter.getPoints());
+//			// if point is ON we can assume that a part of the inner is OUT
+//			return quick == IsInUtil.IN;
+//		}
+		
+		int x = IsInUtil.isLineInShape(expectedInner.getPoints(), expectedOuter.getPoints(), expectedInner.getArea());
+		return (x & IsInUtil.OUT) == 0;
 	}
 
 	private boolean lineCutsBbox(Coord p1, Coord p2) {
@@ -1739,18 +1037,6 @@ public class MultiPolygonRelation extends Relation {
 		return (isy > 0 &&  isy < 1);
 	}
 
-	private List<JoinedWay> getWaysFromPolygonList(BitSet selection) {
-		if (selection.isEmpty()) {
-			return Collections.emptyList();
-		}
-		List<JoinedWay> wayList = new ArrayList<>(selection
-				.cardinality());
-		for (int i = selection.nextSetBit(0); i >= 0; i = selection.nextSetBit(i + 1)) {
-			wayList.add(polygons.get(i));
-		}
-		return wayList;
-	}
-
 	private static void logWayURLs(Level level, String preMsg, Way way) {
 		if (log.isLoggable(level)) {
 			if (way instanceof JoinedWay) {
@@ -1792,16 +1078,8 @@ public class MultiPolygonRelation extends Relation {
 			return;
 		}
 		
-		boolean containsOrgFakeWay = false;
-		for (Way orgWay : fakeWay.getOriginalWays()) {
-			if (FakeIdGenerator.isFakeId(orgWay.getId())) {
-				containsOrgFakeWay = true;
-			}
-		}
-		
-		if (!containsOrgFakeWay) {
+		if (fakeWay.getOriginalWays().stream().noneMatch(w -> FakeIdGenerator.isFakeId(w.getId())))
 			return;
-		}
 		
 		// the fakeWay consists only of other faked ways
 		// there should be more information about these ways
@@ -1822,102 +1100,63 @@ public class MultiPolygonRelation extends Relation {
 		}		
 	}
 
-	protected void tagOuterWays() {
-		Map<String, String> tags;
-		if (hasStyleRelevantTags(this)) {
-			tags = new HashMap<>();
-			for (Entry<String, String> relTag : getTagEntryIterator()) {
-				tags.put(relTag.getKey(), relTag.getValue());
-			}
-		} else {
-			tags = JoinedWay.getMergedTags(outerWaysForLineTagging);
-		}
-		
-		
-		// Go through all original outer ways, create a copy, tag them
-		// with the mp tags and mark them only to be used for polyline processing
-		// This enables the style file to decide if the polygon information or
-		// the simple line information should be used.
-		for (Way orgOuterWay : outerWaysForLineTagging) {
-			Way lineTagWay =  new Way(getOriginalId(), orgOuterWay.getPoints());
-			lineTagWay.markAsGeneratedFrom(this);
-			lineTagWay.addTag(STYLE_FILTER_TAG, STYLE_FILTER_LINE);
-			lineTagWay.addTag(TKM_MP_CREATED, "true");
-			for (Entry<String, String> tag : tags.entrySet()) {
-				lineTagWay.addTag(tag.getKey(), tag.getValue());
-				
-				// remove the tag from the original way if it has the same value
-				if (tag.getValue().equals(orgOuterWay.getTag(tag.getKey()))) {
-					removeTagsInOrgWays(orgOuterWay, tag.getKey());
-				}
-			}
-			
-			if (log.isDebugEnabled())
-				log.debug("Add line way", lineTagWay.getId(), lineTagWay.toTagString());
-			tileWayMap.put(lineTagWay.getId(), lineTagWay);
-		}
-	}
-	
-	
 	/**
-	 * Marks all tags of the original ways of the given JoinedWay that are also
-	 * contained in the given tagElement for removal.
+	 * Marks all tags of the original ways of the given JoinedWay for removal.
 	 * 
-	 * @param tagElement
-	 *            an element contains the tags to be removed
-	 * @param way
-	 *            a joined way
+	 * @param way a joined way
 	 */
-	private void removeTagsInOrgWays(Element tagElement, JoinedWay way) {
-		for (Entry<String, String> tag : tagElement.getTagEntryIterator()) {
-			removeTagInOrgWays(way, tag.getKey(), tag.getValue());
+	private static void markTagsForRemovalInOrgWays(JoinedWay way) {
+		for (Entry<String, String> tag : way.getTagEntryIterator()) {
+			markTagForRemovalInOrgWays(way, tag.getKey(), tag.getValue());
 		}
 	}
 
 	/**
-	 * Mark the given tag of all original ways of the given JoinedWay.
+	 * Mark the given tag for removal in all original ways of the given way.
 	 * 
-	 * @param way
-	 *            a joined way
-	 * @param tagname
-	 *            the tag to be removed
-	 * @param tagvalue
-	 *            the value of the tag to be removed
+	 * @param way      a joined way
+	 * @param tagKey   the tag to be removed
+	 * @param tagvalue the value of the tag to be removed
 	 */
-	private void removeTagInOrgWays(JoinedWay way, String tagname, String tagvalue) {
+	private static void markTagForRemovalInOrgWays(JoinedWay way, String tagKey, String tagvalue) {
 		for (Way w : way.getOriginalWays()) {
 			if (w instanceof JoinedWay) {
-				// remove the tags recursively
-				removeTagInOrgWays((JoinedWay) w, tagname, tagvalue);
-				continue;
-			}
-
-			if (tagvalue.equals(w.getTag(tagname))) {
-				if (log.isDebugEnabled()) {
-					log.debug("Will remove", tagname + "=" + w.getTag(tagname), "from way", w.getId(), w.toTagString());
-				}
-				removeTagsInOrgWays(w, tagname);
+				// remove the tag recursively
+				markTagForRemovalInOrgWays((JoinedWay) w, tagKey, tagvalue);
+			} else if (tagvalue.equals(w.getTag(tagKey))) {
+				markTagsForRemovalInOrgWays(w, tagKey);
 			}
 		}
 	}
 	
-	protected void removeTagsInOrgWays(Way way, String tag) {
-		if (tag == null || tag.isEmpty()) {
-			return;
+	/**
+	 * Add given tag key to the special tag which contains the list of tag keys
+	 * which are to be removed in MultiPolygonFinishHook.
+	 * 
+	 * @param way    the way
+	 * @param tagKey the tag key
+	 */
+	private static void markTagsForRemovalInOrgWays(Way way, String tagKey) {
+		if (tagKey == null || tagKey.isEmpty()) {
+			return; // should not happen
 		}
+
 		String tagsToRemove = way.getTag(ElementSaver.TKM_REMOVETAGS);
 		
 		if (tagsToRemove == null) {
-			tagsToRemove = tag;
-		} else if (tag.equals(tagsToRemove)) {
+			tagsToRemove = tagKey;
+		} else if (tagKey.equals(tagsToRemove)) {
 			return;
 		} else {
 			String[] keys = tagsToRemove.split(";");
-			if (Arrays.asList(keys).contains(tag)) {
+			if (Arrays.asList(keys).contains(tagKey)) {
 				return;
 			}
-			tagsToRemove += ";" + tag;
+			tagsToRemove += ";" + tagKey;
 		} 
+		if (log.isDebugEnabled()) {
+			log.debug("Will remove", tagKey + "=" + way.getTag(tagKey), "from way", way.getId(), way.toTagString());
+		}
 		way.addTag(ElementSaver.TKM_REMOVETAGS, tagsToRemove);
 	}
 	
@@ -1925,7 +1164,7 @@ public class MultiPolygonRelation extends Relation {
 	 * Flag if the area size of the mp should be calculated and added as tag.
 	 * @return {@code true} area size should be calculated; {@code false} area size should not be calculated
 	 */
-	protected boolean isAreaSizeCalculated() {
+	protected boolean needsAreaSizeTag() {
 		return true;
 	}
 
@@ -1968,26 +1207,29 @@ public class MultiPolygonRelation extends Relation {
 		return Math.abs(areaSize);
 	}
 
-
 	/**
 	 * This is a helper class that gives access to the original
-	 * segments of a joined way.
+	 * segments of a joined way or a string of ways. It may be unclosed.
 	 */
 	public static final class JoinedWay extends Way {
 		private final List<Way> originalWays;
+		private byte intRole;  
 		private boolean closedArtificially;
+		private Coord pointInside;
+		private boolean doPointInsideCalcs = true;
 
 		private int minLat;
 		private int maxLat;
 		private int minLon;
 		private int maxLon;
 		private Rectangle bounds;
+		private uk.me.parabola.imgfmt.app.Area area;
 
-		public JoinedWay(Way originalWay) {
+		public JoinedWay(Way originalWay, String givenRole) {
 			super(originalWay.getOriginalId(), originalWay.getPoints());
 			markAsGeneratedFrom(originalWay);
 			originalWays = new ArrayList<>();
-			addWay(originalWay);
+			addWay(originalWay, roleToInt(givenRole));
 
 			// we have to initialize the min/max values
 			Coord c0 = originalWay.getFirstPoint();
@@ -1995,6 +1237,36 @@ public class MultiPolygonRelation extends Relation {
 			minLon = maxLon = c0.getLongitude();
 
 			updateBounds(originalWay.getPoints());
+		}
+
+		public JoinedWay(JoinedWay other, List<Coord> points) {
+			super(other.getOriginalId(), points);
+			markAsGeneratedFrom(other);
+			originalWays = new ArrayList<>(other.getOriginalWays());
+			intRole = other.intRole;
+			closedArtificially = other.closedArtificially;
+			// we have to initialize the min/max values
+			Coord c0 = points.get(0);
+			minLat = maxLat = c0.getLatitude();
+			minLon = maxLon = c0.getLongitude();
+
+			updateBounds(points);
+			
+		}
+
+		private byte roleToInt(String role) {
+			if (role == null)
+				return INT_ROLE_NULL;
+			switch (role) {
+			case ROLE_INNER:
+				return INT_ROLE_INNER;
+			case ROLE_OUTER:
+				return INT_ROLE_OUTER;
+			case "":
+				return INT_ROLE_BLANK;
+			default:
+				return INT_ROLE_OTHER;
+			}
 		}
 
 		public void addPoint(int index, Coord point) {
@@ -2035,29 +1307,12 @@ public class MultiPolygonRelation extends Relation {
 				maxLon = lon;
 				bounds = null;
 			}
-
-			
 		}
+		
 		private void updateBounds(Coord point) {
 			updateBounds(point.getLatitude(), point.getLongitude());
 		}
 		
-		/**
-		 * Checks if this way intersects the given bounding box at least with
-		 * one point.
-		 * 
-		 * @param bbox
-		 *            the bounding box
-		 * @return <code>true</code> if this way intersects or touches the
-		 *         bounding box; <code>false</code> else
-		 */
-		public boolean intersects(uk.me.parabola.imgfmt.app.Area bbox) {
-			return (maxLat >= bbox.getMinLat() 
-					&& minLat <= bbox.getMaxLat() 
-					&& maxLon >= bbox.getMinLong()
-					&& minLon <= bbox.getMaxLong());
-		}
-
 		public Rectangle getBounds() {
 			if (bounds == null) {
 				// note that we increase the rectangle by 1 because intersects
@@ -2070,23 +1325,32 @@ public class MultiPolygonRelation extends Relation {
 			return bounds;
 		}
 
-		public boolean linePossiblyIntersectsWay(Coord p1, Coord p2) {
-			return getBounds().intersectsLine(p1.getLongitude(),
-					p1.getLatitude(), p2.getLongitude(), p2.getLatitude());
+		public uk.me.parabola.imgfmt.app.Area getArea() {
+			if (area == null) {
+				area = new uk.me.parabola.imgfmt.app.Area(minLat, minLon, maxLat, maxLon);
+			}
+
+			return area;
 		}
 
-		public void addWay(Way way) {
+		public void addWay(Way way, int internalRole) {
 			if (way instanceof JoinedWay) {
-				for (Way w : ((JoinedWay) way).getOriginalWays()) {
-					addWay(w);
-				}
+				originalWays.addAll(((JoinedWay) way).getOriginalWays());
+				this.intRole |= ((JoinedWay) way).intRole;
 				updateBounds((JoinedWay) way);
 			} else {
 				if (log.isDebugEnabled()) {
 					log.debug("Joined", this.getId(), "with", way.getId());
 				}
 				this.originalWays.add(way);
+				this.intRole |= internalRole;
 			}
+		}
+
+		public void addWay(JoinedWay way) {
+			originalWays.addAll(way.originalWays);
+			this.intRole |= way.intRole;
+			updateBounds(way);
 		}
 
 		public void closeWayArtificially() {
@@ -2098,6 +1362,11 @@ public class MultiPolygonRelation extends Relation {
 			return closedArtificially;
 		}
 
+		/**
+		 * Get common tags of all ways.
+		 * @param ways the collection of ways
+		 * @return map with common tags, might be empty but will never be null
+		 */
 		public static Map<String, String> getMergedTags(Collection<Way> ways) {
 			Map<String, String> mergedTags = new HashMap<>();
 			boolean first = true;
@@ -2109,23 +1378,14 @@ public class MultiPolygonRelation extends Relation {
 					}
 					first = false;
 				} else {
-					// for all other ways all non matching tags are removed
-					ArrayList<String> tagsToRemove = null;
-					for (Map.Entry<String, String> tag : mergedTags.entrySet()) {
+					if (mergedTags.isEmpty()) {
+						break;
+					}
+					// remove tags with different value
+					mergedTags.entrySet().removeIf(tag -> {
 						String wayTagValue = way.getTag(tag.getKey());
-						if (wayTagValue != null && !tag.getValue().equals(wayTagValue)) {
-							// the tags are different
-							if (tagsToRemove == null) {
-								tagsToRemove = new ArrayList<>();
-							}
-							tagsToRemove.add(tag.getKey());
-						}
-					}
-					if (tagsToRemove != null) {
-						for (String tag : tagsToRemove) {
-							mergedTags.remove(tag);
-						}
-					}
+						return (wayTagValue != null && !tag.getValue().equals(wayTagValue));
+					});
 				}
 			}
 			return mergedTags;
@@ -2141,50 +1401,98 @@ public class MultiPolygonRelation extends Relation {
 			removeAllTags();
 			
 			Map<String, String> mergedTags = getMergedTags(getOriginalWays());
-			for (Entry<String, String> tag : mergedTags.entrySet()) {
-				addTag(tag.getKey(), tag.getValue());
-			}
+			mergedTags.forEach(this::addTag);
 		}
 
 		public List<Way> getOriginalWays() {
 			return originalWays;
 		}
 		
-		/**
-		 * Retrieves a measurement of the area covered by this polygon. The 
-		 * returned value has no unit. It is just a rough comparable value
-		 * because it uses a rectangular coordinate system without correction.
-		 * @return size of the covered areas (0 if the way is not closed)
-		 */
-		public double getSizeOfArea() {
-			return MultiPolygonRelation.calcAreaSize(getPoints());
-		}
-
 		@Override
 		public String toString() {
-			StringBuilder sb = new StringBuilder(200);
-			sb.append(getId());
-			sb.append("(");
-			sb.append(getPoints().size());
-			sb.append("P)(");
-			boolean first = true;
-			for (Way w : getOriginalWays()) {
-				if (first) {
-					first = false;
-				} else {
-					sb.append(",");
-				}
-				sb.append(w.getId());
-				sb.append("[");
-				sb.append(w.getPoints().size());
-				sb.append("P]");
+			final String prefix = getId() + "(" + getPoints().size() + "P)(";
+			return getOriginalWays().stream().map(w -> w.getId() + "[" + w.getPoints().size() + "P]")
+					.collect(Collectors.joining(",", prefix, ")"));
+		}
+
+		public boolean canJoin(JoinedWay other) {
+			return getFirstPoint() == other.getFirstPoint() || getFirstPoint() == other.getLastPoint()
+					|| getLastPoint() == other.getFirstPoint() || getLastPoint() == other.getLastPoint();
+		}
+
+		public boolean buildsRingWith(JoinedWay other) {
+			return getFirstPoint() == other.getFirstPoint() && getLastPoint() == other.getLastPoint()
+					|| getFirstPoint() == other.getLastPoint() && getLastPoint() == other.getFirstPoint();
+		}
+		
+		/**
+		 * Join the other way.
+		 * 
+		 * @param other     the way to be added to this 
+		 * @throws ExitException if ways cannot be joined 
+		 */
+		private void joinWith(JoinedWay other) {
+			boolean reverseOther = false;
+			int insIdx = -1;
+			int firstOtherIdx = 1;
+			
+			if (this.getFirstPoint() == other.getFirstPoint()) {
+				insIdx = 0;
+				reverseOther = true;
+				firstOtherIdx = 1;
+			} else if (this.getLastPoint() == other.getFirstPoint()) {
+				insIdx = this.getPoints().size();
+				firstOtherIdx = 1;
+			} else if (this.getFirstPoint() == other.getLastPoint()) {
+				insIdx = 0; 
+				firstOtherIdx = 0;
+			} else if (this.getLastPoint() == other.getLastPoint()) {
+				insIdx = this.getPoints().size();
+				reverseOther = true;
+				firstOtherIdx = 0;
+			} else {
+				String msg = "Cannot join " + this.getBasicLogInformation() + " with " + other.getBasicLogInformation();
+				log.error(msg);
+				throw new ExitException(msg);
 			}
-			sb.append(")");
-			return sb.toString();
+			
+			int lastIdx = other.getPoints().size();
+			if (firstOtherIdx == 0) {
+				// the last temp point is already contained in the joined way - do not copy it
+				lastIdx--;
+			}
+
+			List<Coord> tempCoords = other.getPoints().subList(firstOtherIdx,lastIdx);
+
+			if (reverseOther) {
+				// the temp coords need to be reversed so copy the list
+				tempCoords = new ArrayList<>(tempCoords);
+				// and reverse it
+				Collections.reverse(tempCoords);
+			}
+
+			this.getPoints().addAll(insIdx, tempCoords);
+			this.addWay(other);
+		}
+
+		/**
+		 * Try to find a point that is inside the polygon and store the result.
+		 * 
+		 * @return null or a point that is inside
+		 */
+		public Coord getPointInside() {
+			if (doPointInsideCalcs) {
+				doPointInsideCalcs = false;
+				Coord test = super.getCofG();
+				if (IsInUtil.isPointInShape(test, getPoints()) == IsInUtil.IN) {
+					pointInside = test;
+				}
+			}
+			return pointInside;
 		}
 	}
 
-	public static class PolygonStatus {
+	protected static class PolygonStatus {
 		public final boolean outer;
 		public final int index;
 		public final JoinedWay polygon;
@@ -2200,13 +1508,507 @@ public class MultiPolygonRelation extends Relation {
 		}
 	}
 
+	/**
+	 * Helper class to bundle objects related to a list of polygons
+	 *
+	 */
+	protected class Partition {
+		/** list of polygons with a fixed order */
+		final List<JoinedWay> polygons; 
+
+		final List<BitSet> containsMatrix;
+		// Various BitSets which relate to the content of field polygons  
+		/** unfinishedPolygons marks which polygons are not yet processed */
+		public final BitSet unfinishedPolygons;
+
+		// reporting: BitSets which polygons belong to the outer and to the inner role
+		final BitSet innerPolygons;
+		final BitSet taggedInnerPolygons;
+		final BitSet outerPolygons;
+		final BitSet taggedOuterPolygons;
+		final BitSet nestedOuterPolygons;
+		final BitSet nestedInnerPolygons;
+		final BitSet outmostInnerPolygons;
+		
+		public Partition(List<JoinedWay> list) {
+			this.polygons = Collections.unmodifiableList(list);
+			innerPolygons = new BitSet(list.size());
+			taggedInnerPolygons = new BitSet(list.size());
+			outerPolygons = new BitSet(list.size());
+			taggedOuterPolygons = new BitSet(list.size());
+			analyseRelationRoles();
+			// unfinishedPolygons marks which polygons are not yet processed
+			unfinishedPolygons = new BitSet(list.size());
+			unfinishedPolygons.set(0, list.size());
+			// check which polygons lie inside which other polygon
+			containsMatrix = createContainsMatrix(list);
+			nestedOuterPolygons = new BitSet(list.size());
+			nestedInnerPolygons = new BitSet(list.size());
+			outmostInnerPolygons = new BitSet(list.size());
+		}
+		
+		public void markFinished(PolygonStatus currentPolygon) {
+			unfinishedPolygons.clear(currentPolygon.index);
+		}
+
+		/**
+		 * Creates a matrix which polygon contains which polygon. A polygon does not
+		 * contain itself.
+		 * @return 
+		 */
+		private List<BitSet> createContainsMatrix(List<JoinedWay> polygons) {
+			List<BitSet> matrix = new ArrayList<>();
+			for (int i = 0; i < polygons.size(); i++) {
+				matrix.add(new BitSet());
+			}
+
+			long t1 = System.currentTimeMillis();
+
+			if (log.isDebugEnabled())
+				log.debug("createContainsMatrix listSize:", polygons.size());
+
+			// use this matrix to check which matrix element has been
+			// calculated
+			ArrayList<BitSet> finishedMatrix = new ArrayList<>(polygons.size());
+
+			for (int i = 0; i < polygons.size(); i++) {
+				BitSet matrixRow = new BitSet();
+				// a polygon does not contain itself
+				matrixRow.set(i);
+				finishedMatrix.add(matrixRow);
+			}
+			
+			for (int rowIndex = 0; rowIndex < polygons.size(); rowIndex++) {
+				JoinedWay potentialOuterPolygon = polygons.get(rowIndex);
+				BitSet containsColumns = matrix.get(rowIndex);
+				BitSet finishedCol = finishedMatrix.get(rowIndex);
+
+				// get all non calculated columns of the matrix
+				for (int colIndex = finishedCol.nextClearBit(0); colIndex >= 0
+						&& colIndex < polygons.size(); colIndex = finishedCol
+						.nextClearBit(colIndex + 1)) {
+
+					JoinedWay innerPolygon = polygons.get(colIndex);
+
+					if (potentialOuterPolygon.getBounds().intersects(innerPolygon.getBounds())) {
+						boolean contains = calcContains(potentialOuterPolygon, innerPolygon);
+						if (contains) {
+							containsColumns.set(colIndex);
+
+							// we also know that the inner polygon does not contain the
+							// outer polygon
+							// so we can set the finished bit for this matrix
+							// element
+							finishedMatrix.get(colIndex).set(rowIndex);
+
+							// additionally we know that the outer polygon contains all
+							// polygons that are contained by the inner polygon
+							containsColumns.or(matrix.get(colIndex));
+							finishedCol.or(containsColumns);
+						}
+					} else {
+						// both polygons do not intersect
+						// we can flag both matrix elements as finished
+						finishedMatrix.get(colIndex).set(rowIndex);
+						finishedMatrix.get(rowIndex).set(colIndex);
+					}
+					// this matrix element is calculated now
+					finishedCol.set(colIndex);
+				}
+			}
+
+			if (log.isDebugEnabled()) {
+				long t2 = System.currentTimeMillis();
+				log.debug("createMatrix for", polygons.size(), "polygons took", (t2 - t1), "ms");
+
+				log.debug("Containsmatrix:");
+				int i = 0;
+				boolean noContained = true;
+				for (BitSet b : matrix) {
+					if (!b.isEmpty()) {
+						log.debug(i, "contains", b);
+						noContained = false;
+					}
+					i++;
+				}
+				if (noContained) {
+					log.debug("Matrix is empty");
+				}
+			}
+			return matrix;
+		}
+
+		
+		/**
+		 * 
+		 * @return
+		 */
+		private BitSet getOutmostRingsAndMatchWithRoles() {
+			BitSet outmostPolygons;
+			boolean outmostInnerFound;
+			do {
+				outmostInnerFound = false;
+				outmostPolygons = findOutmostPolygons(unfinishedPolygons);
+
+				if (outmostPolygons.intersects(taggedInnerPolygons)) {
+					// found outmost ring(s) with role inner
+					outmostInnerPolygons.or(outmostPolygons);
+					outmostInnerPolygons.and(taggedInnerPolygons);
+
+					if (log.isDebugEnabled())
+						log.debug("wrong inner polygons: " + outmostInnerPolygons);
+					// do not process polygons tagged with role=inner but which are
+					// not contained by any other polygon
+					unfinishedPolygons.andNot(outmostInnerPolygons);
+					outmostPolygons.andNot(outmostInnerPolygons);
+					outmostInnerFound = true;
+				}
+			} while (outmostInnerFound);
+			return outmostPolygons;
+		}
+
+		/**
+		 * Analyse roles in ways and fill corresponding sets.
+		 */
+		private void analyseRelationRoles() {
+			for (int i = 0; i < polygons.size(); i++) {
+				JoinedWay jw = polygons.get(i);
+				if (jw.intRole == INT_ROLE_INNER) {
+					innerPolygons.set(i);
+					taggedInnerPolygons.set(i);
+				} else if (jw.intRole == INT_ROLE_OUTER) {
+					outerPolygons.set(i);
+					taggedOuterPolygons.set(i);
+				} else {
+					// unknown role => it could be both
+					innerPolygons.set(i);
+					outerPolygons.set(i);
+				}
+			}
+		}
+
+		/**
+		 * Report problems which are probably caused by OSM data errors or missing/incomplete data.   
+		 */
+		public void reportProblems() {
+			if (outmostInnerPolygons.cardinality() + unfinishedPolygons.cardinality()
+					+ nestedOuterPolygons.cardinality() + nestedInnerPolygons.cardinality() >= 1) {
+				log.warn("Multipolygon", toBrowseURL(), toTagString(), "contains errors.");
+
+				BitSet outerUnusedPolys = new BitSet();
+				outerUnusedPolys.or(unfinishedPolygons);
+				outerUnusedPolys.or(outmostInnerPolygons);
+				outerUnusedPolys.or(nestedOuterPolygons);
+				outerUnusedPolys.or(nestedInnerPolygons);
+				outerUnusedPolys.or(unfinishedPolygons);
+				// use only the outer polygons
+				outerUnusedPolys.and(outerPolygons);
+				for (JoinedWay w : bitsetToList(outerUnusedPolys)) {
+					//TODO: How do we get here?
+					outerWaysForLineTagging.addAll(w.getOriginalWays());
+				}
+
+				runOutmostInnerPolygonCheck(polygons, outmostInnerPolygons);
+				runNestedOuterPolygonCheck(polygons, nestedOuterPolygons);
+				runNestedInnerPolygonCheck(polygons, nestedInnerPolygons);
+				runWrongInnerPolygonCheck(polygons, unfinishedPolygons, innerPolygons);
+
+				// we have at least one polygon that could not be processed
+				// Probably we have intersecting or overlapping polygons
+				// one possible reason is if the relation overlaps the tile
+				// bounds
+				// => issue a warning
+				List<JoinedWay> lostWays = bitsetToList(unfinishedPolygons);
+				for (JoinedWay w : lostWays) {
+					log.warn("Polygon", w, "is not processed due to an unknown reason.");
+					logWayURLs(Level.WARNING, "-", w);
+				}
+			}
+		}
+
+		private List<JoinedWay> bitsetToList(BitSet selection) {
+			return selection.stream().mapToObj(polygons::get).collect(Collectors.toList());
+		}
+
+		private void runNestedOuterPolygonCheck(List<JoinedWay> polygons, BitSet nestedOuterPolygons) {
+			// just print out warnings
+			// the check has been done before
+			nestedOuterPolygons.stream().forEach(idx ->  {
+				JoinedWay outerWay = polygons.get(idx);
+				log.warn("Polygon",	outerWay, "carries role outer but lies inside an outer polygon. Potentially its role should be inner.");
+				logFakeWayDetails(Level.WARNING, outerWay);
+			});
+		}
+		
+		private void runNestedInnerPolygonCheck(List<JoinedWay> polygons, BitSet nestedInnerPolygons) {
+			// just print out warnings
+			// the check has been done before
+			nestedInnerPolygons.stream().forEach(idx -> {
+				JoinedWay innerWay = polygons.get(idx);
+				log.warn("Polygon",	innerWay, "carries role", getRole(innerWay), "but lies inside an inner polygon. Potentially its role should be outer.");
+				logFakeWayDetails(Level.WARNING, innerWay);
+			});
+		}	
+		
+		private void runOutmostInnerPolygonCheck(List<JoinedWay> polygons, BitSet outmostInnerPolygons) {
+			// just print out warnings
+			// the check has been done before
+			outmostInnerPolygons.stream().forEach(idx -> {
+				JoinedWay innerWay = polygons.get(idx);
+				log.warn("Polygon",	innerWay, "carries role", getRole(innerWay), "but is not inside any other polygon. Potentially it does not belong to this multipolygon.");
+				logFakeWayDetails(Level.WARNING, innerWay);
+			});
+		}
+
+		private void runWrongInnerPolygonCheck(List<JoinedWay> polygons, BitSet unfinishedPolygons, BitSet innerPolygons) {
+			// find all unfinished inner polygons that are not contained by any
+			BitSet wrongInnerPolygons = findOutmostPolygons(unfinishedPolygons, innerPolygons);
+			if (log.isDebugEnabled()) {
+				log.debug("unfinished", unfinishedPolygons);
+				log.debug(ROLE_INNER, innerPolygons);
+				// other polygon
+				log.debug("wrong", wrongInnerPolygons);
+			}
+			if (!wrongInnerPolygons.isEmpty()) {
+				// we have an inner polygon that is not contained by any outer polygon
+				// check if
+				wrongInnerPolygons.stream().forEach(wiIndex -> {
+					BitSet containedPolygons = new BitSet();
+					containedPolygons.or(unfinishedPolygons);
+					containedPolygons.and(containsMatrix.get(wiIndex));
+
+					JoinedWay innerWay = polygons.get(wiIndex);
+					if (containedPolygons.isEmpty()) {
+						log.warn("Polygon",	innerWay, "carries role", getRole(innerWay),
+							"but is not inside any outer polygon. Potentially it does not belong to this multipolygon.");
+						logFakeWayDetails(Level.WARNING, innerWay);
+					} else {
+						log.warn("Polygon",	innerWay, "carries role", getRole(innerWay),
+							"but is not inside any outer polygon. Potentially the roles are interchanged with the following",
+							(containedPolygons.cardinality() > 1 ? "ways" : "way"), ".");
+						containedPolygons.stream().forEach(wrIndex -> {
+							logWayURLs(Level.WARNING, "-", polygons.get(wrIndex));
+							unfinishedPolygons.set(wrIndex);
+							wrongInnerPolygons.set(wrIndex);
+						});
+						logFakeWayDetails(Level.WARNING, innerWay);
+					}
+
+					unfinishedPolygons.clear(wiIndex);
+					wrongInnerPolygons.clear(wiIndex);
+				});
+			}
+		}
+
+		/**
+		 * Checks if the polygon with polygonIndex1 contains the polygon with polygonIndex2.
+		 * 
+		 * @return true if polygon(polygonIndex1) contains polygon(polygonIndex2)
+		 */
+		private boolean contains(int polygonIndex1, int polygonIndex2) {
+			return containsMatrix.get(polygonIndex1).get(polygonIndex2);
+		}
+
+		/**
+		 * Find all polygons that are not contained by any other polygon.
+		 * 
+		 * @param candidates
+		 *            all polygons that should be checked
+		 * @param roleFilter
+		 *            an additional filter
+		 * @return all polygon indexes that are not contained by any other polygon
+		 */
+		private BitSet findOutmostPolygons(BitSet candidates, BitSet roleFilter) {
+			BitSet realCandidates = ((BitSet) candidates.clone());
+			realCandidates.and(roleFilter);
+			return findOutmostPolygons(realCandidates);
+		}
+
+		/**
+		 * Finds all polygons that are not contained by any other polygons and that
+		 * match the given role. All polygons with index given by
+		 * <var>candidates</var> are tested.
+		 * 
+		 * @param candidates indexes of the polygons that should be used
+		 * @return set of indexes of all outermost polygons 
+		 */
+		private BitSet findOutmostPolygons(BitSet candidates) {
+			BitSet outmostPolygons = new BitSet();
+
+			// go through all candidates and check if they are contained by any
+			// other candidate
+			candidates.stream().forEach(candidateIndex -> {
+				// check if the candidateIndex polygon is not contained by any
+				// other candidate polygon
+				boolean isOutmost = candidates.stream()
+						.noneMatch(otherCandidateIndex -> contains(otherCandidateIndex, candidateIndex));
+				if (isOutmost) {
+					// this is an outermost polygon
+					// put it to the bitset
+					outmostPolygons.set(candidateIndex);
+				}
+			});
+
+			return outmostPolygons;
+		}
+
+		public List<PolygonStatus> getPolygonStatus(PolygonStatus currentPolygon) {
+			ArrayList<PolygonStatus> polygonStatusList = new ArrayList<>();
+			BitSet outmostPolygons;
+			final String defaultRole;
+			if (currentPolygon == null) {
+				outmostPolygons = getOutmostRingsAndMatchWithRoles();
+				defaultRole = ROLE_OUTER;
+			} else {
+				outmostPolygons = checkRoleAgainstGeometry(currentPolygon);
+				defaultRole = currentPolygon.outer ? ROLE_INNER : ROLE_OUTER;
+			}
+			outmostPolygons.stream().forEach(polyIndex -> {
+				// polyIndex is the polygon that is not contained by any other
+				// polygon
+				JoinedWay polygon = polygons.get(polyIndex);
+				String role = getRole(polygon);
+				// if the role is not explicitly set use the default role
+				if (role == null || "".equals(role)) {
+					role = defaultRole;
+				} 
+				polygonStatusList.add(new PolygonStatus(ROLE_OUTER.equals(role), polyIndex, polygon));
+			});
+			
+			// sort by role and then by number of points, this improves performance
+			// in the routines which add the polygons to areas
+			if (polygonStatusList.size() > 2) {
+				polygonStatusList.sort((o1, o2) -> {
+					if (o1.outer != o2.outer)
+						return (o1.outer) ? -1 : 1;
+					return o1.polygon.getPoints().size() - o2.polygon.getPoints().size();
+				});
+			}
+			return polygonStatusList;
+		}
+
+		/**
+		 * Check the roles of polygons against the actual findings in containsMatrix. Not sure what this does so far.
+		 * @param currentPolygon the current polygon
+		 * @return set of polygon indexes which are considered as holes of the current polygon  
+		 */
+		public BitSet checkRoleAgainstGeometry(PolygonStatus currentPolygon) {
+			BitSet polygonContains = new BitSet();
+			polygonContains.or(containsMatrix.get(currentPolygon.index));
+			// use only polygon that are contained by the polygon
+			polygonContains.and(unfinishedPolygons);
+			// polygonContains is the intersection of the unfinished and
+			// the contained polygons
+
+			// get the holes
+			// these are all polygons that are in the current polygon
+			// and that are not contained by any other polygon
+			boolean holesOk;
+			BitSet holeIndexes;
+			do {
+				holeIndexes = findOutmostPolygons(polygonContains);
+				holesOk = true;
+
+				if (currentPolygon.outer) {
+					// for role=outer only role=inner is allowed
+					if (holeIndexes.intersects(taggedOuterPolygons)) {
+						BitSet addOuterNestedPolygons = new BitSet();
+						addOuterNestedPolygons.or(holeIndexes);
+						addOuterNestedPolygons.and(taggedOuterPolygons);
+						nestedOuterPolygons.or(addOuterNestedPolygons);
+						holeIndexes.andNot(addOuterNestedPolygons);
+						// do not process them
+						unfinishedPolygons.andNot(addOuterNestedPolygons);
+						polygonContains.andNot(addOuterNestedPolygons);
+						
+						// recalculate the holes again to get all inner polygons 
+						// in the nested outer polygons
+						holesOk = false;
+					}
+				} else {
+					// for role=inner both role=inner and role=outer is supported
+					// although inner in inner is not officially allowed
+					if (holeIndexes.intersects(taggedInnerPolygons)) {
+						// process inner in inner but issue a warning later
+						BitSet addInnerNestedPolygons = new BitSet();
+						addInnerNestedPolygons.or(holeIndexes);
+						addInnerNestedPolygons.and(taggedInnerPolygons);
+						nestedInnerPolygons.or(addInnerNestedPolygons);
+					}
+				}
+			} while (!holesOk);
+			return holeIndexes;
+		}
+	}
+	
+	private void divideLargest(List<JoinedWay> partition, List<List<JoinedWay>> partitions, int depth) {
+		if (partition.isEmpty())
+			return;
+		// probably complex polygons with crossing /self intersecting ways will be problematic 
+		if (depth >= 10 || partition.size() < 2 || tagIsLikeYes("expect-self-intersection")) {
+			partitions.add(partition);
+			return;
+		}
+		JoinedWay mostComplex = partition.get(0);
+		for (JoinedWay jw : partition) {
+			if (mostComplex.getPoints().size() < jw.getPoints().size())
+				mostComplex = jw;
+		}
+		if (mostComplex.getPoints().size() > 2000) {
+			uk.me.parabola.imgfmt.app.Area fullArea = calcBounds(partition);
+			uk.me.parabola.imgfmt.app.Area[] areas;
+			final int niceSplitShift = 11; 
+			if (fullArea.getHeight() > fullArea.getWidth())
+				areas = fullArea.split(1, 2, niceSplitShift);
+			else 
+				areas = fullArea.split(2, 1, niceSplitShift);
+			// code to calculate dividingLine taken from MapSplitter
+			if (areas != null && areas.length == 2) {
+				int dividingLine = 0;
+				boolean isLongitude = false;
+				boolean commonLine = true;
+				if (areas[0].getMaxLat() == areas[1].getMinLat()) {
+					dividingLine = areas[0].getMaxLat();
+				} else if (areas[0].getMaxLong() == areas[1].getMinLong()) {
+					dividingLine = areas[0].getMaxLong();
+					isLongitude = true;
+				} else {
+					commonLine = false;
+					log.error("Split into 2 expects shared edge between the areas");
+				}
+				if (commonLine) {
+					List<JoinedWay> dividedLess = new ArrayList<>();
+					List<JoinedWay> dividedMore = new ArrayList<>();
+					for (int i = 0; i < partition.size(); i++) {
+						JoinedWay jw = partition.get(i);
+						
+						List<List<Coord>> lessList = new ArrayList<>();
+						List<List<Coord>> moreList = new ArrayList<>();
+						ShapeSplitter.splitShape(jw.getPoints(), dividingLine << Coord.DELTA_SHIFT, isLongitude,
+								lessList, moreList, commonCoordMap);
+						
+						lessList.forEach(part -> dividedLess.add(new JoinedWay(jw, part)));
+						moreList.forEach(part -> dividedMore.add(new JoinedWay(jw, part)));
+					}
+					divideLargest(dividedLess, partitions, depth + 1);
+					divideLargest(dividedMore, partitions, depth + 1);
+					return;
+				}
+			}
+		} 
+		partitions.add(partition);
+	}
+
+
 	public Way getLargestOuterRing() {
 		return largestOuterPolygon;
 	}
 	
 	public List<JoinedWay> getRings() {
-		if (polygons== null)
+		if (polygons == null) {
 			polygons = buildRings();
+			cleanup();
+		}
 		return polygons;
 	}
 
