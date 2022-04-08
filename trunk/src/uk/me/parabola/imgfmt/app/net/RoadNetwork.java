@@ -287,6 +287,8 @@ public class RoadNetwork {
 			
 			// set node-class for nodes with no arcs to the highest class of a road referring to that node
 			for (RoadDef rd : roadDefs) {
+				if (rd.skipAddToNOD())
+					continue;
 				if (rd.getNode().getArcs().isEmpty()) {
 					rd.getNode().setRoadClass(Math.max(rd.getRoadClass(),rd.getNode().getNodeClass()));
 
