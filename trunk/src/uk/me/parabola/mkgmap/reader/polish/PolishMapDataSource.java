@@ -269,7 +269,7 @@ public class PolishMapDataSource extends MapperBasedMapDataSource implements Loa
 					setResolution(origPolyline, level);
 					for (List<Coord> points : entry.getValue()) {
 						polyline = origPolyline.copy();
-						if (!routing && GType.isRoutableLineType(polyline.getType())) {
+						if (!routing && GType.isSpecialRoutableLineType(polyline.getType())) {
 							roadHelper.setRoadId(++roadIdGenerated);
 						}
 						if (roadHelper.isRoad() && level == 0) {
