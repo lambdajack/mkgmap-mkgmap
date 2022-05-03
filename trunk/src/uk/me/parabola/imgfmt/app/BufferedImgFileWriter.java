@@ -273,7 +273,9 @@ public class BufferedImgFileWriter implements ImgFileWriter, Sized {
 				bufferSize += GROW_SIZE;
 			if (bufferSize > maxAllowedSize) {
 				throw new MapTooBigException(maxAllowedSize,
-						"The " + subfile + " section of the map or tile is too big.",
+						"The " + subfile + " section of the map or tile ("
+							+ log.threadTag()
+							+ ") is too big.",
 						"Try splitting the map into smaller tiles or reducing the amount of information included in the map.");
 			}
 			ByteBuffer newb = ByteBuffer.allocate(bufferSize);
